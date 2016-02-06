@@ -12,6 +12,7 @@
 #include "led.h"
 #include "vibro.h"
 #include "Sequences.h"
+#include "LSM9DS0.h"
 
 App_t App;
 
@@ -34,8 +35,10 @@ int main(void) {
     Clk.PrintFreqs();
 
     Led.Init();
-
     Led.StartSequence(lsqOn);
+
+    Acc.Init();
+
 //    Vibro.Init();
 //    Vibro.StartSequence(vsqBrr);
 //    if(Radio.Init() != OK) {

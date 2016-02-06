@@ -850,8 +850,7 @@ public:
 };
 #endif
 
-#if 0 // ============================== I2C ====================================
-#define I2C_KL  TRUE
+#if I2C_REQUIRED // ========================= I2C ==============================
 #define I2C_DMATX_MODE  STM32_DMA_CR_CHSEL(DmaChnl) |   \
                         DMA_PRIORITY_LOW | \
                         STM32_DMA_CR_MSIZE_BYTE | \
@@ -902,7 +901,7 @@ private:
     uint8_t WaitBTF();
 public:
     bool Error;
-    Thread *PRequestingThread;
+    thread_reference_t ThdRef;
     const stm32_dma_stream_t *PDmaTx, *PDmaRx;
     void Init();
     void Standby();
@@ -917,9 +916,8 @@ public:
             uint32_t BitrateHz,
             const stm32_dma_stream_t *APDmaTx, const stm32_dma_stream_t *APDmaRx) :
                 ii2c(pi2c), IPGpio(PGpio), ISclPin(SclPin), ISdaPin(SdaPin), IBitrateHz(BitrateHz),
-                Error(false), PRequestingThread(nullptr),
+                Error(false), ThdRef(nullptr),
                 PDmaTx(APDmaTx), PDmaRx(APDmaRx) {}
-
 };
 #endif
 

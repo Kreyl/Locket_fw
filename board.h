@@ -15,9 +15,11 @@
 #define STM32L151xB
 
 // Freq of external crystal if any. Leave it here even if not used.
-#define CRYSTAL_FREQ_HZ     12000000
+#define CRYSTAL_FREQ_HZ 12000000
 
-#define SYS_TIM_CLK         (Clk.APB1FreqHz)
+#define SYS_TIM_CLK     (Clk.APB1FreqHz)
+#define I2C_REQUIRED    TRUE
+#define ADC_REQUIRED    FALSE
 
 #if 1 // ========================== GPIO =======================================
 // UART
@@ -40,6 +42,15 @@
 #define VIBRO_GPIO      GPIOB
 #define VIBRO_PIN       8
 
+// Acc
+#define ACC_I2C_GPIO    GPIOB
+#define ACC_I2C_SCL_PIN 10
+#define ACC_I2C_SDA_PIN 11
+#define ACC_DRDY_GPIO   GPIOB
+#define ACC_DRDY_PIN    15
+#define ACC_INT1_GPIO   GPIOB
+#define ACC_INT1_PIN    14
+
 #endif // GPIO
 
 #if 1 // ========================= Timer =======================================
@@ -53,6 +64,10 @@
 
 #endif // Timer
 
+#if I2C_REQUIRED // ====================== I2C =================================
+#define I2C_ACC         I2C2
+#endif
+
 #if 1 // =========================== SPI =======================================
 #endif
 
@@ -62,8 +77,7 @@
 #define UART_RX_REG     UART->DR
 #endif
 
-#if 0 // ========================= Inner ADC ===================================
-#define ADC_REQUIRED        TRUE
+#if ADC_REQUIRED // ======================= Inner ADC ==========================
 // Clock divider: clock is generated from the APB2
 #define ADC_CLK_DIVIDER		adcDiv2
 
@@ -87,11 +101,14 @@
 #define STM32_DMA_REQUIRED  TRUE
 // ==== Uart ====
 // Remap is made automatically if required
-#define UART_DMA_TX     STM32_DMA1_STREAM4
-#define UART_DMA_RX     STM32_DMA1_STREAM5
+//#define UART_DMA_TX     STM32_DMA1_STREAM4
+//#define UART_DMA_RX     STM32_DMA1_STREAM5
 #define UART_DMA_CHNL   0   // Dummy
 
-// ==== Memory ====
+#if 1 // ==== I2C ====
+#define I2C_ACC_DMA_TX  STM32_DMA1_STREAM4
+#define I2C_ACC_DMA_RX  STM32_DMA1_STREAM5
+#endif
 
 #if ADC_REQUIRED
 /* DMA request mapped on this DMA channel only if the corresponding remapping bit is cleared in the SYSCFG_CFGR1

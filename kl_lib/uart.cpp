@@ -12,6 +12,36 @@
 
 Uart_t Uart;
 
+#if 1 // ==== Print Now ====
+static inline void FPutCharNow(char c) {
+#if defined STM32L1XX || defined STM32F2XX || defined STM32F4XX || defined STM32F10X_LD_VL
+    while(!(UART->SR & USART_SR_TXE));
+    UART_TX_REG = c;
+    while(!(UART->SR & USART_SR_TXE));
+#elif defined STM32F0XX
+    while(!(UART->ISR & USART_ISR_TXE));
+    UART_TX_REG = c;
+    while(!(UART->ISR & USART_ISR_TXE));
+#endif
+}
+
+void Uart_t::PrintfNow(const char *S, ...) {
+    va_list args;
+    va_start(args, S);
+    kl_vsprintf(FPutCharNow, 99999, S, args);
+    va_end(args);
+}
+
+extern "C" {
+void PrintfCNow(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    kl_vsprintf(FPutCharNow, 99999, format, args);
+    va_end(args);
+}
+}
+#endif
+
 #if UART_USE_DMA
 // Wrapper for TX IRQ
 extern "C" {
@@ -81,37 +111,20 @@ void Uart_t::ISendViaDMA() {
         dmaStreamEnable(UART_DMA_TX);
     }
 }
-#endif
-
-#if 1 // ==== Print Now ====
-static inline void FPutCharNow(char c) {
-#if defined STM32L1XX || defined STM32F2XX || defined STM32F4XX || defined STM32F10X_LD_VL
-    while(!(UART->SR & USART_SR_TXE));
-    UART_TX_REG = c;
-    while(!(UART->SR & USART_SR_TXE));
-#elif defined STM32F0XX
-    while(!(UART->ISR & USART_ISR_TXE));
-    UART_TX_REG = c;
-    while(!(UART->ISR & USART_ISR_TXE));
-#endif
-}
-
-void Uart_t::PrintfNow(const char *S, ...) {
+#else
+void Uart_t::Printf(const char *S, ...) {
     va_list args;
     va_start(args, S);
     kl_vsprintf(FPutCharNow, 99999, S, args);
     va_end(args);
 }
 
-extern "C" {
-void PrintfCNow(const char *format, ...) {
+void Uart_t::PrintfI(const char *S, ...) {
     va_list args;
-    va_start(args, format);
-    kl_vsprintf(FPutCharNow, 99999, format, args);
+    va_start(args, S);
+    kl_vsprintf(FPutCharNow, 99999, S, args);
     va_end(args);
 }
-}
-
 #endif
 
 #if UART_RX_ENABLED
@@ -168,10 +181,8 @@ void Uart_t::Init(uint32_t ABaudrate, GPIO_TypeDef *PGpioTx, const uint16_t APin
     // Setup HSI as UART's clk src
     if(UART == USART1) RCC->CFGR3 |= RCC_CFGR3_USART1SW_HSI;
     else if(UART == USART2) RCC->CFGR3 |= RCC_CFGR3_USART2SW_HSI;
-    OnAHBFreqChange();
-#else
-    OnAHBFreqChange();  // Setup baudrate
 #endif
+    OnAHBFreqChange();  // Setup baudrate
 
     UART->CR2 = 0;
 #if UART_USE_DMA    // ==== DMA ====
