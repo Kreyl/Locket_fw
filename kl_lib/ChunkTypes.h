@@ -10,6 +10,7 @@
 
 #include "color.h"
 #include "ch.h"
+#include "uart.h"
 
 enum ChunkSort_t {csSetup, csWait, csGoto, csEnd};
 
@@ -62,7 +63,7 @@ public:
 static void GeneralSequencerTmrCallback(void *p) {
     chSysLockFromISR();
     ((BaseSequenceProcess_t*)p)->IProcessSequenceI();
-    chSysLockFromISR();
+    chSysUnlockFromISR();
 }
 
 template <class TChunk>

@@ -11,11 +11,12 @@
 #include "clocking.h"
 #include "led.h"
 #include "vibro.h"
+#include "Sequences.h"
 
 App_t App;
 
 //Vibro_t Vibro(VIBRO_GPIO, VIBRO_PIN, VIBRO_TIM, VIBRO_CH);
-//LedRGB_t Led { {LED_GPIO, LED_R_PIN, LED_TIM, LED_R_CH}, {LED_GPIO, LED_G_PIN, LED_TIM, LED_G_CH}, {LED_GPIO, LED_B_PIN, LED_TIM, LED_B_CH} };
+LedRGB_t Led { {LED_GPIO, LED_R_PIN, LED_TIM, LED_R_CH}, {LED_GPIO, LED_G_PIN, LED_TIM, LED_G_CH}, {LED_GPIO, LED_B_PIN, LED_TIM, LED_B_CH} };
 
 int main(void) {
     // ==== Init Vcore & clock system ====
@@ -32,10 +33,9 @@ int main(void) {
     Uart.Printf("\r%S %S\r", APP_NAME, APP_VERSION);
     Clk.PrintFreqs();
 
-    PinSetupOut(GPIOB, 1,  omPushPull);
-    PinClear(GPIOB, 1);
+    Led.Init();
 
-//    Led.Init();
+    Led.StartSequence(lsqOn);
 //    Vibro.Init();
 //    Vibro.StartSequence(vsqBrr);
 //    if(Radio.Init() != OK) {
@@ -52,7 +52,6 @@ void App_t::ITask() {
     while(true) {
 
         chThdSleepMilliseconds(99);
-        PinToggle(GPIOB, 1);
 
 //        uint32_t EvtMsk __attribute__((unused));
 //        EvtMsk = chEvtWaitAny(ALL_EVENTS);
