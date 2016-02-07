@@ -14,12 +14,10 @@ i2c_t i2c (I2C_ACC, ACC_I2C_GPIO, ACC_I2C_SCL_PIN, ACC_I2C_SDA_PIN, 400000, I2C_
 
 thread_t *PThd;
 #define EVT_ACC_NEW_DATA     EVENT_MASK(1)   // Inner use
-#define EVT_GYRO_NEW_DATA    EVENT_MASK(2)   // Inner use
-
-// IRQ Pins
-//const PinIrq_t GPinDrdy(ACC_DRDY_PIN);
+// IRQ Pin
 const PinIrq_t XMPinDrdy(ACC_INT1_PIN);
 
+#if 1 // ============================ Setup data ===============================
 #define G_SETUP_SZ  5
 const uint8_t GSetupData[G_SETUP_SZ] = {
         0b00111111, // CTRL_REG1_G: DR=00, BW=11, Pwr=1, XYZ=Enable
@@ -38,12 +36,13 @@ const uint8_t XMSetupData[XM_SETUP_SZ] = {
         0b00000000, // CTRL_REG4_XM: irq2 disabled
         0b00010100, // CTRL_REG5_XM: temp sns dis, m res low, m data rate 100Hz, irqs not latched
         0b00100000, // CTRL_REG6_XM: m full-scale +-4Gauss
-        0b00000000, // CTRL_REG7_XM: HiPass normal, filter dis, m loPwr dis, m cont. conv XXX
+        0b00000000, // CTRL_REG7_XM: HiPass normal, filter dis, m loPwr dis, m cont. conv
 };
 
 const uint8_t GDataAddr = (0x28 | 0x80);    // Gyro Data addr + autoincrease
 const uint8_t MDataAddr = (0x08 | 0x80);    // Magnet Data addr + autoincrease
 const uint8_t XDataAddr = (0x28 | 0x80);    // Acc Data addr + autoincrease
+#endif
 
 // ============================== Implementation ===============================
 static THD_WORKING_AREA(waAccThread, 128);
@@ -59,7 +58,6 @@ void LSM9DS0_t::Init() {
     mNew = false;
     xNew = false;
     // IRQ pins
-//    GPinDrdy.Init(ACC_DRDY_GPIO, pudNone, ttRising);
     XMPinDrdy.Init(ACC_INT1_GPIO, pudNone, ttRising);
     i2c.Init();
     //i2c.BusScan();
@@ -81,20 +79,16 @@ void LSM9DS0_t::Init() {
     }
     // Setup gyro
     GWriteBuf(0x20, (uint8_t*)GSetupData, G_SETUP_SZ);
-//    for(uint8_t i=0; i<G_SETUP_SZ; i++) Uart.Printf("g %X\r", GReadReg(0x20 + i));
-
     // Setup Acc
     Uart.Printf("%X\r", XMReadReg(0x12));
     XMWriteBuf(0x1F, (uint8_t*)XMSetupData, XM_SETUP_SZ);
-//    for(uint8_t i=0; i<XM_SETUP_SZ; i++) Uart.Printf("xm %X\r", XMReadReg(0x1F + i));
     XMWriteReg(0x2E, 0x00); // FIFO disable
     XMWriteReg(0x12, 0x08); // IRQ active-high, magnetic irq Dis
 
     // Create and start thread
     PThd = chThdCreateStatic(waAccThread, sizeof(waAccThread), NORMALPRIO, (tfunc_t)AccThread, NULL);
-//    GPinDrdy.EnableIrq(IRQ_PRIO_MEDIUM);
     XMPinDrdy.EnableIrq(IRQ_PRIO_MEDIUM);
-    chEvtSignal(PThd, (EVT_GYRO_NEW_DATA | EVT_ACC_NEW_DATA));  // Start measurement
+    chEvtSignal(PThd, (EVT_ACC_NEW_DATA));  // Start measurement
 }
 
 __NORETURN
@@ -102,32 +96,22 @@ void LSM9DS0_t::ITask() {
     while(true) {
         uint8_t b;
         eventmask_t EvtMsk = chEvtWaitAny(ALL_EVENTS);
-//        Uart.PrintfI("Evt\r");
-//        if(EvtMsk & EVT_GYRO_NEW_DATA) {
-//            GReadData();
-//            gNew = true;
-////            Uart.Printf("G: %d %d %d\r", Gyro.x, Gyro.y, Gyro.z);
-//        }
-
         if(EvtMsk & EVT_ACC_NEW_DATA) {
             // Check which data is ready
             b = XMReadReg(0x27);    // X status reg
             if(BitIsSet(b, 0x08)) {
                 XReadData();
                 xNew = true;
-//                Uart.Printf("X: %06d %06d %06d", Accel.x, Accel.y, Accel.z);
             }
             b = XMReadReg(0x07);    // M status reg
             if(BitIsSet(b, 0x08)) {
                 MReadData();
                 mNew = true;
-//                Uart.Printf("   M: %06d %06d %06d\r", Magnet.x, Magnet.y, Magnet.z);
             }
             b = GReadReg(0x27); // G status reg
             if(BitIsSet(b, 0x08)) {
                 GReadData();
                 gNew = true;
-//                Uart.Printf("X: %06d %06d %06d", Accel.x, Accel.y, Accel.z);
             }
         } // if new data
 
@@ -195,11 +179,6 @@ extern "C" {
 CH_IRQ_HANDLER(ACC_IRQ_HANDLER) {
     CH_IRQ_PROLOGUE();
     chSysLockFromISR();
-//    if(GPinDrdy.IsIrqPending()) {
-//        GPinDrdy.CleanIrqFlag();
-////        Uart.PrintfI("GIrq\r");
-//        chEvtSignalI(PThd, EVT_GYRO_NEW_DATA);
-//    }
     if(XMPinDrdy.IsIrqPending()) {
 //        Uart.PrintfI("XMIrq\r");
         XMPinDrdy.CleanIrqFlag();
