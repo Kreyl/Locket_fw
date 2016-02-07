@@ -81,6 +81,12 @@ public:
     void DisableHSI() { RCC->CR &= ~RCC_CR_HSION; }
     void DisablePLL() { RCC->CR &= ~RCC_CR_PLLON; }
     void DisableMSI() { RCC->CR &= ~RCC_CR_MSION; }
+    // MSI
+    void SetMSI4MHz() {
+        uint32_t tmp = RCC->ICSCR & (~RCC_ICSCR_MSIRANGE);
+        tmp |= RCC_ICSCR_MSIRANGE_6;
+        RCC->ICSCR = tmp;
+    }
     void SetupBusDividers(AHBDiv_t AHBDiv, APBDiv_t APB1Div, APBDiv_t APB2Div);
     uint8_t SetupPLLMulDiv(PllMul_t PllMul, PllDiv_t PllDiv);
     void UpdateFreqValues();

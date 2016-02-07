@@ -50,6 +50,7 @@
 #define ACC_DRDY_PIN    15
 #define ACC_INT1_GPIO   GPIOB
 #define ACC_INT1_PIN    14
+#define ACC_IRQ_HANDLER VectorE0    // EXTI 10_15
 
 #endif // GPIO
 

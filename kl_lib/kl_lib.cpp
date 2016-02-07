@@ -397,7 +397,6 @@ uint8_t i2c_t::Write(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1) {
     return OK;
 }
 
-
 void i2c_t::BusScan() {
     Uart.Printf("\r     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f");
     uint8_t AddrHi, Addr;
