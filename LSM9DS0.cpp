@@ -7,16 +7,17 @@
 
 #include "LSM9DS0.h"
 #include "uart.h"
+#include "main.h"
 
 LSM9DS0_t Acc;
 i2c_t i2c (I2C_ACC, ACC_I2C_GPIO, ACC_I2C_SCL_PIN, ACC_I2C_SDA_PIN, 400000, I2C_ACC_DMA_TX, I2C_ACC_DMA_RX );
 
 thread_t *PThd;
-#define EVTMSK_ACC_NEW_DATA     EVENT_MASK(1)   // Inner use
-#define EVTMSK_GYRO_NEW_DATA    EVENT_MASK(2)   // Inner use
+#define EVT_ACC_NEW_DATA     EVENT_MASK(1)   // Inner use
+#define EVT_GYRO_NEW_DATA    EVENT_MASK(2)   // Inner use
 
 // IRQ Pins
-const PinIrq_t GPinDrdy(ACC_DRDY_PIN);
+//const PinIrq_t GPinDrdy(ACC_DRDY_PIN);
 const PinIrq_t XMPinDrdy(ACC_INT1_PIN);
 
 #define G_SETUP_SZ  5
@@ -52,6 +53,11 @@ __NORETURN static void AccThread(void *arg) {
 }
 
 void LSM9DS0_t::Init() {
+    IPRead = &IData[1];
+    IPWrite = &IData[0];
+    gNew = false;
+    mNew = false;
+    xNew = false;
     // IRQ pins
 //    GPinDrdy.Init(ACC_DRDY_GPIO, pudNone, ttRising);
     XMPinDrdy.Init(ACC_INT1_GPIO, pudNone, ttRising);
@@ -74,7 +80,7 @@ void LSM9DS0_t::Init() {
         }
     }
     // Setup gyro
-//    GWriteBuf(0x20, (uint8_t*)GSetupData, G_SETUP_SZ);
+    GWriteBuf(0x20, (uint8_t*)GSetupData, G_SETUP_SZ);
 //    for(uint8_t i=0; i<G_SETUP_SZ; i++) Uart.Printf("g %X\r", GReadReg(0x20 + i));
 
     // Setup Acc
@@ -87,48 +93,72 @@ void LSM9DS0_t::Init() {
     // Create and start thread
     PThd = chThdCreateStatic(waAccThread, sizeof(waAccThread), NORMALPRIO, (tfunc_t)AccThread, NULL);
 //    GPinDrdy.EnableIrq(IRQ_PRIO_MEDIUM);
-//    GPinDrdy.GenerateIrq();
     XMPinDrdy.EnableIrq(IRQ_PRIO_MEDIUM);
-    XMPinDrdy.GenerateIrq();
+    chEvtSignal(PThd, (EVT_GYRO_NEW_DATA | EVT_ACC_NEW_DATA));  // Start measurement
 }
 
 __NORETURN
 void LSM9DS0_t::ITask() {
     while(true) {
-        __unused eventmask_t EvtMsk = chEvtWaitAny(ALL_EVENTS);
+        uint8_t b;
+        eventmask_t EvtMsk = chEvtWaitAny(ALL_EVENTS);
 //        Uart.PrintfI("Evt\r");
-//            uint8_t b = GReadReg(0x27);
-//            Uart.Printf("st: %X\r", b);
-//        if(EvtMsk & EVTMSK_GYRO_NEW_DATA) {
+//        if(EvtMsk & EVT_GYRO_NEW_DATA) {
 //            GReadData();
+//            gNew = true;
 ////            Uart.Printf("G: %d %d %d\r", Gyro.x, Gyro.y, Gyro.z);
 //        }
 
-        if(EvtMsk & EVTMSK_ACC_NEW_DATA) {
+        if(EvtMsk & EVT_ACC_NEW_DATA) {
             // Check which data is ready
-            uint8_t b = XMReadReg(0x27);    // X status reg
+            b = XMReadReg(0x27);    // X status reg
             if(BitIsSet(b, 0x08)) {
                 XReadData();
+                xNew = true;
 //                Uart.Printf("X: %06d %06d %06d", Accel.x, Accel.y, Accel.z);
             }
             b = XMReadReg(0x07);    // M status reg
             if(BitIsSet(b, 0x08)) {
                 MReadData();
+                mNew = true;
 //                Uart.Printf("   M: %06d %06d %06d\r", Magnet.x, Magnet.y, Magnet.z);
             }
-//            else Uart.Printf("\r");
+            b = GReadReg(0x27); // G status reg
+            if(BitIsSet(b, 0x08)) {
+                GReadData();
+                gNew = true;
+//                Uart.Printf("X: %06d %06d %06d", Accel.x, Accel.y, Accel.z);
+            }
+        } // if new data
+
+        // Check if new data set is ready
+        if(gNew and xNew and mNew) {
+            gNew = false;
+            mNew = false;
+            xNew = false;
+            // Switch buffers
+            if(IPWrite == &IData[0]) {
+                IPWrite = &IData[1];
+                IPRead  = &IData[0];
+            }
+            else {
+                IPWrite = &IData[0];
+                IPRead  = &IData[1];
+            }
+            // Signal event
+            App.SignalEvt(EVT_NEW_9D);
         }
     } // while true
 }
 
 void LSM9DS0_t::GReadData() {
-    i2c.WriteRead(ADDR_G, (uint8_t*)&GDataAddr, 1, (uint8_t*)&Gyro, ACC_DATA_SZ);
+    i2c.WriteRead(ADDR_G, (uint8_t*)&GDataAddr, 1, (uint8_t*)&IPWrite->Gyro, ACC_DATA_SZ);
 }
 void LSM9DS0_t::MReadData() {
-    i2c.WriteRead(ADDR_XM, (uint8_t*)&MDataAddr, 1, (uint8_t*)&Magnet, ACC_DATA_SZ);
+    i2c.WriteRead(ADDR_XM, (uint8_t*)&MDataAddr, 1, (uint8_t*)&IPWrite->Magnet, ACC_DATA_SZ);
 }
 void LSM9DS0_t::XReadData() {
-    i2c.WriteRead(ADDR_XM, (uint8_t*)&XDataAddr, 1, (uint8_t*)&Accel, ACC_DATA_SZ);
+    i2c.WriteRead(ADDR_XM, (uint8_t*)&XDataAddr, 1, (uint8_t*)&IPWrite->Acc, ACC_DATA_SZ);
 }
 
 #if 1 // ========================== Inner use ==================================
@@ -165,15 +195,15 @@ extern "C" {
 CH_IRQ_HANDLER(ACC_IRQ_HANDLER) {
     CH_IRQ_PROLOGUE();
     chSysLockFromISR();
-    if(GPinDrdy.IsIrqPending()) {
-        GPinDrdy.CleanIrqFlag();
-//        Uart.PrintfI("GIrq\r");
-        chEvtSignalI(PThd, EVTMSK_GYRO_NEW_DATA);
-    }
+//    if(GPinDrdy.IsIrqPending()) {
+//        GPinDrdy.CleanIrqFlag();
+////        Uart.PrintfI("GIrq\r");
+//        chEvtSignalI(PThd, EVT_GYRO_NEW_DATA);
+//    }
     if(XMPinDrdy.IsIrqPending()) {
 //        Uart.PrintfI("XMIrq\r");
         XMPinDrdy.CleanIrqFlag();
-        chEvtSignalI(PThd, EVTMSK_ACC_NEW_DATA);
+        chEvtSignalI(PThd, EVT_ACC_NEW_DATA);
     }
     chSysUnlockFromISR();
     CH_IRQ_EPILOGUE();

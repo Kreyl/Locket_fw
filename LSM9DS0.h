@@ -17,6 +17,10 @@ struct AccData_t {
 } __packed;
 #define ACC_DATA_SZ    sizeof(AccData_t)
 
+struct Data9D_t {
+    AccData_t Acc, Magnet, Gyro;
+};
+
 class LSM9DS0_t {
 private:
     uint8_t GReadReg(uint8_t Addr);
@@ -24,12 +28,14 @@ private:
     void XMWriteReg(uint8_t Addr, uint8_t Value);
     void GWriteBuf(uint8_t Addr, uint8_t *Ptr, uint32_t Sz);
     void XMWriteBuf(uint8_t Addr, uint8_t *Ptr, uint32_t Sz);
-public:
-    AccData_t Gyro, Magnet, Accel;
-    void Init();
     void GReadData();
     void MReadData();
     void XReadData();
+    Data9D_t IData[2], *IPWrite;
+    bool gNew, mNew, xNew;
+public:
+    Data9D_t *IPRead;
+    void Init();
     void ITask();
 };
 

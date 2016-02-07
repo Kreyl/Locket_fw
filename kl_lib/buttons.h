@@ -5,8 +5,10 @@
  *      Author: kreyl
  */
 
-#ifndef BTNS_H_
-#define BTNS_H_
+#pragma once
+
+#define BUTTONS_ENABLED FALSE
+#if BUTTONS_ENABLED
 
 #include "hal.h"
 #include "kl_lib.h"
@@ -67,4 +69,4 @@ struct BtnEvtInfo_t {
 
 uint8_t BtnGetEvt(BtnEvtInfo_t *PEvt);
 
-#endif /* BTNS_H_ */
+#endif
