@@ -14,7 +14,7 @@
 #include "clocking.h"
 
 // Lib version
-#define KL_LIB_VERSION      "20160206_1234"
+#define KL_LIB_VERSION      "20160208_1924"
 
 #if defined STM32L1XX
 #include "stm32l1xx.h"

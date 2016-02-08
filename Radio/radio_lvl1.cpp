@@ -14,17 +14,20 @@
 
 #include "LSM9DS0.h"
 
-#define DBG_PINS
+//#define DBG_PINS
 
 #ifdef DBG_PINS
 #define DBG_GPIO1   GPIOB
-#define DBG_PIN1    12
+#define DBG_PIN1    4
 #define DBG1_SET()  PinSet(DBG_GPIO1, DBG_PIN1)
 #define DBG1_CLR()  PinClear(DBG_GPIO1, DBG_PIN1)
 #define DBG_GPIO2   GPIOB
-#define DBG_PIN2    13
+#define DBG_PIN2    9
 #define DBG2_SET()  PinSet(DBG_GPIO2, DBG_PIN2)
 #define DBG2_CLR()  PinClear(DBG_GPIO2, DBG_PIN2)
+#else
+#define DBG1_SET()
+#define DBG1_CLR()
 #endif
 
 rLevel1_t Radio;
@@ -43,13 +46,15 @@ void rLevel1_t::ITask() {
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
         if(Evt & EVT_NEW_9D) {
-            Pkt.AccData[0] = Acc.IPRead->Acc.x;
-            Pkt.AccData[1] = Acc.IPRead->Acc.y;
-            Pkt.AccData[2] = Acc.IPRead->Acc.z;
+            Pkt.Time = chVTGetSystemTime();
 
-            Pkt.AccData[3] = Acc.IPRead->Gyro.x;
-            Pkt.AccData[4] = Acc.IPRead->Gyro.y;
-            Pkt.AccData[5] = Acc.IPRead->Gyro.z;
+            Pkt.AccData[0] = Acc.IPRead->Gyro.x;
+            Pkt.AccData[1] = Acc.IPRead->Gyro.y;
+            Pkt.AccData[2] = Acc.IPRead->Gyro.z;
+
+            Pkt.AccData[3] = Acc.IPRead->Acc.x;
+            Pkt.AccData[4] = Acc.IPRead->Acc.y;
+            Pkt.AccData[5] = Acc.IPRead->Acc.z;
 
             Pkt.AccData[6] = Acc.IPRead->Magnet.x;
             Pkt.AccData[7] = Acc.IPRead->Magnet.y;

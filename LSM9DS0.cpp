@@ -61,31 +61,51 @@ void LSM9DS0_t::Init() {
     xNew = false;
     // IRQ pins
     XMPinDrdy.Init(ACC_INT1_GPIO, pudNone, ttRising);
+    // Power
+    PinSetupOut(GPIOB, 12, omPushPull, pudNone);
     i2c.Init();
     //i2c.BusScan();
-    // Check device
-    uint32_t Retries = 207;
+    uint32_t Retries = 99;
     while(true) {
+        PinSet(GPIOB, 12);
+        chThdSleepMilliseconds(45);
+        // Read IDs
         uint8_t gID  = GReadReg(0x0F);
         uint8_t xmID = XMReadReg(0x0F);
-        if(gID == 0xD4 and xmID == 0x49) break;
-        else {
-            Uart.Printf("gID=%X; xmID=%X\r", gID, xmID);
-            Retries--;
-            if(Retries == 0) {
-                Uart.Printf("Acc Fail\r");
-                return;
-            }
-            chThdSleepMilliseconds(4);
+        Uart.Printf("gID=%X; xmID=%X\r", gID, xmID);
+        if(gID == 0xD4 and xmID == 0x49) {
+            // Setup gyro
+            GWriteBuf(0x20, (uint8_t*)GSetupData, G_SETUP_SZ);
+            // Setup Acc
+            XMWriteBuf(0x1F, (uint8_t*)XMSetupData, XM_SETUP_SZ);
+            XMWriteReg(0x2E, 0x00); // FIFO disable
+            XMWriteReg(0x12, 0x08); // IRQ active-high, magnetic irq Dis
+            // Read Acc value
+            while(true) {
+                uint8_t b = XMReadReg(0x27);    // X status reg
+                if(BitIsSet(b, 0x08)) {
+                    XReadData();
+                    Uart.Printf("A: %d %d %d\r", IPWrite->Acc.x, IPWrite->Acc.y, IPWrite->Acc.z);
+                    int16_t a1 = ABS(IPWrite->Acc.x);
+                    int16_t a2 = ABS(IPWrite->Acc.y);
+                    int16_t a3 = ABS(IPWrite->Acc.z);
+                    if(IS_LIKE(a1, 24538, 4) and IS_LIKE(a2, 24538, 4) and IS_LIKE(a3, 24538, 4)) break; // Bad acc
+                    else goto SetupSuccess;
+                } // if data
+                else chThdSleepMilliseconds(11);
+            } // while true
+        } // Check IDs
+        Retries--;
+        if(Retries == 0) {
+            Uart.Printf("Acc Fail\r");
+            return;
         }
-    }
-    // Setup gyro
-    GWriteBuf(0x20, (uint8_t*)GSetupData, G_SETUP_SZ);
-    // Setup Acc
-    XMWriteBuf(0x1F, (uint8_t*)XMSetupData, XM_SETUP_SZ);
-    XMWriteReg(0x2E, 0x00); // FIFO disable
-    XMWriteReg(0x12, 0x08); // IRQ active-high, magnetic irq Dis
+        // Power off
+        PinClear(GPIOB, 12);
+        chThdSleepMilliseconds(45);
+    } // while true
 
+    SetupSuccess:
     // Create and start thread
     PThd = chThdCreateStatic(waAccThread, sizeof(waAccThread), NORMALPRIO, (tfunc_t)AccThread, NULL);
     XMPinDrdy.EnableIrq(IRQ_PRIO_MEDIUM);
@@ -99,10 +119,14 @@ void LSM9DS0_t::ITask() {
         eventmask_t EvtMsk = chEvtWaitAny(ALL_EVENTS);
         if(EvtMsk & EVT_ACC_NEW_DATA) {
             // Check which data is ready
-            b = XMReadReg(0x27);    // X status reg
-            if(BitIsSet(b, 0x08)) {
-                XReadData();
-                xNew = true;
+            while(true) {
+                b = XMReadReg(0x27);    // X status reg
+                if(BitIsSet(b, 0x08)) {
+                    XReadData();
+                    xNew = true;
+//                    Uart.Printf("A: %d %d %d\r", IPWrite->Acc.x, IPWrite->Acc.y, IPWrite->Acc.z);
+                }
+                else break;
             }
             b = XMReadReg(0x07);    // M status reg
             if(BitIsSet(b, 0x08)) {
@@ -159,6 +183,12 @@ uint8_t LSM9DS0_t::XMReadReg(uint8_t Addr) {
     return rslt;
 }
 
+void LSM9DS0_t::GWriteReg(uint8_t Addr, uint8_t Value) {
+    uint8_t FBuf[2];
+    FBuf[0] = Addr;
+    FBuf[1] = Value;
+    i2c.Write(ADDR_G, FBuf, 2);
+}
 void LSM9DS0_t::XMWriteReg(uint8_t Addr, uint8_t Value) {
     uint8_t FBuf[2];
     FBuf[0] = Addr;

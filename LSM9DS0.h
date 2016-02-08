@@ -26,6 +26,7 @@ private:
     uint8_t GReadReg(uint8_t Addr);
     uint8_t XMReadReg(uint8_t Addr);
     void XMWriteReg(uint8_t Addr, uint8_t Value);
+    void GWriteReg(uint8_t Addr, uint8_t Value);
     void GWriteBuf(uint8_t Addr, uint8_t *Ptr, uint32_t Sz);
     void XMWriteBuf(uint8_t Addr, uint8_t *Ptr, uint32_t Sz);
     void GReadData();

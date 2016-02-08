@@ -35,9 +35,10 @@ int main(void) {
     Uart.Init(256000, UART_GPIO, UART_TX_PIN);//, UART_GPIO, UART_RX_PIN);
     Uart.Printf("\r%S %S\r", APP_NAME, APP_VERSION);
     Clk.PrintFreqs();
+    chThdSleepMilliseconds(270);
 
     Led.Init();
-    Led.StartSequence(lsqOn);
+    Acc.Init();
 
 //    Vibro.Init();
 //    Vibro.StartSequence(vsqBrr);
@@ -47,8 +48,7 @@ int main(void) {
         Led.StartSequence(lsqFailure);
         chThdSleepMilliseconds(2700);
     }
-
-    Acc.Init();
+    else Led.StartSequence(lsqOn);
 
     // Main cycle
     App.ITask();
@@ -58,9 +58,9 @@ __attribute__ ((__noreturn__))
 void App_t::ITask() {
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
-//        if(Evt & EVT_NEW_9D) {
-//            Uart.Printf("G: %d %d %d; A: %d %d %d; M: %d %d %d\r",   Acc.IPRead->Gyro.x, Acc.IPRead->Gyro.y, Acc.IPRead->Gyro.z,  Acc.IPRead->Acc.x, Acc.IPRead->Acc.y, Acc.IPRead->Acc.z,  Acc.IPRead->Magnet.x, Acc.IPRead->Magnet.y, Acc.IPRead->Magnet.z);
-//        }
+        if(Evt & EVT_NEW_9D) {
+            Uart.Printf("G: %d %d %d; A: %d %d %d; M: %d %d %d\r",   Acc.IPRead->Gyro.x, Acc.IPRead->Gyro.y, Acc.IPRead->Gyro.z,  Acc.IPRead->Acc.x, Acc.IPRead->Acc.y, Acc.IPRead->Acc.z,  Acc.IPRead->Magnet.x, Acc.IPRead->Magnet.y, Acc.IPRead->Magnet.z);
+        }
 
 #if UART_RX_ENABLED
         if(EvtMsk & EVTMSK_UART_NEW_CMD) {
