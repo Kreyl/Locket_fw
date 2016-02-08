@@ -5,8 +5,7 @@
  *      Author: kreyl
  */
 
-#ifndef CC_GPIO_H_
-#define CC_GPIO_H_
+#pragma once
 
 // Pins
 #define CC_GPIO     GPIOA
@@ -15,18 +14,19 @@
 #define CC_SCK      5
 #define CC_MISO     6
 #define CC_MOSI     7
-#define CC_CS       4
+#define CC_CS       1
 
+#if defined STM32L1XX
 #if CC_GDO0 == 0
-#define GDO0_IRQ_HANDLER     EXTI0_IRQHandler
+#define GDO0_IRQ_HANDLER     Vector58
 #elif CC_GDO0 == 1
-#define GDO0_IRQ_HANDLER     EXTI1_IRQHandler
+#define GDO0_IRQ_HANDLER     Vector5C
 #elif CC_GDO0 == 2
-#define GDO0_IRQ_HANDLER     EXTI2_IRQHandler
+#define GDO0_IRQ_HANDLER     Vector60
 #elif CC_GDO0 == 3
-#define GDO0_IRQ_HANDLER     EXTI3_IRQHandler
+#define GDO0_IRQ_HANDLER     Vector64
 #elif CC_GDO0 == 4
-#define GDO0_IRQ_HANDLER     EXTI4_IRQHandler
+#define GDO0_IRQ_HANDLER     Vector68
 #endif
 
 // SPI
@@ -36,5 +36,4 @@
 #elif defined STM32F030
 #define CC_SPI_AF   AF0
 #endif
-
-#endif /* CC_GPIO_H_ */
+#endif // L15xx

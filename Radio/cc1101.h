@@ -5,9 +5,7 @@
  *      Author: g.kruglov
  */
 
-#ifndef CC1101_H_
-#define CC1101_H_
-
+#pragma once
 /*
  * Low-level operations are here.
  * Pkt level at top side, and SPI at bottom.
@@ -24,12 +22,9 @@
 class cc1101_t {
 private:
     uint8_t IState; // Inner CC state, returned as first byte
-//    Thread *PWaitingThread;
     Spi_t ISpi;
     uint8_t IPktSz;
     // Pins
-    void CsHi() { PinSet(CC_GPIO, CC_CS); }
-    void CsLo() { PinClear(CC_GPIO, CC_CS); }
     uint8_t BusyWait() {
         for(uint32_t i=0; i<CC_BUSYWAIT_TIMEOUT; i++) {
             if(!PinIsSet(CC_GPIO, CC_MISO)) return OK;
@@ -40,8 +35,8 @@ private:
     void RfConfig();
     int8_t RSSI_dBm(uint8_t ARawRSSI);
     // Registers and buffers
-    uint8_t WriteRegister (const uint8_t Addr, const uint8_t AData);
-    uint8_t ReadRegister (const uint8_t Addr);
+    uint8_t WriteRegister(const uint8_t Addr, const uint8_t AData);
+    uint8_t ReadRegister(const uint8_t Addr);
     uint8_t WriteStrobe(uint8_t AStrobe);
     uint8_t WriteTX(uint8_t* Ptr, uint8_t Length);
     // Strobes
@@ -67,11 +62,7 @@ public:
         return BusyWait();
     }
     uint8_t ReadFIFO(void *Ptr, int8_t *PRssi);
-    // Inner use
-    void IGdo0IrqHandler();
-//    cc1101_t(): IState(0), PWaitingThread(nullptr), IPktSz(0) {}
+    cc1101_t(): IState(0), IPktSz(0) {}
 };
 
 extern cc1101_t CC;
-
-#endif /* CC1101_H_ */

@@ -13,6 +13,7 @@
 #include "vibro.h"
 #include "Sequences.h"
 #include "LSM9DS0.h"
+#include "radio_lvl1.h"
 
 App_t App;
 
@@ -38,15 +39,17 @@ int main(void) {
     Led.Init();
     Led.StartSequence(lsqOn);
 
-    Acc.Init();
-
 //    Vibro.Init();
 //    Vibro.StartSequence(vsqBrr);
-//    if(Radio.Init() != OK) {
-//        Led.StartSequence(lsqFailure);
-//        chThdSleepMilliseconds(2700);
-//    }
 //    PinSensors.Init();
+
+    if(Radio.Init() != OK) {
+        Led.StartSequence(lsqFailure);
+        chThdSleepMilliseconds(2700);
+    }
+
+    Acc.Init();
+
     // Main cycle
     App.ITask();
 }
@@ -55,9 +58,9 @@ __attribute__ ((__noreturn__))
 void App_t::ITask() {
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
-        if(Evt & EVT_NEW_9D) {
-            Uart.Printf("G: %d %d %d; A: %d %d %d; M: %d %d %d\r",   Acc.IPRead->Gyro.x, Acc.IPRead->Gyro.y, Acc.IPRead->Gyro.z,  Acc.IPRead->Acc.x, Acc.IPRead->Acc.y, Acc.IPRead->Acc.z,  Acc.IPRead->Magnet.x, Acc.IPRead->Magnet.y, Acc.IPRead->Magnet.z);
-        }
+//        if(Evt & EVT_NEW_9D) {
+//            Uart.Printf("G: %d %d %d; A: %d %d %d; M: %d %d %d\r",   Acc.IPRead->Gyro.x, Acc.IPRead->Gyro.y, Acc.IPRead->Gyro.z,  Acc.IPRead->Acc.x, Acc.IPRead->Acc.y, Acc.IPRead->Acc.z,  Acc.IPRead->Magnet.x, Acc.IPRead->Magnet.y, Acc.IPRead->Magnet.z);
+//        }
 
 #if UART_RX_ENABLED
         if(EvtMsk & EVTMSK_UART_NEW_CMD) {

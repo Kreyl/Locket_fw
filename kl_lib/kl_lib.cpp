@@ -202,7 +202,6 @@ void i2cDmaIrqHandler(void *p, uint32_t flags) {
 //    Uart.PrintfNow("\r===T===");
     chThdResumeI(&pi2c->ThdRef, (msg_t)0);
     chSysUnlockFromISR();
-
 }
 
 void i2c_t::Init() {

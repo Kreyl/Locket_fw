@@ -22,10 +22,11 @@ private:
         chThdSleepMilliseconds(SleepDuration);
     }
 public:
+    thread_t *PThd;
     uint8_t Init();
     // Inner use
     void ITask();
-    rLevel1_t(): Pkt({0}) {}
+//    rLevel1_t(): PThd(nullptr) Pkt({0}) {}
 };
 
 extern rLevel1_t Radio;

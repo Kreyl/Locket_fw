@@ -12,15 +12,17 @@
 #include "uart.h"
 #include "led.h"
 
+#include "LSM9DS0.h"
+
 #define DBG_PINS
 
 #ifdef DBG_PINS
 #define DBG_GPIO1   GPIOB
-#define DBG_PIN1    14
+#define DBG_PIN1    12
 #define DBG1_SET()  PinSet(DBG_GPIO1, DBG_PIN1)
 #define DBG1_CLR()  PinClear(DBG_GPIO1, DBG_PIN1)
 #define DBG_GPIO2   GPIOB
-#define DBG_PIN2    15
+#define DBG_PIN2    13
 #define DBG2_SET()  PinSet(DBG_GPIO2, DBG_PIN2)
 #define DBG2_CLR()  PinClear(DBG_GPIO2, DBG_PIN2)
 #endif
@@ -29,16 +31,35 @@ rLevel1_t Radio;
 
 #if 1 // ================================ Task =================================
 static THD_WORKING_AREA(warLvl1Thread, 256);
-__attribute__((__noreturn__))
+__NORETURN
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     Radio.ITask();
 }
 
-__attribute__((__noreturn__))
+__NORETURN
 void rLevel1_t::ITask() {
     __unused uint8_t OldID = 0;
     while(true) {
+        __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
+        if(Evt & EVT_NEW_9D) {
+            Pkt.AccData[0] = Acc.IPRead->Acc.x;
+            Pkt.AccData[1] = Acc.IPRead->Acc.y;
+            Pkt.AccData[2] = Acc.IPRead->Acc.z;
+
+            Pkt.AccData[3] = Acc.IPRead->Gyro.x;
+            Pkt.AccData[4] = Acc.IPRead->Gyro.y;
+            Pkt.AccData[5] = Acc.IPRead->Gyro.z;
+
+            Pkt.AccData[6] = Acc.IPRead->Magnet.x;
+            Pkt.AccData[7] = Acc.IPRead->Magnet.y;
+            Pkt.AccData[8] = Acc.IPRead->Magnet.z;
+
+            DBG1_SET();
+            CC.TransmitSync(&Pkt);
+            DBG1_CLR();
+        }
+
 #if 0        // Demo
         if(App.Mode == 0b0001) { // RX
             int8_t Rssi;
@@ -66,6 +87,7 @@ void rLevel1_t::ITask() {
         }
 //#else
 #endif
+
 #if 0
         // ==== Transmitter ====
         if(App.MustTransmit) {
@@ -111,11 +133,11 @@ uint8_t rLevel1_t::Init() {
     PinSetupOut(DBG_GPIO2, DBG_PIN2, omPushPull);
 #endif    // Init radioIC
     if(CC.Init() == OK) {
-        CC.SetTxPower(CC_PwrPlus10dBm);
+        CC.SetTxPower(CC_Pwr0dBm);
         CC.SetPktSize(RPKT_LEN);
 
         // Thread
-        chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
+        PThd = chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return OK;
     }
     else return FAILURE;

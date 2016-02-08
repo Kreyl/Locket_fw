@@ -51,7 +51,7 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 
 #if 1 // =========================== Pkt_t =====================================
 struct rPkt_t {
-    uint32_t DWord;
+    uint16_t AccData[9];
 } __attribute__ ((__packed__));
 #define RPKT_LEN    sizeof(rPkt_t)
 #endif

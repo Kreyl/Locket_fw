@@ -9,7 +9,11 @@
 #include "uart.h"
 
 cc1101_t CC;
-PinIrq_t IGdo0 {CC_GDO0};
+static const PinIrq_t IGdo0 {CC_GDO0};
+static thread_reference_t ThdRef;
+
+#define CsHi()  PinSet(CC_GPIO, CC_CS)
+#define CsLo()  PinClear(CC_GPIO, CC_CS)
 
 uint8_t cc1101_t::Init() {
     // ==== GPIO ====
@@ -41,9 +45,6 @@ uint8_t cc1101_t::Init() {
     // Proceed with init
     FlushRxFIFO();
     RfConfig();
-//    PWaitingThread = nullptr;
-    // ==== IRQ ====
-
     IGdo0.EnableIrq(IRQ_PRIO_HIGH);
     return OK;
 }
@@ -112,9 +113,8 @@ void cc1101_t::TransmitSync(void *Ptr) {
     WriteTX((uint8_t*)Ptr, IPktSz);
     // Enter TX and wait IRQ
     chSysLock();
-//    PWaitingThread = chThdSelf();
     EnterTX();
-//    chSchGoSleepS(THD_STATE_SUSPENDED);
+    chThdSuspendS(&ThdRef);    // Wait IRQ
     chSysUnlock();  // Will be here when IRQ fires
 }
 
@@ -122,17 +122,16 @@ void cc1101_t::TransmitSync(void *Ptr) {
 uint8_t cc1101_t::ReceiveSync(uint32_t Timeout_ms, void *Ptr, int8_t *PRssi) {
     FlushRxFIFO();
     chSysLock();
-//    PWaitingThread = chThdSelf();
     EnterRX();
-//    msg_t Rslt = chSchGoSleepTimeoutS(THD_STATE_SUSPENDED, MS2ST(Timeout_ms));
+    msg_t Rslt = chThdSuspendTimeoutS(&ThdRef, MS2ST(Timeout_ms));    // Wait IRQ
     chSysUnlock();  // Will be here when IRQ will fire, or timeout occur - with appropriate message
 
-//    if(Rslt == RDY_TIMEOUT) {   // Nothing received, timeout occured
-//        EnterIdle();            // Get out of RX mode
-//        return TIMEOUT;
-//    }
-//    else return ReadFIFO(Ptr, PRssi);
-    return 0;
+    if(Rslt == MSG_TIMEOUT) {   // Nothing received, timeout occured
+        EnterIdle();            // Get out of RX mode
+        return TIMEOUT;
+    }
+    else return ReadFIFO(Ptr, PRssi);
+    return OK;
 }
 
 // Return RSSI in dBm
@@ -227,25 +226,14 @@ uint8_t cc1101_t::ReadFIFO(void *Ptr, int8_t *PRssi) {
 #endif
 
 // ============================= Interrupts ====================================
-void cc1101_t::IGdo0IrqHandler() {
-    IGdo0.CleanIrqFlag();
-//    Uart.Printf("\rCC Irq");
-    // Resume thread if any
-    chSysLockFromISR();
-//    if(PWaitingThread != NULL) {
-//        if(PWaitingThread->p_state == THD_STATE_SUSPENDED) {
-//            PWaitingThread->p_u.rdymsg = RDY_OK;    // Signal that IRQ fired
-//            chSchReadyI(PWaitingThread);
-//        }
-//        PWaitingThread = NULL;
-//    }
-    chSysUnlockFromISR();
-}
-
 extern "C" {
 CH_IRQ_HANDLER(GDO0_IRQ_HANDLER) {
     CH_IRQ_PROLOGUE();
-    CC.IGdo0IrqHandler();
+    chSysLockFromISR();
+//    Uart.PrintfI("\rCC Irq");
+    IGdo0.CleanIrqFlag();
+    chThdResumeI(&ThdRef, MSG_OK);
+    chSysUnlockFromISR();
     CH_IRQ_EPILOGUE();
 }
 } // extern c

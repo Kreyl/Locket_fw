@@ -9,6 +9,8 @@
 #include "uart.h"
 #include "main.h"
 
+#include "radio_lvl1.h"
+
 LSM9DS0_t Acc;
 i2c_t i2c (I2C_ACC, ACC_I2C_GPIO, ACC_I2C_SCL_PIN, ACC_I2C_SDA_PIN, 400000, I2C_ACC_DMA_TX, I2C_ACC_DMA_RX );
 
@@ -80,7 +82,6 @@ void LSM9DS0_t::Init() {
     // Setup gyro
     GWriteBuf(0x20, (uint8_t*)GSetupData, G_SETUP_SZ);
     // Setup Acc
-    Uart.Printf("%X\r", XMReadReg(0x12));
     XMWriteBuf(0x1F, (uint8_t*)XMSetupData, XM_SETUP_SZ);
     XMWriteReg(0x2E, 0x00); // FIFO disable
     XMWriteReg(0x12, 0x08); // IRQ active-high, magnetic irq Dis
@@ -130,7 +131,8 @@ void LSM9DS0_t::ITask() {
                 IPRead  = &IData[1];
             }
             // Signal event
-            App.SignalEvt(EVT_NEW_9D);
+//            App.SignalEvt(EVT_NEW_9D);
+            if(Radio.PThd != nullptr) chEvtSignal(Radio.PThd, EVT_NEW_9D);
         }
     } // while true
 }
