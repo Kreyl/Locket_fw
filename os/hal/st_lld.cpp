@@ -23,7 +23,7 @@
  */
 
 #include "hal.h"
-#include "clocking.h" // @KL
+#include "kl_lib.h"
 
 #if (OSAL_ST_MODE != OSAL_ST_MODE_NONE) || defined(__DOXYGEN__)
 

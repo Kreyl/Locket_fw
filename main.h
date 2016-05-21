@@ -13,9 +13,6 @@
 #include "evt_mask.h"
 #include "board.h"
 
-#define APP_NAME                "ArmletGeneration"
-#define APP_VERSION             __DATE__ " " __TIME__
-
 class App_t {
 private:
     thread_t *PThread;

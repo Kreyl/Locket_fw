@@ -9,7 +9,7 @@
 #include "uart.h"
 
 cc1101_t CC;
-static const PinIrq_t IGdo0 {CC_GDO0};
+static const PinIrq_t IGdo0 {CC_GDO0_IRQ};
 static thread_reference_t ThdRef;
 
 #define CsHi()  PinSet(CC_GPIO, CC_CS)
@@ -21,12 +21,11 @@ uint8_t cc1101_t::Init() {
     PinSetupAlterFunc(CC_GPIO, CC_SCK,  omPushPull, pudNone, CC_SPI_AF);
     PinSetupAlterFunc(CC_GPIO, CC_MISO, omPushPull, pudNone, CC_SPI_AF);
     PinSetupAlterFunc(CC_GPIO, CC_MOSI, omPushPull, pudNone, CC_SPI_AF);
-    IGdo0.Init(CC_GPIO, pudNone, ttFalling);
-//    PinSetupIn       (CC_GPIO, CC_GDO2, pudNone);
+    IGdo0.Init(pudNone, ttFalling);
     PinSetupAnalog   (CC_GPIO, CC_GDO2);    // GDO2 not used
     CsHi();
     // ==== SPI ====    MSB first, master, ClkLowIdle, FirstEdge, Baudrate=f/2
-    ISpi.Setup(CC_SPI, boMSB, cpolIdleLow, cphaFirstEdge, sbFdiv2);
+    ISpi.Setup(boMSB, cpolIdleLow, cphaFirstEdge, sbFdiv2);
     ISpi.Enable();
     // ==== Init CC ====
     if(Reset() != OK) {

@@ -12,8 +12,6 @@
 #include "uart.h"
 #include "led.h"
 
-#include "LSM9DS0.h"
-
 //#define DBG_PINS
 
 #ifdef DBG_PINS
@@ -40,7 +38,7 @@ rLevel1_t Radio;
 //    Radio.ITask();
 //}
 
-__NORETURN
+__noreturn
 void rLevel1_t::ITask() {
     __unused uint8_t OldID = 0;
     while(true) {

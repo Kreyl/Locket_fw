@@ -9,7 +9,6 @@
 #define KL_ADC_H_
 
 #include "kl_lib.h"
-#include "clocking.h"
 #include "board.h"
 
 #if ADC_REQUIRED

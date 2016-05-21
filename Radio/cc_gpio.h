@@ -15,6 +15,8 @@
 #define CC_MISO     6
 #define CC_MOSI     7
 #define CC_CS       1
+// Irq pin
+#define CC_GDO0_IRQ { CC_GPIO, CC_GDO0 }
 
 #if defined STM32L1XX
 #if CC_GDO0 == 0

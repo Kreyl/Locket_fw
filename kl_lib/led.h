@@ -123,12 +123,9 @@ public:
 
 #if 1 // ============================== LedRGB =================================
 #define LED_RGB
-#define LED_RGB_TOP_VALUE   255 // Intencity 0...255
-#define LED_RGB_INVERTED    invInverted
-
 class LedRGB_t : public BaseSequencer_t<LedRGBChunk_t> {
 private:
-    PinOutputPWM_t<LED_RGB_TOP_VALUE, LED_RGB_INVERTED, omPushPull>  R, G, B;
+    const PinOutputPWM_t  R, G, B;
     Color_t ICurrColor;
     void ISwitchOff() { SetColor(clBlack); }
     SequencerLoopTask_t ISetup() {
@@ -161,9 +158,9 @@ private:
     }
 public:
     LedRGB_t(
-            const PinOutputPWM_t<LED_RGB_TOP_VALUE, LED_RGB_INVERTED, omPushPull> ARed,
-            const PinOutputPWM_t<LED_RGB_TOP_VALUE, LED_RGB_INVERTED, omPushPull> AGreen,
-            const PinOutputPWM_t<LED_RGB_TOP_VALUE, LED_RGB_INVERTED, omPushPull> ABlue) :
+            const PortPinTim_t ARed,
+            const PortPinTim_t AGreen,
+            const PortPinTim_t ABlue) :
         BaseSequencer_t(), R(ARed), G(AGreen), B(ABlue) {}
     void Init() {
         R.Init();

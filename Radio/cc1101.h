@@ -62,7 +62,7 @@ public:
         return BusyWait();
     }
     uint8_t ReadFIFO(void *Ptr, int8_t *PRssi);
-    cc1101_t(): IState(0), IPktSz(0) {}
+    cc1101_t(): IState(0), ISpi(CC_SPI), IPktSz(0) {}
 };
 
 extern cc1101_t CC;

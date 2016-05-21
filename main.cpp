@@ -8,29 +8,20 @@
 #include "main.h"
 #include "SimpleSensors.h"
 #include "board.h"
-#include "clocking.h"
 #include "led.h"
 #include "vibro.h"
 #include "Sequences.h"
-#include "LSM9DS0.h"
 #include "radio_lvl1.h"
-
-#include "L3G.h"
-#include "lsm303.h"
 
 App_t App;
 
-i2c_t i2cimu(I2C1, GPIOB, 6, 7, 400000, STM32_DMA1_STREAM6, STM32_DMA1_STREAM7);
-L3G gyro;
-LSM303 compass;
-
-//Vibro_t Vibro(VIBRO_GPIO, VIBRO_PIN, VIBRO_TIM, VIBRO_CH);
-LedRGB_t Led { {LED_GPIO, LED_R_PIN, LED_TIM, LED_R_CH}, {LED_GPIO, LED_G_PIN, LED_TIM, LED_G_CH}, {LED_GPIO, LED_B_PIN, LED_TIM, LED_B_CH} };
+Vibro_t Vibro {VIBRO_PIN};
+LedRGB_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN };
 
 int main(void) {
     // ==== Init Vcore & clock system ====
     SetupVCore(vcore1V5);
-    Clk.SetMSI4MHz();
+//    Clk.SetMSI4MHz();
     Clk.UpdateFreqValues();
 
     // Init OS
@@ -39,58 +30,33 @@ int main(void) {
     App.InitThread();
 
     // ==== Init hardware ====
-    Uart.Init(256000, UART_GPIO, UART_TX_PIN);//, UART_GPIO, UART_RX_PIN);
-    Uart.Printf("\r%S %S\r", APP_NAME, APP_VERSION);
+    Uart.Init(115200, UART_GPIO, UART_TX_PIN);//, UART_GPIO, UART_RX_PIN);
+    Uart.Printf("\r%S %S\r", APP_NAME, BUILD_TIME);
     Clk.PrintFreqs();
     chThdSleepMilliseconds(270);
 
     Led.Init();
-//    Acc.Init();
 
-    PinSetupOut(GPIOB, 3, omPushPull);
-    PinSet(GPIOB, 3);
-    chThdSleepMilliseconds(99);
-    i2cimu.Init();
-    // Sensors
-    if(gyro.init() != true) Uart.Printf("GyroInit fail\r");
-    gyro.writeReg(L3G_CTRL_REG4, 0x20); // 2000 dps full scale
-    gyro.writeReg(L3G_CTRL_REG1, 0x0F); // normal power mode, all axes enabled, 100 Hz
+    Vibro.Init();
+    Vibro.StartSequence(vsqBrr);
 
-    if(compass.init() != true) Uart.Printf("CompassInit fail\r");
-    compass.enableDefault();
-    compass.writeReg(LSM303::CTRL_REG4_A, 0x28); // 8 g full scale: FS = 10; high resolution output mode
-
-
-
-//    Vibro.Init();
-//    Vibro.StartSequence(vsqBrr);
 //    PinSensors.Init();
 
-    if(Radio.Init() != OK) {
-        Led.StartSequence(lsqFailure);
-        chThdSleepMilliseconds(2700);
-    }
-    else Led.StartSequence(lsqOn);
+//    if(Radio.Init() != OK) {
+//        Led.StartSequence(lsqFailure);
+//        chThdSleepMilliseconds(2700);
+//    }
+//    else
+    Led.StartSequence(lsqOn);
 
     // Main cycle
     App.ITask();
 }
 
-__attribute__ ((__noreturn__))
+__noreturn
 void App_t::ITask() {
     while(true) {
-        chThdSleepMilliseconds(10);
-
-        rPkt_t rPkt;
-        gyro.read(&rPkt.AngVelU, &rPkt.AngVelV, &rPkt.AngVelW);
-        compass.read();
-        rPkt.Time = chVTGetSystemTime();
-        rPkt.AccX = compass.a.x;
-        rPkt.AccY = compass.a.y;
-        rPkt.AccZ = compass.a.z;
-        rPkt.AngleU = compass.m.x;
-        rPkt.AngleV = compass.m.y;
-        rPkt.AngleW = compass.m.z;
+        chThdSleepMilliseconds(999);
 
 //        Uart.Printf(
 //                "%d %d %d %d %d %d %d %d %d\r\n",
@@ -99,7 +65,7 @@ void App_t::ITask() {
 //                rPkt.AngVelU, rPkt.AngVelV, rPkt.AngVelW
 //        );
 
-        CC.TransmitSync(&rPkt);
+//        CC.TransmitSync(&rPkt);
 
 //        __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
 //        if(Evt & EVT_NEW_9D) {
