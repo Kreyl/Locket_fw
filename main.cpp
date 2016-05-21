@@ -15,7 +15,14 @@
 #include "LSM9DS0.h"
 #include "radio_lvl1.h"
 
+#include "L3G.h"
+#include "lsm303.h"
+
 App_t App;
+
+i2c_t i2cimu(I2C1, GPIOB, 6, 7, 400000, STM32_DMA1_STREAM6, STM32_DMA1_STREAM7);
+L3G gyro;
+LSM303 compass;
 
 //Vibro_t Vibro(VIBRO_GPIO, VIBRO_PIN, VIBRO_TIM, VIBRO_CH);
 LedRGB_t Led { {LED_GPIO, LED_R_PIN, LED_TIM, LED_R_CH}, {LED_GPIO, LED_G_PIN, LED_TIM, LED_G_CH}, {LED_GPIO, LED_B_PIN, LED_TIM, LED_B_CH} };
@@ -38,7 +45,22 @@ int main(void) {
     chThdSleepMilliseconds(270);
 
     Led.Init();
-    Acc.Init();
+//    Acc.Init();
+
+    PinSetupOut(GPIOB, 3, omPushPull);
+    PinSet(GPIOB, 3);
+    chThdSleepMilliseconds(99);
+    i2cimu.Init();
+    // Sensors
+    if(gyro.init() != true) Uart.Printf("GyroInit fail\r");
+    gyro.writeReg(L3G_CTRL_REG4, 0x20); // 2000 dps full scale
+    gyro.writeReg(L3G_CTRL_REG1, 0x0F); // normal power mode, all axes enabled, 100 Hz
+
+    if(compass.init() != true) Uart.Printf("CompassInit fail\r");
+    compass.enableDefault();
+    compass.writeReg(LSM303::CTRL_REG4_A, 0x28); // 8 g full scale: FS = 10; high resolution output mode
+
+
 
 //    Vibro.Init();
 //    Vibro.StartSequence(vsqBrr);
@@ -57,10 +79,32 @@ int main(void) {
 __attribute__ ((__noreturn__))
 void App_t::ITask() {
     while(true) {
-        __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
-        if(Evt & EVT_NEW_9D) {
-            Uart.Printf("G: %d %d %d; A: %d %d %d; M: %d %d %d\r",   Acc.IPRead->Gyro.x, Acc.IPRead->Gyro.y, Acc.IPRead->Gyro.z,  Acc.IPRead->Acc.x, Acc.IPRead->Acc.y, Acc.IPRead->Acc.z,  Acc.IPRead->Magnet.x, Acc.IPRead->Magnet.y, Acc.IPRead->Magnet.z);
-        }
+        chThdSleepMilliseconds(10);
+
+        rPkt_t rPkt;
+        gyro.read(&rPkt.AngVelU, &rPkt.AngVelV, &rPkt.AngVelW);
+        compass.read();
+        rPkt.Time = chVTGetSystemTime();
+        rPkt.AccX = compass.a.x;
+        rPkt.AccY = compass.a.y;
+        rPkt.AccZ = compass.a.z;
+        rPkt.AngleU = compass.m.x;
+        rPkt.AngleV = compass.m.y;
+        rPkt.AngleW = compass.m.z;
+
+//        Uart.Printf(
+//                "%d %d %d %d %d %d %d %d %d\r\n",
+//                rPkt.AccX, rPkt.AccY, rPkt.AccZ,
+//                rPkt.AngleU, rPkt.AngleV, rPkt.AngleW,
+//                rPkt.AngVelU, rPkt.AngVelV, rPkt.AngVelW
+//        );
+
+        CC.TransmitSync(&rPkt);
+
+//        __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
+//        if(Evt & EVT_NEW_9D) {
+//            Uart.Printf("G: %d %d %d; A: %d %d %d; M: %d %d %d\r",   Acc.IPRead->Gyro.x, Acc.IPRead->Gyro.y, Acc.IPRead->Gyro.z,  Acc.IPRead->Acc.x, Acc.IPRead->Acc.y, Acc.IPRead->Acc.z,  Acc.IPRead->Magnet.x, Acc.IPRead->Magnet.y, Acc.IPRead->Magnet.z);
+//        }
 
 #if UART_RX_ENABLED
         if(EvtMsk & EVTMSK_UART_NEW_CMD) {

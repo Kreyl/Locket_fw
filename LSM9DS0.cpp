@@ -12,7 +12,7 @@
 #include "radio_lvl1.h"
 
 LSM9DS0_t Acc;
-i2c_t i2c (I2C_ACC, ACC_I2C_GPIO, ACC_I2C_SCL_PIN, ACC_I2C_SDA_PIN, 400000, I2C_ACC_DMA_TX, I2C_ACC_DMA_RX );
+i2c_t i2clsm (I2C_ACC, ACC_I2C_GPIO, ACC_I2C_SCL_PIN, ACC_I2C_SDA_PIN, 400000, I2C_ACC_DMA_TX, I2C_ACC_DMA_RX );
 
 thread_t *PThd;
 #define EVT_ACC_NEW_DATA     EVENT_MASK(1)   // Inner use
@@ -63,7 +63,7 @@ void LSM9DS0_t::Init() {
     XMPinDrdy.Init(ACC_INT1_GPIO, pudNone, ttRising);
     // Power
     PinSetupOut(GPIOB, 12, omPushPull, pudNone);
-    i2c.Init();
+    i2clsm.Init();
     //i2c.BusScan();
     uint32_t Retries = 99;
     while(true) {
@@ -162,24 +162,24 @@ void LSM9DS0_t::ITask() {
 }
 
 void LSM9DS0_t::GReadData() {
-    i2c.WriteRead(ADDR_G, (uint8_t*)&GDataAddr, 1, (uint8_t*)&IPWrite->Gyro, ACC_DATA_SZ);
+    i2clsm.WriteRead(ADDR_G, (uint8_t*)&GDataAddr, 1, (uint8_t*)&IPWrite->Gyro, ACC_DATA_SZ);
 }
 void LSM9DS0_t::MReadData() {
-    i2c.WriteRead(ADDR_XM, (uint8_t*)&MDataAddr, 1, (uint8_t*)&IPWrite->Magnet, ACC_DATA_SZ);
+    i2clsm.WriteRead(ADDR_XM, (uint8_t*)&MDataAddr, 1, (uint8_t*)&IPWrite->Magnet, ACC_DATA_SZ);
 }
 void LSM9DS0_t::XReadData() {
-    i2c.WriteRead(ADDR_XM, (uint8_t*)&XDataAddr, 1, (uint8_t*)&IPWrite->Acc, ACC_DATA_SZ);
+    i2clsm.WriteRead(ADDR_XM, (uint8_t*)&XDataAddr, 1, (uint8_t*)&IPWrite->Acc, ACC_DATA_SZ);
 }
 
 #if 1 // ========================== Inner use ==================================
 uint8_t LSM9DS0_t::GReadReg(uint8_t Addr) {
     uint8_t rslt = 0;
-    i2c.WriteRead(ADDR_G, &Addr, 1, &rslt, 1);
+    i2clsm.WriteRead(ADDR_G, &Addr, 1, &rslt, 1);
     return rslt;
 }
 uint8_t LSM9DS0_t::XMReadReg(uint8_t Addr) {
     uint8_t rslt = 0;
-    i2c.WriteRead(ADDR_XM, &Addr, 1, &rslt, 1);
+    i2clsm.WriteRead(ADDR_XM, &Addr, 1, &rslt, 1);
     return rslt;
 }
 
@@ -187,22 +187,22 @@ void LSM9DS0_t::GWriteReg(uint8_t Addr, uint8_t Value) {
     uint8_t FBuf[2];
     FBuf[0] = Addr;
     FBuf[1] = Value;
-    i2c.Write(ADDR_G, FBuf, 2);
+    i2clsm.Write(ADDR_G, FBuf, 2);
 }
 void LSM9DS0_t::XMWriteReg(uint8_t Addr, uint8_t Value) {
     uint8_t FBuf[2];
     FBuf[0] = Addr;
     FBuf[1] = Value;
-    i2c.Write(ADDR_XM, FBuf, 2);
+    i2clsm.Write(ADDR_XM, FBuf, 2);
 }
 
 void LSM9DS0_t::GWriteBuf(uint8_t Addr, uint8_t *Ptr, uint32_t Sz) {
     Addr |= 0x80; // Auto increase address
-    i2c.WriteWrite(ADDR_G, &Addr, 1, Ptr, Sz);
+    i2clsm.WriteWrite(ADDR_G, &Addr, 1, Ptr, Sz);
 }
 void LSM9DS0_t::XMWriteBuf(uint8_t Addr, uint8_t *Ptr, uint32_t Sz) {
     Addr |= 0x80; // Auto increase address
-    i2c.WriteWrite(ADDR_XM, &Addr, 1, Ptr, Sz);
+    i2clsm.WriteWrite(ADDR_XM, &Addr, 1, Ptr, Sz);
 }
 #endif
 

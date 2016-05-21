@@ -50,9 +50,15 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #endif
 
 #if 1 // =========================== Pkt_t =====================================
+//struct rPkt_t {
+//    uint16_t Time;
+//    int16_t AccData[9];
+//} __attribute__ ((__packed__));
 struct rPkt_t {
     uint16_t Time;
-    int16_t AccData[9];
+    int16_t AccX, AccY, AccZ;
+    int16_t AngleU, AngleV, AngleW;
+    int16_t AngVelU, AngVelV, AngVelW;
 } __attribute__ ((__packed__));
 #define RPKT_LEN    sizeof(rPkt_t)
 #endif

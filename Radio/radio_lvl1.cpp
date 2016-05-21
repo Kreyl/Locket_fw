@@ -33,12 +33,12 @@
 rLevel1_t Radio;
 
 #if 1 // ================================ Task =================================
-static THD_WORKING_AREA(warLvl1Thread, 256);
-__NORETURN
-static void rLvl1Thread(void *arg) {
-    chRegSetThreadName("rLvl1");
-    Radio.ITask();
-}
+//static THD_WORKING_AREA(warLvl1Thread, 256);
+//__NORETURN
+//static void rLvl1Thread(void *arg) {
+//    chRegSetThreadName("rLvl1");
+//    Radio.ITask();
+//}
 
 __NORETURN
 void rLevel1_t::ITask() {
@@ -46,19 +46,19 @@ void rLevel1_t::ITask() {
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
         if(Evt & EVT_NEW_9D) {
-            Pkt.Time = chVTGetSystemTime();
+//            Pkt.Time = chVTGetSystemTime();
 
-            Pkt.AccData[0] = Acc.IPRead->Gyro.x;
-            Pkt.AccData[1] = Acc.IPRead->Gyro.y;
-            Pkt.AccData[2] = Acc.IPRead->Gyro.z;
-
-            Pkt.AccData[3] = Acc.IPRead->Acc.x;
-            Pkt.AccData[4] = Acc.IPRead->Acc.y;
-            Pkt.AccData[5] = Acc.IPRead->Acc.z;
-
-            Pkt.AccData[6] = Acc.IPRead->Magnet.x;
-            Pkt.AccData[7] = Acc.IPRead->Magnet.y;
-            Pkt.AccData[8] = Acc.IPRead->Magnet.z;
+//            Pkt.AccData[0] = Acc.IPRead->Gyro.x;
+//            Pkt.AccData[1] = Acc.IPRead->Gyro.y;
+//            Pkt.AccData[2] = Acc.IPRead->Gyro.z;
+//
+//            Pkt.AccData[3] = Acc.IPRead->Acc.x;
+//            Pkt.AccData[4] = Acc.IPRead->Acc.y;
+//            Pkt.AccData[5] = Acc.IPRead->Acc.z;
+//
+//            Pkt.AccData[6] = Acc.IPRead->Magnet.x;
+//            Pkt.AccData[7] = Acc.IPRead->Magnet.y;
+//            Pkt.AccData[8] = Acc.IPRead->Magnet.z;
 
             DBG1_SET();
             CC.TransmitSync(&Pkt);
@@ -142,7 +142,7 @@ uint8_t rLevel1_t::Init() {
         CC.SetPktSize(RPKT_LEN);
 
         // Thread
-        PThd = chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
+//        PThd = chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return OK;
     }
     else return FAILURE;
