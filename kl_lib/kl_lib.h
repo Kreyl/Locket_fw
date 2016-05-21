@@ -378,9 +378,21 @@ public:
 #endif
 
 #if 1 // ===================== Simple pin manipulations ========================
+enum PinPullUpDown_t {
+    pudNone = 0b00,
+    pudPullUp = 0b01,
+    pudPullDown = 0b10
+};
+
 struct PortPin_t {
     GPIO_TypeDef *PGpio;
     uint16_t Pin;
+};
+
+struct PortPinInput_t {
+    GPIO_TypeDef *PGpio;
+    uint16_t Pin;
+    PinPullUpDown_t PullUpDown;
 };
 
 struct PortPinTim_t {
@@ -391,12 +403,6 @@ struct PortPinTim_t {
     Inverted_t Inverted;
     PinOutMode_t OutputType;
     uint32_t TopValue;
-};
-
-enum PinPullUpDown_t {
-    pudNone = 0b00,
-    pudPullUp = 0b01,
-    pudPullDown = 0b10
 };
 
 #if defined STM32F2XX || defined STM32F4XX
@@ -463,8 +469,8 @@ static inline bool PinIsSet(GPIO_TypeDef *PGpio, uint32_t APin) {
     return PGpio->IDR & (1 << APin);
 }
 __always_inline
-static inline bool PinIsSet(const PortPin_t PortPin) {
-    return PortPin.PGpio->IDR & (1 << PortPin.Pin);
+static inline bool PinIsSet(const PortPin_t *PortPin) {
+    return PortPin->PGpio->IDR & (1 << PortPin->Pin);
 }
 
 __always_inline
@@ -576,14 +582,10 @@ static inline void PinSetupOut(const PortPin_t PortPin, PinOutMode_t PinOutMode,
     PinSetupOut(PortPin.PGpio, PortPin.Pin, PinOutMode, APullUpDown, ASpeed);
 }
 
-static inline void PinSetupIn(
-        GPIO_TypeDef *PGpioPort,
-        const uint16_t APinNumber,
-        const PinPullUpDown_t APullUpDown
-        ) {
-    uint8_t Offset = APinNumber*2;
+static inline void PinSetupIn(const PortPinInput_t &Pin) {
+    uint8_t Offset = Pin.Pin*2;
     // Clock
-    PinClockEnable(PGpioPort);
+    PinClockEnable(Pin.PGpio);
 #if defined STM32F10X_LD_VL
     uint32_t CnfMode;
     if(APullUpDown == pudNone) CnfMode = 0b0100;
@@ -604,15 +606,11 @@ static inline void PinSetupIn(
     }
 #else
     // Setup mode
-    PGpioPort->MODER &= ~(0b11 << Offset); // clear previous bits
+    Pin.PGpio->MODER &= ~(0b11 << Offset); // clear previous bits
     // Setup Pull-Up or Pull-Down
-    PGpioPort->PUPDR &= ~(0b11 << Offset); // clear previous bits
-    PGpioPort->PUPDR |= (uint32_t)APullUpDown << Offset;
+    Pin.PGpio->PUPDR &= ~(0b11 << Offset); // clear previous bits
+    Pin.PGpio->PUPDR |= (uint32_t)Pin.PullUpDown << Offset;
 #endif
-}
-
-static inline void PinSetupIn(const PortPin_t PortPin, const PinPullUpDown_t APullUpDown) {
-    PinSetupIn(PortPin.PGpio, PortPin.Pin, APullUpDown);
 }
 
 static inline void PinSetupAnalog(GPIO_TypeDef *PGpioPort, const uint16_t APinNumber) {
@@ -633,11 +631,8 @@ static inline void PinSetupAnalog(GPIO_TypeDef *PGpioPort, const uint16_t APinNu
 #endif
 }
 
-static inline void PinSetupAnalog(const PortPin_t &PortPin) {
-    PinSetupAnalog(PortPin.PGpio, PortPin.Pin);
-}
-static inline void PinSetupAnalog(const PortPinTim_t &PortPin) {
-    PinSetupAnalog(PortPin.PGpio, PortPin.Pin);
+static inline void PinSetupAnalog(const PortPin_t *PortPin) {
+    PinSetupAnalog(PortPin->PGpio, PortPin->Pin);
 }
 
 static inline void PinSetupAlterFunc(
@@ -776,11 +771,11 @@ public:
 // Example: const PinInput_t EchoPin = {GPIOC, 12, pudPullUp};
 class PinInput_t {
 public:
-    GPIO_TypeDef *PGpio;
-    uint16_t Pin;
-    PinPullUpDown_t PullUpDown;
-    void Init() const { PinSetupIn(PGpio, Pin, PullUpDown); }
-    bool IsHi() const { return PinIsSet(PGpio, Pin); }
+    const PortPinInput_t Pin;
+    void Init() const { PinSetupIn(Pin); }
+    bool IsHi() const { return PinIsSet((PortPin_t*)&Pin); }
+    void Shutdown() const { PinSetupAnalog((PortPin_t*)&Pin);  }
+    PinInput_t(PortPinInput_t APin) : Pin(APin) {}
 };
 
 // ==== PWM output ====
@@ -798,7 +793,7 @@ public:
         InitPwm(IPin.PGpio, IPin.Pin, IPin.TimerChnl, IPin.TopValue, IPin.Inverted, IPin.OutputType);
         Enable();
     }
-    void Deinit() const { Timer_t::Deinit(); PinSetupAnalog(IPin); }
+    void Deinit() const { Timer_t::Deinit(); PinSetupAnalog((PortPin_t*)&IPin); }
     void SetFrequencyHz(uint32_t FreqHz) const { Timer_t::SetUpdateFrequency(FreqHz); }
     PinOutputPWM_t(const PortPinTim_t &APinTim) : Timer_t(APinTim.PTimer), IPin(APinTim) {}
 };
@@ -821,8 +816,8 @@ enum ExtiTrigType_t {ttRising, ttFalling, ttRisingFalling};
 */
 class PinIrq_t {
 public:
-    PortPin_t Pin;
-    PinIrq_t(PortPin_t APin) : Pin(APin) { }
+    PortPinInput_t Pin;
+    PinIrq_t(PortPinInput_t APin) : Pin(APin) { }
 
     void SetTriggerType(ExtiTrigType_t ATriggerType) const {
         uint32_t IrqMsk = 1 << Pin.Pin;
@@ -857,9 +852,9 @@ public:
         } // switch
     }
 
-    void Init(PinPullUpDown_t APullUpDown, ExtiTrigType_t ATriggerType) const {
+    void Init(ExtiTrigType_t ATriggerType) const {
         // Init pin as input
-        PinSetupIn(Pin, APullUpDown);
+        PinSetupIn(Pin);
         rccEnableAPB2(RCC_APB2ENR_SYSCFGEN, FALSE); // Enable sys cfg controller
         // Connect EXTI line to the pin of the port
         uint8_t Indx   = Pin.Pin / 4;            // Indx of EXTICR register

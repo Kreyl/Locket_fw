@@ -37,14 +37,15 @@
 #define LED_B_PIN       { GPIOB, 5, TIM3, 2, invNotInverted, omPushPull, 255 }
 
 // Button
-#define BTN_PIN         { GPIOA, 0 }
+#define BTN_PIN         { GPIOA, 0, pudPullDown }
 
 // Vibro
 #define VIBRO_TOP       22
 #define VIBRO_PIN       { GPIOB, 8, TIM4, 3, invNotInverted, omPushPull, VIBRO_TOP }
 
-// Buzzer
-#define SOUND_PIN       { GPIOB, 9, TIM11, 1 }  // GPIO, Pin, Tim, TimChnl
+// Beeper
+#define BEEPER_TOP      22
+#define BEEPER_PIN      { GPIOB, 9, TIM11, 1, invNotInverted, omPushPull, BEEPER_TOP }
 #endif // GPIO
 
 #if 1 // ========================= Timer =======================================

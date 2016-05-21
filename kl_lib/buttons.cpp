@@ -5,8 +5,7 @@
  *      Author: kreyl
  */
 
-#include <buttons.h>
-#if BUTTONS_ENABLED
+#include "buttons.h"
 #include "ch.h"
 #include "evt_mask.h"
 #include "uart.h"
@@ -140,7 +139,9 @@ void AddEvtToQueue(BtnEvt_t AType, uint8_t KeyIndx) {
 #if BTN_COMBO
     IEvt.BtnCnt = 1;
 #endif
+#if BUTTONS_CNT != 1
     IEvt.BtnID[0] = KeyIndx;
+#endif
     chSysLock();
     EvtBuf.Put(&IEvt);
     App.SignalEvtI(EVT_BUTTONS);
@@ -150,4 +151,3 @@ void AddEvtToQueue(BtnEvt_t AType, uint8_t KeyIndx) {
 uint8_t BtnGetEvt(BtnEvtInfo_t *PEvt) {
     return(EvtBuf.Get(PEvt));
 }
-#endif

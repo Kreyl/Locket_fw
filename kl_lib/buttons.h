@@ -7,9 +7,6 @@
 
 #pragma once
 
-#define BUTTONS_ENABLED FALSE
-#if BUTTONS_ENABLED
-
 #include "hal.h"
 #include "kl_lib.h"
 #include "kl_buf.h"
@@ -64,9 +61,9 @@ struct BtnEvtInfo_t {
 #if BTN_COMBO
     uint8_t BtnCnt;
 #endif
+#if BUTTONS_CNT != 1
     uint8_t BtnID[BUTTONS_CNT];
-};
+#endif
+} __packed;
 
 uint8_t BtnGetEvt(BtnEvtInfo_t *PEvt);
-
-#endif

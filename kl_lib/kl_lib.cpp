@@ -197,15 +197,16 @@ void Timer_t::SetUpdateFrequency(uint32_t FreqHz) const {
     else // APB1 is clock src
     	SetTopValue((*PClk * Clk.TimerAPB1ClkMulti) / FreqHz);
 #elif defined STM32L1XX
-    uint32_t Freq;
-    if(ANY_OF_3(ITmr, TIM9, TIM10, TIM11)) Freq = Clk.APB2FreqHz * Clk.Timer9_11ClkMulti;
-    else Freq = Clk.APB1FreqHz * Clk.Timer2_7ClkMulti;
-    uint32_t TopVal  = (Freq / FreqHz) - 1;
-    Uart.Printf("Topval = %u\r", TopVal);
-    SetTopValue(TopVal);
+    uint32_t InputFreq;
+    if(ANY_OF_3(ITmr, TIM9, TIM10, TIM11)) InputFreq = Clk.APB2FreqHz * Clk.Timer9_11ClkMulti;
+    else InputFreq = Clk.APB1FreqHz * Clk.Timer2_7ClkMulti;
 #else
 //    uint32_t UpdFreqMax = *PClk / (ITmr->ARR + 1);
 #endif
+    uint32_t UpdFreqMax = InputFreq / (ITmr->ARR + 1);
+    uint32_t div = UpdFreqMax / FreqHz;
+    if(div != 0) div--;
+    ITmr->PSC = div;
 	ITmr->CNT = 0;  // Reset counter to start from scratch
 //#if defined STM32F2XX || defined STM32F4XX
 //    uint32_t UpdFreqMax;
@@ -213,13 +214,6 @@ void Timer_t::SetUpdateFrequency(uint32_t FreqHz) const {
 //        UpdFreqMax = (*PClk) * Clk.TimerAPB2ClkMulti / (ITmr->ARR + 1);
 //    else // APB1 is clock src
 //        UpdFreqMax = (*PClk) * Clk.TimerAPB1ClkMulti / (ITmr->ARR + 1);
-//#else
-//    uint32_t UpdFreqMax = *PClk / (ITmr->ARR + 1);
-//#endif
-//    uint32_t div = UpdFreqMax / FreqHz;
-//    if(div != 0) div--;
-//    ITmr->PSC = div;
-//    Uart.Printf("\r  FMax=%u; div=%u", UpdFreqMax, div);
 }
 #endif
 

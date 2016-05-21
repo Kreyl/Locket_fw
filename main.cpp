@@ -7,15 +7,18 @@
 
 #include "main.h"
 #include "SimpleSensors.h"
+#include "buttons.h"
 #include "board.h"
 #include "led.h"
 #include "vibro.h"
+#include "beeper.h"
 #include "Sequences.h"
 #include "radio_lvl1.h"
 
 App_t App;
 
 Vibro_t Vibro {VIBRO_PIN};
+Beeper_t Beeper {BEEPER_PIN};
 LedRGB_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN };
 
 int main(void) {
@@ -33,14 +36,14 @@ int main(void) {
     Uart.Init(115200, UART_GPIO, UART_TX_PIN);//, UART_GPIO, UART_RX_PIN);
     Uart.Printf("\r%S %S\r", APP_NAME, BUILD_TIME);
     Clk.PrintFreqs();
-    chThdSleepMilliseconds(270);
 
     Led.Init();
-
     Vibro.Init();
     Vibro.StartSequence(vsqBrr);
+    Beeper.Init();
+    Beeper.StartSequence(BeepPillOk);
 
-//    PinSensors.Init();
+    PinSensors.Init();
 
 //    if(Radio.Init() != OK) {
 //        Led.StartSequence(lsqFailure);
@@ -56,21 +59,19 @@ int main(void) {
 __noreturn
 void App_t::ITask() {
     while(true) {
-        chThdSleepMilliseconds(999);
+        __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
+#if 1 // ==== Button ====
+        if(Evt & EVT_BUTTONS) {
+            BtnEvtInfo_t EInfo;
+            while(BtnGetEvt(&EInfo) == OK) {
+                if(EInfo.Type == bePress) {
+                    Beeper.StartSequence(bsqBeepBeep);
+                    Led.StartSequence(lsqOn);
+                }
+            } // while getinfo ok
+        } // EVTMSK_BTN_PRESS
+#endif
 
-//        Uart.Printf(
-//                "%d %d %d %d %d %d %d %d %d\r\n",
-//                rPkt.AccX, rPkt.AccY, rPkt.AccZ,
-//                rPkt.AngleU, rPkt.AngleV, rPkt.AngleW,
-//                rPkt.AngVelU, rPkt.AngVelV, rPkt.AngVelW
-//        );
-
-//        CC.TransmitSync(&rPkt);
-
-//        __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
-//        if(Evt & EVT_NEW_9D) {
-//            Uart.Printf("G: %d %d %d; A: %d %d %d; M: %d %d %d\r",   Acc.IPRead->Gyro.x, Acc.IPRead->Gyro.y, Acc.IPRead->Gyro.z,  Acc.IPRead->Acc.x, Acc.IPRead->Acc.y, Acc.IPRead->Acc.z,  Acc.IPRead->Magnet.x, Acc.IPRead->Magnet.y, Acc.IPRead->Magnet.z);
-//        }
 
 #if UART_RX_ENABLED
         if(EvtMsk & EVTMSK_UART_NEW_CMD) {
