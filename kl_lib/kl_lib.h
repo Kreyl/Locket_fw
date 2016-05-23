@@ -167,8 +167,13 @@ void __attribute__ ((weak)) _init(void)  {}
 
 #if 1 // ======================= Virtual Timer =================================
 #define TIMER_KL    TRUE
-// Universal VirtualTimer callback
-void TmrKLCallback(void *p);
+/*
+ * Example:
+ * TmrKL_t TmrCheckBtn {MS2ST(54), EVT_BUTTONS, tktPeriodic};
+ * TmrCheckBtn.InitAndStart(chThdGetSelfX());
+ */
+
+void TmrKLCallback(void *p);    // Universal VirtualTimer callback
 
 enum TmrKLType_t {tktOneShot, tktPeriodic};
 
@@ -182,20 +187,12 @@ private:
     TmrKLType_t TmrType;
 public:
     // Thread, systime Period, EvtMsk, {tvtOneShot, tvtPeriodic}
-    void InitAndStart(thread_t *APThread, systime_t APeriod, eventmask_t AEvtMsk, TmrKLType_t AType) {
+    void InitAndStart(thread_t *APThread) {
         PThread = APThread;
-        Period = APeriod;
-        EvtMsk = AEvtMsk;
-        TmrType = AType;
         Start();
     }
     // TmrReset.Init(PThread, MS2ST(RESET_INTERVAL), EVTMSK_RESET, tktOneShot);
-    void Init(thread_t *APThread, systime_t APeriod, eventmask_t AEvtMsk, TmrKLType_t AType) {
-        PThread = APThread;
-        Period = APeriod;
-        EvtMsk = AEvtMsk;
-        TmrType = AType;
-    }
+    void Init(thread_t *APThread) { PThread = APThread; }
     void Start() {
         chSysLock();
         StartI();
@@ -217,7 +214,8 @@ public:
         if(TmrType == tktPeriodic) StartI();
         chSysUnlockFromISR();
     }
-    TmrKL_t() : PThread(nullptr), Period(999), EvtMsk(0), TmrType(tktOneShot) {}
+    TmrKL_t(systime_t APeriod, eventmask_t AEvtMsk, TmrKLType_t AType) :
+        PThread(nullptr), Period(APeriod), EvtMsk(AEvtMsk), TmrType(AType) {}
 };
 #endif
 
@@ -942,7 +940,7 @@ public:
 };
 #endif
 
-#if 0 // ============================== Sleep ==================================
+#if 1 // ============================== Sleep ==================================
 namespace Sleep {
 static inline void EnterStandby() {
 #if defined STM32F0XX || defined STM32L4XX

@@ -21,7 +21,7 @@
 #include "main.h" // App.thd here
 #include "evt_mask.h"
 
-#define SIMPLESENSORS_ENABLED   TRUE
+#define SIMPLESENSORS_ENABLED   FALSE
 #define SNS_POLL_PERIOD_MS      72
 
 #if SIMPLESENSORS_ENABLED

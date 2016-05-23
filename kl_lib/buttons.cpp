@@ -11,6 +11,8 @@
 #include "uart.h"
 #include "main.h" // App.Thread is here
 
+#if SIMPLESENSORS_ENABLED
+
 CircBuf_t<BtnEvtInfo_t, BTNS_EVT_Q_LEN> EvtBuf;
 
 // ==== Inner use ====
@@ -151,3 +153,4 @@ void AddEvtToQueue(BtnEvt_t AType, uint8_t KeyIndx) {
 uint8_t BtnGetEvt(BtnEvtInfo_t *PEvt) {
     return(EvtBuf.Get(PEvt));
 }
+#endif

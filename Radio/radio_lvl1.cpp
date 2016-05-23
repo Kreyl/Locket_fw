@@ -43,7 +43,7 @@ void rLevel1_t::ITask() {
     __unused uint8_t OldID = 0;
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
-        if(Evt & EVT_NEW_9D) {
+//        if(Evt & EVT_NEW_9D) {
 //            Pkt.Time = chVTGetSystemTime();
 
 //            Pkt.AccData[0] = Acc.IPRead->Gyro.x;
@@ -61,7 +61,7 @@ void rLevel1_t::ITask() {
             DBG1_SET();
             CC.TransmitSync(&Pkt);
             DBG1_CLR();
-        }
+//        }
 
 #if 0        // Demo
         if(App.Mode == 0b0001) { // RX
@@ -138,7 +138,7 @@ uint8_t rLevel1_t::Init() {
     if(CC.Init() == OK) {
         CC.SetTxPower(CC_Pwr0dBm);
         CC.SetPktSize(RPKT_LEN);
-
+        CC.EnterPwrDown();
         // Thread
 //        PThd = chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return OK;

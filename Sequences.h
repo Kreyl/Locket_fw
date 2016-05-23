@@ -206,8 +206,6 @@ const LedRGBChunk_t lsqFailure[] = {
 
 const LedRGBChunk_t lsqOn[] = {
         {csSetup, 0, clGreen},
-        {csWait, 180},
-        {csSetup, 180, clBlack},
         {csEnd}
 };
 
@@ -280,7 +278,12 @@ const LedSmoothChunk_t lsqEnterIdle[] = {
 #define OneWhole        (OneSixteenth * 16)
 #endif
 
-// Type, duration_ms, freq, volume
+// Type, BEEP_VOLUME, freq
+const BeepChunk_t bsqOn[] = {
+        {csSetup, 10, 7000},
+        {csEnd}
+};
+
 const BeepChunk_t bsqButton[] = {
         {csSetup, 1, 1975},
         {csWait, 54},

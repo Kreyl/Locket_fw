@@ -14,6 +14,8 @@
 #include "PinSnsSettings.h"
 #include "SimpleSensors.h"
 
+#if SIMPLESENSORS_ENABLED
+
 /*
  * Example:
 if(EvtMsk & EVTMSK_BUTTONS) {
@@ -67,3 +69,4 @@ struct BtnEvtInfo_t {
 } __packed;
 
 uint8_t BtnGetEvt(BtnEvtInfo_t *PEvt);
+#endif

@@ -16,8 +16,11 @@
 #include "radio_lvl1.h"
 
 App_t App;
+static TmrKL_t TmrCheckBtn {MS2ST(18), EVT_BUTTONS, tktPeriodic};
+static TmrKL_t TmrOff      {MS2ST(254), EVT_OFF, tktOneShot};
+static PinInput_t Btn {BTN_PIN};
 
-Vibro_t Vibro {VIBRO_PIN};
+//Vibro_t Vibro {VIBRO_PIN};
 Beeper_t Beeper {BEEPER_PIN};
 LedRGB_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN };
 
@@ -35,22 +38,30 @@ int main(void) {
     // ==== Init hardware ====
     Uart.Init(115200, UART_GPIO, UART_TX_PIN);//, UART_GPIO, UART_RX_PIN);
     Uart.Printf("\r%S %S\r", APP_NAME, BUILD_TIME);
-    Clk.PrintFreqs();
+    if(Sleep::WasInStandby()) {
+        Uart.Printf("WasStandby\r");
+        Sleep::ClearStandbyFlag();
+    }
+//    Clk.PrintFreqs();
 
     Led.Init();
-    Vibro.Init();
-    Vibro.StartSequence(vsqBrr);
+//    Vibro.Init();
+//    Vibro.StartSequence(vsqBrr);
     Beeper.Init();
-    Beeper.StartSequence(BeepPillOk);
+//    Beeper.StartSequence(BeepPillOk);
 
-    PinSensors.Init();
+    Btn.Init();
+    Radio.Init();
+    TmrCheckBtn.InitAndStart(chThdGetSelfX());
+    TmrOff.InitAndStart(chThdGetSelfX());
 
+//    PinSensors.Init();
 //    if(Radio.Init() != OK) {
 //        Led.StartSequence(lsqFailure);
 //        chThdSleepMilliseconds(2700);
 //    }
 //    else
-    Led.StartSequence(lsqOn);
+//    Led.StartSequence(lsqOn);
 
     // Main cycle
     App.ITask();
@@ -58,20 +69,33 @@ int main(void) {
 
 __noreturn
 void App_t::ITask() {
+    bool WasHi = false;
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
 #if 1 // ==== Button ====
         if(Evt & EVT_BUTTONS) {
-            BtnEvtInfo_t EInfo;
-            while(BtnGetEvt(&EInfo) == OK) {
-                if(EInfo.Type == bePress) {
-                    Beeper.StartSequence(bsqBeepBeep);
-                    Led.StartSequence(lsqOn);
-                }
-            } // while getinfo ok
+            if(Btn.IsHi() and !WasHi) {    // Pressed
+                WasHi = true;
+                TmrOff.Stop();
+                Beeper.StartSequence(bsqOn);
+                Led.SetColor(clGreen);
+            }
+            else if(!Btn.IsHi() and WasHi) {
+                WasHi = false;
+                Beeper.Off();
+                Led.SetColor(clBlack);
+                TmrOff.Start();
+            }
         } // EVTMSK_BTN_PRESS
 #endif
 
+        if(Evt & EVT_OFF) {
+//            Uart.Printf("Off\r");
+            chSysLock();
+            Sleep::EnableWakeup1Pin();
+            Sleep::EnterStandby();
+            chSysUnlock();
+        }
 
 #if UART_RX_ENABLED
         if(EvtMsk & EVTMSK_UART_NEW_CMD) {

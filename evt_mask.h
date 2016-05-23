@@ -12,7 +12,7 @@
 
 #define EVT_BUTTONS         EVENT_MASK(2)
 
-#define EVT_NEW_9D          EVENT_MASK(3)
+#define EVT_OFF             EVENT_MASK(3)
 
 #define EVT_SAMPLING        EVENT_MASK(4)
 #define EVT_ADC_DONE        EVENT_MASK(5)
