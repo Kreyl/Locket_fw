@@ -16,9 +16,9 @@
 #include "radio_lvl1.h"
 
 App_t App;
-static TmrKL_t TmrCheckBtn {MS2ST(18), EVT_BUTTONS, tktPeriodic};
-static TmrKL_t TmrOff      {MS2ST(254), EVT_OFF, tktOneShot};
-static PinInput_t Btn {BTN_PIN};
+static TmrKL_t TmrCheckPill {MS2ST(999), EVT_PILL_CHECK, tktPeriodic};
+//static TmrKL_t TmrOff      {MS2ST(254), EVT_OFF, tktOneShot};
+//static PinInput_t Btn {BTN_PIN};
 
 //Vibro_t Vibro {VIBRO_PIN};
 Beeper_t Beeper {BEEPER_PIN};
@@ -36,24 +36,25 @@ int main(void) {
     App.InitThread();
 
     // ==== Init hardware ====
-    Uart.Init(115200, UART_GPIO, UART_TX_PIN);//, UART_GPIO, UART_RX_PIN);
+    Uart.Init(115200, UART_GPIO, UART_TX_PIN, UART_GPIO, UART_RX_PIN);
     Uart.Printf("\r%S %S\r", APP_NAME, BUILD_TIME);
-    if(Sleep::WasInStandby()) {
-        Uart.Printf("WasStandby\r");
-        Sleep::ClearStandbyFlag();
-    }
+//    if(Sleep::WasInStandby()) {
+//        Uart.Printf("WasStandby\r");
+//        Sleep::ClearStandbyFlag();
+//    }
 //    Clk.PrintFreqs();
 
     Led.Init();
 //    Vibro.Init();
 //    Vibro.StartSequence(vsqBrr);
     Beeper.Init();
-//    Beeper.StartSequence(BeepPillOk);
+    Beeper.StartSequence(BeepPillOk);
 
-    Btn.Init();
-    Radio.Init();
-    TmrCheckBtn.InitAndStart(chThdGetSelfX());
-    TmrOff.InitAndStart(chThdGetSelfX());
+//    Btn.Init();
+//    Radio.Init();
+//    TmrCheckBtn.InitAndStart(chThdGetSelfX());
+//    TmrOff.InitAndStart(chThdGetSelfX());
+//    TmrCheckPill.InitAndStart(chThdGetSelfX());
 
 //    PinSensors.Init();
 //    if(Radio.Init() != OK) {
@@ -69,10 +70,9 @@ int main(void) {
 
 __noreturn
 void App_t::ITask() {
-    bool WasHi = false;
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
-#if 1 // ==== Button ====
+#if BTN_REQUIRED // ==== Button ====
         if(Evt & EVT_BUTTONS) {
             if(Btn.IsHi() and !WasHi) {    // Pressed
                 WasHi = true;
@@ -89,16 +89,27 @@ void App_t::ITask() {
         } // EVTMSK_BTN_PRESS
 #endif
 
-        if(Evt & EVT_OFF) {
-//            Uart.Printf("Off\r");
-            chSysLock();
-            Sleep::EnableWakeup1Pin();
-            Sleep::EnterStandby();
-            chSysUnlock();
+#if 0 // ==== Pill ====
+        if(Evt & EVT_PILL_CHECK) {
+        bool IsNowConnected = (PillMgr.CheckIfConnected(PILL_I2C_ADDR) == OK);
+        if(IsNowConnected and !PillWasConnected) {  // OnConnect
+            PillWasConnected = true;
+            App.OnPillConnect();
         }
+        else if(!IsNowConnected and PillWasConnected) PillWasConnected = false;
+#endif
+
+
+//        if(Evt & EVT_OFF) {
+////            Uart.Printf("Off\r");
+//            chSysLock();
+//            Sleep::EnableWakeup1Pin();
+//            Sleep::EnterStandby();
+//            chSysUnlock();
+//        }
 
 #if UART_RX_ENABLED
-        if(EvtMsk & EVTMSK_UART_NEW_CMD) {
+        if(Evt & EVT_UART_NEW_CMD) {
             OnCmd((Shell_t*)&Uart);
             Uart.SignalCmdProcessed();
         }

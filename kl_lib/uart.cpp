@@ -128,7 +128,7 @@ void Uart_t::PrintfI(const char *S, ...) {
 #endif
 
 #if UART_RX_ENABLED
-__attribute__((__noreturn__))
+__noreturn
 void Uart_t::IRxTask() {
     while(true) {
         chThdSleepMilliseconds(UART_RX_POLLING_MS);
@@ -148,7 +148,7 @@ void Uart_t::IRxTask() {
                 if(RIndx >= UART_RXBUF_SZ) RIndx = 0;
                 if(Cmd.PutChar(c) == pdrNewCmd) {
                     chSysLock();
-                    App.SignalEvtI(EVTMSK_UART_NEW_CMD);
+                    App.SignalEvtI(EVT_UART_NEW_CMD);
                     chSchGoSleepS(CH_STATE_SUSPENDED); // Wait until cmd processed
                     chSysUnlock();  // Will be here when application signals that cmd processed
                 }
@@ -167,7 +167,8 @@ static void UartRxThread(void *arg) {
 
 // ==== Init & DMA ====
 #if UART_RX_ENABLED
-void Uart_t::Init(uint32_t ABaudrate, GPIO_TypeDef *PGpioTx, const uint16_t APinTx, GPIO_TypeDef *PGpioRx, const uint16_t APinRx) {
+void Uart_t::Init(uint32_t ABaudrate, GPIO_TypeDef *PGpioTx, const uint16_t APinTx,
+        GPIO_TypeDef *PGpioRx, const uint16_t APinRx) {
 #else
 void Uart_t::Init(uint32_t ABaudrate, GPIO_TypeDef *PGpioTx, const uint16_t APinTx) {
 #endif

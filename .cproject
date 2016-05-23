@@ -92,7 +92,7 @@
 							<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.linker.1395957562" name="Cross ARM C++ Linker" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.linker">
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.gcsections.1201859941" name="Remove unused sections (-Xlinker --gc-sections)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.gcsections" value="true" valueType="boolean"/>
 								<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.scriptfile.551809688" name="Script files (-T)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.linker.scriptfile" valueType="stringList">
-									<listOptionValue builtIn="false" value="../STM32L151xB.ld"/>
+									<listOptionValue builtIn="false" value="../STM32L151x8.ld"/>
 								</option>
 								<inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.linker.input.1764861683" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
@@ -115,7 +115,7 @@
 					</folderInfo>
 					<fileInfo id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1870830989.95292625" name="main.cpp" rcbsApplicability="disable" resourcePath="main.cpp" toolsToInvoke="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.200228416.613922927">
 						<tool id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.200228416.613922927" name="Cross ARM C++ Compiler" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.200228416">
-							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs.296248040" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs" valueType="definedSymbols">
+							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs.296248040" name="Defined symbols (-D)" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.cpp.compiler.defs" valueType="definedSymbols">
 								<listOptionValue builtIn="false" value="&quot;BUILD_TIME=&quot;\&quot;${current_date}\&quot;&quot;&quot;"/>
 							</option>
 							<inputType id="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.input.161592712" superClass="ilg.gnuarmeclipse.managedbuild.cross.tool.cpp.compiler.input"/>

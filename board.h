@@ -11,7 +11,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket3"
-#define APP_NAME            "LastAllianceGreen"
+#define APP_NAME            "LordOfKZ"
 
 // MCU type as defined in the ST header.
 #define STM32L151xB
@@ -86,9 +86,8 @@
 #if 1 // =========================== DMA =======================================
 #define STM32_DMA_REQUIRED  TRUE
 // ==== Uart ====
-// Remap is made automatically if required
-//#define UART_DMA_TX     STM32_DMA1_STREAM4
-//#define UART_DMA_RX     STM32_DMA1_STREAM5
+#define UART_DMA_TX     STM32_DMA1_STREAM4
+#define UART_DMA_RX     STM32_DMA1_STREAM5
 #define UART_DMA_CHNL   0   // Dummy
 
 #if I2C_REQUIRED // ==== I2C ====

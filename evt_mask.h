@@ -14,5 +14,7 @@
 
 #define EVT_OFF             EVENT_MASK(3)
 
-#define EVT_SAMPLING        EVENT_MASK(4)
-#define EVT_ADC_DONE        EVENT_MASK(5)
+#define EVT_PILL_CHECK      EVENT_MASK(4)
+
+#define EVT_SAMPLING        EVENT_MASK(14)
+#define EVT_ADC_DONE        EVENT_MASK(15)
