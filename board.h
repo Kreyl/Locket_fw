@@ -20,7 +20,8 @@
 #define CRYSTAL_FREQ_HZ 12000000
 
 #define SYS_TIM_CLK     (Clk.APB1FreqHz)
-#define I2C_REQUIRED    FALSE
+#define I2C1_ENABLED    TRUE
+#define I2C_USE_SEMAPHORE   TRUE
 #define ADC_REQUIRED    FALSE
 
 #if 1 // ========================== GPIO =======================================
@@ -45,13 +46,26 @@
 
 // Beeper
 #define BEEPER_TOP      22
-#define BEEPER_PIN      { GPIOB, 9, TIM11, 1, invNotInverted, omPushPull, BEEPER_TOP }
+#define BEEPER_PIN      { GPIOB, 15, TIM11, 1, invNotInverted, omPushPull, BEEPER_TOP }
+
+// I2C
+#if I2C1_ENABLED
+#define I2C1_GPIO       GPIOB
+#define I2C1_SCL        6
+#define I2C1_SDA        7
+#define I2C1_AF         AF4
+#endif
+
+// Pill power
+#define PILL_PWR_PIN    { GPIOB, 3, omPushPull }
+
 #endif // GPIO
 
 #if 1 // ========================= Timer =======================================
 #endif // Timer
 
-#if I2C_REQUIRED // ====================== I2C =================================
+#if I2C1_ENABLED // ====================== I2C ================================
+#define I2C1_BAUDRATE   400000
 #endif
 
 #if 1 // =========================== SPI =======================================
@@ -90,9 +104,9 @@
 #define UART_DMA_RX     STM32_DMA1_STREAM5
 #define UART_DMA_CHNL   0   // Dummy
 
-#if I2C_REQUIRED // ==== I2C ====
-#define I2C_ACC_DMA_TX  STM32_DMA1_STREAM4
-#define I2C_ACC_DMA_RX  STM32_DMA1_STREAM5
+#if I2C1_ENABLED // ==== I2C ====
+#define I2C1_DMA_TX     STM32_DMA1_STREAM6
+#define I2C1_DMA_RX     STM32_DMA1_STREAM7
 #endif
 
 #if ADC_REQUIRED

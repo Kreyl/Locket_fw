@@ -23,6 +23,7 @@ static TmrKL_t TmrCheckPill {MS2ST(999), EVT_PILL_CHECK, tktPeriodic};
 //Vibro_t Vibro {VIBRO_PIN};
 Beeper_t Beeper {BEEPER_PIN};
 LedRGB_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN };
+const PinOutput_t PillPwr { PILL_PWR_PIN };
 
 int main(void) {
     // ==== Init Vcore & clock system ====
@@ -44,9 +45,17 @@ int main(void) {
 //    }
 //    Clk.PrintFreqs();
 
+    i2c1.Init();
+    // Enable pill power
+    PillPwr.Init();
+    PillPwr.Hi();
+    i2c1.ScanBus();
+
     Led.Init();
 //    Vibro.Init();
 //    Vibro.StartSequence(vsqBrr);
+//    PillMgr.Init();
+
     Beeper.Init();
     Beeper.StartSequence(BeepPillOk);
 

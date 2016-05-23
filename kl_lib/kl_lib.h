@@ -20,7 +20,7 @@ Maybe, to calm Eclipse, it will be required to write extra quote in the end: "\"
 */
 
 // Lib version
-#define KL_LIB_VERSION      "20160521_1456"
+#define KL_LIB_VERSION      "20160524_0001"
 
 #if defined STM32L1XX
 #include "stm32l1xx.h"
@@ -387,6 +387,12 @@ struct PortPin_t {
     uint16_t Pin;
 };
 
+struct PortPinOutput_t {
+    GPIO_TypeDef *PGpio;
+    uint16_t Pin;
+    PinOutMode_t OutputType;
+};
+
 struct PortPinInput_t {
     GPIO_TypeDef *PGpio;
     uint16_t Pin;
@@ -445,8 +451,11 @@ enum PinAF_t {
 
 // Set/clear
 #if defined STM32L1XX || defined STM32F2XX || defined STM32F4XX || defined STM32F042x6
-#define PinSet(PGpio, APin)     PGpio->BSRRL = ((uint16_t)(1 << (APin)))
-#define PinClear(PGpio, APin)   PGpio->BSRRH = ((uint16_t)(1 << (APin)))
+static inline void PinSet(GPIO_TypeDef *PGpio, uint16_t APin) { PGpio->BSRRL = (1 << APin); }
+static inline void PinSet(const PortPin_t *APin) { APin->PGpio->BSRRL = (1 << APin->Pin); }
+static inline void PinClear(GPIO_TypeDef *PGpio, uint16_t APin) { PGpio->BSRRH = (1 << APin); }
+static inline void PinClear(const PortPin_t *APin) { APin->PGpio->BSRRH = (1 << APin->Pin); }
+
 #elif defined STM32F0XX || defined STM32F10X_LD_VL || defined STM32L4XX
 __always_inline
 static inline void PinSet(GPIO_TypeDef *PGpio, uint32_t APin) { PGpio->BSRR = 1 << APin; }
@@ -460,6 +469,7 @@ static inline void PinClear(const PortPin_t PortPin) { PortPin.PGpio->BRR = 1 <<
 #endif
 __always_inline
 static inline void PinToggle(GPIO_TypeDef *PGpio, uint32_t APin) { PGpio->ODR ^= 1 << APin; }
+static inline void PinToggle(const PortPin_t *APin) { APin->PGpio->ODR ^= (1 << APin->Pin); }
 
 // Check input
 __always_inline
@@ -573,11 +583,9 @@ static inline void PinSetupOut(
 }
 
 __always_inline
-static inline void PinSetupOut(const PortPin_t PortPin, PinOutMode_t PinOutMode,
-        const PinPullUpDown_t APullUpDown = pudNone,
-        const PinSpeed_t ASpeed = PIN_SPEED_DEFAULT
-) {
-    PinSetupOut(PortPin.PGpio, PortPin.Pin, PinOutMode, APullUpDown, ASpeed);
+static inline void PinSetupOut(const PortPinOutput_t APin,
+        const PinSpeed_t ASpeed = PIN_SPEED_DEFAULT) {
+    PinSetupOut(APin.PGpio, APin.Pin, APin.OutputType, pudNone, ASpeed);
 }
 
 static inline void PinSetupIn(const PortPinInput_t &Pin) {
@@ -751,18 +759,16 @@ static inline void JtagDisable() {
 
 #if 1 // ===================== Pin classes ========================
 // ==== On/Off output pin ====
-// Example: const PinOutput_t Magnet = {GPIOA, 10, omPushPull};
+// Example: const PinOutput_t Magnet{ {GPIOA, 10, omPushPull} };
 class PinOutput_t {
 public:
-    GPIO_TypeDef *PGpio;
-    uint16_t Pin;
-    void Init(PinOutMode_t OutMode) const { PinSetupOut(PGpio, Pin, OutMode); }
-    void Set(uint8_t AValue) const { if(AValue != 0) PinSet(PGpio, Pin); else PinClear(PGpio, Pin); }
-    void Hi() const { PinSet(PGpio, Pin); }
-    void Lo() const { PinClear(PGpio, Pin); }
-    void Toggle() const { PinToggle(PGpio, Pin); }
-    PinOutput_t(GPIO_TypeDef *APGpio, uint16_t APin) :
-        PGpio(APGpio), Pin(APin) {}
+    const PortPinOutput_t Pin;
+    void Init() const { PinSetupOut(Pin); }
+    void Set(uint8_t AValue) const { if(AValue != 0) PinSet((PortPin_t*)&Pin); else PinClear((PortPin_t*)&Pin); }
+    void Hi() const { PinSet((PortPin_t*)&Pin); }
+    void Lo() const { PinClear((PortPin_t*)&Pin); }
+    void Toggle() const { PinToggle((PortPin_t*)&Pin); }
+    PinOutput_t(const PortPinOutput_t APin) : Pin(APin) {}
 };
 
 // ==== Digital Input Pin ====
@@ -1054,8 +1060,20 @@ public:
 };
 #endif
 
-#if I2C_REQUIRED // ========================= I2C ==============================
-#define I2C_ASYNC       TRUE
+#if I2C1_ENABLED // ========================= I2C ==============================
+struct i2cParams_t {
+    I2C_TypeDef *pi2c;
+    GPIO_TypeDef *PGpio;
+    uint16_t SclPin;
+    uint16_t SdaPin;
+    PinAF_t PinAF;
+    uint32_t BitrateHz;
+    // DMA
+    const stm32_dma_stream_t *PDmaTx;
+    const stm32_dma_stream_t *PDmaRx;
+};
+
+
 /* Example:
  * i2c_t i2c (I2C_ACC, ACC_I2C_GPIO, ACC_I2C_SCL_PIN, ACC_I2C_SDA_PIN,
  * 400000, I2C_ACC_DMA_TX, I2C_ACC_DMA_RX );
@@ -1079,27 +1097,19 @@ public:
 
 class i2c_t {
 private:
-#ifdef STM32F2XX
-    uint16_t DmaChnl;
-#else
-#define DmaChnl     0   // dummy
-#endif
-    I2C_TypeDef *ii2c;
-    GPIO_TypeDef *IPGpio;
-    uint16_t ISclPin, ISdaPin;
-    uint32_t IBitrateHz;
-    void SendStart()     { ii2c->CR1 |= I2C_CR1_START; }
-    void SendStop()      { ii2c->CR1 |= I2C_CR1_STOP; }
-    void AckEnable()     { ii2c->CR1 |= I2C_CR1_ACK; }
-    void AckDisable()    { ii2c->CR1 &= ~I2C_CR1_ACK; }
-    bool RxIsNotEmpty()  { return (ii2c->SR1 & I2C_SR1_RXNE); }
-    void ClearAddrFlag() { (void)ii2c->SR1; (void)ii2c->SR2; }
-    void SignalLastDmaTransfer() { ii2c->CR2 |= I2C_CR2_LAST; }
+    const i2cParams_t *PParams;
+    void SendStart()     { PParams->pi2c->CR1 |= I2C_CR1_START; }
+    void SendStop()      { PParams->pi2c->CR1 |= I2C_CR1_STOP; }
+    void AckEnable()     { PParams->pi2c->CR1 |= I2C_CR1_ACK; }
+    void AckDisable()    { PParams->pi2c->CR1 &= ~I2C_CR1_ACK; }
+    bool RxIsNotEmpty()  { return (PParams->pi2c->SR1 & I2C_SR1_RXNE); }
+    void ClearAddrFlag() { (void)PParams->pi2c->SR1; (void)PParams->pi2c->SR2; }
+    void SignalLastDmaTransfer() { PParams->pi2c->CR2 |= I2C_CR2_LAST; }
     // Address and data
-    void SendAddrWithWrite(uint8_t Addr) { ii2c->DR = (uint8_t)(Addr<<1); }
-    void SendAddrWithRead (uint8_t Addr) { ii2c->DR = ((uint8_t)(Addr<<1)) | 0x01; }
-    void SendData(uint8_t b) { ii2c->DR = b; }
-    uint8_t ReceiveData() { return ii2c->DR; }
+    void SendAddrWithWrite(uint8_t Addr) { PParams->pi2c->DR = (uint8_t)(Addr<<1); }
+    void SendAddrWithRead (uint8_t Addr) { PParams->pi2c->DR = ((uint8_t)(Addr<<1)) | 0x01; }
+    void SendData(uint8_t b) { PParams->pi2c->DR = b; }
+    uint8_t ReceiveData() { return PParams->pi2c->DR; }
     // Flags operations
     uint8_t IBusyWait();
     uint8_t WaitEv5();
@@ -1112,24 +1122,22 @@ private:
 public:
     bool Error;
     thread_reference_t ThdRef;
-    const stm32_dma_stream_t *PDmaTx, *PDmaRx;
     void Init();
     void Standby();
     void Resume();
     void Reset();
-    void BusScan();
+    void ScanBus();
     uint8_t WriteRead(uint8_t Addr, uint8_t *WPtr, uint8_t WLength, uint8_t *RPtr, uint8_t RLength);
     uint8_t WriteWrite(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1, uint8_t *WPtr2, uint8_t WLength2);
     uint8_t Write(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1);
-    i2c_t(I2C_TypeDef *pi2c,
-            GPIO_TypeDef *PGpio, uint16_t SclPin, uint16_t SdaPin,
-            uint32_t BitrateHz,
-            const stm32_dma_stream_t *APDmaTx, const stm32_dma_stream_t *APDmaRx) :
-                ii2c(pi2c), IPGpio(PGpio), ISclPin(SclPin), ISdaPin(SdaPin), IBitrateHz(BitrateHz),
-                Error(false), ThdRef(nullptr),
-                PDmaTx(APDmaTx), PDmaRx(APDmaRx) {}
+    i2c_t(const i2cParams_t *APParams) : PParams(APParams),
+                Error(false), ThdRef(nullptr) {}
 };
+
+#if I2C1_ENABLED
+extern i2c_t i2c1;
 #endif
+#endif // i2c common
 
 #if 0 // ====================== FLASH & EEPROM =================================
 #define FLASH_LIB_KL
