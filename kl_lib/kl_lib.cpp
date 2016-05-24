@@ -258,6 +258,7 @@ void i2cDmaIrqHandler(void *p, uint32_t flags) {
 void i2c_t::Init() {
     Standby();
     Resume();
+    chBSemObjectInit(&BSemaphore, NOT_TAKEN);
     // ==== DMA ====
     // Here only unchanged parameters of the DMA are configured.
 #ifdef STM32F2XX
@@ -326,20 +327,22 @@ void i2c_t::Reset() {
 uint8_t i2c_t::WriteRead(uint8_t Addr,
         uint8_t *WPtr, uint8_t WLength,
         uint8_t *RPtr, uint8_t RLength) {
-    if(IBusyWait() != OK) return FAILURE;
+    if(chBSemWait(&BSemaphore) != MSG_OK) return BUSY;
+    uint8_t Rslt = OK;
+    if(IBusyWait() != OK) { Rslt = BUSY; goto WriteReadEnd; }
     // Clear flags
     PParams->pi2c->SR1 = 0;
     while(RxIsNotEmpty()) (void)PParams->pi2c->DR;   // Read DR until it empty
     ClearAddrFlag();
     // Start transmission
     SendStart();
-    if(WaitEv5() != OK) return FAILURE;
+    if(WaitEv5() != OK) { Rslt = FAILURE; goto WriteReadEnd; }
     SendAddrWithWrite(Addr);
-    if(WaitEv6() != OK) { SendStop(); return FAILURE; }
+    if(WaitEv6() != OK) { SendStop(); Rslt = FAILURE; goto WriteReadEnd; }
     ClearAddrFlag();
     // Start TX DMA if needed
     if(WLength != 0) {
-        if(WaitEv8() != OK) return FAILURE;
+        if(WaitEv8() != OK) { Rslt = FAILURE; goto WriteReadEnd; }
         dmaStreamSetMemory0(PParams->PDmaTx, WPtr);
         dmaStreamSetMode   (PParams->PDmaTx, I2C_DMATX_MODE);
         dmaStreamSetTransactionSize(PParams->PDmaTx, WLength);
@@ -351,12 +354,12 @@ uint8_t i2c_t::WriteRead(uint8_t Addr,
     }
     // Read if needed
     if(RLength != 0) {
-        if(WaitEv8() != OK) return FAILURE;
+        if(WaitEv8() != OK) { Rslt = FAILURE; goto WriteReadEnd; }
         // Send repeated start
         SendStart();
-        if(WaitEv5() != OK) return FAILURE;
+        if(WaitEv5() != OK) { Rslt = FAILURE; goto WriteReadEnd; }
         SendAddrWithRead(Addr);
-        if(WaitEv6() != OK) { SendStop(); return FAILURE; }
+        if(WaitEv6() != OK) { SendStop(); Rslt = FAILURE; goto WriteReadEnd; }
         // If single byte is to be received, disable ACK before clearing ADDR flag
         if(RLength == 1) AckDisable();
         else AckEnable();
@@ -373,26 +376,30 @@ uint8_t i2c_t::WriteRead(uint8_t Addr,
     } // if != 0
     else WaitBTF(); // if nothing to read, just stop
     SendStop();
-    return OK;
+    WriteReadEnd:
+    chBSemSignal(&BSemaphore);
+    return Rslt;
 }
 
 uint8_t i2c_t::WriteWrite(uint8_t Addr,
         uint8_t *WPtr1, uint8_t WLength1,
         uint8_t *WPtr2, uint8_t WLength2) {
-    if(IBusyWait() != OK) return FAILURE;
+    if(chBSemWait(&BSemaphore) != MSG_OK) return BUSY;
+    uint8_t Rslt = OK;
+    if(IBusyWait() != OK) { Rslt = BUSY; goto WriteWriteEnd; }
     // Clear flags
     PParams->pi2c->SR1 = 0;
     while(RxIsNotEmpty()) (void)PParams->pi2c->DR;   // Read DR until it empty
     ClearAddrFlag();
     // Start transmission
     SendStart();
-    if(WaitEv5() != OK) return FAILURE;
+    if(WaitEv5() != OK) { Rslt = FAILURE; goto WriteWriteEnd; }
     SendAddrWithWrite(Addr);
-    if(WaitEv6() != OK) { SendStop(); return FAILURE; }
+    if(WaitEv6() != OK) { SendStop(); Rslt = FAILURE; goto WriteWriteEnd; }
     ClearAddrFlag();
     // Start TX DMA if needed
     if(WLength1 != 0) {
-        if(WaitEv8() != OK) return FAILURE;
+        if(WaitEv8() != OK) { Rslt = FAILURE; goto WriteWriteEnd; }
         dmaStreamSetMemory0(PParams->PDmaTx, WPtr1);
         dmaStreamSetMode   (PParams->PDmaTx, I2C_DMATX_MODE);
         dmaStreamSetTransactionSize(PParams->PDmaTx, WLength1);
@@ -403,7 +410,7 @@ uint8_t i2c_t::WriteWrite(uint8_t Addr,
         dmaStreamDisable(PParams->PDmaTx);
     }
     if(WLength2 != 0) {
-        if(WaitEv8() != OK) return FAILURE;
+        if(WaitEv8() != OK) { Rslt = FAILURE; goto WriteWriteEnd; }
         dmaStreamSetMemory0(PParams->PDmaTx, WPtr2);
         dmaStreamSetMode   (PParams->PDmaTx, I2C_DMATX_MODE);
         dmaStreamSetTransactionSize(PParams->PDmaTx, WLength2);
@@ -415,24 +422,28 @@ uint8_t i2c_t::WriteWrite(uint8_t Addr,
     }
     WaitBTF();
     SendStop();
-    return OK;
+    WriteWriteEnd:
+    chBSemSignal(&BSemaphore);
+    return Rslt;
 }
 
 uint8_t i2c_t::Write(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1) {
-    if(IBusyWait() != OK) return FAILURE;
+    if(chBSemWait(&BSemaphore) != MSG_OK) return BUSY;
+    uint8_t Rslt = OK;
+    if(IBusyWait() != OK) { Rslt = BUSY; goto WriteEnd; }
     // Clear flags
     PParams->pi2c->SR1 = 0;
     while(RxIsNotEmpty()) (void)PParams->pi2c->DR;   // Read DR until it empty
     ClearAddrFlag();
     // Start transmission
     SendStart();
-    if(WaitEv5() != OK) return FAILURE;
+    if(WaitEv5() != OK) { Rslt = FAILURE; goto WriteEnd; }
     SendAddrWithWrite(Addr);
-    if(WaitEv6() != OK) { SendStop(); return FAILURE; }
+    if(WaitEv6() != OK) { SendStop(); Rslt = FAILURE; goto WriteEnd; }
     ClearAddrFlag();
     // Start TX DMA if needed
     if(WLength1 != 0) {
-        if(WaitEv8() != OK) return FAILURE;
+        if(WaitEv8() != OK) { Rslt = FAILURE; goto WriteEnd; }
         dmaStreamSetMemory0(PParams->PDmaTx, WPtr1);
         dmaStreamSetMode   (PParams->PDmaTx, I2C_DMATX_MODE);
         dmaStreamSetTransactionSize(PParams->PDmaTx, WLength1);
@@ -444,7 +455,9 @@ uint8_t i2c_t::Write(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1) {
     }
     WaitBTF();
     SendStop();
-    return OK;
+    WriteEnd:
+    chBSemSignal(&BSemaphore);
+    return Rslt;
 }
 
 void i2c_t::ScanBus() {

@@ -5,42 +5,34 @@
  *      Author: g.kruglov
  */
 
-#if 0
+#pragma once
 
 #include "uart.h"
 #include "ch.h"
 
 #define PILL_I2C_STD_ADDR   0x50    // Standard address start of EEPROM - 0x01010aaa
-#define PILL_I2C_ADDR       (PILL_I2C_STD_ADDR | 0) // Only Zero supported
+#define PILL_I2C_ADDR       (PILL_I2C_STD_ADDR | 0) // Only Zero addr
 #define PILL_START_ADDR     0x00    // Address of data
 // Number of bytes to be written simultaneously. IC dependant, see datasheet.
 #define PILL_PAGE_SZ        8
 
-// I2C & hardware
-#define PERIPH_PWR_GPIO     GPIOB
-#define PERIPH_PWR_PIN      7
-#define PILL_I2C_GPIO       GPIOB
-#define PILL_SCL_PIN        8
-#define PILL_SDA_PIN        9
-
-#define PILL_I2C            I2C1
-#define PILL_I2C_BITRATE_HZ 200000
-#define PILL_DMATX          STM32_DMA1_STREAM6
-#define PILL_DMARX          STM32_DMA1_STREAM7
+enum PillState_t { pillJustConnected, pillJustDisconnected, pillNoChange };
 
 class PillMgr_t {
 private:
-//    Semaphore Sem;
-//    i2c_t i2c;
-    void Deinit();
-    void ResetBus();
+    i2c_t *i2c;
+    const PinOutput_t PillPwr;
+    void Standby();
+    void Resume();
+    bool IsConnectedNow;
 public:
+    PillState_t State;
+    PillMgr_t(i2c_t *pi2c, const PortPinOutput_t PillPwrPin) :
+        i2c(pi2c), PillPwr(PillPwrPin), IsConnectedNow(false), State(pillNoChange) {}
     void Init();
-    uint8_t CheckIfConnected(uint8_t i2cAddr);
-    uint8_t Read (uint8_t i2cAddr, uint8_t MemAddr, void *Ptr, uint32_t Length);
-    uint8_t Write(uint8_t i2cAddr, uint8_t MemAddr, void *Ptr, uint32_t Length);
+    void Check();
+    uint8_t Read (uint8_t MemAddr, void *Ptr, uint32_t Length);
+    uint8_t Write(uint8_t MemAddr, void *Ptr, uint32_t Length);
 };
 
 extern PillMgr_t PillMgr;
-
-#endif /* PILL_MGR_H_ */

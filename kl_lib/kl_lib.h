@@ -768,6 +768,11 @@ public:
     void Hi() const { PinSet((PortPin_t*)&Pin); }
     void Lo() const { PinClear((PortPin_t*)&Pin); }
     void Toggle() const { PinToggle((PortPin_t*)&Pin); }
+    void SetupAnalog() const { Pin.PGpio->MODER |= 0b11 << (Pin.Pin*2); }
+    void SetupOutput() const {
+        Pin.PGpio->MODER &= ~(0b11 << (Pin.Pin*2));
+        Pin.PGpio->MODER |=  (0b01 << (Pin.Pin*2));
+    }
     PinOutput_t(const PortPinOutput_t APin) : Pin(APin) {}
 };
 
@@ -1119,6 +1124,7 @@ private:
     uint8_t WaitRx();
     uint8_t WaitStop();
     uint8_t WaitBTF();
+    binary_semaphore_t BSemaphore;
 public:
     bool Error;
     thread_reference_t ThdRef;

@@ -163,7 +163,7 @@
  *
  * @note    The default is @p TRUE.
  */
-#define CH_CFG_USE_SEMAPHORES               FALSE
+#define CH_CFG_USE_SEMAPHORES               TRUE
 
 /**
  * @brief   Semaphores queuing mode.

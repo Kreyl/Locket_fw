@@ -14,6 +14,7 @@
 #include "beeper.h"
 #include "Sequences.h"
 #include "radio_lvl1.h"
+#include "pill_mgr.h"
 
 App_t App;
 static TmrKL_t TmrCheckPill {MS2ST(999), EVT_PILL_CHECK, tktPeriodic};
@@ -23,7 +24,6 @@ static TmrKL_t TmrCheckPill {MS2ST(999), EVT_PILL_CHECK, tktPeriodic};
 //Vibro_t Vibro {VIBRO_PIN};
 Beeper_t Beeper {BEEPER_PIN};
 LedRGB_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN };
-const PinOutput_t PillPwr { PILL_PWR_PIN };
 
 int main(void) {
     // ==== Init Vcore & clock system ====
@@ -43,13 +43,15 @@ int main(void) {
 //        Uart.Printf("WasStandby\r");
 //        Sleep::ClearStandbyFlag();
 //    }
-//    Clk.PrintFreqs();
+    Clk.PrintFreqs();
 
     i2c1.Init();
-    // Enable pill power
-    PillPwr.Init();
-    PillPwr.Hi();
-    i2c1.ScanBus();
+    PillMgr.Init();
+
+//    uint8_t addr=0;
+//    uint8_t Buf[16];
+//    i2c1.WriteRead(0x50, &addr, 1, Buf, 16);
+//    Uart.Printf("%A\r", Buf, 16, ' ');
 
     Led.Init();
 //    Vibro.Init();
@@ -57,13 +59,13 @@ int main(void) {
 //    PillMgr.Init();
 
     Beeper.Init();
-    Beeper.StartSequence(BeepPillOk);
+//    Beeper.StartSequence(BeepPillOk);
 
 //    Btn.Init();
 //    Radio.Init();
 //    TmrCheckBtn.InitAndStart(chThdGetSelfX());
 //    TmrOff.InitAndStart(chThdGetSelfX());
-//    TmrCheckPill.InitAndStart(chThdGetSelfX());
+    TmrCheckPill.InitAndStart(chThdGetSelfX());
 
 //    PinSensors.Init();
 //    if(Radio.Init() != OK) {
@@ -98,14 +100,15 @@ void App_t::ITask() {
         } // EVTMSK_BTN_PRESS
 #endif
 
-#if 0 // ==== Pill ====
+#if 1 // ==== Pill ====
         if(Evt & EVT_PILL_CHECK) {
-        bool IsNowConnected = (PillMgr.CheckIfConnected(PILL_I2C_ADDR) == OK);
-        if(IsNowConnected and !PillWasConnected) {  // OnConnect
-            PillWasConnected = true;
-            App.OnPillConnect();
+            PillMgr.Check();
+            switch(PillMgr.State) {
+                case pillJustConnected: Uart.Printf("Pill Conn\r"); break;
+                case pillJustDisconnected: Uart.Printf("Pill Discon\r"); break;
+                default: break;
+            }
         }
-        else if(!IsNowConnected and PillWasConnected) PillWasConnected = false;
 #endif
 
 

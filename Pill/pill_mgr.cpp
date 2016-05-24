@@ -5,61 +5,68 @@
  *      Author: g.kruglov
  */
 
-#if 0
-
 #include "pill_mgr.h"
+#include "board.h"
 
-PillMgr_t PillMgr;
+PillMgr_t PillMgr { &i2c1, PILL_PWR_PIN };
+
+//static THD_WORKING_AREA(waPillMgrThread, 128);
+//__noreturn
+//static void PillMgrThread(void *arg) {
+//    chRegSetThreadName("PillMgr");
+//    while(true) {
+//        chThdSleep
+//    }
+//}
 
 void PillMgr_t::Init() {
-    chSemInit(&Sem, 0); // Requesting Thread will be queued
-    Deinit();
-    PinSetupOut(PERIPH_PWR_GPIO, PERIPH_PWR_PIN, omPushPull);   // Power
-    PinSet(PERIPH_PWR_GPIO, PERIPH_PWR_PIN);
-    chThdSleepMilliseconds(1);  // Allow power to rise
-    i2c.Init(PILL_I2C, PILL_I2C_GPIO, PILL_SCL_PIN, PILL_SDA_PIN, PILL_I2C_BITRATE_HZ, PILL_DMATX, PILL_DMARX);
-    chSemSignal(&Sem);
+    PillPwr.Init();   // Power
 }
 
-void PillMgr_t::Deinit() {
-    PinClear(PERIPH_PWR_GPIO, PERIPH_PWR_PIN);
-    chThdSleepMilliseconds(1);  // Allow power to fade
-    PinSetupAnalog(PERIPH_PWR_GPIO, PERIPH_PWR_PIN);    // Power
-    i2c.Standby();
+void PillMgr_t::Standby() {
+    i2c->Standby();
+    PillPwr.Lo();
+    __NOP(); __NOP(); __NOP(); __NOP(); // Allow power to fade
+    PillPwr.SetupAnalog();
 }
 
-void PillMgr_t::ResetBus() {
-    Deinit();
-    PinSetupOut(PERIPH_PWR_GPIO, PERIPH_PWR_PIN, omPushPull);   // Power
-    PinSet(PERIPH_PWR_GPIO, PERIPH_PWR_PIN);
-    chThdSleepMilliseconds(1);  // Allow power to rise
-    i2c.Resume();
+void PillMgr_t::Resume() {
+    PillPwr.SetupOutput();
+    PillPwr.Hi();
+    __NOP(); __NOP(); __NOP(); __NOP(); // Allow power to rise
+    i2c->Resume();
 }
 
-uint8_t PillMgr_t::CheckIfConnected(uint8_t i2cAddr) {
-    chSemWait(&Sem);
-    uint8_t Rslt = i2c.CmdWriteWrite(i2cAddr, NULL, 0, NULL, 0);
-    if(i2c.Error == true) ResetBus();
-    chSemSignal(&Sem);
+void PillMgr_t::Check() {
+    Resume();
+    uint8_t Rslt = i2c->Write(PILL_I2C_ADDR, NULL, 0);
+    Standby();
+    if(Rslt == OK and !IsConnectedNow) {
+        IsConnectedNow = true;
+        State = pillJustConnected;
+    }
+    else if(Rslt != OK and IsConnectedNow) {
+        IsConnectedNow = false;
+        State = pillJustDisconnected;
+    }
+    else State = pillNoChange;
+}
+
+uint8_t PillMgr_t::Read(uint8_t MemAddr, void *Ptr, uint32_t Length) {
+    Resume();
+    uint8_t Rslt = i2c->WriteRead(PILL_I2C_ADDR, &MemAddr, 1, (uint8_t*)Ptr, Length);
+    Standby();
     return Rslt;
 }
 
-uint8_t PillMgr_t::Read(uint8_t i2cAddr, uint8_t MemAddr, void *Ptr, uint32_t Length) {
-    chSemWait(&Sem);
-    uint8_t Rslt = i2c.CmdWriteRead(i2cAddr, &MemAddr, 1, (uint8_t*)Ptr, Length);
-    if(i2c.Error == true) ResetBus();
-    chSemSignal(&Sem);
-    return Rslt;
-}
-
-uint8_t PillMgr_t::Write(uint8_t i2cAddr, uint8_t MemAddr, void *Ptr, uint32_t Length) {
-    chSemWait(&Sem);
+uint8_t PillMgr_t::Write(uint8_t MemAddr, void *Ptr, uint32_t Length) {
     uint8_t Rslt = OK;
     uint8_t *p8 = (uint8_t*)Ptr;
+    Resume();
     // Write page by page
     while(Length) {
         uint8_t ToWriteCnt = (Length > PILL_PAGE_SZ)? PILL_PAGE_SZ : Length;
-        Rslt = i2c.CmdWriteWrite(i2cAddr, &MemAddr, 1, p8, ToWriteCnt);
+        Rslt = i2c->WriteWrite(PILL_I2C_ADDR, &MemAddr, 1, p8, ToWriteCnt);
         if(Rslt == OK) {
             chThdSleepMilliseconds(5);   // Allow memory to complete writing
             Length -= ToWriteCnt;
@@ -68,9 +75,6 @@ uint8_t PillMgr_t::Write(uint8_t i2cAddr, uint8_t MemAddr, void *Ptr, uint32_t L
         }
         else break;
     }
-    if(i2c.Error == true) ResetBus();
-    chSemSignal(&Sem);
+    Standby();
     return Rslt;
 }
-
-#endif
