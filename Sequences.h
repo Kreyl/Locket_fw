@@ -189,6 +189,17 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #endif
 
 #if 1 // ============================ LED RGB ==================================
+const LedRGBChunk_t lsqStart[] = {
+        {csSetup, 0, clRed},
+        {csWait, 270},
+        {csSetup, 0, clGreen},
+        {csWait, 270},
+        {csSetup, 0, clBlue},
+        {csWait, 270},
+        {csSetup, 0, clBlack},
+        {csEnd},
+};
+
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
         {csWait, 99},
@@ -303,7 +314,7 @@ const BeepChunk_t bsqBeepBeep[] = {
 
 #if 1 // ==== Extensions ====
 // Pill
-const BeepChunk_t BeepPillOk[] = {
+const BeepChunk_t bsqBeepPillOk[] = {
         {csSetup, BEEP_VOLUME, Si_3},
         {csWait, 180},
         {csSetup, BEEP_VOLUME, Re_D_4},
@@ -314,7 +325,7 @@ const BeepChunk_t BeepPillOk[] = {
         {csEnd}
 };
 
-const BeepChunk_t BeepPillBad[] = {
+const BeepChunk_t bsqBeepPillBad[] = {
         {csSetup, BEEP_VOLUME, Fa_4},
         {csWait, 180},
         {csSetup, BEEP_VOLUME, Re_4},

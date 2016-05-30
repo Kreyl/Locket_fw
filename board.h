@@ -33,9 +33,10 @@
 #define UART_AF         AF7 // for USART1 @ GPIOA
 
 // LED
-#define LED_R_PIN       { GPIOB, 1, TIM3, 4, invNotInverted, omPushPull, 255 }
-#define LED_G_PIN       { GPIOB, 0, TIM3, 3, invNotInverted, omPushPull, 255 }
-#define LED_B_PIN       { GPIOB, 5, TIM3, 2, invNotInverted, omPushPull, 255 }
+#define LED_EN_PIN      { GPIOB, 2, omPushPull }
+#define LED_R_PIN       { GPIOB, 1, TIM3, 4, invInverted, omOpenDrain, 255 }
+#define LED_G_PIN       { GPIOB, 0, TIM3, 3, invInverted, omOpenDrain, 255 }
+#define LED_B_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
 
 // Button
 #define BTN_PIN         { GPIOA, 0, pudPullDown }

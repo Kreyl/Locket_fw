@@ -10,15 +10,6 @@
 
 PillMgr_t PillMgr { &i2c1, PILL_PWR_PIN };
 
-//static THD_WORKING_AREA(waPillMgrThread, 128);
-//__noreturn
-//static void PillMgrThread(void *arg) {
-//    chRegSetThreadName("PillMgr");
-//    while(true) {
-//        chThdSleep
-//    }
-//}
-
 void PillMgr_t::Init() {
     PillPwr.Init();   // Power
 }

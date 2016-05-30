@@ -453,6 +453,7 @@ enum PinAF_t {
 #if defined STM32L1XX || defined STM32F2XX || defined STM32F4XX || defined STM32F042x6
 static inline void PinSet(GPIO_TypeDef *PGpio, uint16_t APin) { PGpio->BSRRL = (1 << APin); }
 static inline void PinSet(const PortPin_t *APin) { APin->PGpio->BSRRL = (1 << APin->Pin); }
+static inline void PinSet(const PortPinOutput_t &APin) { APin.PGpio->BSRRL = (1 << APin.Pin); }
 static inline void PinClear(GPIO_TypeDef *PGpio, uint16_t APin) { PGpio->BSRRH = (1 << APin); }
 static inline void PinClear(const PortPin_t *APin) { APin->PGpio->BSRRH = (1 << APin->Pin); }
 

@@ -5,8 +5,7 @@
  *      Author: Kreyl
  */
 
-#ifndef KL_LIB_CHUNKTYPES_H_
-#define KL_LIB_CHUNKTYPES_H_
+#pragma once
 
 #include "color.h"
 #include "ch.h"
@@ -127,5 +126,3 @@ public:
     } // IProcessSequenceI
 };
 #endif
-
-#endif /* KL_LIB_CHUNKTYPES_H_ */

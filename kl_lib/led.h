@@ -5,19 +5,13 @@
  *      Author: Kreyl
  */
 
-#ifndef LED_RGB_H_
-#define LED_RGB_H_
+#pragma once
 
 #include "hal.h"
 #include "color.h"
 #include "ChunkTypes.h"
 #include "uart.h"
-
-#ifdef STM32F2XX
-#include "kl_lib_f2xx.h"
-#elif defined STM32L1XX_MD || defined STM32L1XX_HD
 #include <kl_lib.h>
-#endif
 
 #if 1 // =========================== Common auxilary ===========================
 // TimeToWaitBeforeNextAdjustment = SmoothVar / (N+4) + 1, where N - current LED brightness.
@@ -121,10 +115,9 @@ public:
 };
 #endif
 
-#if 1 // ============================== LedRGB =================================
-#define LED_RGB
-class LedRGB_t : public BaseSequencer_t<LedRGBChunk_t> {
-private:
+#if 1 // =========================== LedRGB Parent =============================
+class LedRGBParent_t : public BaseSequencer_t<LedRGBChunk_t> {
+protected:
     const PinOutputPWM_t  R, G, B;
     Color_t ICurrColor;
     void ISwitchOff() { SetColor(clBlack); }
@@ -157,7 +150,7 @@ private:
         return sltProceed;
     }
 public:
-    LedRGB_t(
+    LedRGBParent_t(
             const PortPinTim_t ARed,
             const PortPinTim_t AGreen,
             const PortPinTim_t ABlue) :
@@ -168,6 +161,19 @@ public:
         B.Init();
         SetColor(clBlack);
     }
+    virtual void SetColor(Color_t AColor);
+};
+#endif
+
+#if 1 // ============================== LedRGB =================================
+class LedRGB_t : public LedRGBParent_t {
+public:
+    LedRGB_t(
+            const PortPinTim_t ARed,
+            const PortPinTim_t AGreen,
+            const PortPinTim_t ABlue) :
+                LedRGBParent_t(ARed, AGreen, ABlue) {}
+
     void SetColor(Color_t AColor) {
         R.Set(AColor.R);
         G.Set(AColor.G);
@@ -176,4 +182,27 @@ public:
 };
 #endif
 
-#endif /* LED_RGB_H_ */
+#if 1 // =========================== RGB LED with power ========================
+class LedRGBwPower_t : public LedRGBParent_t {
+private:
+    const PinOutput_t PwrPin;
+public:
+    LedRGBwPower_t(
+            const PortPinTim_t ARed,
+            const PortPinTim_t AGreen,
+            const PortPinTim_t ABlue,
+            const PortPinOutput_t APwrPin) :
+                LedRGBParent_t(ARed, AGreen, ABlue), PwrPin(APwrPin) {}
+    void Init() {
+        PwrPin.Init();
+        LedRGBParent_t::Init();
+    }
+    void SetColor(Color_t AColor) {
+        if(AColor == clBlack) PwrPin.Lo();
+        else PwrPin.Hi();
+        R.Set(AColor.R);
+        G.Set(AColor.G);
+        B.Set(AColor.B);
+    }
+};
+#endif
