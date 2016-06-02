@@ -13,7 +13,7 @@
 
 #define PILL_I2C_STD_ADDR   0x50    // Standard address start of EEPROM - 0x01010aaa
 #define PILL_I2C_ADDR       (PILL_I2C_STD_ADDR | 0) // Only Zero addr
-#define PILL_START_ADDR     0x00    // Address of data
+#define PILL_DATA_ADDR      0x00    // Address of data
 // Number of bytes to be written simultaneously. IC dependant, see datasheet.
 #define PILL_PAGE_SZ        8
 

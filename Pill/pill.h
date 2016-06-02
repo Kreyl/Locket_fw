@@ -40,16 +40,12 @@ struct Pill_t {
     };
     // Contains dose value after pill application
     int32_t ChargeCnt;          // offset 4
+    bool IsOk() const {
+        if(Type < ptVitamin or Type > ptMaster) return false;
+        if((Type == ptVitamin or Type == ptCure) and (ChargeCnt < 0 or ChargeCnt > 1)) return false;
+        if((Type == ptPanacea or Type == ptEnergetic) and (ChargeCnt < 0 or ChargeCnt > 5)) return false;
+        return true;
+    }
 } __attribute__ ((__packed__));
 #define PILL_SZ     sizeof(Pill_t)
 #define PILL_SZ32   (sizeof(Pill_t) / sizeof(int32_t))
-
-//// Inner Pill addresses
-//#define PILL_TYPE_ADDR      0
-//#define PILL_CHARGECNT_ADDR 4
-
-//// Data to save in EE and to write to pill
-//struct DataToWrite_t {
-//    uint32_t Sz32;
-//    int32_t Data[PILL_SZ32];
-//};

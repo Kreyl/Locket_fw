@@ -201,8 +201,6 @@ const LedRGBChunk_t lsqStart[] = {
 };
 
 const LedRGBChunk_t lsqPillVitamin[] = {
-        {csSetup, 0, clBlack},
-        {csWait, 180},
         {csSetup, 0, clGreen},
         {csWait, 702},
         {csSetup, 0, clBlack},
@@ -210,8 +208,6 @@ const LedRGBChunk_t lsqPillVitamin[] = {
         {csEnd},
 };
 const LedRGBChunk_t lsqPillCure[] = {
-        {csSetup, 0, clBlack},
-        {csWait, 180},
         {csSetup, 0, clYellow},
         {csWait, 702},
         {csSetup, 0, clBlack},
@@ -219,8 +215,6 @@ const LedRGBChunk_t lsqPillCure[] = {
         {csEnd},
 };
 const LedRGBChunk_t lsqPillPanacea[] = {
-        {csSetup, 0, clBlack},
-        {csWait, 180},
         {csSetup, 0, clWhite},
         {csWait, 702},
         {csSetup, 0, clBlack},
@@ -228,8 +222,6 @@ const LedRGBChunk_t lsqPillPanacea[] = {
         {csEnd},
 };
 const LedRGBChunk_t lsqPillEnergetic[] = {
-        {csSetup, 0, clBlack},
-        {csWait, 180},
         {csSetup, 0, clMagenta},
         {csWait, 702},
         {csSetup, 0, clBlack},
@@ -237,8 +229,6 @@ const LedRGBChunk_t lsqPillEnergetic[] = {
         {csEnd},
 };
 const LedRGBChunk_t lsqPillMaster[] = {
-        {csSetup, 0, clBlack},
-        {csWait, 180},
         {csSetup, 0, clRed},
         {csWait, 702},
         {csSetup, 0, clBlack},
@@ -273,16 +263,6 @@ const LedRGBChunk_t lsqFailure[] = {
         {csWait, 99},
         {csSetup, 0, clRed},
         {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csEnd}
-};
-
-const LedRGBChunk_t lsqOn[] = {
-        {csSetup, 0, clGreen},
-        {csEnd}
-};
-
-const LedRGBChunk_t lsqOff[] = {
         {csSetup, 0, clBlack},
         {csEnd}
 };

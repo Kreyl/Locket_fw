@@ -142,21 +142,27 @@ void App_t::ITask() {
 void App_t::OnPillConnMaster() {
     Uart.Printf("PillBefore: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
     if(MasterMode == ptTest) {
-        if(PillMgr.Pill.ChargeCnt != 0) {
-            if(PillMgr.Pill.Type != ptMaster) PillMgr.Pill.ChargeCnt--; // Decrease charges
-            if(PillMgr.WritePill() == OK) { // Write pill
-                ShowPillOk();
-                Uart.Printf("PillAfter: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
-            } // if write pill ok
-            else ShowPillBad(); // Write failure
-        } // if charge cnt != 0
-        else ShowPillBad(); // ChargeCnt == 0
+        if(PillMgr.Pill.IsOk()) {
+            if(PillMgr.Pill.Type == ptMaster) ShowPillOk();
+            else { // not master
+                if(PillMgr.Pill.ChargeCnt > 0) {
+                    PillMgr.Pill.ChargeCnt--; // Decrease charges
+                    if(PillMgr.WritePill() == OK) { // Write pill
+                        ShowPillOk();
+                        Uart.Printf("PillAfter: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
+                    } // if write pill ok
+                    else ShowPillBad(); // Write failure
+                } // if charge cnt != 0
+                else ShowPillBad(); // ChargeCnt == 0
+            } // not master
+        } // if is ok
+        else ShowPillBad(); // Pill not ok
     } // if test
     else {
         // Prepare to write pill
         PillMgr.Pill.Type = MasterMode;
         if(MasterMode == ptVitamin or MasterMode == ptCure) PillMgr.Pill.ChargeCnt = 1;
-        else PillMgr.Pill.ChargeCnt = 5;    // Panacea or energetic
+        else PillMgr.Pill.ChargeCnt = 5;    // Panacea or energetic (or master, which is don't care)
         // Write pill
         if(PillMgr.WritePill() == OK) {
             ShowPillOk();
