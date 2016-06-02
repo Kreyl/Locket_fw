@@ -71,9 +71,16 @@ private:
     virtual_timer_t ITmr;
 protected:
     const TChunk *IPStartChunk, *IPCurrentChunk;
-    BaseSequencer_t() : IPStartChunk(nullptr), IPCurrentChunk(nullptr) {}
+    BaseSequencer_t() : IPStartChunk(nullptr), IPCurrentChunk(nullptr),
+            PThread(nullptr), EvtEnd(0) {}
     void SetupDelay(uint32_t ms) { chVTSetI(&ITmr, MS2ST(ms), GeneralSequencerTmrCallback, this); }
+    thread_t *PThread;
+    eventmask_t EvtEnd;
 public:
+    void SetupSeqEndEvt(thread_t *APThread, eventmask_t AEvt = 0) {
+        PThread = APThread;
+        EvtEnd = AEvt;
+    }
     void StartSequence(const TChunk *PChunk) {
         if(PChunk == nullptr) Stop();
         else {
@@ -119,6 +126,7 @@ public:
                     break;
 
                 case csEnd:
+                    if(PThread != nullptr) chEvtSignalI(PThread, EvtEnd);
                     return;
                     break;
             } // switch

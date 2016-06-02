@@ -12,10 +12,18 @@
 #include "uart.h"
 #include "evt_mask.h"
 #include "board.h"
+#include "pill.h"
+
+enum DeviceType_t {devtPlayer, devtMaster};
 
 class App_t {
 private:
     thread_t *PThread;
+    DeviceType_t DevType;
+    // Master device
+    PillType_t PillTypeToWrite = ptVitamin;
+    void OnPillConnMaster();
+    void OnPillDisconnMaster();
 public:
     // Eternal methods
     void InitThread() { PThread = chThdGetSelfX(); }

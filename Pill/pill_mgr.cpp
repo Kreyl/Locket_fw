@@ -30,17 +30,28 @@ void PillMgr_t::Resume() {
 
 void PillMgr_t::Check() {
     Resume();
-    uint8_t Rslt = i2c->Write(PILL_I2C_ADDR, NULL, 0);
+    if(IsConnectedNow) {    // Check if disconnected
+        uint8_t Rslt = i2c->Write(PILL_I2C_ADDR, NULL, 0);
+        if(Rslt == OK) State = pillNoChange;
+        else {
+            IsConnectedNow = false;
+            State = pillJustDisconnected;
+        }
+    }
+    else {  // Was not connected
+        uint8_t MemAddr = 0;
+        uint8_t Rslt = i2c->WriteRead(PILL_I2C_ADDR, &MemAddr, 1, (uint8_t*)&Pill, PILL_SZ);
+        if(Rslt == OK) {
+            IsConnectedNow = true;
+            State = pillJustConnected;
+        }
+        else State = pillNoChange;
+    }
     Standby();
-    if(Rslt == OK and !IsConnectedNow) {
-        IsConnectedNow = true;
-        State = pillJustConnected;
-    }
-    else if(Rslt != OK and IsConnectedNow) {
-        IsConnectedNow = false;
-        State = pillJustDisconnected;
-    }
-    else State = pillNoChange;
+}
+
+uint8_t PillMgr_t::WritePill() {
+    return OK;
 }
 
 uint8_t PillMgr_t::Read(uint8_t MemAddr, void *Ptr, uint32_t Length) {

@@ -17,7 +17,7 @@
 #include "pill_mgr.h"
 
 App_t App;
-static TmrKL_t TmrCheckPill {MS2ST(999), EVT_PILL_CHECK, tktPeriodic};
+static TmrKL_t TmrCheckPill {MS2ST(504), EVT_PILL_CHECK, tktPeriodic};
 //static TmrKL_t TmrOff      {MS2ST(254), EVT_OFF, tktOneShot};
 //static PinInput_t Btn {BTN_PIN};
 
@@ -48,25 +48,17 @@ int main(void) {
     i2c1.Init();
     PillMgr.Init();
 
-//    uint8_t addr=0;
-//    uint8_t Buf[16];
-//    i2c1.WriteRead(0x50, &addr, 1, Buf, 16);
-//    Uart.Printf("%A\r", Buf, 16, ' ');
-
-//    PinSetupOut(LED_EN_PIN);
-//    PinSet(LED_EN_PIN);
-
     Led.Init();
+    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
     Led.StartSequence(lsqStart);
+    //Led.SetColor(clWhite);
 //    Vibro.Init();
 //    Vibro.StartSequence(vsqBrr);
-//    PillMgr.Init();
 
     Beeper.Init();
     Beeper.StartSequence(bsqBeepBeep);
 
 //    Btn.Init();
-//    Radio.Init();
 //    TmrCheckBtn.InitAndStart(chThdGetSelfX());
 //    TmrOff.InitAndStart(chThdGetSelfX());
     TmrCheckPill.InitAndStart(chThdGetSelfX());
@@ -85,6 +77,7 @@ int main(void) {
 
 __noreturn
 void App_t::ITask() {
+    DevType = devtMaster;
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
 #if BTN_REQUIRED // ==== Button ====
@@ -108,13 +101,24 @@ void App_t::ITask() {
         if(Evt & EVT_PILL_CHECK) {
             PillMgr.Check();
             switch(PillMgr.State) {
-                case pillJustConnected: Uart.Printf("Pill Conn\r"); break;
+                case pillJustConnected:
+                    Uart.Printf("Pill Conn\r");
+                    if(DevType == devtMaster) OnPillConnMaster();
+                    break;
                 case pillJustDisconnected: Uart.Printf("Pill Discon\r"); break;
                 default: break;
             }
         }
 #endif
 
+#if 1 // ==== Led sequence end ====
+        if(Evt & EVT_LED_SEQ_END) {
+            if(DevType == devtMaster) {
+                Color_t Clr = GetPillColor(PillTypeToWrite);
+                Led.SetColor(Clr);
+            }
+        }
+#endif
 
 //        if(Evt & EVT_OFF) {
 ////            Uart.Printf("Off\r");
@@ -132,6 +136,25 @@ void App_t::ITask() {
 #endif
 
     } // while true
+}
+
+void App_t::OnPillConnMaster() {
+    if(PillMgr.State == pillJustConnected) {
+        Uart.Printf("PillBefore: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
+        PillMgr.Pill.Type = PillTypeToWrite;
+        if(PillTypeToWrite == ptVitamin or PillTypeToWrite == ptCure) PillMgr.Pill.ChargeCnt = 1;
+        else PillMgr.Pill.ChargeCnt = 5;    // Panacea or energetic
+        // Write pill
+        if(PillMgr.WritePill() == OK) {
+            Beeper.StartSequence(bsqBeepPillOk);
+            Led.StartSequence(lsqPillOk);
+            Uart.Printf("PillAfter: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
+        }
+        else {
+            Beeper.StartSequence(bsqBeepPillBad);
+            Led.StartSequence(lsqPillBad);
+        }
+    }
 }
 
 //void ProcessButton(PinSnsState_t *PState, uint32_t Len) {

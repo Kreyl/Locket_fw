@@ -200,6 +200,22 @@ const LedRGBChunk_t lsqStart[] = {
         {csEnd},
 };
 
+const LedRGBChunk_t lsqPillOk[] = {
+        {csSetup, 0, clBlue},
+        {csWait, 702},
+        {csSetup, 0, clBlack},
+        {csWait, 504},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqPillBad[] = {
+        {csSetup, 0, clRed},
+        {csWait, 702},
+        {csSetup, 0, clBlack},
+        {csWait, 504},
+        {csEnd},
+};
+
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
         {csWait, 99},
