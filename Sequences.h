@@ -200,19 +200,65 @@ const LedRGBChunk_t lsqStart[] = {
         {csEnd},
 };
 
-const LedRGBChunk_t lsqPillOk[] = {
-        {csSetup, 0, clBlue},
+const LedRGBChunk_t lsqPillVitamin[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 180},
+        {csSetup, 0, clGreen},
         {csWait, 702},
         {csSetup, 0, clBlack},
-        {csWait, 504},
+        {csWait, 450},
+        {csEnd},
+};
+const LedRGBChunk_t lsqPillCure[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 180},
+        {csSetup, 0, clYellow},
+        {csWait, 702},
+        {csSetup, 0, clBlack},
+        {csWait, 450},
+        {csEnd},
+};
+const LedRGBChunk_t lsqPillPanacea[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 180},
+        {csSetup, 0, clWhite},
+        {csWait, 702},
+        {csSetup, 0, clBlack},
+        {csWait, 450},
+        {csEnd},
+};
+const LedRGBChunk_t lsqPillEnergetic[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 180},
+        {csSetup, 0, clMagenta},
+        {csWait, 702},
+        {csSetup, 0, clBlack},
+        {csWait, 450},
+        {csEnd},
+};
+const LedRGBChunk_t lsqPillMaster[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 180},
+        {csSetup, 0, clRed},
+        {csWait, 702},
+        {csSetup, 0, clBlack},
+        {csWait, 306},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqPillBad[] = {
         {csSetup, 0, clRed},
-        {csWait, 702},
+        {csWait, 99},
         {csSetup, 0, clBlack},
-        {csWait, 504},
+        {csWait, 99},
+        {csSetup, 0, clRed},
+        {csWait, 99},
+        {csSetup, 0, clBlack},
+        {csWait, 99},
+        {csSetup, 0, clRed},
+        {csWait, 99},
+        {csSetup, 0, clBlack},
+        {csWait, 99},
         {csEnd},
 };
 
@@ -354,7 +400,7 @@ const BeepChunk_t bsqBeepPillBad[] = {
 #endif // ext
 #endif // beeper
 
-#if 1 // ============================== Vibro ==================================
+#if 0 // ============================== Vibro ==================================
 #define VIBRO_VOLUME    27  // 1 to 22
 
 #define VIBRO_SHORT_MS          99

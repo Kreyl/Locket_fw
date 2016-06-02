@@ -18,8 +18,9 @@
 
 App_t App;
 static TmrKL_t TmrCheckPill {MS2ST(504), EVT_PILL_CHECK, tktPeriodic};
+static TmrKL_t TmrCheckBtn  {MS2ST(54),  EVT_BUTTONS, tktPeriodic};
 //static TmrKL_t TmrOff      {MS2ST(254), EVT_OFF, tktOneShot};
-//static PinInput_t Btn {BTN_PIN};
+static PinInput_t Btn {BTN_PIN};
 
 //Vibro_t Vibro {VIBRO_PIN};
 Beeper_t Beeper {BEEPER_PIN};
@@ -58,8 +59,8 @@ int main(void) {
     Beeper.Init();
     Beeper.StartSequence(bsqBeepBeep);
 
-//    Btn.Init();
-//    TmrCheckBtn.InitAndStart(chThdGetSelfX());
+    Btn.Init();
+    TmrCheckBtn.InitAndStart(chThdGetSelfX());
 //    TmrOff.InitAndStart(chThdGetSelfX());
     TmrCheckPill.InitAndStart(chThdGetSelfX());
 
@@ -80,19 +81,20 @@ void App_t::ITask() {
     DevType = devtMaster;
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
-#if BTN_REQUIRED // ==== Button ====
+#if 1 // ==== Button ====
         if(Evt & EVT_BUTTONS) {
-            if(Btn.IsHi() and !WasHi) {    // Pressed
-                WasHi = true;
-                TmrOff.Stop();
-                Beeper.StartSequence(bsqOn);
-                Led.SetColor(clGreen);
-            }
-            else if(!Btn.IsHi() and WasHi) {
-                WasHi = false;
-                Beeper.Off();
-                Led.SetColor(clBlack);
-                TmrOff.Start();
+            if(DevType == devtMaster) {
+                if(Btn.IsHi() and !BtnWasHi) {    // Pressed
+                    BtnWasHi = true;
+                    Beeper.StartSequence(bsqButton);
+                    // Switch mode
+                    if(MasterMode == ptTest) MasterMode = ptVitamin;
+                    else MasterMode = (PillType_t)((uint32_t)MasterMode + 1);
+                    Led.SetColor(GetPillColor(MasterMode));
+                }
+                else if(!Btn.IsHi() and BtnWasHi) {
+                    BtnWasHi = false;
+                }
             }
         } // EVTMSK_BTN_PRESS
 #endif
@@ -114,8 +116,7 @@ void App_t::ITask() {
 #if 1 // ==== Led sequence end ====
         if(Evt & EVT_LED_SEQ_END) {
             if(DevType == devtMaster) {
-                Color_t Clr = GetPillColor(PillTypeToWrite);
-                Led.SetColor(Clr);
+                Led.SetColor(GetPillColor(MasterMode));
             }
         }
 #endif
@@ -139,22 +140,49 @@ void App_t::ITask() {
 }
 
 void App_t::OnPillConnMaster() {
-    if(PillMgr.State == pillJustConnected) {
-        Uart.Printf("PillBefore: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
-        PillMgr.Pill.Type = PillTypeToWrite;
-        if(PillTypeToWrite == ptVitamin or PillTypeToWrite == ptCure) PillMgr.Pill.ChargeCnt = 1;
+    Uart.Printf("PillBefore: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
+    if(MasterMode == ptTest) {
+        if(PillMgr.Pill.ChargeCnt != 0) {
+            if(PillMgr.Pill.Type != ptMaster) PillMgr.Pill.ChargeCnt--; // Decrease charges
+            if(PillMgr.WritePill() == OK) { // Write pill
+                ShowPillOk();
+                Uart.Printf("PillAfter: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
+            } // if write pill ok
+            else ShowPillBad(); // Write failure
+        } // if charge cnt != 0
+        else ShowPillBad(); // ChargeCnt == 0
+    } // if test
+    else {
+        // Prepare to write pill
+        PillMgr.Pill.Type = MasterMode;
+        if(MasterMode == ptVitamin or MasterMode == ptCure) PillMgr.Pill.ChargeCnt = 1;
         else PillMgr.Pill.ChargeCnt = 5;    // Panacea or energetic
         // Write pill
         if(PillMgr.WritePill() == OK) {
-            Beeper.StartSequence(bsqBeepPillOk);
-            Led.StartSequence(lsqPillOk);
+            ShowPillOk();
             Uart.Printf("PillAfter: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
         }
-        else {
-            Beeper.StartSequence(bsqBeepPillBad);
-            Led.StartSequence(lsqPillBad);
-        }
-    }
+        else ShowPillBad(); // Write failure
+    } // if not test
+}
+
+void App_t::ShowPillOk() {
+    switch(PillMgr.Pill.Type) {
+        case ptVitamin:   Led.StartSequence(lsqPillVitamin); break;
+        case ptCure:      Led.StartSequence(lsqPillCure); break;
+        case ptPanacea:   Led.StartSequence(lsqPillPanacea); break;
+        case ptEnergetic: Led.StartSequence(lsqPillEnergetic); break;
+        case ptMaster:    Led.StartSequence(lsqPillMaster); break;
+        default:
+            ShowPillBad();  // Unknown pill
+            return;
+            break;
+    } // switch
+    Beeper.StartSequence(bsqBeepPillOk);
+}
+void App_t::ShowPillBad() {
+    Beeper.StartSequence(bsqBeepPillBad);
+    Led.StartSequence(lsqPillBad);
 }
 
 //void ProcessButton(PinSnsState_t *PState, uint32_t Len) {

@@ -21,9 +21,13 @@ private:
     thread_t *PThread;
     DeviceType_t DevType;
     // Master device
-    PillType_t PillTypeToWrite = ptVitamin;
+    bool BtnWasHi = false;
+    PillType_t MasterMode = ptVitamin;
     void OnPillConnMaster();
     void OnPillDisconnMaster();
+    // Common
+    void ShowPillOk();
+    void ShowPillBad();
 public:
     // Eternal methods
     void InitThread() { PThread = chThdGetSelfX(); }

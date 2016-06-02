@@ -15,21 +15,9 @@ enum PillType_t {
     ptPanacea = 103,
     ptEnergetic = 104,
     ptMaster = 105,
+    ptTest = 106
 };
-#define PILL_TYPE_CNT   5
-
-//struct PillColor_t {
-//    PillType_t Type;
-//    Color_t Color;
-//};
-//
-//const PillColor_t PillColor[PILL_TYPE_CNT] = {
-//        { ptVitamin, clGreen },
-//        { ptCure, clYellow },
-//        { ptPanacea, clWhite },
-//        { ptEnergetic, clBlue },
-//        { ptMaster, clRed }
-//};
+#define PILL_TYPE_CNT   6
 
 __unused
 static const Color_t GetPillColor(PillType_t PillType) {
@@ -38,8 +26,9 @@ static const Color_t GetPillColor(PillType_t PillType) {
         case ptVitamin:   return clGreen; break;
         case ptCure:      return clYellow; break;
         case ptPanacea:   return clWhite; break;
-        case ptEnergetic: return clBlue; break;
+        case ptEnergetic: return clMagenta; break;
         case ptMaster:    return clRed; break;
+        case ptTest:      return clBlack; break;
     }
     return clBlack;
 }
