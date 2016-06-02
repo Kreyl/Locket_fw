@@ -20,7 +20,7 @@ Maybe, to calm Eclipse, it will be required to write extra quote in the end: "\"
 */
 
 // Lib version
-#define KL_LIB_VERSION      "20160524_0001"
+#define KL_LIB_VERSION      "20160602_2000"
 
 #if defined STM32L1XX
 #include "stm32l1xx.h"
@@ -165,6 +165,27 @@ void __attribute__ ((weak)) _init(void)  {}
 }
 #endif
 
+#if 1 // ========================== Uniq ID ====================================
+#if defined STM32L1XX
+#if STM32L1XX_PROD_CAT == 1 || STM32L1XX_PROD_CAT == 2
+#define UNIQ_ID_BASE    0x1FF80050
+#else
+#define UNIQ_ID_BASE    0x1FF800D0
+#endif
+static inline uint32_t GetUniqID1() {
+    return *((uint32_t*)(UNIQ_ID_BASE + 0x00));
+}
+static inline uint32_t GetUniqID2() {
+    return *((uint32_t*)(UNIQ_ID_BASE + 0x04));
+}
+static inline uint32_t GetUniqID3() {
+    return *((uint32_t*)(UNIQ_ID_BASE + 0x14));
+}
+#endif
+
+
+#endif
+
 #if 1 // ======================= Virtual Timer =================================
 #define TIMER_KL    TRUE
 /*
@@ -186,15 +207,27 @@ private:
     eventmask_t EvtMsk;
     TmrKLType_t TmrType;
 public:
-    // Thread, systime Period, EvtMsk, {tvtOneShot, tvtPeriodic}
     void InitAndStart(thread_t *APThread) {
         PThread = APThread;
         Start();
     }
-    // TmrReset.Init(PThread, MS2ST(RESET_INTERVAL), EVTMSK_RESET, tktOneShot);
+    void InitAndStart() {
+        PThread = chThdGetSelfX();
+        Start();
+    }
+
     void Init(thread_t *APThread) { PThread = APThread; }
+    void Init() { PThread = chThdGetSelfX(); }
+
     void Start() {
         chSysLock();
+        StartI();
+        chSysUnlock();
+    }
+    void Start(systime_t NewPeriod) {
+        chSysLock();
+        chVTResetI(&Tmr);
+        Period = NewPeriod;
         StartI();
         chSysUnlock();
     }
@@ -216,6 +249,9 @@ public:
     }
     TmrKL_t(systime_t APeriod, eventmask_t AEvtMsk, TmrKLType_t AType) :
         PThread(nullptr), Period(APeriod), EvtMsk(AEvtMsk), TmrType(AType) {}
+    // Dummy period is set
+    TmrKL_t(eventmask_t AEvtMsk, TmrKLType_t AType) :
+            PThread(nullptr), Period(S2ST(9)), EvtMsk(AEvtMsk), TmrType(AType) {}
 };
 #endif
 
@@ -223,6 +259,7 @@ public:
 static inline int Random(int LowInclusive, int HighInclusive) {
     return (rand() % (HighInclusive + 1 - LowInclusive)) + LowInclusive;
 }
+static inline void RandomSeed(unsigned int Seed) { srand(Seed); }
 #endif
 
 #if 0 // =========================== Time ======================================

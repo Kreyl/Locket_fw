@@ -17,9 +17,11 @@
 #include "pill_mgr.h"
 
 App_t App;
-static TmrKL_t TmrCheckPill {MS2ST(504), EVT_PILL_CHECK, tktPeriodic};
+
+static TmrKL_t TmrCheckPill {MS2ST(540), EVT_PILL_CHECK, tktPeriodic};
 static TmrKL_t TmrCheckBtn  {MS2ST(54),  EVT_BUTTONS, tktPeriodic};
-//static TmrKL_t TmrOff      {MS2ST(254), EVT_OFF, tktOneShot};
+static TmrKL_t TmrEverySecond {MS2ST(100), EVT_EVERY_SECOND, tktPeriodic};
+
 static PinInput_t Btn {BTN_PIN};
 
 //Vibro_t Vibro {VIBRO_PIN};
@@ -40,11 +42,13 @@ int main(void) {
     // ==== Init hardware ====
     Uart.Init(115200, UART_GPIO, UART_TX_PIN, UART_GPIO, UART_RX_PIN);
     Uart.Printf("\r%S %S\r", APP_NAME, BUILD_TIME);
+//    Uart.Printf("ID: %X %X %X\r", GetUniqID1(), GetUniqID2(), GetUniqID3());
 //    if(Sleep::WasInStandby()) {
 //        Uart.Printf("WasStandby\r");
 //        Sleep::ClearStandbyFlag();
 //    }
     Clk.PrintFreqs();
+    RandomSeed(GetUniqID3());   // Init random algorythm with uniq ID
 
     i2c1.Init();
     PillMgr.Init();
@@ -60,11 +64,12 @@ int main(void) {
     Beeper.StartSequence(bsqBeepBeep);
 
     Btn.Init();
-    TmrCheckBtn.InitAndStart(chThdGetSelfX());
-//    TmrOff.InitAndStart(chThdGetSelfX());
-    TmrCheckPill.InitAndStart(chThdGetSelfX());
 
-//    PinSensors.Init();
+    // Timers
+    TmrCheckBtn.InitAndStart();
+    TmrCheckPill.InitAndStart();
+    TmrEverySecond.InitAndStart();
+
 //    if(Radio.Init() != OK) {
 //        Led.StartSequence(lsqFailure);
 //        chThdSleepMilliseconds(2700);
@@ -78,9 +83,13 @@ int main(void) {
 
 __noreturn
 void App_t::ITask() {
-    DevType = devtMaster;
+    DevType = devtPlayer;
+    SetCondition(cndGreen);
+//    DevType = devtMaster;
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
+        if(Evt & EVT_EVERY_SECOND) CndTmr.OnNewSecond();
+
 #if 1 // ==== Button ====
         if(Evt & EVT_BUTTONS) {
             if(DevType == devtMaster) {
@@ -104,10 +113,11 @@ void App_t::ITask() {
             PillMgr.Check();
             switch(PillMgr.State) {
                 case pillJustConnected:
-                    Uart.Printf("Pill Conn\r");
+                    Uart.Printf("Pill: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
                     if(DevType == devtMaster) OnPillConnMaster();
+                    else OnPillConnPlayer();
                     break;
-                case pillJustDisconnected: Uart.Printf("Pill Discon\r"); break;
+//                case pillJustDisconnected: Uart.Printf("Pill Discon\r"); break;
                 default: break;
             }
         }
@@ -140,7 +150,6 @@ void App_t::ITask() {
 }
 
 void App_t::OnPillConnMaster() {
-    Uart.Printf("PillBefore: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
     if(MasterMode == ptTest) {
         if(PillMgr.Pill.IsOk()) {
             if(PillMgr.Pill.Type == ptMaster) ShowPillOk();
@@ -172,6 +181,121 @@ void App_t::OnPillConnMaster() {
     } // if not test
 }
 
+#if 1 // ============================ Player ===================================
+void App_t::OnNextCondition() {
+    Uart.Printf("%S\r", __FUNCTION__);
+    switch(Condition) {
+        case cndBlue:   SetCondition(cndGreen);  break;
+        case cndGreen:  SetCondition(cndYellow); break;
+        case cndYellow: SetCondition(cndRed);    break;
+        case cndRed:    SetCondition(cndVBRed);  break;
+        case cndVBRed:  SetCondition(cndViolet); break;
+        default: break;
+    }
+}
+
+void App_t::DoVibroBlink() {
+    Uart.Printf("%S\r", __FUNCTION__);
+    switch(Condition) {
+        case cndGreen:
+            Led.StartSequence(lsqVibroBlinkGreen);
+            break;
+        case cndYellow:
+            Led.StartSequence(lsqVibroBlinkYellow);
+            break;
+        case cndRed:
+            Led.StartSequence(lsqVibroBlinkRed);
+            break;
+
+        default: break;
+    }
+}
+
+void App_t::StopVibroBlink() {
+    Uart.Printf("%S\r", __FUNCTION__);
+//    Led.Stop();
+    switch(Condition) {
+        case cndGreen:  Led.StartSequence(lsqCondGreen); break;
+        case cndYellow: Led.StartSequence(lsqCondYellow); break;
+        case cndRed:    Led.StartSequence(lsqCondRed); break;
+        default: break;
+    }
+}
+
+void App_t::SetCondition(Condition_t NewCondition) {
+    Condition = NewCondition;
+    int Duration, VBTime1, VBTime2;
+    switch(Condition) {
+        case cndBlue:
+            Beeper.StartSequence(bsqBeepBeep);
+            Led.StartSequence(lsqCondBlue);
+            Uart.Printf("Blue\r");
+            CndTmr.Init(DURATION_BLUE_S, -1, -1);
+            break;
+
+        case cndGreen:
+            Beeper.StartSequence(bsqBeepBeep);
+            Led.StartSequence(lsqCondGreen);
+            // Calculate durations
+            RandomSeed(chVTGetSystemTime());    // Reinit random generator
+            Duration = Random(DURATION_GYR_MIN_S, DURATION_GYR_MAX_S);
+            VBTime1 = Random(60, Duration-60);
+            Uart.Printf("Green: d=%u; vb=%u\r", Duration, VBTime1);
+            CndTmr.Init(Duration, VBTime1, -1);
+            break;
+
+        case cndYellow:
+            Beeper.StartSequence(bsqBeepBeep);
+            Led.StartSequence(lsqCondYellow);
+            // Calculate durations
+            Duration = Random(DURATION_GYR_MIN_S, DURATION_GYR_MAX_S);
+            VBTime1 = Random(60, Duration-(2*60));
+            VBTime2 = Random(VBTime1+60, Duration-60);
+            Uart.Printf("Y: d=%u; vb1=%u; vb2=%u\r", Duration, VBTime1, VBTime2);
+            // Start timers
+            CndTmr.Init(Duration, VBTime1, VBTime2);
+            break;
+
+        case cndRed:
+            Beeper.StartSequence(bsqBeepBeep);
+            Led.StartSequence(lsqCondRed);
+            // Calculate durations
+            Duration = Random(DURATION_GYR_MIN_S, DURATION_GYR_MAX_S);
+            VBTime1 = Random(60, Duration-(2*60));
+            VBTime2 = Random(VBTime1+60, Duration-60);
+            Uart.Printf("R: d=%u; vb1=%u; vb2=%u\r", Duration, VBTime1, VBTime2);
+            // Start timers
+            CndTmr.Init(Duration, VBTime1, VBTime2);
+            break;
+
+        case cndVBRed:
+            Beeper.StartSequence(bsqBeepBeep);
+            Led.StartSequence(lsqCondVBRed);
+            Uart.Printf("VBRed\r");
+            CndTmr.Init(DURATION_VBRED_S, -1, -1);
+            break;
+
+        case cndViolet:
+            Beeper.StartSequence(bsqBeepBeep);
+            Led.StartSequence(lsqCondViolet);
+            Uart.Printf("Violet\r");
+            CndTmr.Init(-1, -1, -1);
+            break;
+
+        case cndWhite:
+            Beeper.StartSequence(bsqBeepBeep);
+            Led.StartSequence(lsqCondWhite);
+            Uart.Printf("White\r");
+            CndTmr.Init(-1, -1, -1);
+            break;
+    } // switch
+}
+
+void App_t::OnPillConnPlayer() {
+
+}
+#endif
+
 void App_t::ShowPillOk() {
     switch(PillMgr.Pill.Type) {
         case ptVitamin:   Led.StartSequence(lsqPillVitamin); break;
@@ -191,19 +315,43 @@ void App_t::ShowPillBad() {
     Led.StartSequence(lsqPillBad);
 }
 
-//void ProcessButton(PinSnsState_t *PState, uint32_t Len) {
-//    if(*PState == pssRising) {
-//        Led.StartSequence(lsqOn);   // LED on
-//        Vibro.Stop();
-//        App.MustTransmit = true;
-//        Uart.Printf("\rTx on");
-//        App.TmrTxOff.Stop();    // do not stop tx after repeated btn press
-//    }
-//    else if(*PState == pssFalling) {
-//        Led.StartSequence(lsqOff);
-//        App.TmrTxOff.Start();
-//    }
-//}
+// Low resolution timer: 16-bit hardware timer allows only 6.5s delays
+void CondTimer_t::OnNewSecond() {
+    // Duration
+    if(Duration > 0) {
+        Duration--;
+        if(Duration == 0) App.OnNextCondition();
+    }
+    // VibroBlink
+    if(VBTime1 > 0) {
+        VBTime1--;
+        if(VBTime1 == 0) {
+            VBTime1 = -1;   // Disable future changes
+            // Start vibration and blinking
+            VBDuration = DURATION_BLINK_VIBRO_S;
+            App.DoVibroBlink();
+        }
+    }
+    if(VBTime2 > 0) {
+        VBTime2--;
+        if(VBTime2 == 0) {
+            VBTime2 = -1;   // Disable future changes
+            // Start vibration and blinking
+            VBDuration = DURATION_BLINK_VIBRO_S;
+            App.DoVibroBlink();
+        }
+    }
+    // VibroBlink
+    if(VBDuration > 0) {
+        VBDuration--;
+        if(VBDuration == 0) {
+            VBDuration = -1;
+            // Stop vibration and blinking
+            App.StopVibroBlink();
+        }
+    }
+    Uart.Printf("D: %d; VBT1: %d; VBT2: %d; VBD: %d\r", Duration, VBTime1, VBTime2, VBDuration);
+}
 
 #if UART_RX_ENABLED // ======================= Command processing ============================
 void App_t::OnCmd(Shell_t *PShell) {
@@ -213,6 +361,25 @@ void App_t::OnCmd(Shell_t *PShell) {
     // Handle command
     if(PCmd->NameIs("Ping")) {
         PShell->Ack(OK);
+    }
+
+    else if(PCmd->NameIs("B")) {
+        SetCondition(cndBlue);
+    }
+    else if(PCmd->NameIs("G")) {
+        SetCondition(cndGreen);
+    }
+    else if(PCmd->NameIs("Y")) {
+        SetCondition(cndYellow);
+    }
+    else if(PCmd->NameIs("R")) {
+        SetCondition(cndRed);
+    }
+    else if(PCmd->NameIs("VBR")) {
+        SetCondition(cndVBRed);
+    }
+    else if(PCmd->NameIs("V")) {
+        SetCondition(cndViolet);
     }
 
     else PShell->Ack(CMD_UNKNOWN);

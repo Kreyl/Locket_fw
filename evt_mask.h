@@ -14,5 +14,11 @@
 #define EVT_PILL_CHECK      EVENT_MASK(4)
 #define EVT_LED_SEQ_END     EVENT_MASK(5)
 
-#define EVT_SAMPLING        EVENT_MASK(14)
-#define EVT_ADC_DONE        EVENT_MASK(15)
+// Player
+#define EVT_CHANGE_COND     EVENT_MASK(6)
+#define EVT_VIBRO_BLINK     EVENT_MASK(7)
+
+#define EVT_SAMPLING        EVENT_MASK(24)
+#define EVT_ADC_DONE        EVENT_MASK(25)
+
+#define EVT_EVERY_SECOND    EVENT_MASK(31)

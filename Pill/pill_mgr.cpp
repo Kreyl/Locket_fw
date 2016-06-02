@@ -69,7 +69,7 @@ uint8_t PillMgr_t::Write(uint8_t MemAddr, void *Ptr, uint32_t Length) {
         // Try to write
         uint32_t Retries = 0;
         while(true) {
-            Uart.Printf("Wr: try %u\r", Retries);
+//            Uart.Printf("Wr: try %u\r", Retries);
             if(i2c->WriteWrite(PILL_I2C_ADDR, &MemAddr, 1, p8, ToWriteCnt) == OK) {
                 Length -= ToWriteCnt;
                 p8 += ToWriteCnt;
@@ -83,15 +83,15 @@ uint8_t PillMgr_t::Write(uint8_t MemAddr, void *Ptr, uint32_t Length) {
                     Standby();
                     return TIMEOUT;
                 }
-                chThdSleepMilliseconds(3);   // Allow memory to complete writing
+                chThdSleepMilliseconds(4);   // Allow memory to complete writing
             }
         } // while trying
     }
     // Wait completion
     uint32_t Retries = 0;
     do {
-        Uart.Printf("Wait: try %u\r", Retries);
-        chThdSleepMilliseconds(3);
+//        Uart.Printf("Wait: try %u\r", Retries);
+        chThdSleepMilliseconds(1);
         Retries++;
         if(Retries > 4) {
             Uart.Printf("Timeout\r");
