@@ -60,6 +60,15 @@ struct Color_t {
 #define clCyan      ((Color_t){0, 255, 255})
 #define clWhite     ((Color_t){255, 255, 255})
 
+#define CL_DARK_V       63
+#define clDarkRed       ((Color_t){CL_DARK_V, 0,         0})
+#define clDarkGreen     ((Color_t){0,         CL_DARK_V, 0})
+#define clDarkBlue      ((Color_t){0,         0,         CL_DARK_V})
+#define clDarkYellow    ((Color_t){CL_DARK_V, CL_DARK_V, 0})
+#define clDarkMagenta   ((Color_t){CL_DARK_V, 0,         CL_DARK_V})
+#define clDarkCyan      ((Color_t){0,         CL_DARK_V, CL_DARK_V})
+#define clDarkWhite     ((Color_t){CL_DARK_V, CL_DARK_V, CL_DARK_V})
+
 #if 0 // ============================ Color table ==============================
 const Color_t ColorTable[] = {
         {255,0,0},

@@ -23,11 +23,11 @@ __unused
 static const Color_t GetPillColor(PillType_t PillType) {
 //    uint32_t i = (uint32_t)PillType - 101;
     switch(PillType) {
-        case ptVitamin:   return clGreen; break;
-        case ptCure:      return clYellow; break;
-        case ptPanacea:   return clWhite; break;
-        case ptEnergetic: return clMagenta; break;
-        case ptMaster:    return clRed; break;
+        case ptVitamin:   return clDarkGreen; break;
+        case ptCure:      return clDarkYellow; break;
+        case ptPanacea:   return clDarkWhite; break;
+        case ptEnergetic: return clDarkMagenta; break;
+        case ptMaster:    return clDarkRed; break;
         case ptTest:      return clBlack; break;
     }
     return clBlack;
