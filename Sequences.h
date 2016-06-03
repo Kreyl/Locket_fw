@@ -443,7 +443,7 @@ const BeepChunk_t bsqBeepPillBad[] = {
 #endif // ext
 #endif // beeper
 
-#if 0 // ============================== Vibro ==================================
+#if 1 // ============================== Vibro ==================================
 #define VIBRO_VOLUME    27  // 1 to 22
 
 #define VIBRO_SHORT_MS          99

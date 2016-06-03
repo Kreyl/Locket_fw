@@ -25,7 +25,7 @@ static TmrKL_t TmrEverySecond {MS2ST(100), EVT_EVERY_SECOND, tktPeriodic};
 
 static const PinInput_t Btn (BTN_PIN);
 
-//Vibro_t Vibro {VIBRO_PIN};
+Vibro_t Vibro {VIBRO_PIN};
 Beeper_t Beeper {BEEPER_PIN};
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
@@ -58,8 +58,9 @@ int main(void) {
     Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
     Led.StartSequence(lsqStart);
     //Led.SetColor(clWhite);
-//    Vibro.Init();
-//    Vibro.StartSequence(vsqBrr);
+
+    Vibro.Init();
+    Vibro.StartSequence(vsqBrr);
 
     Beeper.Init();
     Beeper.StartSequence(bsqBeepBeep);
