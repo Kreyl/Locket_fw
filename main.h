@@ -14,7 +14,7 @@
 #include "board.h"
 #include "pill.h"
 
-enum DeviceType_t {devtPlayer, devtMaster};
+enum DeviceType_t {devUnknown, devtPlayer, devtMaster};
 
 enum Condition_t {
     cndBlue,
@@ -49,7 +49,7 @@ public:
 class App_t {
 private:
     thread_t *PThread;
-    DeviceType_t DevType = devtPlayer;
+    DeviceType_t DevType = devUnknown;
     // Master device
     bool BtnWasHi = false;
     PillType_t MasterMode = ptVitamin;

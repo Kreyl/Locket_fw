@@ -454,6 +454,7 @@ const BaseChunk_t vsqBrr[] = {
         {csSetup, 0},
         {csEnd}
 };
+
 const BaseChunk_t vsqBrrBrr[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, VIBRO_SHORT_MS},
@@ -465,6 +466,24 @@ const BaseChunk_t vsqBrrBrr[] = {
         {csEnd}
 };
 
+const BaseChunk_t vsqVibroBlink[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, SEQ_VB_DELAY},
+        {csSetup, 0},
+        {csWait, SEQ_VB_DELAY},
+        {csGoto, 0},
+};
+
+const BaseChunk_t vsqVBRed[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, SEQ_VBRED_DELAY},
+        {csSetup, 0},
+        {csWait, SEQ_VBRED_DELAY},
+        {csGoto, 0},
+};
+
+
+/*
 const BaseChunk_t vsqError[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, 999},
@@ -505,4 +524,5 @@ const BaseChunk_t vsqMany[] = {
         {csWait, 1008},
         {csGoto, 0}
 };
+*/
 #endif

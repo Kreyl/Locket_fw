@@ -15,6 +15,7 @@
 #include "Sequences.h"
 #include "radio_lvl1.h"
 #include "pill_mgr.h"
+#include "kl_adc.h"
 
 App_t App;
 static const DipSwitch_t DipSwitch {DIP_SW1, DIP_SW2, DIP_SW3, DIP_SW4, DIP_SW5, DIP_SW6};
@@ -68,6 +69,7 @@ int main(void) {
 
     Btn.Init();
     DipSwitch.Init();
+    Adc.Init();
 
     // Timers
     TmrCheckBtn.InitAndStart();
@@ -95,7 +97,7 @@ void App_t::ITask() {
             uint8_t Dip = DipSwitch.GetValue();
 //            Uart.Printf("Dip: %X\r", Dip);
             if(Dip == 1) {
-                if(DevType == devtPlayer) {
+                if(DevType != devtMaster) {
                     Uart.Printf("Master\r");
                     DevType = devtMaster;
                     Led.Stop();
@@ -103,10 +105,10 @@ void App_t::ITask() {
                     Led.SetColor(GetPillColor(MasterMode));
                 }
             }
-            else if(DevType == devtMaster) {
+            else if(DevType != devtPlayer) {
                 Uart.Printf("Player\r");
                 DevType = devtPlayer;
-                SetCondition(cndGreen);
+                SetCondition(cndViolet);
             }
 
             if(DevType == devtPlayer) CndTmr.OnNewSecond();
@@ -127,6 +129,34 @@ void App_t::ITask() {
                     BtnWasHi = false;
                 }
             }
+            else {
+                // Measure battery
+                if(Btn.IsHi() and !BtnWasHi) {
+                    BtnWasHi = true;
+                    Clk.EnableHSI();    // Enable HSI, as ADC clocks from HSI
+                    Adc.EnableVref();
+                    Led.Stop();
+                    Beeper.Stop();
+                    Vibro.Stop();
+                    chThdSleepMilliseconds(3);
+                }
+                if(Btn.IsHi()) {
+                    Adc.StartMeasurement();
+                    chEvtWaitAny(EVT_ADC_DONE);
+                    uint32_t VRefAdc = Adc.GetResult(ADC_VREFINT_CHNL);
+                    uint32_t VDAmv = Adc.GetVDAmV(VRefAdc);
+                    Uart.Printf("ADC: %u %u\r", VRefAdc, VDAmv);
+                    if(VDAmv < 1998) Led.SetColor({9, 0, 0});
+                    else if(VDAmv < 2520) Led.SetColor({9, 9, 0});
+                    else Led.SetColor({0, 9, 0});
+                }
+                if(!Btn.IsHi() and BtnWasHi) {
+                    BtnWasHi = false;
+                    Clk.DisableHSI();
+                    Adc.DisableVref();
+                    SetupConditionIndication();
+                }
+            } // if player
         } // EVTMSK_BTN_PRESS
 #endif
 
@@ -281,23 +311,18 @@ void App_t::OnPillConnPlayer() {
 
 void App_t::DoVibroBlink() {
     Uart.Printf("%S\r", __FUNCTION__);
+    Vibro.StartSequence(vsqVibroBlink);
     switch(Condition) {
-        case cndGreen:
-            Led.StartSequence(lsqVibroBlinkGreen);
-            break;
-        case cndYellow:
-            Led.StartSequence(lsqVibroBlinkYellow);
-            break;
-        case cndRed:
-            Led.StartSequence(lsqVibroBlinkRed);
-            break;
+        case cndGreen:  Led.StartSequence(lsqVibroBlinkGreen);  break;
+        case cndYellow: Led.StartSequence(lsqVibroBlinkYellow); break;
+        case cndRed:    Led.StartSequence(lsqVibroBlinkRed);    break;
         default: break;
     }
 }
 
 void App_t::StopVibroBlink() {
     Uart.Printf("%S\r", __FUNCTION__);
-//    Led.Stop();
+    Vibro.Stop();
     switch(Condition) {
         case cndGreen:  Led.StartSequence(lsqCondGreen); break;
         case cndYellow: Led.StartSequence(lsqCondYellow); break;
@@ -309,8 +334,9 @@ void App_t::StopVibroBlink() {
 void App_t::SetCondition(Condition_t NewCondition) {
     Condition = NewCondition;
     int Duration, VBTime1, VBTime2;
-    SetupConditionIndication();
     Beeper.StartSequence(bsqBeepBeep);
+    Vibro.StartSequence(vsqBrrBrr);
+    SetupConditionIndication();
     switch(Condition) {
         case cndBlue:
             Uart.Printf("Blue\r");
@@ -367,7 +393,10 @@ void App_t::SetupConditionIndication() {
         case cndGreen:  Led.StartSequence(lsqCondGreen);  break;
         case cndYellow: Led.StartSequence(lsqCondYellow); break;
         case cndRed:    Led.StartSequence(lsqCondRed);    break;
-        case cndVBRed:  Led.StartSequence(lsqCondVBRed);  break;
+        case cndVBRed:
+            Led.StartSequence(lsqCondVBRed);
+            Vibro.StartSequence(vsqVBRed);
+            break;
         case cndViolet: Led.StartSequence(lsqCondViolet); break;
         case cndWhite:  Led.StartSequence(lsqCondWhite); break;
     }

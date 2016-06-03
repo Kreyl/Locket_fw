@@ -17,12 +17,12 @@
 #define STM32L151xB
 
 // Freq of external crystal if any. Leave it here even if not used.
-#define CRYSTAL_FREQ_HZ 12000000
+#define CRYSTAL_FREQ_HZ     12000000
 
-#define SYS_TIM_CLK     (Clk.APB1FreqHz)
-#define I2C1_ENABLED    TRUE
+#define SYS_TIM_CLK         (Clk.APB1FreqHz)
+#define I2C1_ENABLED        TRUE
 #define I2C_USE_SEMAPHORE   TRUE
-#define ADC_REQUIRED    FALSE
+#define ADC_REQUIRED        TRUE
 
 #if 1 // ========================== GPIO =======================================
 // PortMinTim_t: GPIO, Pin, Tim, TimChnl, invInverted, omPushPull, TopValue
@@ -91,19 +91,16 @@
 #define ADC_CLK_DIVIDER		adcDiv2
 
 // ADC channels
-#define BAT_CHNL 	        1
+//#define BAT_CHNL 	        1
 
-#define ADC_VREFINT_CHNL    17  // All 4xx and F072 devices. Do not change.
-#define ADC_CHANNELS        { BAT_CHNL, ADC_VREFINT_CHNL }
-#define ADC_CHANNEL_CNT     2   // Do not use countof(AdcChannels) as preprocessor does not know what is countof => cannot check
-#define ADC_SAMPLE_TIME     ast55d5Cycles
+#define ADC_VREFINT_CHNL    17  // All 4xx, F072 and L151 devices. Do not change.
+#define ADC_CHANNELS        { ADC_VREFINT_CHNL }
+#define ADC_CHANNEL_CNT     1   // Do not use countof(AdcChannels) as preprocessor does not know what is countof => cannot check
+#define ADC_SAMPLE_TIME     ast96Cycles
 #define ADC_SAMPLE_CNT      8   // How many times to measure every channel
 
-#define ADC_MAX_SEQ_LEN     16  // 1...16; Const, see ref man
 #define ADC_SEQ_LEN         (ADC_SAMPLE_CNT * ADC_CHANNEL_CNT)
-#if (ADC_SEQ_LEN > ADC_MAX_SEQ_LEN) || (ADC_SEQ_LEN == 0)
-#error "Wrong ADC channel count and sample count"
-#endif
+
 #endif
 
 #if 1 // =========================== DMA =======================================
@@ -119,11 +116,8 @@
 #endif
 
 #if ADC_REQUIRED
-/* DMA request mapped on this DMA channel only if the corresponding remapping bit is cleared in the SYSCFG_CFGR1
- * register. For more details, please refer to Section10.1.1: SYSCFG configuration register 1 (SYSCFG_CFGR1) on
- * page173 */
 #define ADC_DMA         STM32_DMA1_STREAM1
-#define ADC_DMA_MODE    STM32_DMA_CR_CHSEL(0) |   /* DMA2 Stream4 Channel0 */ \
+#define ADC_DMA_MODE    STM32_DMA_CR_CHSEL(0) |   /* dummy */ \
                         DMA_PRIORITY_LOW | \
                         STM32_DMA_CR_MSIZE_HWORD | \
                         STM32_DMA_CR_PSIZE_HWORD | \

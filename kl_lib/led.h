@@ -120,7 +120,10 @@ class LedRGBParent_t : public BaseSequencer_t<LedRGBChunk_t> {
 protected:
     const PinOutputPWM_t  R, G, B;
     Color_t ICurrColor;
-    void ISwitchOff() { SetColor(clBlack); }
+    void ISwitchOff() {
+        SetColor(clBlack);
+        ICurrColor = clBlack;
+    }
     SequencerLoopTask_t ISetup() {
         if(ICurrColor != IPCurrentChunk->Color) {
             if(IPCurrentChunk->Value == 0) {     // If smooth time is zero,

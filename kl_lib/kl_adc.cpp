@@ -104,7 +104,7 @@ uint32_t Adc_t::Adc2mV(uint32_t AdcChValue, uint32_t VrefValue) {
 
 #endif // stm32f0
 
-#if defined STM32F4XX
+#if defined STM32F4XX || defined STM32L1XX
 // Wrapper for IRQ
 extern "C" {
 void AdcTxIrq(void *p, uint32_t flags) {
@@ -112,7 +112,7 @@ void AdcTxIrq(void *p, uint32_t flags) {
     Adc.Disable();
     // Signal event
     chSysLockFromISR();
-    App.SignalEvtI(EVTMSK_ADC_DONE);
+    App.SignalEvtI(EVT_ADC_DONE);
     chSysUnlockFromISR();
 }
 } // extern C
@@ -139,6 +139,7 @@ void Adc_t::SetSequenceLength(uint32_t ALen) {
 }
 void Adc_t::SetChannelSampleTime(uint32_t AChnl, AdcSampleTime_t ASampleTime) {
     uint32_t Offset;
+#if defined STM32F4XX
     if(AChnl <= 9) {
         Offset = AChnl * 3;
         ADC1->SMPR2 &= ~((uint32_t)0b111 << Offset);    // Clear bits
@@ -149,9 +150,27 @@ void Adc_t::SetChannelSampleTime(uint32_t AChnl, AdcSampleTime_t ASampleTime) {
         ADC1->SMPR1 &= ~((uint32_t)0b111 << Offset);    // Clear bits
         ADC1->SMPR1 |= (uint32_t)ASampleTime << Offset; // Set new bits
     }
+#elif defined STM32L1XX
+    if(AChnl <= 9) {
+        Offset = AChnl * 3;
+        ADC1->SMPR3 &= ~((uint32_t)0b111 << Offset);    // Clear bits
+        ADC1->SMPR3 |= (uint32_t)ASampleTime << Offset; // Set new bits
+    }
+    else if(AChnl <= 19) {
+        Offset = (AChnl - 10) * 3;
+        ADC1->SMPR2 &= ~((uint32_t)0b111 << Offset);    // Clear bits
+        ADC1->SMPR2 |= (uint32_t)ASampleTime << Offset; // Set new bits
+    }
+    else {
+        Offset = (AChnl - 20) * 3;
+        ADC1->SMPR1 &= ~((uint32_t)0b111 << Offset);    // Clear bits
+        ADC1->SMPR1 |= (uint32_t)ASampleTime << Offset; // Set new bits
+    }
+#endif
 }
 void Adc_t::SetSequenceItem(uint8_t SeqIndx, uint32_t AChnl) {
     uint32_t Offset;
+#if defined STM32F4XX
     if(SeqIndx <= 6) {
         Offset = (SeqIndx - 1) * 5;
         ADC1->SQR3 &= ~(uint32_t)(0b11111 << Offset);
@@ -167,6 +186,33 @@ void Adc_t::SetSequenceItem(uint8_t SeqIndx, uint32_t AChnl) {
         ADC1->SQR1 &= ~(uint32_t)(0b11111 << Offset);
         ADC1->SQR1 |= (uint32_t)(AChnl << Offset);
     }
+#elif defined STM32L1XX
+    if(SeqIndx <= 6) {
+        Offset = (SeqIndx - 1) * 5;
+        ADC1->SQR5 &= ~(uint32_t)(0b11111 << Offset);
+        ADC1->SQR5 |= (uint32_t)(AChnl << Offset);
+    }
+    else if(SeqIndx <= 12) {
+        Offset = (SeqIndx - 7) * 5;
+        ADC1->SQR4 &= ~(uint32_t)(0b11111 << Offset);
+        ADC1->SQR4 |= (uint32_t)(AChnl << Offset);
+    }
+    else if(SeqIndx <= 18) {
+        Offset = (SeqIndx - 13) * 5;
+        ADC1->SQR3 &= ~(uint32_t)(0b11111 << Offset);
+        ADC1->SQR3 |= (uint32_t)(AChnl << Offset);
+    }
+    else if(SeqIndx <= 24) {
+        Offset = (SeqIndx - 19) * 5;
+        ADC1->SQR2 &= ~(uint32_t)(0b11111 << Offset);
+        ADC1->SQR2 |= (uint32_t)(AChnl << Offset);
+    }
+    else if(SeqIndx <= 28) {    // 28 in high and medium density, 27 in others
+        Offset = (SeqIndx - 25) * 5;
+        ADC1->SQR1 &= ~(uint32_t)(0b11111 << Offset);
+        ADC1->SQR1 |= (uint32_t)(AChnl << Offset);
+    }
+#endif
 }
 
 void Adc_t::StartMeasurement() {
@@ -200,6 +246,6 @@ uint32_t Adc_t::GetResult(uint8_t AChannel) {
     for(uint32_t i = Start; i < Stop; i++) Rslt += IBuf[i];
     return Rslt / ADC_SAMPLE_CNT;
 }
-#endif // f4xx
+#endif // f4xx & L151
 
 #endif  // ADC_REQUIRED
