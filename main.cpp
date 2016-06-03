@@ -93,10 +93,10 @@ void App_t::ITask() {
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
         if(Evt & EVT_EVERY_SECOND) {
-            // Switch role if needed
             uint8_t Dip = DipSwitch.GetValue();
 //            Uart.Printf("Dip: %X\r", Dip);
-            if(Dip == 1) {
+            // Switch role if needed
+            if(Dip & 0x01) {
                 if(DevType != devtMaster) {
                     Uart.Printf("Master\r");
                     DevType = devtMaster;
@@ -109,6 +109,20 @@ void App_t::ITask() {
                 Uart.Printf("Player\r");
                 DevType = devtPlayer;
                 SetCondition(cndViolet);
+            }
+
+            // Switch time speed
+            if(Dip & 0x20) {
+                if(OneSecondDuration_ms != 100) {
+                    OneSecondDuration_ms = 100;
+                    Uart.Printf("OneSecond = %u ms\r", OneSecondDuration_ms);
+                    TmrEverySecond.Start(MS2ST(OneSecondDuration_ms));
+                }
+            }
+            else if(OneSecondDuration_ms != 1000) {
+                OneSecondDuration_ms = 1000;
+                Uart.Printf("OneSecond = %u ms\r", OneSecondDuration_ms);
+                TmrEverySecond.Start(MS2ST(OneSecondDuration_ms));
             }
 
             if(DevType == devtPlayer) CndTmr.OnNewSecond();
@@ -145,7 +159,7 @@ void App_t::ITask() {
                     chEvtWaitAny(EVT_ADC_DONE);
                     uint32_t VRefAdc = Adc.GetResult(ADC_VREFINT_CHNL);
                     uint32_t VDAmv = Adc.GetVDAmV(VRefAdc);
-                    Uart.Printf("ADC: %u %u\r", VRefAdc, VDAmv);
+//                    Uart.Printf("ADC: %u %u\r", VRefAdc, VDAmv);
                     if(VDAmv < 1998) Led.SetColor({9, 0, 0});
                     else if(VDAmv < 2520) Led.SetColor({9, 9, 0});
                     else Led.SetColor({0, 9, 0});

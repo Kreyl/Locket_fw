@@ -55,6 +55,7 @@ private:
     PillType_t MasterMode = ptVitamin;
     void OnPillConnMaster();
     // Player device
+    uint32_t OneSecondDuration_ms = 2007; // dummy value
     bool NeedToRestoreIndication = false;
     CondTimer_t CndTmr;
     Condition_t Condition;
