@@ -49,7 +49,7 @@ public:
 class App_t {
 private:
     thread_t *PThread;
-    DeviceType_t DevType;
+    DeviceType_t DevType = devtPlayer;
     // Master device
     bool BtnWasHi = false;
     PillType_t MasterMode = ptVitamin;
@@ -84,23 +84,35 @@ public:
 };
 
 #define DIP_SW_CNT      6
-//class DipSwitch_t {
-//private:
-//    const PinInput_t Pin[DIP_SW_CNT];
-//public:
-//    DipSwitch_t(PortPinInput_t Pin1, PortPinInput_t Pin2, PortPinInput_t Pin3,
-//            PortPinInput_t Pin4, PortPinInput_t Pin5, PortPinInput_t Pin6) {
-//        Pin[0].PinInput_t(Pin1);
-////        Pin[1] = Pin2;
-////        Pin[2] = Pin3;
-////        Pin[3] = Pin4;
-////        Pin[4] = Pin5;
-////        Pin[5] = Pin6;
-//    }
-//    uint8_t Init() const {
-//        for(int i=0; i<DIP_SW_CNT; i++) Pin[i].Init();
-//    }
-//    uint8_t GetValue() const;
-//};
+class DipSwitch_t {
+private:
+    PinInput_t Pin[DIP_SW_CNT];
+public:
+    DipSwitch_t(PinInput_t Pin1, PinInput_t Pin2, PinInput_t Pin3,
+            PinInput_t Pin4, PinInput_t Pin5, PinInput_t Pin6) {
+        Pin[0] = Pin1;
+        Pin[1] = Pin2;
+        Pin[2] = Pin3;
+        Pin[3] = Pin4;
+        Pin[4] = Pin5;
+        Pin[5] = Pin6;
+    }
+    void Init() const {
+        for(int i=0; i<DIP_SW_CNT; i++) {
+            Pin[i].Init();
+            Pin[i].Standby();
+        }
+    }
+    uint8_t GetValue() const {
+        uint8_t Rslt = 0;
+        for(int i=0; i<DIP_SW_CNT; i++) {
+            Pin[i].Resume();
+            __NOP(); __NOP(); __NOP(); __NOP();
+            if(!Pin[i].IsHi()) Rslt |= (1 << i);
+            Pin[i].Standby();
+        }
+        return Rslt;
+    }
+};
 
 extern App_t App;

@@ -17,13 +17,13 @@
 #include "pill_mgr.h"
 
 App_t App;
-//static const DipSwitch_t DipSwitch {DIP_SW1, DIP_SW2, DIP_SW3, DIP_SW4, DIP_SW5, DIP_SW6};
+static const DipSwitch_t DipSwitch {DIP_SW1, DIP_SW2, DIP_SW3, DIP_SW4, DIP_SW5, DIP_SW6};
 
 static TmrKL_t TmrCheckPill {MS2ST(450), EVT_PILL_CHECK, tktPeriodic};
 static TmrKL_t TmrCheckBtn  {MS2ST(54),  EVT_BUTTONS, tktPeriodic};
 static TmrKL_t TmrEverySecond {MS2ST(100), EVT_EVERY_SECOND, tktPeriodic};
 
-static PinInput_t Btn (BTN_PIN);
+static const PinInput_t Btn (BTN_PIN);
 
 //Vibro_t Vibro {VIBRO_PIN};
 Beeper_t Beeper {BEEPER_PIN};
@@ -66,12 +66,13 @@ int main(void) {
     chThdSleepMilliseconds(702);    // Let it complete the show
 
     Btn.Init();
-//    DipSwitch.Init();
+    DipSwitch.Init();
 
     // Timers
     TmrCheckBtn.InitAndStart();
     TmrCheckPill.InitAndStart();
     TmrEverySecond.InitAndStart();
+    App.SignalEvt(EVT_EVERY_SECOND); // check it now
 
 //    if(Radio.Init() != OK) {
 //        Led.StartSequence(lsqFailure);
@@ -86,12 +87,29 @@ int main(void) {
 
 __noreturn
 void App_t::ITask() {
-//    DevType = devtPlayer;
-//    SetCondition(cndGreen);
-    DevType = devtMaster;
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
-        if(Evt & EVT_EVERY_SECOND) CndTmr.OnNewSecond();
+        if(Evt & EVT_EVERY_SECOND) {
+            // Switch role if needed
+            uint8_t Dip = DipSwitch.GetValue();
+//            Uart.Printf("Dip: %X\r", Dip);
+            if(Dip == 1) {
+                if(DevType == devtPlayer) {
+                    Uart.Printf("Master\r");
+                    DevType = devtMaster;
+                    Led.Stop();
+                    Beeper.Stop();
+                    Led.SetColor(GetPillColor(MasterMode));
+                }
+            }
+            else if(DevType == devtMaster) {
+                Uart.Printf("Player\r");
+                DevType = devtPlayer;
+                SetCondition(cndGreen);
+            }
+
+            if(DevType == devtPlayer) CndTmr.OnNewSecond();
+        }
 
 #if 1 // ==== Button ====
         if(Evt & EVT_BUTTONS) {
@@ -411,30 +429,6 @@ void CondTimer_t::OnNewSecond() {
     }
 //    if(Duration % 10 == 0) Uart.Printf("D: %d; VBT1: %d; VBT2: %d; VBD: %d\r", Duration, VBTime1, VBTime2, VBDuration);
 }
-
-#if 1 // ==== DIP Switch ====
-
-//uint8_t App_t::GetDipSwitch() {
-//    PinSetupIn(DIPSWITCH_GPIO, DIPSWITCH_PIN1, pudPullUp);
-//    PinSetupIn(DIPSWITCH_GPIO, DIPSWITCH_PIN2, pudPullUp);
-//    PinSetupIn(DIPSWITCH_GPIO, DIPSWITCH_PIN3, pudPullUp);
-//    PinSetupIn(DIPSWITCH_GPIO, DIPSWITCH_PIN4, pudPullUp);
-//    uint8_t Rslt = 0;
-//    if(PinIsSet(DIPSWITCH_GPIO, DIPSWITCH_PIN1)) Rslt = 2; // <=> { Rslt=1; Rslt<<=1; }
-//    if(PinIsSet(DIPSWITCH_GPIO, DIPSWITCH_PIN2)) Rslt |= 1;
-//    Rslt <<= 1;
-//    if(PinIsSet(DIPSWITCH_GPIO, DIPSWITCH_PIN3)) Rslt |= 1;
-//    Rslt <<= 1;
-//    if(PinIsSet(DIPSWITCH_GPIO, DIPSWITCH_PIN4)) Rslt |= 1;
-//    Rslt ^= 0x0F;    // Invert switches
-//    PinSetupAnalog(DIPSWITCH_GPIO, DIPSWITCH_PIN1);
-//    PinSetupAnalog(DIPSWITCH_GPIO, DIPSWITCH_PIN2);
-//    PinSetupAnalog(DIPSWITCH_GPIO, DIPSWITCH_PIN3);
-//    PinSetupAnalog(DIPSWITCH_GPIO, DIPSWITCH_PIN4);
-//    return Rslt;
-//}
-#endif
-
 
 #if UART_RX_ENABLED // ======================= Command processing ============================
 void App_t::OnCmd(Shell_t *PShell) {

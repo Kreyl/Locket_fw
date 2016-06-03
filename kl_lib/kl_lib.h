@@ -829,6 +829,8 @@ public:
     void Resume()  const { PGpio->MODER &= ~(0b11 << (PinN*2)); }
     PinInput_t(GPIO_TypeDef *APGpio, uint16_t APinN, PinPullUpDown_t APullUpDown) :
         PGpio(APGpio), PinN(APinN), PullUpDown(APullUpDown) {}
+    PinInput_t() : PGpio(nullptr), PinN(0), PullUpDown(pudNone) {}
+    PinInput_t& operator = (const PinInput_t &Right) { PGpio = Right.PGpio; PinN = Right.PinN; PullUpDown = Right.PullUpDown; return *this; }
 };
 
 // ==== PWM output ====
