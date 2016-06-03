@@ -26,7 +26,7 @@ static const Color_t GetPillColor(PillType_t PillType) {
         case ptVitamin:   return clDarkGreen; break;
         case ptCure:      return clDarkYellow; break;
         case ptPanacea:   return clDarkWhite; break;
-        case ptEnergetic: return clDarkMagenta; break;
+        case ptEnergetic: return clDarkBlue; break;
         case ptMaster:    return clDarkRed; break;
         case ptTest:      return clBlack; break;
     }

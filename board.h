@@ -49,6 +49,14 @@
 #define BEEPER_TOP      22
 #define BEEPER_PIN      { GPIOB, 15, TIM11, 1, invNotInverted, omPushPull, BEEPER_TOP }
 
+// DIP switch
+#define DIP_SW1         { GPIOA, 15, pudPullUp }
+#define DIP_SW2         { GPIOC, 13, pudPullUp }
+#define DIP_SW3         { GPIOC, 14, pudPullUp }
+#define DIP_SW4         { GPIOA, 12, pudPullUp }
+#define DIP_SW5         { GPIOA, 11, pudPullUp }
+#define DIP_SW6         { GPIOA, 8,  pudPullUp }
+
 // I2C
 #if I2C1_ENABLED
 #define I2C1_GPIO       GPIOB

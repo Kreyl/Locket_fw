@@ -430,12 +430,6 @@ struct PortPinOutput_t {
     PinOutMode_t OutputType;
 };
 
-struct PortPinInput_t {
-    GPIO_TypeDef *PGpio;
-    uint16_t Pin;
-    PinPullUpDown_t PullUpDown;
-};
-
 struct PortPinTim_t {
     GPIO_TypeDef *PGpio;
     uint16_t Pin;
@@ -626,37 +620,6 @@ static inline void PinSetupOut(const PortPinOutput_t APin,
     PinSetupOut(APin.PGpio, APin.Pin, APin.OutputType, pudNone, ASpeed);
 }
 
-static inline void PinSetupIn(const PortPinInput_t &Pin) {
-    uint8_t Offset = Pin.Pin*2;
-    // Clock
-    PinClockEnable(Pin.PGpio);
-#if defined STM32F10X_LD_VL
-    uint32_t CnfMode;
-    if(APullUpDown == pudNone) CnfMode = 0b0100;
-    else {
-        CnfMode = 0b1000;
-        if(APullUpDown == pudPullDown) PGpioPort->ODR &= ~((uint32_t)(1<<APinNumber));
-        else PGpioPort->ODR |= (uint32_t)(1<<APinNumber);
-    }
-    if(APinNumber < 8) {
-        uint8_t Offset = APinNumber*4;
-        PGpioPort->CRL &= ~((uint32_t)(0b1111 << Offset));  // Clear both mode and cnf
-        PGpioPort->CRL |= CnfMode << Offset;
-    }
-    else {
-        uint8_t Offset = (APinNumber - 8) * 4;
-        PGpioPort->CRH &= ~((uint32_t)(0b1111 << Offset));  // Clear both mode and cnf
-        PGpioPort->CRH |= CnfMode << Offset;
-    }
-#else
-    // Setup mode
-    Pin.PGpio->MODER &= ~(0b11 << Offset); // clear previous bits
-    // Setup Pull-Up or Pull-Down
-    Pin.PGpio->PUPDR &= ~(0b11 << Offset); // clear previous bits
-    Pin.PGpio->PUPDR |= (uint32_t)Pin.PullUpDown << Offset;
-#endif
-}
-
 static inline void PinSetupAnalog(GPIO_TypeDef *PGpioPort, const uint16_t APinNumber) {
     // Clock
     PinClockEnable(PGpioPort);
@@ -816,13 +779,56 @@ public:
 
 // ==== Digital Input Pin ====
 // Example: const PinInput_t EchoPin = {GPIOC, 12, pudPullUp};
+//class PinInput_t {
+//public:
+//    const PortPinInput_t Pin;
+//    void Init() const { PinSetupIn(Pin); }
+//    bool IsHi() const { return PinIsSet((PortPin_t*)&Pin); }
+//    void Shutdown() const { PinSetupAnalog((PortPin_t*)&Pin);  }
+//    PinInput_t(PortPinInput_t APin) : Pin(APin) {}
+//};
+
 class PinInput_t {
+protected:
+    GPIO_TypeDef *PGpio;
+    uint16_t PinN;
+    PinPullUpDown_t PullUpDown;
 public:
-    const PortPinInput_t Pin;
-    void Init() const { PinSetupIn(Pin); }
-    bool IsHi() const { return PinIsSet((PortPin_t*)&Pin); }
-    void Shutdown() const { PinSetupAnalog((PortPin_t*)&Pin);  }
-    PinInput_t(PortPinInput_t APin) : Pin(APin) {}
+    void Init() const {
+        uint8_t Offset = PinN*2;
+        // Clock
+        PinClockEnable(PGpio);
+#if defined STM32F10X_LD_VL
+        uint32_t CnfMode;
+        if(APullUpDown == pudNone) CnfMode = 0b0100;
+        else {
+            CnfMode = 0b1000;
+            if(APullUpDown == pudPullDown) PGpioPort->ODR &= ~((uint32_t)(1<<APinNumber));
+            else PGpioPort->ODR |= (uint32_t)(1<<APinNumber);
+        }
+        if(APinNumber < 8) {
+            uint8_t Offset = APinNumber*4;
+            PGpioPort->CRL &= ~((uint32_t)(0b1111 << Offset));  // Clear both mode and cnf
+            PGpioPort->CRL |= CnfMode << Offset;
+        }
+        else {
+            uint8_t Offset = (APinNumber - 8) * 4;
+            PGpioPort->CRH &= ~((uint32_t)(0b1111 << Offset));  // Clear both mode and cnf
+            PGpioPort->CRH |= CnfMode << Offset;
+        }
+#else
+        // Setup mode
+        PGpio->MODER &= ~(0b11 << Offset); // clear previous bits
+        // Setup Pull-Up or Pull-Down
+        PGpio->PUPDR &= ~(0b11 << Offset); // clear previous bits
+        PGpio->PUPDR |= (uint32_t)PullUpDown << Offset;
+#endif
+    }
+    bool IsHi() const { return PGpio->IDR & (1 << PinN); }
+    void Standby() const { PGpio->MODER |= 0b11 << (PinN*2);  } // Setup analog
+    void Resume()  const { PGpio->MODER &= ~(0b11 << (PinN*2)); }
+    PinInput_t(GPIO_TypeDef *APGpio, uint16_t APinN, PinPullUpDown_t APullUpDown) :
+        PGpio(APGpio), PinN(APinN), PullUpDown(APullUpDown) {}
 };
 
 // ==== PWM output ====
@@ -861,13 +867,13 @@ enum ExtiTrigType_t {ttRising, ttFalling, ttRisingFalling};
  const PinIrq_t GPinDrdy {ACC_DRDY_PIN};
  GPinDrdy.Init(ACC_DRDY_GPIO, pudNone, ttRising);
 */
-class PinIrq_t {
+class PinIrq_t : public PinInput_t {
 public:
-    PortPinInput_t Pin;
-    PinIrq_t(PortPinInput_t APin) : Pin(APin) { }
+    PinIrq_t(GPIO_TypeDef *APGpio, uint16_t APinN, PinPullUpDown_t APullUpDown) :
+        PinInput_t(APGpio, APinN, APullUpDown) {}
 
     void SetTriggerType(ExtiTrigType_t ATriggerType) const {
-        uint32_t IrqMsk = 1 << Pin.Pin;
+        uint32_t IrqMsk = 1 << PinN;
         switch(ATriggerType) {
 #if defined STM32L4XX
             case ttRising:
@@ -901,17 +907,17 @@ public:
 
     void Init(ExtiTrigType_t ATriggerType) const {
         // Init pin as input
-        PinSetupIn(Pin);
+        PinInput_t::Init();
         rccEnableAPB2(RCC_APB2ENR_SYSCFGEN, FALSE); // Enable sys cfg controller
         // Connect EXTI line to the pin of the port
-        uint8_t Indx   = Pin.Pin / 4;            // Indx of EXTICR register
-        uint8_t Offset = (Pin.Pin & 0x03) * 4;   // Offset in EXTICR register
+        uint8_t Indx   = PinN / 4;               // Indx of EXTICR register
+        uint8_t Offset = (PinN & 0x03) * 4;      // Offset in EXTICR register
         SYSCFG->EXTICR[Indx] &= ~((uint32_t)0b1111 << Offset);  // Clear port-related bits
         // GPIOA requires all zeroes => nothing to do in this case
-        if     (Pin.PGpio == GPIOB) SYSCFG->EXTICR[Indx] |= (uint32_t)0b0001 << Offset;
-        else if(Pin.PGpio == GPIOC) SYSCFG->EXTICR[Indx] |= (uint32_t)0b0010 << Offset;
+        if     (PGpio == GPIOB) SYSCFG->EXTICR[Indx] |= (uint32_t)0b0001 << Offset;
+        else if(PGpio == GPIOC) SYSCFG->EXTICR[Indx] |= (uint32_t)0b0010 << Offset;
         // Configure EXTI line
-        uint32_t IrqMsk = 1 << Pin.Pin;
+        uint32_t IrqMsk = 1 << PinN;
 #if defined STM32L4XX
         EXTI->IMR1  |=  IrqMsk;      // Interrupt mode enabled
         EXTI->EMR1  &= ~IrqMsk;      // Event mode disabled
@@ -924,16 +930,16 @@ public:
         EXTI->PR    =  IrqMsk;      // Clean irq flag
 #endif
     }
-    void EnableIrq(const uint32_t Priority) const { nvicEnableVector(PIN2IRQ_CHNL(Pin.Pin), Priority); }
-    void DisableIrq() const { nvicDisableVector(PIN2IRQ_CHNL(Pin.Pin)); }
+    void EnableIrq(const uint32_t Priority) const { nvicEnableVector(PIN2IRQ_CHNL(PinN), Priority); }
+    void DisableIrq() const { nvicDisableVector(PIN2IRQ_CHNL(PinN)); }
 #if defined STM32L4XX
     void CleanIrqFlag() const { EXTI->PR1 = (1 << Pin.Pin); }
     bool IsIrqPending() const { return BitIsSet(EXTI->PR1, (1 << Pin.Pin)); }
     void GenerateIrq()  const { EXTI->SWIER1 = (1 << Pin.Pin); }
 #else
-    void CleanIrqFlag() const { EXTI->PR = (1 << Pin.Pin); }
-    bool IsIrqPending() const { return BitIsSet(EXTI->PR, (1 << Pin.Pin)); }
-    void GenerateIrq()  const { EXTI->SWIER = (1 << Pin.Pin); }
+    void CleanIrqFlag() const { EXTI->PR = (1 << PinN); }
+    bool IsIrqPending() const { return BitIsSet(EXTI->PR, (1 << PinN)); }
+    void GenerateIrq()  const { EXTI->SWIER = (1 << PinN); }
 #endif
 };
 #endif // EXTI

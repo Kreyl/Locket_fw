@@ -9,7 +9,7 @@
 #include "uart.h"
 
 cc1101_t CC;
-static const PinIrq_t IGdo0 {CC_GDO0_IRQ};
+static const PinIrq_t IGdo0(CC_GDO0_IRQ);
 static thread_reference_t ThdRef;
 
 #define CsHi()  PinSet(CC_GPIO, CC_CS)

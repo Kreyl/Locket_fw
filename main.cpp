@@ -17,12 +17,13 @@
 #include "pill_mgr.h"
 
 App_t App;
+//static const DipSwitch_t DipSwitch {DIP_SW1, DIP_SW2, DIP_SW3, DIP_SW4, DIP_SW5, DIP_SW6};
 
-static TmrKL_t TmrCheckPill {MS2ST(540), EVT_PILL_CHECK, tktPeriodic};
+static TmrKL_t TmrCheckPill {MS2ST(450), EVT_PILL_CHECK, tktPeriodic};
 static TmrKL_t TmrCheckBtn  {MS2ST(54),  EVT_BUTTONS, tktPeriodic};
 static TmrKL_t TmrEverySecond {MS2ST(100), EVT_EVERY_SECOND, tktPeriodic};
 
-static PinInput_t Btn {BTN_PIN};
+static PinInput_t Btn (BTN_PIN);
 
 //Vibro_t Vibro {VIBRO_PIN};
 Beeper_t Beeper {BEEPER_PIN};
@@ -62,8 +63,10 @@ int main(void) {
 
     Beeper.Init();
     Beeper.StartSequence(bsqBeepBeep);
+    chThdSleepMilliseconds(702);    // Let it complete the show
 
     Btn.Init();
+//    DipSwitch.Init();
 
     // Timers
     TmrCheckBtn.InitAndStart();
@@ -83,9 +86,9 @@ int main(void) {
 
 __noreturn
 void App_t::ITask() {
-    DevType = devtPlayer;
-    SetCondition(cndGreen);
-//    DevType = devtMaster;
+//    DevType = devtPlayer;
+//    SetCondition(cndGreen);
+    DevType = devtMaster;
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
         if(Evt & EVT_EVERY_SECOND) CndTmr.OnNewSecond();
@@ -127,6 +130,10 @@ void App_t::ITask() {
         if(Evt & EVT_LED_SEQ_END) {
             if(DevType == devtMaster) {
                 Led.SetColor(GetPillColor(MasterMode));
+            }
+            else if(NeedToRestoreIndication) { // Indicate condition back
+                NeedToRestoreIndication = false;
+                SetupConditionIndication();
             }
         }
 #endif
@@ -194,6 +201,65 @@ void App_t::OnNextCondition() {
     }
 }
 
+void App_t::OnPillConnPlayer() {
+    if(!PillMgr.Pill.IsOk()) { ShowPillBad(); return; }  // Errorneous pill
+    // Check and remove charges
+    if(PillMgr.Pill.Type != ptMaster) {
+        if(PillMgr.Pill.ChargeCnt == 0) { ShowPillBad(); return; }  // No charge
+        PillMgr.Pill.ChargeCnt--; // Decrease charges
+        // Write pill
+        if(PillMgr.WritePill() != OK) { ShowPillBad(); return; } // Write failure
+        Uart.Printf("PillAfter: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
+    }
+    ShowPillOk();
+    // Wait for indication to complete
+    chThdSleepMilliseconds(1008);
+    // Process pill
+    switch(PillMgr.Pill.Type) {
+        case ptVitamin:
+            switch(Condition) {
+                case cndBlue:   SetCondition(cndBlue);   break;
+                case cndGreen:  SetCondition(cndBlue);   break;
+                case cndYellow: SetCondition(cndGreen);  break;
+                case cndRed:    SetCondition(cndYellow); break;
+                case cndVBRed:  SetCondition(cndRed);    break;
+                default: NeedToRestoreIndication = true; break;
+            } // switch(Condition)
+            break;
+
+        case ptCure:
+            switch(Condition) {
+                case cndBlue:   SetCondition(cndGreen);  break;
+                case cndGreen:  SetCondition(cndYellow); break;
+                case cndYellow: SetCondition(cndRed);    break;
+                case cndRed:    SetCondition(cndVBRed);  break;
+                case cndVBRed:  SetCondition(cndWhite);  break;
+                default: NeedToRestoreIndication = true; break;
+            } // switch(Condition)
+            break;
+
+        case ptPanacea: SetCondition(cndWhite); break;
+
+        case ptEnergetic:
+            if(Condition != cndViolet and Condition != cndWhite) SetCondition(cndBlue);
+            else NeedToRestoreIndication = true;
+            break;
+
+        case ptMaster:
+            switch(Condition) {
+                case cndBlue:   SetCondition(cndGreen);  break;
+                case cndGreen:  SetCondition(cndYellow); break;
+                case cndYellow: SetCondition(cndRed);    break;
+                case cndRed:    SetCondition(cndVBRed);  break;
+                case cndVBRed:  SetCondition(cndWhite);  break;
+                case cndWhite:  SetCondition(cndViolet); break;
+                case cndViolet: SetCondition(cndBlue);   break;
+            } // switch(Condition)
+            break;
+        default: break;
+    } // switch pill type
+}
+
 void App_t::DoVibroBlink() {
     Uart.Printf("%S\r", __FUNCTION__);
     switch(Condition) {
@@ -206,7 +272,6 @@ void App_t::DoVibroBlink() {
         case cndRed:
             Led.StartSequence(lsqVibroBlinkRed);
             break;
-
         default: break;
     }
 }
@@ -225,18 +290,15 @@ void App_t::StopVibroBlink() {
 void App_t::SetCondition(Condition_t NewCondition) {
     Condition = NewCondition;
     int Duration, VBTime1, VBTime2;
+    SetupConditionIndication();
+    Beeper.StartSequence(bsqBeepBeep);
     switch(Condition) {
         case cndBlue:
-            Beeper.StartSequence(bsqBeepBeep);
-            Led.StartSequence(lsqCondBlue);
             Uart.Printf("Blue\r");
             CndTmr.Init(DURATION_BLUE_S, -1, -1);
             break;
 
         case cndGreen:
-            Beeper.StartSequence(bsqBeepBeep);
-            Led.StartSequence(lsqCondGreen);
-            // Calculate durations
             RandomSeed(chVTGetSystemTime());    // Reinit random generator
             Duration = Random(DURATION_GYR_MIN_S, DURATION_GYR_MAX_S);
             VBTime1 = Random(60, Duration-60);
@@ -245,9 +307,6 @@ void App_t::SetCondition(Condition_t NewCondition) {
             break;
 
         case cndYellow:
-            Beeper.StartSequence(bsqBeepBeep);
-            Led.StartSequence(lsqCondYellow);
-            // Calculate durations
             Duration = Random(DURATION_GYR_MIN_S, DURATION_GYR_MAX_S);
             VBTime1 = Random(60, Duration-(2*60));
             VBTime2 = Random(VBTime1+60, Duration-60);
@@ -257,9 +316,6 @@ void App_t::SetCondition(Condition_t NewCondition) {
             break;
 
         case cndRed:
-            Beeper.StartSequence(bsqBeepBeep);
-            Led.StartSequence(lsqCondRed);
-            // Calculate durations
             Duration = Random(DURATION_GYR_MIN_S, DURATION_GYR_MAX_S);
             VBTime1 = Random(60, Duration-(2*60));
             VBTime2 = Random(VBTime1+60, Duration-60);
@@ -269,32 +325,34 @@ void App_t::SetCondition(Condition_t NewCondition) {
             break;
 
         case cndVBRed:
-            Beeper.StartSequence(bsqBeepBeep);
-            Led.StartSequence(lsqCondVBRed);
             Uart.Printf("VBRed\r");
             CndTmr.Init(DURATION_VBRED_S, -1, -1);
             break;
 
         case cndViolet:
-            Beeper.StartSequence(bsqBeepBeep);
-            Led.StartSequence(lsqCondViolet);
             Uart.Printf("Violet\r");
             CndTmr.Init(-1, -1, -1);
             break;
 
         case cndWhite:
-            Beeper.StartSequence(bsqBeepBeep);
-            Led.StartSequence(lsqCondWhite);
             Uart.Printf("White\r");
             CndTmr.Init(-1, -1, -1);
             break;
     } // switch
 }
-
-void App_t::OnPillConnPlayer() {
-
-}
 #endif
+
+void App_t::SetupConditionIndication() {
+    switch(Condition) {
+        case cndBlue:   Led.StartSequence(lsqCondBlue);   break;
+        case cndGreen:  Led.StartSequence(lsqCondGreen);  break;
+        case cndYellow: Led.StartSequence(lsqCondYellow); break;
+        case cndRed:    Led.StartSequence(lsqCondRed);    break;
+        case cndVBRed:  Led.StartSequence(lsqCondVBRed);  break;
+        case cndViolet: Led.StartSequence(lsqCondViolet); break;
+        case cndWhite:  Led.StartSequence(lsqCondWhite); break;
+    }
+}
 
 void App_t::ShowPillOk() {
     switch(PillMgr.Pill.Type) {
@@ -313,6 +371,7 @@ void App_t::ShowPillOk() {
 void App_t::ShowPillBad() {
     Beeper.StartSequence(bsqBeepPillBad);
     Led.StartSequence(lsqPillBad);
+    NeedToRestoreIndication = true;
 }
 
 // Low resolution timer: 16-bit hardware timer allows only 6.5s delays
@@ -350,8 +409,32 @@ void CondTimer_t::OnNewSecond() {
             App.StopVibroBlink();
         }
     }
-    Uart.Printf("D: %d; VBT1: %d; VBT2: %d; VBD: %d\r", Duration, VBTime1, VBTime2, VBDuration);
+//    if(Duration % 10 == 0) Uart.Printf("D: %d; VBT1: %d; VBT2: %d; VBD: %d\r", Duration, VBTime1, VBTime2, VBDuration);
 }
+
+#if 1 // ==== DIP Switch ====
+
+//uint8_t App_t::GetDipSwitch() {
+//    PinSetupIn(DIPSWITCH_GPIO, DIPSWITCH_PIN1, pudPullUp);
+//    PinSetupIn(DIPSWITCH_GPIO, DIPSWITCH_PIN2, pudPullUp);
+//    PinSetupIn(DIPSWITCH_GPIO, DIPSWITCH_PIN3, pudPullUp);
+//    PinSetupIn(DIPSWITCH_GPIO, DIPSWITCH_PIN4, pudPullUp);
+//    uint8_t Rslt = 0;
+//    if(PinIsSet(DIPSWITCH_GPIO, DIPSWITCH_PIN1)) Rslt = 2; // <=> { Rslt=1; Rslt<<=1; }
+//    if(PinIsSet(DIPSWITCH_GPIO, DIPSWITCH_PIN2)) Rslt |= 1;
+//    Rslt <<= 1;
+//    if(PinIsSet(DIPSWITCH_GPIO, DIPSWITCH_PIN3)) Rslt |= 1;
+//    Rslt <<= 1;
+//    if(PinIsSet(DIPSWITCH_GPIO, DIPSWITCH_PIN4)) Rslt |= 1;
+//    Rslt ^= 0x0F;    // Invert switches
+//    PinSetupAnalog(DIPSWITCH_GPIO, DIPSWITCH_PIN1);
+//    PinSetupAnalog(DIPSWITCH_GPIO, DIPSWITCH_PIN2);
+//    PinSetupAnalog(DIPSWITCH_GPIO, DIPSWITCH_PIN3);
+//    PinSetupAnalog(DIPSWITCH_GPIO, DIPSWITCH_PIN4);
+//    return Rslt;
+//}
+#endif
+
 
 #if UART_RX_ENABLED // ======================= Command processing ============================
 void App_t::OnCmd(Shell_t *PShell) {

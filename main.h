@@ -55,6 +55,7 @@ private:
     PillType_t MasterMode = ptVitamin;
     void OnPillConnMaster();
     // Player device
+    bool NeedToRestoreIndication = false;
     CondTimer_t CndTmr;
     Condition_t Condition;
     void SetCondition(Condition_t NewCondition);
@@ -67,8 +68,10 @@ public:
     void OnNextCondition();
     void DoVibroBlink();
     void StopVibroBlink();
+    void SetupConditionIndication();
     // Eternal methods
     void InitThread() { PThread = chThdGetSelfX(); }
+    uint8_t GetDipSwitch();
     void SignalEvt(eventmask_t Evt) {
         chSysLock();
         chEvtSignalI(PThread, Evt);
@@ -79,5 +82,25 @@ public:
     // Inner use
     void ITask();
 };
+
+#define DIP_SW_CNT      6
+//class DipSwitch_t {
+//private:
+//    const PinInput_t Pin[DIP_SW_CNT];
+//public:
+//    DipSwitch_t(PortPinInput_t Pin1, PortPinInput_t Pin2, PortPinInput_t Pin3,
+//            PortPinInput_t Pin4, PortPinInput_t Pin5, PortPinInput_t Pin6) {
+//        Pin[0].PinInput_t(Pin1);
+////        Pin[1] = Pin2;
+////        Pin[2] = Pin3;
+////        Pin[3] = Pin4;
+////        Pin[4] = Pin5;
+////        Pin[5] = Pin6;
+//    }
+//    uint8_t Init() const {
+//        for(int i=0; i<DIP_SW_CNT; i++) Pin[i].Init();
+//    }
+//    uint8_t GetValue() const;
+//};
 
 extern App_t App;

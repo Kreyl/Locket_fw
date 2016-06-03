@@ -205,28 +205,28 @@ const LedRGBChunk_t lsqPillVitamin[] = {
         {csSetup, 0, clGreen},
         {csWait, 702},
         {csSetup, 0, clBlack},
-        {csWait, 450},
+        {csWait, 306},
         {csEnd},
 };
 const LedRGBChunk_t lsqPillCure[] = {
         {csSetup, 0, clYellow},
         {csWait, 702},
         {csSetup, 0, clBlack},
-        {csWait, 450},
+        {csWait, 306},
         {csEnd},
 };
 const LedRGBChunk_t lsqPillPanacea[] = {
         {csSetup, 0, clWhite},
         {csWait, 702},
         {csSetup, 0, clBlack},
-        {csWait, 450},
+        {csWait, 306},
         {csEnd},
 };
 const LedRGBChunk_t lsqPillEnergetic[] = {
-        {csSetup, 0, clMagenta},
+        {csSetup, 0, clBlue},
         {csWait, 702},
         {csSetup, 0, clBlack},
-        {csWait, 450},
+        {csWait, 306},
         {csEnd},
 };
 const LedRGBChunk_t lsqPillMaster[] = {
