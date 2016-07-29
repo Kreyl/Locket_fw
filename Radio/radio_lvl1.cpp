@@ -40,11 +40,38 @@ static void rLvl1Thread(void *arg) {
 
 __noreturn
 void rLevel1_t::ITask() {
+
     while(true) {
-//            DBG1_SET();
-//            CC.TransmitSync(&Pkt);
-//            DBG1_CLR();
-//            chThdSleepMilliseconds(9);
+        // ==== Transmitter ====
+        if(App.Mode == modeTx) {
+            CC.SetChannel(ID2RCHNL(App.ID));
+            Pkt.DWord32 = THE_WORD;
+            DBG1_SET();
+            CC.TransmitSync(&Pkt);
+            DBG1_CLR();
+            chThdSleepMilliseconds(7);
+        }
+
+        // ==== Receiver ====
+        else {
+            for(int N=0; N<2; N++) {
+                // Iterate channels
+                for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
+                    if(i == App.ID) continue;   // Do not listen self
+                    CC.SetChannel(ID2RCHNL(i));
+                    uint8_t RxRslt = CC.ReceiveSync(45, &Pkt, &Rssi);
+                    if(RxRslt == OK) {
+                        Uart.Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
+                        if(Pkt.DWord32 == THE_WORD) {
+                            RxTable.AddOrReplaceExisting(Pkt);
+                        }
+                        else Uart.Printf("PktErr\r");
+                    }
+                } // for i
+                TryToSleep(270);
+            } // For N
+            if(RxTable.GetCount() != 0) App.SignalEvt(EVT_RADIO);
+        }
 
 #if 0        // Demo
         if(App.Mode == 0b0001) { // RX
@@ -73,13 +100,6 @@ void rLevel1_t::ITask() {
         }
 //#else
 #endif
-
-        uint8_t RxRslt = CC.ReceiveSync(360, &Pkt, &Rssi);
-        if(RxRslt == OK) {
-            Uart.Printf("Rssi=%d\r", Rssi);
-//            App.SignalEvt(EVT_SOMEONE_NEAR);
-        }
-//        else Uart.Printf("#\r");
 
 #if 0
         // Listen if nobody found, and do not if found

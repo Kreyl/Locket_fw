@@ -207,25 +207,26 @@ const LedRGBChunk_t lsqRx[] = {
 };
 
 #define LSQ_SPEED   360
+#define BRTNESS     99
 
 const LedRGBChunk_t lsqRed[] = {
-        {csSetup, LSQ_SPEED, clRed},
+        {csSetup, LSQ_SPEED, {BRTNESS,0,0}},
         {csEnd},
 };
 const LedRGBChunk_t lsqCyan[] = {
-        {csSetup, LSQ_SPEED, clCyan},
+        {csSetup, LSQ_SPEED, {0,BRTNESS,BRTNESS}},
         {csEnd},
 };
 const LedRGBChunk_t lsqYellow[] = {
-        {csSetup, LSQ_SPEED, clYellow},
+        {csSetup, LSQ_SPEED, {BRTNESS,BRTNESS,0}},
         {csEnd},
 };
 const LedRGBChunk_t lsqMagenta[] = {
-        {csSetup, LSQ_SPEED, clMagenta},
+        {csSetup, LSQ_SPEED, {BRTNESS,0,BRTNESS}},
         {csEnd},
 };
 const LedRGBChunk_t lsqWhite[] = {
-        {csSetup, LSQ_SPEED, {99, 99, 99}},
+        {csSetup, LSQ_SPEED, {BRTNESS, BRTNESS, BRTNESS}},
         {csEnd},
 };
 
@@ -370,6 +371,21 @@ const BaseChunk_t vsqBrr[] = {
 };
 
 const BaseChunk_t vsqBrrBrr[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csWait, 99},
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csEnd}
+};
+
+const BaseChunk_t vsqBrrBrrBrr[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csWait, 99},
         {csSetup, VIBRO_VOLUME},
         {csWait, VIBRO_SHORT_MS},
         {csSetup, 0},

@@ -122,6 +122,14 @@ void App_t::ITask() {
         }
 #endif
 
+        if(Evt & EVT_RADIO) {   // RxTable is not empty
+            uint32_t N = Radio.RxTable.GetCount();
+            if(N == 1) Vibro.StartSequence(vsqBrr);
+            else if(N == 2) Vibro.StartSequence(vsqBrrBrr);
+            else Vibro.StartSequence(vsqBrrBrrBrr);
+            Radio.RxTable.Clear();
+        }
+
 //        if(Evt & EVT_OFF) {
 ////            Uart.Printf("Off\r");
 //            chSysLock();

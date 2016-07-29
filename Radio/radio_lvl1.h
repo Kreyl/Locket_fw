@@ -69,17 +69,15 @@ union rPkt_t {
 #define RPKT_LEN    sizeof(rPkt_t)
 #endif
 
-//#define THE_WORD        0xCA115EA1
+#define THE_WORD        0xCA115EA1
 
 // ==== Sizes ====
 #define RXTABLE_SZ      9
 #define RXTABLE_MAX_CNT 3   // Do not receive if this count reached. Will not indicate more anyway.
 
 #if 1 // ======================= Channels & cycles =============================
-#define REMCTRL_ID      8   // ID of remote control
-
 #define RCHNL_MIN       0
-#define RCHNL_MAX       8
+#define RCHNL_MAX       19
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
 #endif
 
