@@ -1137,7 +1137,7 @@ extern i2c_t i2c1;
 #endif
 #endif // i2c common
 
-#if 0 // ====================== FLASH & EEPROM =================================
+#if 1 // ====================== FLASH & EEPROM =================================
 #define FLASH_LIB_KL
 #define EEPROM_BASE_ADDR    ((uint32_t)0x08080000)
 // ==== Flash keys ====

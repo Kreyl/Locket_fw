@@ -200,6 +200,35 @@ const LedRGBChunk_t lsqStart[] = {
         {csEnd},
 };
 
+const LedRGBChunk_t lsqRx[] = {
+        {csSetup, 360, clGreen},
+        {csSetup, 360, clBlack},
+        {csEnd},
+};
+
+#define LSQ_SPEED   360
+
+const LedRGBChunk_t lsqRed[] = {
+        {csSetup, LSQ_SPEED, clRed},
+        {csEnd},
+};
+const LedRGBChunk_t lsqCyan[] = {
+        {csSetup, LSQ_SPEED, clCyan},
+        {csEnd},
+};
+const LedRGBChunk_t lsqYellow[] = {
+        {csSetup, LSQ_SPEED, clYellow},
+        {csEnd},
+};
+const LedRGBChunk_t lsqMagenta[] = {
+        {csSetup, LSQ_SPEED, clMagenta},
+        {csEnd},
+};
+const LedRGBChunk_t lsqWhite[] = {
+        {csSetup, LSQ_SPEED, {99, 99, 99}},
+        {csEnd},
+};
+
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
         {csWait, 99},
