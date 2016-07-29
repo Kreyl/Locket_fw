@@ -10,6 +10,7 @@
 #include "uart.h"
 #include "ch.h"
 #include "pill.h"
+#include "kl_lib.h"
 
 #define PILL_I2C_STD_ADDR   0x50    // Standard address start of EEPROM - 0x01010aaa
 #define PILL_I2C_ADDR       (PILL_I2C_STD_ADDR | 0) // Only Zero addr
@@ -31,8 +32,8 @@ private:
 public:
     PillState_t State;
     Pill_t Pill;
-    PillMgr_t(i2c_t *pi2c, const PortPinOutput_t PillPwrPin) :
-        i2c(pi2c), PillPwr(PillPwrPin), IsConnectedNow(false), State(pillNoChange) {}
+    PillMgr_t(i2c_t *pi2c, const PinOutput_t APwrPin) :
+        i2c(pi2c), PillPwr(APwrPin), IsConnectedNow(false), State(pillNoChange) {}
     void Init();
     void Check();
     uint8_t WritePill();

@@ -10,8 +10,8 @@
 #include <inttypes.h>
 
 // ==== General ====
-#define BOARD_NAME          "Locket3"
-#define APP_NAME            "LordOfKZ"
+#define BOARD_NAME          "Locket4_1"
+#define APP_NAME            "TxAndRx"
 
 // MCU type as defined in the ST header.
 #define STM32L151xB
@@ -42,7 +42,7 @@
 #define BTN_PIN         { GPIOA, 0, pudPullDown }
 
 // Vibro
-#define VIBRO_TOP       22
+#define VIBRO_TOP       99
 #define VIBRO_PIN       { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, VIBRO_TOP }
 
 // Beeper
@@ -68,6 +68,17 @@
 // Pill power
 #define PILL_PWR_PIN    { GPIOB, 3, omPushPull }
 
+// Radio
+#define CC_GPIO         GPIOA
+#define CC_GDO2         2
+#define CC_GDO0         3
+#define CC_SCK          5
+#define CC_MISO         6
+#define CC_MOSI         7
+#define CC_CS           4
+// Input pin (do not touch)
+#define CC_GDO0_IRQ     { CC_GPIO, CC_GDO0, pudNone }
+
 #endif // GPIO
 
 #if 1 // ========================= Timer =======================================
@@ -78,6 +89,8 @@
 #endif
 
 #if 1 // =========================== SPI =======================================
+#define CC_SPI          SPI1
+#define CC_SPI_AF       AF5
 #endif
 
 #if 1 // ========================== USART ======================================

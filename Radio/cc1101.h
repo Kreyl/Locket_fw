@@ -27,7 +27,7 @@ private:
     // Pins
     uint8_t BusyWait() {
         for(uint32_t i=0; i<CC_BUSYWAIT_TIMEOUT; i++) {
-            if(!PinIsSet(CC_GPIO, CC_MISO)) return OK;
+            if(!PinIsHi(CC_GPIO, CC_MISO)) return OK;
         }
         return FAILURE;
     }

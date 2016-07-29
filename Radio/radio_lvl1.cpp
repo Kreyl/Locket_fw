@@ -10,7 +10,7 @@
 #include "main.h"
 #include "cc1101.h"
 #include "uart.h"
-#include "led.h"
+//#include "led.h"
 
 //#define DBG_PINS
 
@@ -31,37 +31,20 @@
 rLevel1_t Radio;
 
 #if 1 // ================================ Task =================================
-//static THD_WORKING_AREA(warLvl1Thread, 256);
-//__NORETURN
-//static void rLvl1Thread(void *arg) {
-//    chRegSetThreadName("rLvl1");
-//    Radio.ITask();
-//}
+static THD_WORKING_AREA(warLvl1Thread, 256);
+__noreturn
+static void rLvl1Thread(void *arg) {
+    chRegSetThreadName("rLvl1");
+    Radio.ITask();
+}
 
 __noreturn
 void rLevel1_t::ITask() {
-    __unused uint8_t OldID = 0;
     while(true) {
-        __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
-//        if(Evt & EVT_NEW_9D) {
-//            Pkt.Time = chVTGetSystemTime();
-
-//            Pkt.AccData[0] = Acc.IPRead->Gyro.x;
-//            Pkt.AccData[1] = Acc.IPRead->Gyro.y;
-//            Pkt.AccData[2] = Acc.IPRead->Gyro.z;
-//
-//            Pkt.AccData[3] = Acc.IPRead->Acc.x;
-//            Pkt.AccData[4] = Acc.IPRead->Acc.y;
-//            Pkt.AccData[5] = Acc.IPRead->Acc.z;
-//
-//            Pkt.AccData[6] = Acc.IPRead->Magnet.x;
-//            Pkt.AccData[7] = Acc.IPRead->Magnet.y;
-//            Pkt.AccData[8] = Acc.IPRead->Magnet.z;
-
-            DBG1_SET();
-            CC.TransmitSync(&Pkt);
-            DBG1_CLR();
-//        }
+//            DBG1_SET();
+//            CC.TransmitSync(&Pkt);
+//            DBG1_CLR();
+//            chThdSleepMilliseconds(9);
 
 #if 0        // Demo
         if(App.Mode == 0b0001) { // RX
@@ -91,39 +74,30 @@ void rLevel1_t::ITask() {
 //#else
 #endif
 
-#if 0
-        // ==== Transmitter ====
-        if(App.MustTransmit) {
-            if(App.ID != OldID) {
-                OldID = App.ID;
-                CC.SetChannel(ID2RCHNL(App.ID));
-                Pkt.DWord = App.ID;
-            }
-            DBG1_SET();
-            CC.TransmitSync(&Pkt);
-            DBG1_CLR();
+        uint8_t RxRslt = CC.ReceiveSync(360, &Pkt, &Rssi);
+        if(RxRslt == OK) {
+            Uart.Printf("Rssi=%d\r", Rssi);
+//            App.SignalEvt(EVT_SOMEONE_NEAR);
         }
+//        else Uart.Printf("#\r");
 
-        // ==== Receiver ====
-        else {
-            DBG2_SET();
-            // Listen if nobody found, and do not if found
-            int8_t Rssi;
-            // Iterate channels
-            for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
-                if(i == App.ID) continue;   // Do not listen self
-                CC.SetChannel(ID2RCHNL(i));
-                uint8_t RxRslt = CC.ReceiveSync(RX_T_MS, &Pkt, &Rssi);
-                if(RxRslt == OK) {
+#if 0
+        // Listen if nobody found, and do not if found
+        int8_t Rssi;
+        // Iterate channels
+        for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
+            if(i == App.ID) continue;   // Do not listen self
+            CC.SetChannel(ID2RCHNL(i));
+            uint8_t RxRslt = CC.ReceiveSync(RX_T_MS, &Pkt, &Rssi);
+            if(RxRslt == OK) {
 //                    Uart.Printf("\rCh=%d; Rssi=%d", i, Rssi);
-                    App.SignalEvt(EVTMSK_SOMEONE_NEAR);
-                    break; // No need to listen anymore if someone already found
-                }
-            } // for
-            CC.SetChannel(ID2RCHNL(App.ID));    // Set self channel back
-            DBG2_CLR();
-            TryToSleep(RX_SLEEP_T_MS);
-        }
+                App.SignalEvt(EVTMSK_SOMEONE_NEAR);
+                break; // No need to listen anymore if someone already found
+            }
+        } // for
+        CC.SetChannel(ID2RCHNL(App.ID));    // Set self channel back
+        DBG2_CLR();
+        TryToSleep(RX_SLEEP_T_MS);
 #endif
     } // while true
 }
@@ -138,9 +112,10 @@ uint8_t rLevel1_t::Init() {
     if(CC.Init() == OK) {
         CC.SetTxPower(CC_Pwr0dBm);
         CC.SetPktSize(RPKT_LEN);
-        CC.EnterPwrDown();
+        CC.SetChannel(0);
+//        CC.EnterPwrDown();
         // Thread
-//        PThd = chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
+        PThd = chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return OK;
     }
     else return FAILURE;

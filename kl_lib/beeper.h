@@ -21,7 +21,7 @@ private:
         return sltProceed;  // Always proceed
     }
 public:
-    Beeper_t(PortPinTim_t APin) : BaseSequencer_t(), IPin(APin) {}
+    Beeper_t(PwmSetup_t APin) : BaseSequencer_t(), IPin(APin) {}
     void Init() { IPin.Init(); }
     void Beep(uint32_t Freq_Hz, uint8_t Volume) {
         IPin.SetFrequencyHz(Freq_Hz);

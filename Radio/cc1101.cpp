@@ -12,20 +12,21 @@ cc1101_t CC;
 static const PinIrq_t IGdo0(CC_GDO0_IRQ);
 static thread_reference_t ThdRef;
 
-#define CsHi()  PinSet(CC_GPIO, CC_CS)
-#define CsLo()  PinClear(CC_GPIO, CC_CS)
+#define CsHi()  PinSetHi(CC_GPIO, CC_CS)
+#define CsLo()  PinSetLo(CC_GPIO, CC_CS)
 
 uint8_t cc1101_t::Init() {
     // ==== GPIO ====
-    PinSetupOut      (CC_GPIO, CC_CS,   omPushPull, pudNone);
+    PinSetupOut      (CC_GPIO, CC_CS,   omPushPull);
     PinSetupAlterFunc(CC_GPIO, CC_SCK,  omPushPull, pudNone, CC_SPI_AF);
     PinSetupAlterFunc(CC_GPIO, CC_MISO, omPushPull, pudNone, CC_SPI_AF);
     PinSetupAlterFunc(CC_GPIO, CC_MOSI, omPushPull, pudNone, CC_SPI_AF);
     IGdo0.Init(ttFalling);
-    PinSetupAnalog   (CC_GPIO, CC_GDO2);    // GDO2 not used
+    //PinSetupAnalog   (CC_GPIO, CC_GDO2);    // GDO2 not used
     CsHi();
-    // ==== SPI ====    MSB first, master, ClkLowIdle, FirstEdge, Baudrate=f/2
-    ISpi.Setup(boMSB, cpolIdleLow, cphaFirstEdge, sbFdiv2);
+    // ==== SPI ====
+    // MSB first, master, ClkLowIdle, FirstEdge, Baudrate no more than 6.5MHz
+    ISpi.Setup(boMSB, cpolIdleLow, cphaFirstEdge, sbFdiv16);
     ISpi.Enable();
     // ==== Init CC ====
     if(Reset() != OK) {
@@ -229,7 +230,7 @@ extern "C" {
 CH_IRQ_HANDLER(GDO0_IRQ_HANDLER) {
     CH_IRQ_PROLOGUE();
     chSysLockFromISR();
-//    Uart.PrintfI("\rCC Irq");
+//    Uart.PrintfI("CC Irq\r");
     IGdo0.CleanIrqFlag();
     chThdResumeI(&ThdRef, MSG_OK);
     chSysUnlockFromISR();

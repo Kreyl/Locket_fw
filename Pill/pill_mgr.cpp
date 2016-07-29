@@ -18,11 +18,11 @@ void PillMgr_t::Standby() {
     i2c->Standby();
     PillPwr.Lo();
     __NOP(); __NOP(); __NOP(); __NOP(); // Allow power to fade
-    PillPwr.SetupAnalog();
+    PillPwr.Deinit();
 }
 
 void PillMgr_t::Resume() {
-    PillPwr.SetupOutput();
+    PillPwr.Init();
     PillPwr.Hi();
     __NOP(); __NOP(); __NOP(); __NOP(); // Allow power to rise
     i2c->Resume();
