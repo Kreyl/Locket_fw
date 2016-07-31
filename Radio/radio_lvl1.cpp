@@ -59,18 +59,18 @@ void rLevel1_t::ITask() {
                 for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
                     if(i == App.ID) continue;   // Do not listen self
                     CC.SetChannel(ID2RCHNL(i));
-                    uint8_t RxRslt = CC.ReceiveSync(45, &Pkt, &Rssi);
+                    uint8_t RxRslt = CC.ReceiveSync(17, &Pkt, &Rssi);   // Double pkt duration + TX sleep time
                     if(RxRslt == OK) {
-                        Uart.Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
-                        if(Pkt.DWord32 == THE_WORD) {
-                            RxTable.AddOrReplaceExisting(Pkt);
+//                        Uart.Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
+                        if(Pkt.DWord32 == THE_WORD and Rssi > RSSI_MIN) {
+                            RxTable.AddId(i);
                         }
                         else Uart.Printf("PktErr\r");
                     }
                 } // for i
                 TryToSleep(270);
             } // For N
-            if(RxTable.GetCount() != 0) App.SignalEvt(EVT_RADIO);
+            App.SignalEvt(EVT_RADIO); // RX table ready
         }
 
 #if 0        // Demo
@@ -132,7 +132,7 @@ uint8_t rLevel1_t::Init() {
     if(CC.Init() == OK) {
         CC.SetTxPower(CC_Pwr0dBm);
         CC.SetPktSize(RPKT_LEN);
-        CC.SetChannel(0);
+        CC.SetChannel(ID2RCHNL(App.ID));
 //        CC.EnterPwrDown();
         // Thread
         PThd = chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);

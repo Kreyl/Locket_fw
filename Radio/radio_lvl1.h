@@ -57,28 +57,26 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #if 1 // =========================== Pkt_t =====================================
 union rPkt_t {
     uint32_t DWord32;
-    struct {
-        uint8_t ID;
-        uint8_t State;
-        uint8_t CheckID;
-        uint8_t CheckState;
-    };
+//    struct {
+//        uint8_t ID;
+//        uint8_t State;
+//        uint8_t CheckID;
+//        uint8_t CheckState;
+//    };
     bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }
     rPkt_t& operator = (const rPkt_t &Right) { DWord32 = Right.DWord32; return *this; }
 } __attribute__ ((__packed__));
 #define RPKT_LEN    sizeof(rPkt_t)
-#endif
 
 #define THE_WORD        0xCA115EA1
+#endif
 
-// ==== Sizes ====
-#define RXTABLE_SZ      9
-#define RXTABLE_MAX_CNT 3   // Do not receive if this count reached. Will not indicate more anyway.
-
-#if 1 // ======================= Channels & cycles =============================
+#if 1 // =================== Channels, cycles, Rssi  ===========================
 #define RCHNL_MIN       0
 #define RCHNL_MAX       19
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
+
+#define RSSI_MIN        -95
 #endif
 
 #if 1 // =========================== Timings ===================================
@@ -87,12 +85,20 @@ union rPkt_t {
 #define MIN_SLEEP_DURATION_MS   18
 #endif
 
+#if 1 // ============================= RX Table ================================
+#define RXTABLE_SZ              9
+#define RXT_PKT_REQUIRED        FALSE
 class RxTable_t {
 private:
+#if RXT_PKT_REQUIRED
     rPkt_t IBuf[RXTABLE_SZ];
+#else
+    uint8_t IdBuf[RXTABLE_SZ];
+#endif
     uint32_t Cnt = 0;
 public:
-    void AddOrReplaceExisting(rPkt_t &APkt) {
+#if RXT_PKT_REQUIRED
+    void AddOrReplaceExistingPkt(rPkt_t &APkt) {
         for(uint32_t i=0; i<Cnt; i++) {
             if(IBuf[i].ID == APkt.ID) {
                 IBuf[i] = APkt; // Replace with newer pkt
@@ -102,8 +108,7 @@ public:
         IBuf[Cnt] = APkt;
         if(Cnt < (RXTABLE_SZ-1)) Cnt++;
     }
-    uint32_t GetCount() { return Cnt; }
-    void Clear() { Cnt = 0; }
+
     uint8_t GetPktByID(uint8_t ID, rPkt_t **ptr) {
         for(uint32_t i=0; i<Cnt; i++) {
             if(IBuf[i].ID == ID) {
@@ -113,17 +118,38 @@ public:
         }
         return FAILURE;
     }
+
     bool IDPresents(uint8_t ID) {
         for(uint32_t i=0; i<Cnt; i++) {
             if(IBuf[i].ID == ID) return true;
         }
         return false;
     }
+#else
+    void AddId(uint8_t ID) {
+        for(uint32_t i=0; i<Cnt; i++) {
+            if(IdBuf[i] == ID) return;
+        }
+        IdBuf[Cnt] = ID;
+        if(Cnt < (RXTABLE_SZ-1)) Cnt++;
+    }
+
+#endif
+    uint32_t GetCount() { return Cnt; }
+    void Clear() { Cnt = 0; }
+
     void Print() {
         Uart.Printf("RxTable Cnt: %u\r", Cnt);
-        for(uint32_t i=0; i<Cnt; i++) Uart.Printf("ID: %u; State: %u\r", IBuf[i].ID, IBuf[i].State);
+        for(uint32_t i=0; i<Cnt; i++) {
+#if RXT_PKT_REQUIRED
+            Uart.Printf("ID: %u; State: %u\r", IBuf[i].ID, IBuf[i].State);
+#else
+            Uart.Printf("ID: %u\r", IdBuf[i]);
+#endif
+        }
     }
 };
+#endif
 
 class rLevel1_t {
 private:

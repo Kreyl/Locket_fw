@@ -201,6 +201,7 @@ const LedRGBChunk_t lsqStart[] = {
 };
 
 const LedRGBChunk_t lsqRx[] = {
+        {csSetup, 0, clBlack},
         {csSetup, 360, clGreen},
         {csSetup, 360, clBlack},
         {csEnd},
@@ -362,11 +363,13 @@ const BeepChunk_t bsqBeepPillBad[] = {
 #define VIBRO_VOLUME    100  // 1 to 100
 
 #define VIBRO_SHORT_MS          99
+#define VIBRO_REPEAT_PERIOD     1305
 
 const BaseChunk_t vsqBrr[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, VIBRO_SHORT_MS},
         {csSetup, 0},
+        {csWait, VIBRO_REPEAT_PERIOD},
         {csEnd}
 };
 
@@ -378,6 +381,7 @@ const BaseChunk_t vsqBrrBrr[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, VIBRO_SHORT_MS},
         {csSetup, 0},
+        {csWait, VIBRO_REPEAT_PERIOD},
         {csEnd}
 };
 
@@ -393,6 +397,7 @@ const BaseChunk_t vsqBrrBrrBrr[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, VIBRO_SHORT_MS},
         {csSetup, 0},
+        {csWait, VIBRO_REPEAT_PERIOD},
         {csEnd}
 };
 

@@ -16,7 +16,7 @@
 
 // ==== Constants and default values ====
 #define ID_MIN                  1
-#define ID_MAX                  20
+#define ID_MAX                  21
 #define ID_DEFAULT              ID_MIN
 
 enum Mode_t {modeTx, modeRx};

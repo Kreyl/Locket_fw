@@ -17,30 +17,28 @@
 #include "pill_mgr.h"
 #include "kl_adc.h"
 
+// ==== Eternal ====
 App_t App;
-
-#if 1 // ==== Eeprom ====
-// Addresses
+#define DIP_SW_CNT              6
+// EEAddresses
 #define EE_ADDR_DEVICE_ID       0
 #define EE_ADDR_COLOR           4
-#endif
-
-// ==== Eternal ====
-#define DIP_SW_CNT      6
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
 static uint8_t ISetID(int32_t NewID);
 Eeprom_t EE;
 static void ReadIDfromEE();
-
-// Application-specific
-static void ReadAndSetupMode();
-
-static TmrKL_t TmrEverySecond {MS2ST(1000), EVT_EVERY_SECOND, tktPeriodic};
-
+// ==== Periphery ====
 Vibro_t Vibro {VIBRO_PIN};
 //Beeper_t Beeper {BEEPER_PIN};
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+
+// ==== Application-specific ====
+static void ReadAndSetupMode();
+static const BaseChunk_t *pVibroSeqToPerform = nullptr;
+
+// ==== Timers ====
+static TmrKL_t TmrEverySecond {MS2ST(1000), EVT_EVERY_SECOND, tktPeriodic};
 
 int main(void) {
     // ==== Init Vcore & clock system ====
@@ -70,10 +68,11 @@ int main(void) {
 
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-    Led.StartSequence(lsqStart);
+//    Led.StartSequence(lsqStart);
     //Led.SetColor(clWhite);
 
     Vibro.Init();
+    Vibro.SetupSeqEndEvt(chThdGetSelfX(), EVT_VIBRO_END);
     Vibro.StartSequence(vsqBrr);
 
 //    Beeper.Init();
@@ -123,10 +122,21 @@ void App_t::ITask() {
 #endif
 
         if(Evt & EVT_RADIO) {   // RxTable is not empty
-            uint32_t N = Radio.RxTable.GetCount();
-            if(N == 1) Vibro.StartSequence(vsqBrr);
-            else if(N == 2) Vibro.StartSequence(vsqBrrBrr);
-            else Vibro.StartSequence(vsqBrrBrrBrr);
+            if(App.Mode == modeRx) {
+                const BaseChunk_t *pVibroSeqNew;
+                uint8_t N = Radio.RxTable.GetCount();
+//                Uart.Printf("Cnt=%u\r", N);
+                switch(N) {
+                    case 0:  pVibroSeqNew = nullptr;   break;
+                    case 1:  pVibroSeqNew = vsqBrr;    break;
+                    case 2:  pVibroSeqNew = vsqBrrBrr; break;
+                    default: pVibroSeqNew = vsqBrrBrrBrr; break;
+                } // switch
+                // If was not vibrating, start to vibrate
+                if(pVibroSeqToPerform == nullptr and pVibroSeqNew != nullptr) Vibro.StartSequence(pVibroSeqNew);
+                pVibroSeqToPerform = pVibroSeqNew;
+            }
+            else pVibroSeqToPerform = nullptr; // Stop vibration
             Radio.RxTable.Clear();
         }
 
@@ -137,6 +147,13 @@ void App_t::ITask() {
 //            Sleep::EnterStandby();
 //            chSysUnlock();
 //        }
+
+#if 1 // ==== Vibro seq end ====
+        if(Evt & EVT_VIBRO_END) {
+            // Restart vibration (or start new one) if needed
+            if(pVibroSeqToPerform != nullptr) Vibro.StartSequence(pVibroSeqToPerform);
+        }
+#endif
 
 #if UART_RX_ENABLED
         if(Evt & EVT_UART_NEW_CMD) {
@@ -169,10 +186,10 @@ void ReadAndSetupMode() {
             c = (b & 0b000011);
             chSysLock();
             switch(c) {
-                case 0b00: CC.SetTxPower(CC_PwrMinus27dBm); break;
-                case 0b01: CC.SetTxPower(CC_PwrMinus20dBm); break;
-                case 0b10: CC.SetTxPower(CC_PwrMinus15dBm); break;
-                default:   CC.SetTxPower(CC_PwrMinus10dBm); break;
+                case 0b00: CC.SetTxPower(CC_PwrMinus30dBm); break;
+                case 0b01: CC.SetTxPower(CC_PwrMinus25dBm); break;
+                case 0b10: CC.SetTxPower(CC_PwrMinus20dBm); break;
+                default:   CC.SetTxPower(CC_PwrMinus15dBm); break;
             }
             chSysUnlock();
         }

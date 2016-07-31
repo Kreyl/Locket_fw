@@ -13,6 +13,7 @@
 #define EVT_OFF             EVENT_MASK(3)
 #define EVT_PILL_CHECK      EVENT_MASK(4)
 #define EVT_LED_SEQ_END     EVENT_MASK(5)
+#define EVT_VIBRO_END       EVENT_MASK(6)
 
 // Adc
 #define EVT_SAMPLING        EVENT_MASK(24)
