@@ -11,7 +11,11 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket4_1"
-#define APP_NAME            "TxAndRx"
+#define APP_NAME            "Kess"
+
+// ==== High-level peripery control ====
+#define PILL_ENABLED        FALSE
+#define BEEPER_ENABLED      FALSE
 
 // MCU type as defined in the ST header.
 #define STM32L151xB
@@ -50,6 +54,7 @@
 #define BEEPER_PIN      { GPIOB, 15, TIM11, 1, invNotInverted, omPushPull, BEEPER_TOP }
 
 // DIP switch
+#define DIP_SW_CNT      6
 #define DIP_SW1         { GPIOA, 15, pudPullUp }
 #define DIP_SW2         { GPIOC, 13, pudPullUp }
 #define DIP_SW3         { GPIOC, 14, pudPullUp }

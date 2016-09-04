@@ -191,18 +191,30 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #if 1 // ============================ LED RGB ==================================
 const LedRGBChunk_t lsqStart[] = {
         {csSetup, 0, clRed},
-        {csWait, 270},
+        {csWait, 207},
         {csSetup, 0, clGreen},
-        {csWait, 270},
+        {csWait, 207},
         {csSetup, 0, clBlue},
-        {csWait, 270},
+        {csWait, 207},
         {csSetup, 0, clBlack},
         {csEnd},
 };
 
-const LedRGBChunk_t lsqRx[] = {
+const LedRGBChunk_t lsqDetectorRx[] = {
+        {csSetup, 0,   clBlack},
+        {csSetup, 360, clMagenta},
+        {csSetup, 360, clBlack},
+        {csEnd},
+};
+const LedRGBChunk_t lsqDetectorTx[] = {
+        {csSetup, 0,   clBlack},
+        {csSetup, 360, clYellow},
+        {csSetup, 360, clBlack},
+        {csEnd},
+};
+const LedRGBChunk_t lsqBinding[] = {
         {csSetup, 0, clBlack},
-        {csSetup, 360, clGreen},
+        {csSetup, 360, clBlue},
         {csSetup, 360, clBlack},
         {csEnd},
 };

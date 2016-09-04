@@ -19,22 +19,24 @@
 
 // ==== Eternal ====
 App_t App;
-#define DIP_SW_CNT              6
+
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
 #define EE_ADDR_COLOR           4
+
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
+static void ReadAndSetupMode();
 static uint8_t ISetID(int32_t NewID);
 Eeprom_t EE;
 static void ReadIDfromEE();
+
 // ==== Periphery ====
 Vibro_t Vibro {VIBRO_PIN};
 //Beeper_t Beeper {BEEPER_PIN};
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Application-specific ====
-static void ReadAndSetupMode();
 static const BaseChunk_t *pVibroSeqToPerform = nullptr;
 
 // ==== Timers ====
@@ -46,7 +48,7 @@ int main(void) {
 //    Clk.SetMSI4MHz();
     Clk.UpdateFreqValues();
 
-    // Init OS
+    // === Init OS ===
     halInit();
     chSysInit();
     App.InitThread();
@@ -63,33 +65,38 @@ int main(void) {
     Clk.PrintFreqs();
 //    RandomSeed(GetUniqID3());   // Init random algorythm with uniq ID
 
-//    i2c1.Init();
-//    PillMgr.Init();
-
+    // === LED ===
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
 //    Led.StartSequence(lsqStart);
     //Led.SetColor(clWhite);
 
+    // === Vibro ===
     Vibro.Init();
     Vibro.SetupSeqEndEvt(chThdGetSelfX(), EVT_VIBRO_END);
     Vibro.StartSequence(vsqBrr);
 
-//    Beeper.Init();
-//    Beeper.StartSequence(bsqBeepBeep);
-//    chThdSleepMilliseconds(702);    // Let it complete the show
+#if BEEPER_ENABLED // === Beeper ===
+    Beeper.Init();
+    Beeper.StartSequence(bsqBeepBeep);
+    chThdSleepMilliseconds(702);    // Let it complete the show
+#endif
 
 //    Btn.Init();
 //    Adc.Init();
 
-    // Timers
-//    TmrCheckPill.InitAndStart();
+#if PILL_ENABLED // === Pill ===
+    i2c1.Init();
+    PillMgr.Init();
+    TmrCheckPill.InitAndStart();
+#endif
+
     TmrEverySecond.InitAndStart();
     App.SignalEvt(EVT_EVERY_SECOND); // check it now
 
     if(Radio.Init() == OK) Led.StartSequence(lsqStart);
     else Led.StartSequence(lsqFailure);
-    chThdSleepMilliseconds(1800);
+    chThdSleepMilliseconds(1008);
 
     // Main cycle
     App.ITask();
@@ -103,7 +110,7 @@ void App_t::ITask() {
             ReadAndSetupMode();
         }
 
-#if 0 // ==== Pill ====
+#if PILL_ENABLED // ==== Pill ====
         if(Evt & EVT_PILL_CHECK) {
             PillMgr.Check();
             switch(PillMgr.State) {
@@ -122,22 +129,22 @@ void App_t::ITask() {
 #endif
 
         if(Evt & EVT_RADIO) {   // RxTable is not empty
-            if(App.Mode == modeRx) {
-                const BaseChunk_t *pVibroSeqNew;
-                uint8_t N = Radio.RxTable.GetCount();
-//                Uart.Printf("Cnt=%u\r", N);
-                switch(N) {
-                    case 0:  pVibroSeqNew = nullptr;   break;
-                    case 1:  pVibroSeqNew = vsqBrr;    break;
-                    case 2:  pVibroSeqNew = vsqBrrBrr; break;
-                    default: pVibroSeqNew = vsqBrrBrrBrr; break;
-                } // switch
-                // If was not vibrating, start to vibrate
-                if(pVibroSeqToPerform == nullptr and pVibroSeqNew != nullptr) Vibro.StartSequence(pVibroSeqNew);
-                pVibroSeqToPerform = pVibroSeqNew;
-            }
-            else pVibroSeqToPerform = nullptr; // Stop vibration
-            Radio.RxTable.Clear();
+//            if(App.Mode == modeRx) {
+//                const BaseChunk_t *pVibroSeqNew;
+//                uint8_t N = Radio.RxTable.GetCount();
+////                Uart.Printf("Cnt=%u\r", N);
+//                switch(N) {
+//                    case 0:  pVibroSeqNew = nullptr;   break;
+//                    case 1:  pVibroSeqNew = vsqBrr;    break;
+//                    case 2:  pVibroSeqNew = vsqBrrBrr; break;
+//                    default: pVibroSeqNew = vsqBrrBrrBrr; break;
+//                } // switch
+//                // If was not vibrating, start to vibrate
+//                if(pVibroSeqToPerform == nullptr and pVibroSeqNew != nullptr) Vibro.StartSequence(pVibroSeqNew);
+//                pVibroSeqToPerform = pVibroSeqNew;
+//            }
+//            else pVibroSeqToPerform = nullptr; // Stop vibration
+//            Radio.RxTable.Clear();
         }
 
 //        if(Evt & EVT_OFF) {
@@ -148,7 +155,7 @@ void App_t::ITask() {
 //            chSysUnlock();
 //        }
 
-#if 1 // ==== Vibro seq end ====
+#if 0 // ==== Vibro seq end ====
         if(Evt & EVT_VIBRO_END) {
             // Restart vibration (or start new one) if needed
             if(pVibroSeqToPerform != nullptr) Vibro.StartSequence(pVibroSeqToPerform);
@@ -165,36 +172,51 @@ void App_t::ITask() {
     } // while true
 }
 
-static uint8_t OldDipSettings = 0xFF;
 void ReadAndSetupMode() {
+    static uint8_t OldDipSettings = 0xFF;
     uint8_t b = GetDipSwitch();
     if(b != OldDipSettings) {
         OldDipSettings = b;
         Uart.Printf("Dip: %02X\r", b);
-        App.Mode = (b & 0x20)? modeTx : modeRx;
-        if(App.Mode == modeTx) {
-            // Setup color
-            uint8_t c = (b & 0b011100) >> 2;
-            switch(c) {
-                case 0b000: Led.StartSequence(lsqRed); break;
-                case 0b001: Led.StartSequence(lsqCyan); break;
-                case 0b010: Led.StartSequence(lsqYellow); break;
-                case 0b011: Led.StartSequence(lsqMagenta); break;
-                default: Led.StartSequence(lsqWhite); break;
-            }
-            // Setup tx power
-            c = (b & 0b000011);
-            chSysLock();
-            switch(c) {
-                case 0b00: CC.SetTxPower(CC_PwrMinus30dBm); break;
-                case 0b01: CC.SetTxPower(CC_PwrMinus25dBm); break;
-                case 0b10: CC.SetTxPower(CC_PwrMinus20dBm); break;
-                default:   CC.SetTxPower(CC_PwrMinus15dBm); break;
-            }
-            chSysUnlock();
+        // ==== Binding ====
+        if((b & 0b100000) == 0) {
+            App.Mode = modeBinding;
+            Led.StartSequence(lsqBinding);
         }
-        // RX
-        else Led.StartSequence(lsqRx);
+        // ==== Detector ====
+        else {
+            if(b & 0b010000) {
+                App.Mode = modeDetectorTx;
+                Led.StartSequence(lsqDetectorTx);
+            }
+            else {
+                App.Mode = modeDetectorRx;
+                Led.StartSequence(lsqDetectorRx);
+            }
+        }
+
+//        // Setup color
+//            uint8_t c = (b & 0b011100) >> 2;
+//            switch(c) {
+//                case 0b000: Led.StartSequence(lsqRed); break;
+//                case 0b001: Led.StartSequence(lsqCyan); break;
+//                case 0b010: Led.StartSequence(lsqYellow); break;
+//                case 0b011: Led.StartSequence(lsqMagenta); break;
+//                default: Led.StartSequence(lsqWhite); break;
+//            }
+//            // Setup tx power
+//            c = (b & 0b000011);
+//            chSysLock();
+//            switch(c) {
+//                case 0b00: CC.SetTxPower(CC_PwrMinus30dBm); break;
+//                case 0b01: CC.SetTxPower(CC_PwrMinus25dBm); break;
+//                case 0b10: CC.SetTxPower(CC_PwrMinus20dBm); break;
+//                default:   CC.SetTxPower(CC_PwrMinus15dBm); break;
+//            }
+//            chSysUnlock();
+//        }
+//        // RX
+//        else Led.StartSequence(lsqRx);
     }
 }
 

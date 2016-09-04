@@ -19,17 +19,16 @@
 #define ID_MAX                  21
 #define ID_DEFAULT              ID_MIN
 
-enum Mode_t {modeTx, modeRx};
+enum Mode_t {modeDetectorTx, modeDetectorRx, modeBinding};
 
 class App_t {
 private:
     thread_t *PThread;
 public:
-    Mode_t Mode = modeRx;
+    Mode_t Mode = modeDetectorRx;
     uint8_t ID;
     // Eternal methods
     void InitThread() { PThread = chThdGetSelfX(); }
-    uint8_t GetDipSwitch();
     void SignalEvt(eventmask_t Evt) {
         chSysLock();
         chEvtSignalI(PThread, Evt);

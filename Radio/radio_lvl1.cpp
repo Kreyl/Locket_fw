@@ -42,36 +42,37 @@ __noreturn
 void rLevel1_t::ITask() {
 
     while(true) {
+        chThdSleepMilliseconds(7);
         // ==== Transmitter ====
-        if(App.Mode == modeTx) {
-            CC.SetChannel(ID2RCHNL(App.ID));
-            Pkt.DWord32 = THE_WORD;
-            DBG1_SET();
-            CC.TransmitSync(&Pkt);
-            DBG1_CLR();
-            chThdSleepMilliseconds(7);
-        }
-
-        // ==== Receiver ====
-        else {
-            for(int N=0; N<2; N++) {
-                // Iterate channels
-                for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
-                    if(i == App.ID) continue;   // Do not listen self
-                    CC.SetChannel(ID2RCHNL(i));
-                    uint8_t RxRslt = CC.ReceiveSync(17, &Pkt, &Rssi);   // Double pkt duration + TX sleep time
-                    if(RxRslt == OK) {
-//                        Uart.Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
-                        if(Pkt.DWord32 == THE_WORD and Rssi > RSSI_MIN) {
-                            RxTable.AddId(i);
-                        }
-                        else Uart.Printf("PktErr\r");
-                    }
-                } // for i
-                TryToSleep(270);
-            } // For N
-            App.SignalEvt(EVT_RADIO); // RX table ready
-        }
+//        if(App.Mode == modeTx) {
+//            CC.SetChannel(ID2RCHNL(App.ID));
+//            Pkt.DWord32 = THE_WORD;
+//            DBG1_SET();
+//            CC.TransmitSync(&Pkt);
+//            DBG1_CLR();
+//            chThdSleepMilliseconds(7);
+//        }
+//
+//        // ==== Receiver ====
+//        else {
+//            for(int N=0; N<2; N++) {
+//                // Iterate channels
+//                for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
+//                    if(i == App.ID) continue;   // Do not listen self
+//                    CC.SetChannel(ID2RCHNL(i));
+//                    uint8_t RxRslt = CC.ReceiveSync(17, &Pkt, &Rssi);   // Double pkt duration + TX sleep time
+//                    if(RxRslt == OK) {
+////                        Uart.Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
+//                        if(Pkt.DWord32 == THE_WORD and Rssi > RSSI_MIN) {
+//                            RxTable.AddId(i);
+//                        }
+//                        else Uart.Printf("PktErr\r");
+//                    }
+//                } // for i
+//                TryToSleep(270);
+//            } // For N
+//            App.SignalEvt(EVT_RADIO); // RX table ready
+//        }
 
 #if 0        // Demo
         if(App.Mode == 0b0001) { // RX
