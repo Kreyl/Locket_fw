@@ -37,10 +37,11 @@ Vibro_t Vibro {VIBRO_PIN};
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Application-specific ====
-static const BaseChunk_t *pVibroSeqToPerform = nullptr;
+//static const BaseChunk_t *pVibroSeqToPerform = nullptr;
 
 // ==== Timers ====
-static TmrKL_t TmrEverySecond {MS2ST(1000), EVT_EVERY_SECOND, tktPeriodic};
+static TmrKL_t TmrEverySecond   {MS2ST(1000), EVT_EVERY_SECOND, tktPeriodic};
+static TmrKL_t TmrIndicationOff {MS2ST(3600), EVT_INDICATION_OFF, tktOneShot};
 
 int main(void) {
     // ==== Init Vcore & clock system ====
@@ -92,6 +93,7 @@ int main(void) {
 #endif
 
     TmrEverySecond.InitAndStart();
+    TmrIndicationOff.Init();
     App.SignalEvt(EVT_EVERY_SECOND); // check it now
 
     if(Radio.Init() == OK) Led.StartSequence(lsqStart);
@@ -128,8 +130,12 @@ void App_t::ITask() {
         }
 #endif
 
-        if(Evt & EVT_RADIO) {   // RxTable is not empty
-//            if(App.Mode == modeRx) {
+        if(Evt & EVT_RADIO) {
+            if(App.Mode == modeDetectorRx) {
+                // Something received
+                if(Led.IsIdle()) Led.StartSequence(lsqCyan);
+                TmrIndicationOff.Restart(); // Reset off timer
+            }
 //                const BaseChunk_t *pVibroSeqNew;
 //                uint8_t N = Radio.RxTable.GetCount();
 ////                Uart.Printf("Cnt=%u\r", N);
@@ -145,6 +151,10 @@ void App_t::ITask() {
 //            }
 //            else pVibroSeqToPerform = nullptr; // Stop vibration
 //            Radio.RxTable.Clear();
+        }
+
+        if(Evt & EVT_INDICATION_OFF) {
+            Led.StartSequence(lsqOff);
         }
 
 //        if(Evt & EVT_OFF) {
@@ -175,49 +185,31 @@ void App_t::ITask() {
 void ReadAndSetupMode() {
     static uint8_t OldDipSettings = 0xFF;
     uint8_t b = GetDipSwitch();
-    if(b != OldDipSettings) {
-        OldDipSettings = b;
-        Uart.Printf("Dip: %02X\r", b);
-        // ==== Binding ====
-        if((b & 0b100000) == 0) {
-            App.Mode = modeBinding;
-            Led.StartSequence(lsqBinding);
-        }
-        // ==== Detector ====
-        else {
-            if(b & 0b010000) {
-                App.Mode = modeDetectorTx;
-                Led.StartSequence(lsqDetectorTx);
-            }
-            else {
-                App.Mode = modeDetectorRx;
-                Led.StartSequence(lsqDetectorRx);
-            }
-        }
-
-//        // Setup color
-//            uint8_t c = (b & 0b011100) >> 2;
-//            switch(c) {
-//                case 0b000: Led.StartSequence(lsqRed); break;
-//                case 0b001: Led.StartSequence(lsqCyan); break;
-//                case 0b010: Led.StartSequence(lsqYellow); break;
-//                case 0b011: Led.StartSequence(lsqMagenta); break;
-//                default: Led.StartSequence(lsqWhite); break;
-//            }
-//            // Setup tx power
-//            c = (b & 0b000011);
-//            chSysLock();
-//            switch(c) {
-//                case 0b00: CC.SetTxPower(CC_PwrMinus30dBm); break;
-//                case 0b01: CC.SetTxPower(CC_PwrMinus25dBm); break;
-//                case 0b10: CC.SetTxPower(CC_PwrMinus20dBm); break;
-//                default:   CC.SetTxPower(CC_PwrMinus15dBm); break;
-//            }
-//            chSysUnlock();
-//        }
-//        // RX
-//        else Led.StartSequence(lsqRx);
+    if(b == OldDipSettings) return;
+    // Something has changed
+    OldDipSettings = b;
+    Uart.Printf("Dip: %02X\r", b);
+    // ==== Binding ====
+    if((b & 0b100000) == 0) {
+        App.Mode = modeBinding;
+        Led.StartSequence(lsqBindingStart);
     }
+    // ==== Detector ====
+    else {
+        if(b & 0b010000) {
+            App.Mode = modeDetectorTx;
+            Led.StartSequence(lsqDetectorTxStart);
+        }
+        else {
+            App.Mode = modeDetectorRx;
+            Led.StartSequence(lsqDetectorRxStart);
+        }
+    }
+    // ==== Setup TX power ====
+    uint8_t pwrIndx = (b & 0b000111);
+    chSysLock();
+    CC.SetTxPower(CCPwrTable[pwrIndx]);
+    chSysUnlock();
 }
 
 

@@ -72,7 +72,9 @@ union rPkt_t {
 #endif
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
-#define RCHNL_MIN       0
+#define RCHNL_SERVICE   0
+#define RCHNL_EACH_OTH  1
+#define RCHNL_MIN       2
 #define RCHNL_MAX       19
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
 
@@ -158,6 +160,11 @@ private:
         if(SleepDuration >= MIN_SLEEP_DURATION_MS) CC.EnterPwrDown();
         chThdSleepMilliseconds(SleepDuration);
     }
+    // For different modes of operation
+    void TaskTransmitter();
+    void TaskReceiverMany();
+    void TaskReceiverSingle();
+    void TaskFeelEachOther();
 public:
     thread_t *PThd;
     int8_t Rssi;

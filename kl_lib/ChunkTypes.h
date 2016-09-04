@@ -101,6 +101,8 @@ public:
     }
     const TChunk* GetCurrentSequence() { return IPStartChunk; }
 
+    bool IsIdle() const { return (IPStartChunk == nullptr); }
+
     void IProcessSequenceI() {
         if(chVTIsArmedI(&ITmr)) chVTResetI(&ITmr);  // Reset timer
         while(true) {   // Process the sequence
@@ -126,7 +128,11 @@ public:
                     break;
 
                 case csEnd:
+                    // Signal End Of Sequence evt
                     if(PThread != nullptr) chEvtSignalI(PThread, EvtEnd);
+                    // Clear pointers
+                    IPStartChunk = nullptr;
+                    IPCurrentChunk = nullptr;
                     return;
                     break;
             } // switch

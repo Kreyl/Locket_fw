@@ -200,19 +200,19 @@ const LedRGBChunk_t lsqStart[] = {
         {csEnd},
 };
 
-const LedRGBChunk_t lsqDetectorRx[] = {
+const LedRGBChunk_t lsqDetectorRxStart[] = {
         {csSetup, 0,   clBlack},
         {csSetup, 360, clMagenta},
         {csSetup, 360, clBlack},
         {csEnd},
 };
-const LedRGBChunk_t lsqDetectorTx[] = {
+const LedRGBChunk_t lsqDetectorTxStart[] = {
         {csSetup, 0,   clBlack},
         {csSetup, 360, clYellow},
         {csSetup, 360, clBlack},
         {csEnd},
 };
-const LedRGBChunk_t lsqBinding[] = {
+const LedRGBChunk_t lsqBindingStart[] = {
         {csSetup, 0, clBlack},
         {csSetup, 360, clBlue},
         {csSetup, 360, clBlack},
@@ -220,16 +220,18 @@ const LedRGBChunk_t lsqBinding[] = {
 };
 
 #define LSQ_SPEED   360
-#define BRTNESS     99
+#define BRTNESS     180
 
-const LedRGBChunk_t lsqRed[] = {
-        {csSetup, LSQ_SPEED, {BRTNESS,0,0}},
+const LedRGBChunk_t lsqOff[] = {
+        {csSetup, LSQ_SPEED, clBlack},
         {csEnd},
 };
+
 const LedRGBChunk_t lsqCyan[] = {
         {csSetup, LSQ_SPEED, {0,BRTNESS,BRTNESS}},
         {csEnd},
 };
+
 const LedRGBChunk_t lsqYellow[] = {
         {csSetup, LSQ_SPEED, {BRTNESS,BRTNESS,0}},
         {csEnd},

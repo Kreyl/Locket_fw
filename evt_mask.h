@@ -14,6 +14,7 @@
 #define EVT_PILL_CHECK      EVENT_MASK(4)
 #define EVT_LED_SEQ_END     EVENT_MASK(5)
 #define EVT_VIBRO_END       EVENT_MASK(6)
+#define EVT_INDICATION_OFF  EVENT_MASK(7)
 
 // Adc
 #define EVT_SAMPLING        EVENT_MASK(24)
