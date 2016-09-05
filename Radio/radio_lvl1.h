@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <kl_lib.h>
+#include "kl_lib.h"
 #include "ch.h"
 #include "cc1101.h"
 #include "kl_buf.h"
@@ -57,12 +57,9 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #if 1 // =========================== Pkt_t =====================================
 union rPkt_t {
     uint32_t DWord32;
-//    struct {
-//        uint8_t ID;
-//        uint8_t State;
-//        uint8_t CheckID;
-//        uint8_t CheckState;
-//    };
+    struct {
+        uint8_t R, G, B;
+    };
     bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }
     rPkt_t& operator = (const rPkt_t &Right) { DWord32 = Right.DWord32; return *this; }
 } __attribute__ ((__packed__));
@@ -79,6 +76,8 @@ union rPkt_t {
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
 
 #define RSSI_MIN        -95
+
+#define RSSI_BIND_THRS  -72
 #endif
 
 #if 1 // =========================== Timings ===================================
@@ -155,24 +154,22 @@ public:
 
 class rLevel1_t {
 private:
-    rPkt_t Pkt;
     void TryToSleep(uint32_t SleepDuration) {
         if(SleepDuration >= MIN_SLEEP_DURATION_MS) CC.EnterPwrDown();
         chThdSleepMilliseconds(SleepDuration);
     }
+public:
+    rPkt_t Pkt;
+    thread_t *PThd;
+    int8_t Rssi;
+     RxTable_t RxTable;
+    uint8_t Init();
+    // Inner use
     // For different modes of operation
     void TaskTransmitter();
     void TaskReceiverMany();
     void TaskReceiverSingle();
-    void TaskFeelEachOther();
-public:
-    thread_t *PThd;
-    int8_t Rssi;
-    RxTable_t RxTable;
-    bool MustTx = false;
-    uint8_t Init();
-    // Inner use
-    void ITask();
+    void TaskFeelEachOtherSingle();
 };
 
 extern rLevel1_t Radio;

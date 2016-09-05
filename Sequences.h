@@ -200,19 +200,19 @@ const LedRGBChunk_t lsqStart[] = {
         {csEnd},
 };
 
-const LedRGBChunk_t lsqDetectorRxStart[] = {
+const LedRGBChunk_t lsqDetectorRxMode[] = {
         {csSetup, 0,   clBlack},
         {csSetup, 360, clMagenta},
         {csSetup, 360, clBlack},
         {csEnd},
 };
-const LedRGBChunk_t lsqDetectorTxStart[] = {
+const LedRGBChunk_t lsqDetectorTxMode[] = {
         {csSetup, 0,   clBlack},
         {csSetup, 360, clYellow},
         {csSetup, 360, clBlack},
         {csEnd},
 };
-const LedRGBChunk_t lsqBindingStart[] = {
+const LedRGBChunk_t lsqBindingMode[] = {
         {csSetup, 0, clBlack},
         {csSetup, 360, clBlue},
         {csSetup, 360, clBlack},
@@ -232,18 +232,23 @@ const LedRGBChunk_t lsqCyan[] = {
         {csEnd},
 };
 
-const LedRGBChunk_t lsqYellow[] = {
-        {csSetup, LSQ_SPEED, {BRTNESS,BRTNESS,0}},
-        {csEnd},
+const LedRGBChunk_t lsqDeath[] = {
+        {csSetup, 0, clRed},
+        {csWait, 99},
+        {csSetup, 0, clBlack},
+        {csWait, 99},
+        {csGoto, 0}
 };
-const LedRGBChunk_t lsqMagenta[] = {
-        {csSetup, LSQ_SPEED, {BRTNESS,0,BRTNESS}},
-        {csEnd},
+
+
+const LedRGBChunk_t lsqLost[] = {
+        {csSetup, 0, clMagenta},
+        {csWait, 99},
+        {csSetup, 0, clBlack},
+        {csWait, 702},
+        {csGoto, 0}
 };
-const LedRGBChunk_t lsqWhite[] = {
-        {csSetup, LSQ_SPEED, {BRTNESS, BRTNESS, BRTNESS}},
-        {csEnd},
-};
+
 
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
@@ -413,6 +418,22 @@ const BaseChunk_t vsqBrrBrrBrr[] = {
         {csSetup, 0},
         {csWait, VIBRO_REPEAT_PERIOD},
         {csEnd}
+};
+
+const BaseChunk_t vsqDeath[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, 207},
+        {csSetup, 0},
+        {csWait, 207},
+        {csGoto, 0}
+};
+
+const BaseChunk_t vsqLost[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, 702},
+        {csSetup, 0},
+        {csWait, 9000},
+        {csGoto, 0}
 };
 
 /*

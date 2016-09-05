@@ -17,7 +17,7 @@
 #include "pill_mgr.h"
 #include "kl_adc.h"
 
-// ==== Eternal ====
+#if 1 // ======================== Variables and defines ========================
 App_t App;
 
 // EEAddresses
@@ -36,12 +36,55 @@ Vibro_t Vibro {VIBRO_PIN};
 //Beeper_t Beeper {BEEPER_PIN};
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
-// ==== Application-specific ====
-//static const BaseChunk_t *pVibroSeqToPerform = nullptr;
-
 // ==== Timers ====
-static TmrKL_t TmrEverySecond   {MS2ST(1000), EVT_EVERY_SECOND, tktPeriodic};
-static TmrKL_t TmrIndicationOff {MS2ST(3600), EVT_INDICATION_OFF, tktOneShot};
+static TmrKL_t TmrEverySecond {MS2ST(1000), EVT_EVERY_SECOND, tktPeriodic};
+static TmrKL_t TmrIndication  {MS2ST(3600), EVT_INDICATION_OFF, tktOneShot};
+#endif
+
+#if 1 // ============================ Binding ==================================
+LedRGBChunk_t lsqBinding[] = {
+        {csSetup, 180, clWhite},
+        {csSetup, 180, clBlack},
+        {csWait, 999},
+        {csGoto, 0},
+};
+
+enum BindingState_t {bndOff, bndNear, bndFar, bndLost, bndDeathOccured};
+
+struct FarIndication_t {
+    uint32_t Interval;
+    const BaseChunk_t *Vsq;
+};
+
+static const FarIndication_t FarIndication[] = {
+        {5, vsqBrr},
+        {5, vsqBrrBrr},
+        {0, nullptr} // End of sequence, death for player
+};
+
+enum BindingEvtType_t {bevtStart, bevtStop, bevtRadioPkt, bevtTmrIndTick, bevtTmrLost};
+
+struct BindingEvt_t {
+    BindingEvtType_t Type;
+    Color_t Color;
+    int32_t Rssi;
+};
+
+class Binding_t {
+private:
+    BindingState_t State = bndOff;
+    Color_t Color = clBlack;
+    const FarIndication_t *Pind;
+    TmrKL_t TmrInd {MS2ST(3600), EVT_BND_TMR_IND, tktOneShot};
+    TmrKL_t TmrLost {MS2ST(7200), EVT_BND_TMR_LOST, tktOneShot};
+public:
+    void ProcessEvt(BindingEvtType_t Evt, Color_t *PColor = nullptr, int32_t Rssi = 0);
+    void Init() {
+        TmrInd.Init();
+        TmrLost.Init();
+    }
+} Binding;
+#endif
 
 int main(void) {
     // ==== Init Vcore & clock system ====
@@ -69,8 +112,6 @@ int main(void) {
     // === LED ===
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-//    Led.StartSequence(lsqStart);
-    //Led.SetColor(clWhite);
 
     // === Vibro ===
     Vibro.Init();
@@ -93,8 +134,10 @@ int main(void) {
 #endif
 
     TmrEverySecond.InitAndStart();
-    TmrIndicationOff.Init();
+    TmrIndication.Init();
     App.SignalEvt(EVT_EVERY_SECOND); // check it now
+
+    Binding.Init();
 
     if(Radio.Init() == OK) Led.StartSequence(lsqStart);
     else Led.StartSequence(lsqFailure);
@@ -131,31 +174,21 @@ void App_t::ITask() {
 #endif
 
         if(Evt & EVT_RADIO) {
-            if(App.Mode == modeDetectorRx) {
-                // Something received
+            // Something received
+            if(Mode == modeDetectorRx) {
                 if(Led.IsIdle()) Led.StartSequence(lsqCyan);
-                TmrIndicationOff.Restart(); // Reset off timer
+                TmrIndication.Restart(); // Reset off timer
             }
-//                const BaseChunk_t *pVibroSeqNew;
-//                uint8_t N = Radio.RxTable.GetCount();
-////                Uart.Printf("Cnt=%u\r", N);
-//                switch(N) {
-//                    case 0:  pVibroSeqNew = nullptr;   break;
-//                    case 1:  pVibroSeqNew = vsqBrr;    break;
-//                    case 2:  pVibroSeqNew = vsqBrrBrr; break;
-//                    default: pVibroSeqNew = vsqBrrBrrBrr; break;
-//                } // switch
-//                // If was not vibrating, start to vibrate
-//                if(pVibroSeqToPerform == nullptr and pVibroSeqNew != nullptr) Vibro.StartSequence(pVibroSeqNew);
-//                pVibroSeqToPerform = pVibroSeqNew;
-//            }
-//            else pVibroSeqToPerform = nullptr; // Stop vibration
-//            Radio.RxTable.Clear();
+            else if(Mode == modeBinding) {
+                Color_t FClr(Radio.Pkt.R, Radio.Pkt.G, Radio.Pkt.B);
+                Binding.ProcessEvt(bevtRadioPkt, &FClr, Radio.Rssi);
+            }
         }
 
-        if(Evt & EVT_INDICATION_OFF) {
-            Led.StartSequence(lsqOff);
-        }
+        if(Evt & EVT_INDICATION_OFF) Led.StartSequence(lsqOff);
+
+        if(Evt & EVT_BND_TMR_IND) Binding.ProcessEvt(bevtTmrIndTick);
+        if(Evt & EVT_BND_TMR_LOST) Binding.ProcessEvt(bevtTmrLost);
 
 //        if(Evt & EVT_OFF) {
 ////            Uart.Printf("Off\r");
@@ -182,28 +215,113 @@ void App_t::ITask() {
     } // while true
 }
 
+#if 1 // ============================== Binding ================================
+void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) {
+    switch(Evt) {
+        case bevtStop:
+            State = bndOff;
+            TmrInd.Stop();
+            TmrLost.Stop();
+            Led.Stop();
+            Vibro.Stop();
+            break;
+
+        case bevtStart:
+            State = bndNear;
+            lsqBinding[0].Color = clWhite;
+            lsqBinding[2].Time_ms = 1800;
+            Led.StartSequence(lsqBinding);
+            TmrLost.Start();
+            break;
+
+        case bevtRadioPkt:
+            if(State == bndOff or State == bndDeathOccured) return;
+            TmrLost.Restart();
+            if(Radio.Rssi >= RSSI_BIND_THRS) {  // He is near
+                State = bndNear;
+                Vibro.Stop(); // in case of returning from far
+                TmrInd.Stop();
+                // Setup received color if new
+                if(*PColor != lsqBinding[0].Color) {
+                    Led.Stop();
+                    lsqBinding[2].Time_ms = 1800;
+                    lsqBinding[0].Color.Set(Radio.Pkt.R, Radio.Pkt.G, Radio.Pkt.B);
+                    Led.StartSequence(lsqBinding);
+                }
+            }
+            // He is far
+            else {
+                if(State != bndFar) {   // Ignore weak pkts if already in Far state
+                    State = bndFar;
+                    // Start red blink
+                    Led.Stop();
+                    lsqBinding[2].Time_ms = 900;
+                    lsqBinding[0].Color = clRed;
+                    Led.StartSequence(lsqBinding);
+                    // Init variables and start timer for vibro
+                    Pind = FarIndication;
+                    Vibro.StartSequence(Pind->Vsq);
+                    TmrInd.Start(S2ST(Pind->Interval));
+                }
+            }
+            break;
+
+        case bevtTmrIndTick:
+            if(State == bndFar) {
+                Pind++; // switch to next indication chunk
+                if(Pind->Interval == 0) { // this one was last
+                    State = bndDeathOccured;
+                    Led.StartSequence(lsqDeath);
+                    Vibro.StartSequence(vsqDeath);
+                }
+                else { // Not last
+                    Vibro.StartSequence(Pind->Vsq);
+                    TmrInd.Start(S2ST(Pind->Interval));
+                }
+            }
+            break;
+
+        case bevtTmrLost:
+            if(State == bndNear or State == bndFar) {
+                State = bndLost;
+                Led.StartSequence(lsqLost);
+                Vibro.StartSequence(vsqLost);
+            }
+            break;
+    } // switch
+}
+#endif
+
 void ReadAndSetupMode() {
     static uint8_t OldDipSettings = 0xFF;
     uint8_t b = GetDipSwitch();
     if(b == OldDipSettings) return;
     // Something has changed
+    // Reset everything
+    Vibro.Stop();
+    Led.Stop();
+    Binding.ProcessEvt(bevtStop);
+    // Analyze switch
     OldDipSettings = b;
     Uart.Printf("Dip: %02X\r", b);
-    // ==== Binding ====
-    if((b & 0b100000) == 0) {
-        App.Mode = modeBinding;
-        Led.StartSequence(lsqBindingStart);
+    // Get mode
+    if(App.ID == 0) {
+        App.Mode = modeNone;
+        Led.StartSequence(lsqFailure);
     }
-    // ==== Detector ====
+    else if(App.ID == 1 or App.ID == 3 or App.ID == 5 or App.ID == 7) {
+        App.Mode = modeDetectorTx;
+        Led.StartSequence(lsqDetectorTxMode);
+    }
+    else if(App.ID == 2 or App.ID == 4 or App.ID == 6 or App.ID == 8) {
+        App.Mode = modeDetectorRx;
+        Led.StartSequence(lsqDetectorRxMode);
+    }
     else {
-        if(b & 0b010000) {
-            App.Mode = modeDetectorTx;
-            Led.StartSequence(lsqDetectorTxStart);
-        }
-        else {
-            App.Mode = modeDetectorRx;
-            Led.StartSequence(lsqDetectorRxStart);
-        }
+        App.Mode = modeBinding;
+        Led.StartSequence(lsqBindingMode);
+        chThdSleepMilliseconds(999);
+        Binding.ProcessEvt(bevtStart);
     }
     // ==== Setup TX power ====
     uint8_t pwrIndx = (b & 0b000111);

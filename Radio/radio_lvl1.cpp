@@ -35,66 +35,11 @@ static THD_WORKING_AREA(warLvl1Thread, 256);
 __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
-    Radio.ITask();
-}
-
-__noreturn
-void rLevel1_t::ITask() {
     while(true) {
-        if     (App.Mode == modeDetectorTx) TaskTransmitter();
-        else if(App.Mode == modeDetectorRx) TaskReceiverSingle();
-        else if(App.Mode == modeBinding)    TaskFeelEachOther();
-
-        // ==== Receiver ====
-        else {
-        }
-
-#if 0        // Demo
-        if(App.Mode == 0b0001) { // RX
-            int8_t Rssi;
-            Color_t Clr;
-            uint8_t RxRslt = CC.ReceiveSync(RX_T_MS, &Pkt, &Rssi);
-            if(RxRslt == OK) {
-                Uart.Printf("\rRssi=%d", Rssi);
-                Clr = clWhite;
-                if     (Rssi < -100) Clr = clRed;
-                else if(Rssi < -90) Clr = clYellow;
-                else if(Rssi < -80) Clr = clGreen;
-                else if(Rssi < -70) Clr = clCyan;
-                else if(Rssi < -60) Clr = clBlue;
-                else if(Rssi < -50) Clr = clMagenta;
-            }
-            else Clr = clBlack;
-            Led.SetColor(Clr);
-            chThdSleepMilliseconds(99);
-        }
-        else {  // TX
-            DBG1_SET();
-            CC.TransmitSync(&Pkt);
-            DBG1_CLR();
-//            chThdSleepMilliseconds(99);
-        }
-//#else
-#endif
-
-#if 0
-        // Listen if nobody found, and do not if found
-        int8_t Rssi;
-        // Iterate channels
-        for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
-            if(i == App.ID) continue;   // Do not listen self
-            CC.SetChannel(ID2RCHNL(i));
-            uint8_t RxRslt = CC.ReceiveSync(RX_T_MS, &Pkt, &Rssi);
-            if(RxRslt == OK) {
-//                    Uart.Printf("\rCh=%d; Rssi=%d", i, Rssi);
-                App.SignalEvt(EVTMSK_SOMEONE_NEAR);
-                break; // No need to listen anymore if someone already found
-            }
-        } // for
-        CC.SetChannel(ID2RCHNL(App.ID));    // Set self channel back
-        DBG2_CLR();
-        TryToSleep(RX_SLEEP_T_MS);
-#endif
+        if     (App.Mode == modeDetectorTx) Radio.TaskTransmitter();
+        else if(App.Mode == modeDetectorRx) Radio.TaskReceiverSingle();
+        else if(App.Mode == modeBinding)    Radio.TaskFeelEachOtherSingle();
+        else chThdSleepMilliseconds(450);
     } // while true
 }
 
@@ -136,7 +81,7 @@ void rLevel1_t::TaskReceiverMany() {
     App.SignalEvt(EVT_RADIO); // RX table ready
 }
 
-void rLevel1_t::TaskFeelEachOther() {
+void rLevel1_t::TaskFeelEachOtherSingle() {
     chThdSleepMilliseconds(450);
 }
 #endif // task

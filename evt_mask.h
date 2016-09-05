@@ -15,6 +15,8 @@
 #define EVT_LED_SEQ_END     EVENT_MASK(5)
 #define EVT_VIBRO_END       EVENT_MASK(6)
 #define EVT_INDICATION_OFF  EVENT_MASK(7)
+#define EVT_BND_TMR_IND     EVENT_MASK(8)
+#define EVT_BND_TMR_LOST    EVENT_MASK(9)
 
 // Adc
 #define EVT_SAMPLING        EVENT_MASK(24)
