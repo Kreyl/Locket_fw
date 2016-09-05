@@ -76,7 +76,7 @@ private:
     Color_t Color = clBlack;
     const FarIndication_t *Pind;
     TmrKL_t TmrInd {MS2ST(3600), EVT_BND_TMR_IND, tktOneShot};
-    TmrKL_t TmrLost {MS2ST(7200), EVT_BND_TMR_LOST, tktOneShot};
+    TmrKL_t TmrLost {MS2ST(6300), EVT_BND_TMR_LOST, tktOneShot};
 public:
     void ProcessEvt(BindingEvtType_t Evt, Color_t *PColor = nullptr, int32_t Rssi = 0);
     void Init() {
@@ -217,9 +217,11 @@ void App_t::ITask() {
 
 #if 1 // ============================== Binding ================================
 void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) {
+    Uart.Printf("* %u\r", Evt);
     switch(Evt) {
         case bevtStop:
             State = bndOff;
+            Uart.Printf("bndOff\r");
             TmrInd.Stop();
             TmrLost.Stop();
             Led.Stop();
@@ -228,6 +230,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) 
 
         case bevtStart:
             State = bndNear;
+            Uart.Printf("bndNear1\r");
             lsqBinding[0].Color = clWhite;
             lsqBinding[2].Time_ms = 1800;
             Led.StartSequence(lsqBinding);
@@ -239,6 +242,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) 
             TmrLost.Restart();
             if(Radio.Rssi >= RSSI_BIND_THRS) {  // He is near
                 State = bndNear;
+                Uart.Printf("bndNear2\r");
                 Vibro.Stop(); // in case of returning from far
                 TmrInd.Stop();
                 // Setup received color if new
@@ -253,6 +257,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) 
             else {
                 if(State != bndFar) {   // Ignore weak pkts if already in Far state
                     State = bndFar;
+                    Uart.Printf("bndFar\r");
                     // Start red blink
                     Led.Stop();
                     lsqBinding[2].Time_ms = 900;
@@ -271,6 +276,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) 
                 Pind++; // switch to next indication chunk
                 if(Pind->Interval == 0) { // this one was last
                     State = bndDeathOccured;
+                    Uart.Printf("bndDeathOccured\r");
                     Led.StartSequence(lsqDeath);
                     Vibro.StartSequence(vsqDeath);
                 }
@@ -284,6 +290,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) 
         case bevtTmrLost:
             if(State == bndNear or State == bndFar) {
                 State = bndLost;
+                Uart.Printf("bndLost\r");
                 Led.StartSequence(lsqLost);
                 Vibro.StartSequence(vsqLost);
             }
@@ -347,6 +354,19 @@ void App_t::OnCmd(Shell_t *PShell) {
         if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
         uint8_t r = ISetID(dw32);
         PShell->Ack(r);
+    }
+
+    else if(PCmd->NameIs("RPkt")) {
+        if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+        Radio.Rssi = dw32;
+        if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+        Radio.Pkt.R = dw32;
+        if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+        Radio.Pkt.G = dw32;
+        if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+        Radio.Pkt.B = dw32;
+        SignalEvt(EVT_RADIO);
+//        PShell->Ack(OK);
     }
 
     else PShell->Ack(CMD_UNKNOWN);
