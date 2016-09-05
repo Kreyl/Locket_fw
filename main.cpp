@@ -33,7 +33,40 @@ static void ReadIDfromEE();
 
 // ==== Periphery ====
 Vibro_t Vibro {VIBRO_PIN};
-//Beeper_t Beeper {BEEPER_PIN};
+#if BEEPER_ENABLED
+Beeper_t Beeper {BEEPER_PIN};
+#endif
+
+#if BTN_ENABLED
+#define BTN_POLL_PERIOD_MS   27
+static void TmrBtnCallback(void *p);
+
+class Btn_t {
+private:
+    virtual_timer_t Tmr;
+    bool IWasPressed = false;
+    PinInput_t Pin {BTN_PIN};
+public:
+    void Init() {
+        chVTSet(&Tmr, MS2ST(BTN_POLL_PERIOD_MS), TmrBtnCallback, nullptr);
+        Pin.Init();
+    }
+    void OnTmrTick() {}
+    void ITmrCallback() {
+        chSysLockFromISR();
+        if(Pin.IsHi() and !IWasPressed) {
+            IWasPressed = true;
+            App.SignalEvtI(EVT_BUTTON);
+        }
+        else if(!Pin.IsHi() and IWasPressed) IWasPressed = false;
+        chVTSetI(&Tmr, MS2ST(BTN_POLL_PERIOD_MS), TmrBtnCallback, nullptr);
+        chSysUnlockFromISR();
+    }
+} Btn;
+
+void TmrBtnCallback(void *p) { Btn.ITmrCallback(); }
+#endif
+
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
@@ -124,7 +157,7 @@ int main(void) {
     chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
 
-//    Btn.Init();
+    Btn.Init();
 //    Adc.Init();
 
 #if PILL_ENABLED // === Pill ===
@@ -190,6 +223,12 @@ void App_t::ITask() {
         if(Evt & EVT_BND_TMR_IND) Binding.ProcessEvt(bevtTmrIndTick);
         if(Evt & EVT_BND_TMR_LOST) Binding.ProcessEvt(bevtTmrLost);
 
+#if BTN_ENABLED
+        if(Evt & EVT_BUTTON) {
+            Uart.Printf("Btn\r");
+        }
+#endif
+
 //        if(Evt & EVT_OFF) {
 ////            Uart.Printf("Off\r");
 //            chSysLock();
@@ -241,17 +280,18 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) 
             if(State == bndOff or State == bndDeathOccured) return;
             TmrLost.Restart();
             if(Radio.Rssi >= RSSI_BIND_THRS) {  // He is near
-                State = bndNear;
-                Uart.Printf("bndNear2\r");
                 Vibro.Stop(); // in case of returning from far
                 TmrInd.Stop();
                 // Setup received color if new
-                if(*PColor != lsqBinding[0].Color) {
+                if(*PColor != lsqBinding[0].Color or State != bndNear) {
                     Led.Stop();
-                    lsqBinding[2].Time_ms = 1800;
+                    lsqBinding[2].Time_ms = 2700;
                     lsqBinding[0].Color.Set(Radio.Pkt.R, Radio.Pkt.G, Radio.Pkt.B);
                     Led.StartSequence(lsqBinding);
+                    Vibro.StartSequence(vsqBrr);
                 }
+                State = bndNear;
+                Uart.Printf("bndNear2\r");
             }
             // He is far
             else {

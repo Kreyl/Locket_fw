@@ -9,7 +9,7 @@
 
 // Event masks
 #define EVT_UART_NEW_CMD    EVENT_MASK(1)
-#define EVT_BUTTONS         EVENT_MASK(2)
+#define EVT_BUTTON          EVENT_MASK(2)
 #define EVT_OFF             EVENT_MASK(3)
 #define EVT_PILL_CHECK      EVENT_MASK(4)
 #define EVT_LED_SEQ_END     EVENT_MASK(5)
