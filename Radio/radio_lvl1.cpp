@@ -45,9 +45,9 @@ static void rLvl1Thread(void *arg) {
 
 void rLevel1_t::TaskTransmitter() {
     CC.SetChannel(ID2RCHNL(App.ID));
-    Pkt.DWord32 = THE_WORD;
+    PktTx.DWord32 = THE_WORD;
     DBG1_SET();
-    CC.TransmitSync(&Pkt);
+    CC.TransmitSync(&PktTx);
     DBG1_CLR();
     TryToSleep(54);
 }
@@ -55,10 +55,10 @@ void rLevel1_t::TaskTransmitter() {
 void rLevel1_t::TaskReceiverSingle() {
     uint8_t Ch = ID2RCHNL(App.ID - 1);
     CC.SetChannel(Ch);
-    uint8_t RxRslt = CC.ReceiveSync(117, &Pkt, &Rssi);   // Double pkt duration + TX sleep time
+    uint8_t RxRslt = CC.ReceiveSync(117, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
     if(RxRslt == OK) {
         Uart.Printf("Ch=%u; Rssi=%d\r", Ch, Rssi);
-        if(Pkt.DWord32 == THE_WORD and Rssi > -63) App.SignalEvt(EVT_RADIO);
+        if(PktRx.DWord32 == THE_WORD and Rssi > -63) App.SignalEvt(EVT_RADIO);
     }
     TryToSleep(450);
 }
@@ -69,10 +69,10 @@ void rLevel1_t::TaskReceiverMany() {
         for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
             if(i == App.ID) continue;   // Do not listen self
             CC.SetChannel(ID2RCHNL(i));
-            uint8_t RxRslt = CC.ReceiveSync(17, &Pkt, &Rssi);   // Double pkt duration + TX sleep time
+            uint8_t RxRslt = CC.ReceiveSync(17, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
             if(RxRslt == OK) {
 //                        Uart.Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
-                if(Pkt.DWord32 == THE_WORD and Rssi > RSSI_MIN) RxTable.AddId(i);
+                if(PktRx.DWord32 == THE_WORD and Rssi > RSSI_MIN) RxTable.AddId(i);
                 else Uart.Printf("PktErr\r");
             }
         } // for i

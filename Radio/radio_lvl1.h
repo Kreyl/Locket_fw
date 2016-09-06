@@ -159,10 +159,10 @@ private:
         chThdSleepMilliseconds(SleepDuration);
     }
 public:
-    rPkt_t Pkt;
+    rPkt_t PktRx, PktTx;
     thread_t *PThd;
     int8_t Rssi;
-     RxTable_t RxTable;
+    RxTable_t RxTable;
     uint8_t Init();
     // Inner use
     // For different modes of operation

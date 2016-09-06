@@ -82,39 +82,61 @@ LedRGBChunk_t lsqBinding[] = {
         {csGoto, 0},
 };
 
-enum BindingState_t {bndOff, bndNear, bndFar, bndLost, bndDeathOccured};
+enum BindingState_t {bndOff, bndNear, bndFar, bndLost, bndDeathOccured, bndColorSwitch, bndRxMoodIgnore};
 
+// Indication of "far" state
 struct FarIndication_t {
     uint32_t Interval;
     const BaseChunk_t *Vsq;
 };
-
 static const FarIndication_t FarIndication[] = {
         {5, vsqBrr},
+        {5, vsqBrr},
+        {5, vsqBrr},
+//        {5, vsqBrr},
+//        {5, vsqBrr},
+//        {5, vsqBrr},
+        // 30 s passed
         {5, vsqBrrBrr},
+        {5, vsqBrrBrr},
+//        {5, vsqBrrBrr},
+//        {5, vsqBrrBrr},
+        // 50 s passed
+        {4, vsqBrrBrrBrr},
+        {3, vsqBrrBrrBrr},
+        {2, vsqBrrBrrBrr},
+        {1, vsqBrrBrrBrr},
+        // 60 s passed
         {0, nullptr} // End of sequence, death for player
 };
 
-enum BindingEvtType_t {bevtStart, bevtStop, bevtRadioPkt, bevtTmrIndTick, bevtTmrLost};
-
+// Binding events
+enum BindingEvtType_t {bevtStart, bevtStop, bevtRadioPkt, bevtTmrIndTick, bevtTmrLost, bevtBtn, bevtTmrMood};
 struct BindingEvt_t {
     BindingEvtType_t Type;
     Color_t Color;
     int32_t Rssi;
 };
 
+// Moods
+static const Color_t MoodClr[] = {clBlue, clGreen, clYellow, clWhite};
+#define MOOD_CNT    countof(MoodClr)
+
 class Binding_t {
 private:
     BindingState_t State = bndOff;
-    Color_t Color = clBlack;
     const FarIndication_t *Pind;
     TmrKL_t TmrInd {MS2ST(3600), EVT_BND_TMR_IND, tktOneShot};
     TmrKL_t TmrLost {MS2ST(6300), EVT_BND_TMR_LOST, tktOneShot};
+    // Mood management
+    uint8_t MoodIndx = 0;
+    TmrKL_t TmrMoodSwitch {MS2ST(2700), EVT_BND_TMR_MOOD, tktOneShot};
 public:
-    void ProcessEvt(BindingEvtType_t Evt, Color_t *PColor = nullptr, int32_t Rssi = 0);
+    void ProcessEvt(BindingEvtType_t Evt);
     void Init() {
         TmrInd.Init();
         TmrLost.Init();
+        TmrMoodSwitch.Init();
     }
 } Binding;
 #endif
@@ -212,20 +234,24 @@ void App_t::ITask() {
                 if(Led.IsIdle()) Led.StartSequence(lsqCyan);
                 TmrIndication.Restart(); // Reset off timer
             }
-            else if(Mode == modeBinding) {
-                Color_t FClr(Radio.Pkt.R, Radio.Pkt.G, Radio.Pkt.B);
-                Binding.ProcessEvt(bevtRadioPkt, &FClr, Radio.Rssi);
-            }
+            else if(Mode == modeBinding) Binding.ProcessEvt(bevtRadioPkt);
         }
 
-        if(Evt & EVT_INDICATION_OFF) Led.StartSequence(lsqOff);
+        if(Evt & EVT_INDICATION_OFF) if(Mode != modeBinding) Led.StartSequence(lsqOff);
 
-        if(Evt & EVT_BND_TMR_IND) Binding.ProcessEvt(bevtTmrIndTick);
-        if(Evt & EVT_BND_TMR_LOST) Binding.ProcessEvt(bevtTmrLost);
+        if(Evt & EVT_BND_TMR_IND)  {
+            if(Mode == modeBinding) Binding.ProcessEvt(bevtTmrIndTick);
+        }
+        if(Evt & EVT_BND_TMR_LOST) {
+            if(Mode == modeBinding) Binding.ProcessEvt(bevtTmrLost);
+        }
+        if(Evt & EVT_BND_TMR_MOOD) {
+            if(Mode == modeBinding) Binding.ProcessEvt(bevtTmrMood);
+        }
 
 #if BTN_ENABLED
         if(Evt & EVT_BUTTON) {
-            Uart.Printf("Btn\r");
+            if(Mode == modeBinding) Binding.ProcessEvt(bevtBtn);
         }
 #endif
 
@@ -255,7 +281,7 @@ void App_t::ITask() {
 }
 
 #if 1 // ============================== Binding ================================
-void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) {
+void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
     Uart.Printf("* %u\r", Evt);
     switch(Evt) {
         case bevtStop:
@@ -270,7 +296,8 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) 
         case bevtStart:
             State = bndNear;
             Uart.Printf("bndNear1\r");
-            lsqBinding[0].Color = clWhite;
+            MoodIndx = 0;
+            lsqBinding[0].Color = clBlue;
             lsqBinding[2].Time_ms = 1800;
             Led.StartSequence(lsqBinding);
             TmrLost.Start();
@@ -283,15 +310,20 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) 
                 Vibro.Stop(); // in case of returning from far
                 TmrInd.Stop();
                 // Setup received color if new
-                if(*PColor != lsqBinding[0].Color or State != bndNear) {
-                    Led.Stop();
-                    lsqBinding[2].Time_ms = 2700;
-                    lsqBinding[0].Color.Set(Radio.Pkt.R, Radio.Pkt.G, Radio.Pkt.B);
-                    Led.StartSequence(lsqBinding);
-                    Vibro.StartSequence(vsqBrr);
-                }
-                State = bndNear;
-                Uart.Printf("bndNear2\r");
+                if(State != bndColorSwitch and State != bndRxMoodIgnore) {
+                    Color_t FClr(Radio.PktRx.R, Radio.PktRx.G, Radio.PktRx.B);
+                    if(FClr != lsqBinding[0].Color or State != bndNear) {
+                        Led.Stop();
+                        lsqBinding[2].Time_ms = 2700;
+                        lsqBinding[0].Color = FClr;
+                        Led.StartSequence(lsqBinding);
+                        Vibro.StartSequence(vsqBrr);
+                        // Transmit same color
+                        FClr.ToRGB(&Radio.PktTx.R, &Radio.PktTx.G, &Radio.PktTx.B);
+                    }
+                    State = bndNear;
+                    Uart.Printf("bndNear2\r");
+                } // if not ignore
             }
             // He is far
             else {
@@ -300,12 +332,12 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) 
                     Uart.Printf("bndFar\r");
                     // Start red blink
                     Led.Stop();
-                    lsqBinding[2].Time_ms = 900;
+                    lsqBinding[2].Time_ms = 720;
                     lsqBinding[0].Color = clRed;
                     Led.StartSequence(lsqBinding);
                     // Init variables and start timer for vibro
                     Pind = FarIndication;
-                    Vibro.StartSequence(Pind->Vsq);
+//                    Vibro.StartSequence(Pind->Vsq);
                     TmrInd.Start(S2ST(Pind->Interval));
                 }
             }
@@ -333,6 +365,41 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt, Color_t *PColor, int32_t Rssi) 
                 Uart.Printf("bndLost\r");
                 Led.StartSequence(lsqLost);
                 Vibro.StartSequence(vsqLost);
+            }
+            break;
+
+        case bevtBtn:
+            if(State == bndNear or State == bndColorSwitch) {
+                State = bndColorSwitch;
+                TmrMoodSwitch.Restart();
+                // Show next mood
+                MoodIndx++;
+                if(MoodIndx >= MOOD_CNT) MoodIndx = 0;
+                Led.Stop();
+                Led.SetColor(MoodClr[MoodIndx]);
+            }
+            else if(State == bndDeathOccured) {
+                Vibro.Stop();   // switch off vibro by btn
+            }
+            break;
+
+        case bevtTmrMood:   // Transmit choosen mood after iteration done
+            // After btn finally released
+            if(State == bndColorSwitch) {
+                Led.Stop();
+                lsqBinding[2].Time_ms = 2700;
+                lsqBinding[0].Color = MoodClr[MoodIndx];
+                Led.StartSequence(lsqBinding);
+                Vibro.StartSequence(vsqBrr);
+                // Send choosen mood
+                MoodClr[MoodIndx].ToRGB(&Radio.PktTx.R, &Radio.PktTx.G, &Radio.PktTx.B);
+                // Ignore received color for a while
+                State = bndRxMoodIgnore;
+                TmrMoodSwitch.Restart();
+            }
+            // Time to react back to neighbor's mood
+            else if(State == bndRxMoodIgnore) {
+                State = bndNear;
             }
             break;
     } // switch
@@ -400,11 +467,11 @@ void App_t::OnCmd(Shell_t *PShell) {
         if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
         Radio.Rssi = dw32;
         if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-        Radio.Pkt.R = dw32;
+        Radio.PktRx.R = dw32;
         if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-        Radio.Pkt.G = dw32;
+        Radio.PktRx.G = dw32;
         if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-        Radio.Pkt.B = dw32;
+        Radio.PktRx.B = dw32;
         SignalEvt(EVT_RADIO);
 //        PShell->Ack(OK);
     }
