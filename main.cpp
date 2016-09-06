@@ -84,6 +84,10 @@ LedRGBChunk_t lsqBinding[] = {
 
 enum BindingState_t {bndOff, bndNear, bndFar, bndLost, bndDeathOccured, bndColorSwitch, bndRxMoodIgnore};
 
+// Timings
+#define BND_BLINK_PERIOD_MS         2700
+#define BND_FAR_BLINK_PERIOD_MS     720
+
 // Indication of "far" state
 struct FarIndication_t {
     uint32_t Interval;
@@ -126,7 +130,7 @@ class Binding_t {
 private:
     BindingState_t State = bndOff;
     const FarIndication_t *Pind;
-    TmrKL_t TmrInd {MS2ST(3600), EVT_BND_TMR_IND, tktOneShot};
+    TmrKL_t TmrInd  {MS2ST(3600), EVT_BND_TMR_IND,  tktOneShot};
     TmrKL_t TmrLost {MS2ST(6300), EVT_BND_TMR_LOST, tktOneShot};
     // Mood management
     uint8_t MoodIndx = 0;
@@ -287,6 +291,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
         case bevtStop:
             State = bndOff;
             Uart.Printf("bndOff\r");
+            Radio.MustSleep = true;
             TmrInd.Stop();
             TmrLost.Stop();
             Led.Stop();
@@ -298,11 +303,12 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
             Uart.Printf("bndNear1\r");
             MoodIndx = 0;
             lsqBinding[0].Color = clBlue;
-            lsqBinding[2].Time_ms = 1800;
+            lsqBinding[2].Time_ms = BND_BLINK_PERIOD_MS;
             Led.StartSequence(lsqBinding);
             TmrLost.Start();
             // Transmit same color
             lsqBinding[0].Color.ToRGB(&Radio.PktTx.R, &Radio.PktTx.G, &Radio.PktTx.B);
+            Radio.MustSleep = false;
             break;
 
         case bevtRadioPkt:
@@ -316,7 +322,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
                     Color_t FClr(Radio.PktRx.R, Radio.PktRx.G, Radio.PktRx.B);
                     if(FClr != lsqBinding[0].Color or State != bndNear) {
                         Led.Stop();
-                        lsqBinding[2].Time_ms = 2700;
+                        lsqBinding[2].Time_ms = BND_BLINK_PERIOD_MS;
                         lsqBinding[0].Color = FClr;
                         Led.StartSequence(lsqBinding);
                         Vibro.StartSequence(vsqBrr);
@@ -334,7 +340,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
                     Uart.Printf("bndFar\r");
                     // Start red blink
                     Led.Stop();
-                    lsqBinding[2].Time_ms = 720;
+                    lsqBinding[2].Time_ms = BND_FAR_BLINK_PERIOD_MS;
                     lsqBinding[0].Color = clRed;
                     Led.StartSequence(lsqBinding);
                     // Init variables and start timer for vibro
@@ -389,7 +395,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
             // After btn finally released
             if(State == bndColorSwitch) {
                 Led.Stop();
-                lsqBinding[2].Time_ms = 2700;
+                lsqBinding[2].Time_ms = BND_BLINK_PERIOD_MS;
                 lsqBinding[0].Color = MoodClr[MoodIndx];
                 Led.StartSequence(lsqBinding);
                 Vibro.StartSequence(vsqBrr);
@@ -425,15 +431,16 @@ void ReadAndSetupMode() {
     if(App.ID == 0) {
         App.Mode = modeNone;
         Led.StartSequence(lsqFailure);
-        return;
     }
     else if(App.ID == 1 or App.ID == 3 or App.ID == 5 or App.ID == 7) {
         App.Mode = modeDetectorTx;
         Led.StartSequence(lsqDetectorTxMode);
+        Radio.MustSleep = false;
     }
     else if(App.ID == 2 or App.ID == 4 or App.ID == 6 or App.ID == 8) {
         App.Mode = modeDetectorRx;
         Led.StartSequence(lsqDetectorRxMode);
+        Radio.MustSleep = false;
     }
     else {
         App.Mode = modeBinding;
@@ -446,7 +453,6 @@ void ReadAndSetupMode() {
     chSysLock();
     CC.SetTxPower(CCPwrTable[pwrIndx]);
     chSysUnlock();
-    Radio.MustSleep = false;
 }
 
 

@@ -37,10 +37,12 @@ static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
         if(Radio.MustSleep) Radio.TryToSleep(450);
-        if     (App.Mode == modeDetectorTx) Radio.TaskTransmitter();
-        else if(App.Mode == modeDetectorRx) Radio.TaskReceiverSingle();
-        else if(App.Mode == modeBinding)    Radio.TaskFeelEachOtherSingle();
-        else Radio.TryToSleep(450);
+        else {
+            if     (App.Mode == modeDetectorTx) Radio.TaskTransmitter();
+            else if(App.Mode == modeDetectorRx) Radio.TaskReceiverSingle();
+            else if(App.Mode == modeBinding)    Radio.TaskFeelEachOtherSingle();
+            else Radio.TryToSleep(450);
+        }
     } // while true
 }
 
@@ -94,7 +96,7 @@ void rLevel1_t::TaskFeelEachOtherSingle() {
             // Listen for an answer
             uint8_t RxRslt = CC.ReceiveSync(18, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
             if(RxRslt == OK) {
-                Uart.Printf("i=%d; Rssi=%d\r", i, Rssi);
+//                Uart.Printf("i=%d; Rssi=%d\r", i, Rssi);
                 if(Rssi > TopRssi) TopRssi = Rssi;
             }
             TryToSleep(126);
@@ -107,7 +109,7 @@ void rLevel1_t::TaskFeelEachOtherSingle() {
             // Listen for a command
             uint8_t RxRslt = CC.ReceiveSync(144, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
             if(RxRslt == OK) {
-                Uart.Printf("i=%d; Rssi=%d\r", i, Rssi);
+//                Uart.Printf("i=%d; Rssi=%d\r", i, Rssi);
                 if(Rssi > TopRssi) TopRssi = Rssi;
                 // Transmit reply
                 DBG1_SET();
