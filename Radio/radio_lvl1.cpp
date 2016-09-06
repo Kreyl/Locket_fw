@@ -36,10 +36,11 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
+        if(Radio.MustSleep) Radio.TryToSleep(450);
         if     (App.Mode == modeDetectorTx) Radio.TaskTransmitter();
         else if(App.Mode == modeDetectorRx) Radio.TaskReceiverSingle();
         else if(App.Mode == modeBinding)    Radio.TaskFeelEachOtherSingle();
-        else chThdSleepMilliseconds(450);
+        else Radio.TryToSleep(450);
     } // while true
 }
 
@@ -71,7 +72,7 @@ void rLevel1_t::TaskReceiverMany() {
             CC.SetChannel(ID2RCHNL(i));
             uint8_t RxRslt = CC.ReceiveSync(17, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
             if(RxRslt == OK) {
-//                        Uart.Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
+//                Uart.Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
                 if(PktRx.DWord32 == THE_WORD and Rssi > RSSI_MIN) RxTable.AddId(i);
                 else Uart.Printf("PktErr\r");
             }
@@ -82,7 +83,45 @@ void rLevel1_t::TaskReceiverMany() {
 }
 
 void rLevel1_t::TaskFeelEachOtherSingle() {
-    chThdSleepMilliseconds(450);
+    int8_t TopRssi = -126;
+    // Alice is boss
+    if((App.ID & 0x01) == 1) {
+        CC.SetChannel(ID2RCHNL(App.ID));
+        for(int i=0; i<7; i++) {
+            DBG1_SET();
+            CC.TransmitSync(&PktTx);
+            DBG1_CLR();
+            // Listen for an answer
+            uint8_t RxRslt = CC.ReceiveSync(18, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
+            if(RxRslt == OK) {
+                Uart.Printf("i=%d; Rssi=%d\r", i, Rssi);
+                if(Rssi > TopRssi) TopRssi = Rssi;
+            }
+            TryToSleep(126);
+        } // for
+    }
+    // Bob does what Alice says
+    else {
+        CC.SetChannel(ID2RCHNL(App.ID - 1));
+        for(int i=0; i<7; i++) {
+            // Listen for a command
+            uint8_t RxRslt = CC.ReceiveSync(144, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
+            if(RxRslt == OK) {
+                Uart.Printf("i=%d; Rssi=%d\r", i, Rssi);
+                if(Rssi > TopRssi) TopRssi = Rssi;
+                // Transmit reply
+                DBG1_SET();
+                CC.TransmitSync(&PktTx);
+                DBG1_CLR();
+            }
+            TryToSleep(45);
+        } // for
+    }
+    // Signal Evt if something received
+    if(TopRssi > -126) {
+        Rssi = TopRssi;
+        App.SignalEvt(EVT_RADIO);
+    }
 }
 #endif // task
 

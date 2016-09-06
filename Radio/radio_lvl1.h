@@ -153,19 +153,19 @@ public:
 #endif
 
 class rLevel1_t {
-private:
-    void TryToSleep(uint32_t SleepDuration) {
-        if(SleepDuration >= MIN_SLEEP_DURATION_MS) CC.EnterPwrDown();
-        chThdSleepMilliseconds(SleepDuration);
-    }
 public:
     rPkt_t PktRx, PktTx;
+    bool MustSleep = true;
     thread_t *PThd;
     int8_t Rssi;
     RxTable_t RxTable;
     uint8_t Init();
     // Inner use
-    // For different modes of operation
+    void TryToSleep(uint32_t SleepDuration) {
+        if(SleepDuration >= MIN_SLEEP_DURATION_MS) CC.EnterPwrDown();
+        chThdSleepMilliseconds(SleepDuration);
+    }
+    // Different modes of operation
     void TaskTransmitter();
     void TaskReceiverMany();
     void TaskReceiverSingle();

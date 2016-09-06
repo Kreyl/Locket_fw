@@ -105,9 +105,9 @@ static const FarIndication_t FarIndication[] = {
         {4, vsqBrrBrrBrr},
         {3, vsqBrrBrrBrr},
         {2, vsqBrrBrrBrr},
-        {1, vsqBrrBrrBrr},
+        {2, vsqBrrBrrBrr},
         // 60 s passed
-        {0, nullptr} // End of sequence, death for player
+        {0, nullptr} // End of sequence, death is here
 };
 
 // Binding events
@@ -301,6 +301,8 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
             lsqBinding[2].Time_ms = 1800;
             Led.StartSequence(lsqBinding);
             TmrLost.Start();
+            // Transmit same color
+            lsqBinding[0].Color.ToRGB(&Radio.PktTx.R, &Radio.PktTx.G, &Radio.PktTx.B);
             break;
 
         case bevtRadioPkt:
@@ -411,6 +413,7 @@ void ReadAndSetupMode() {
     uint8_t b = GetDipSwitch();
     if(b == OldDipSettings) return;
     // Something has changed
+    Radio.MustSleep = true; // Sleep until we decide what to do
     // Reset everything
     Vibro.Stop();
     Led.Stop();
@@ -422,6 +425,7 @@ void ReadAndSetupMode() {
     if(App.ID == 0) {
         App.Mode = modeNone;
         Led.StartSequence(lsqFailure);
+        return;
     }
     else if(App.ID == 1 or App.ID == 3 or App.ID == 5 or App.ID == 7) {
         App.Mode = modeDetectorTx;
@@ -442,6 +446,7 @@ void ReadAndSetupMode() {
     chSysLock();
     CC.SetTxPower(CCPwrTable[pwrIndx]);
     chSysUnlock();
+    Radio.MustSleep = false;
 }
 
 
