@@ -71,7 +71,6 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {MS2ST(1000), EVT_EVERY_SECOND, tktPeriodic};
-static TmrKL_t TmrIndication  {MS2ST(3600), EVT_INDICATION_OFF, tktOneShot};
 #endif
 
 #if 1 // ============================ Binding ==================================
@@ -97,14 +96,14 @@ static const FarIndication_t FarIndication[] = {
         {5, vsqBrr},
         {5, vsqBrr},
         {5, vsqBrr},
-//        {5, vsqBrr},
-//        {5, vsqBrr},
-//        {5, vsqBrr},
+        {5, vsqBrr},
+        {5, vsqBrr},
+        {5, vsqBrr},
         // 30 s passed
         {5, vsqBrrBrr},
         {5, vsqBrrBrr},
-//        {5, vsqBrrBrr},
-//        {5, vsqBrrBrr},
+        {5, vsqBrrBrr},
+        {5, vsqBrrBrr},
         // 50 s passed
         {4, vsqBrrBrrBrr},
         {3, vsqBrrBrrBrr},
@@ -193,7 +192,6 @@ int main(void) {
 #endif
 
     TmrEverySecond.InitAndStart();
-    TmrIndication.Init();
     App.SignalEvt(EVT_EVERY_SECOND); // check it now
 
     Binding.Init();
@@ -232,25 +230,11 @@ void App_t::ITask() {
         }
 #endif
 
-        if(Evt & EVT_RADIO) {
-            // Something received
-            if(Mode == modeDetectorRx) {
-                if(Led.IsIdle()) Led.StartSequence(lsqCyan);
-                TmrIndication.Restart(); // Reset off timer
-            }
-            else if(Mode == modeBinding) Binding.ProcessEvt(bevtRadioPkt);
-        }
-
-        if(Evt & EVT_INDICATION_OFF) if(Mode != modeBinding) Led.StartSequence(lsqOff);
-
-        if(Evt & EVT_BND_TMR_IND)  {
-            if(Mode == modeBinding) Binding.ProcessEvt(bevtTmrIndTick);
-        }
-        if(Evt & EVT_BND_TMR_LOST) {
-            if(Mode == modeBinding) Binding.ProcessEvt(bevtTmrLost);
-        }
-        if(Evt & EVT_BND_TMR_MOOD) {
-            if(Mode == modeBinding) Binding.ProcessEvt(bevtTmrMood);
+        if(Mode == modeBinding) {
+            if(Evt & EVT_RADIO)        Binding.ProcessEvt(bevtRadioPkt);
+            if(Evt & EVT_BND_TMR_IND)  Binding.ProcessEvt(bevtTmrIndTick);
+            if(Evt & EVT_BND_TMR_LOST) Binding.ProcessEvt(bevtTmrLost);
+            if(Evt & EVT_BND_TMR_MOOD) Binding.ProcessEvt(bevtTmrMood);
         }
 
 #if BTN_ENABLED
@@ -321,6 +305,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
                 if(State != bndColorSwitch and State != bndRxMoodIgnore) {
                     Color_t FClr(Radio.PktRx.R, Radio.PktRx.G, Radio.PktRx.B);
                     if(FClr != lsqBinding[0].Color or State != bndNear) {
+//                        FClr.Print();
                         Led.Stop();
                         lsqBinding[2].Time_ms = BND_BLINK_PERIOD_MS;
                         lsqBinding[0].Color = FClr;
@@ -329,8 +314,8 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
                         // Transmit same color
                         FClr.ToRGB(&Radio.PktTx.R, &Radio.PktTx.G, &Radio.PktTx.B);
                     }
+                    if(State != bndNear) Uart.Printf("bndNear2\r");
                     State = bndNear;
-                    Uart.Printf("bndNear2\r");
                 } // if not ignore
             }
             // He is far
@@ -368,7 +353,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
             break;
 
         case bevtTmrLost:
-            if(State == bndNear or State == bndFar) {
+            if(State == bndNear or State == bndFar or State == bndColorSwitch or State == bndRxMoodIgnore) {
                 State = bndLost;
                 Uart.Printf("bndLost\r");
                 Led.StartSequence(lsqLost);
@@ -428,25 +413,15 @@ void ReadAndSetupMode() {
     OldDipSettings = b;
     Uart.Printf("Dip: %02X\r", b);
     // Get mode
-    if(App.ID == 0) {
-        App.Mode = modeNone;
-        Led.StartSequence(lsqFailure);
-    }
-    else if(App.ID == 1 or App.ID == 3 or App.ID == 5 or App.ID == 7) {
-        App.Mode = modeDetectorTx;
-        Led.StartSequence(lsqDetectorTxMode);
-        Radio.MustSleep = false;
-    }
-    else if(App.ID == 2 or App.ID == 4 or App.ID == 6 or App.ID == 8) {
-        App.Mode = modeDetectorRx;
-        Led.StartSequence(lsqDetectorRxMode);
-        Radio.MustSleep = false;
-    }
-    else {
+    if(App.ID >= ID_MIN and App.ID <= ID_MAX) {
         App.Mode = modeBinding;
         Led.StartSequence(lsqBindingMode);
         chThdSleepMilliseconds(999);
         Binding.ProcessEvt(bevtStart);
+    }
+    else {
+        App.Mode = modeNone;
+        Led.StartSequence(lsqFailure);
     }
     // ==== Setup TX power ====
     uint8_t pwrIndx = (b & 0b000111);

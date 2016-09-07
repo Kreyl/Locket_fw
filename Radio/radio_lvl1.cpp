@@ -38,9 +38,7 @@ static void rLvl1Thread(void *arg) {
     while(true) {
         if(Radio.MustSleep) Radio.TryToSleep(450);
         else {
-            if     (App.Mode == modeDetectorTx) Radio.TaskTransmitter();
-            else if(App.Mode == modeDetectorRx) Radio.TaskReceiverSingle();
-            else if(App.Mode == modeBinding)    Radio.TaskFeelEachOtherSingle();
+            if(App.Mode == modeBinding) Radio.TaskFeelEachOtherSingle();
             else Radio.TryToSleep(450);
         }
     } // while true
