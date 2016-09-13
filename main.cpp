@@ -81,6 +81,14 @@ LedRGBChunk_t lsqBinding[] = {
         {csGoto, 0},
 };
 
+BaseChunk_t vsqMoodChange[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, 999},
+        {csSetup, 0},
+        {csWait, VIBRO_REPEAT_PERIOD},
+        {csEnd}
+};
+
 enum BindingState_t {bndOff, bndNear, bndFar, bndLost, bndDeathOccured, bndColorSwitch, bndRxMoodIgnore};
 
 // Timings
@@ -301,7 +309,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
             if(Radio.Rssi >= RSSI_BIND_THRS) {  // He is near
                 Vibro.Stop(); // in case of returning from far
                 TmrInd.Stop();
-                // Setup received color if new
+                // Setup blink color if new color received, or if switching from non-near to near state
                 if(State != bndColorSwitch and State != bndRxMoodIgnore) {
                     Color_t FClr(Radio.PktRx.R, Radio.PktRx.G, Radio.PktRx.B);
                     if(FClr != lsqBinding[0].Color or State != bndNear) {
@@ -310,7 +318,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
                         lsqBinding[2].Time_ms = BND_BLINK_PERIOD_MS;
                         lsqBinding[0].Color = FClr;
                         Led.StartSequence(lsqBinding);
-                        Vibro.StartSequence(vsqBrr);
+                        Vibro.StartSequence(vsqMoodChange);
                         // Transmit same color
                         FClr.ToRGB(&Radio.PktTx.R, &Radio.PktTx.G, &Radio.PktTx.B);
                     }
@@ -427,6 +435,14 @@ void ReadAndSetupMode() {
     uint8_t pwrIndx = (b & 0b000111);
     chSysLock();
     CC.SetTxPower(CCPwrTable[pwrIndx]);
+    chSysUnlock();
+    // ==== Setup vibration duration ====
+    uint32_t Duration = (b & 0b111000);
+    Duration = (Duration >> 3) + 1; // 1...8
+    Duration = Duration * 1000;     // 1000...8000
+    if(Duration > 6500) Duration = 6500;    // 16-bit timer, alas
+    chSysLock();
+    vsqMoodChange[1].Time_ms = Duration;
     chSysUnlock();
 }
 
