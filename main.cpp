@@ -307,7 +307,7 @@ void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
             if(State == bndOff or State == bndDeathOccured) return;
             TmrLost.Restart();
             if(Radio.Rssi >= RSSI_BIND_THRS) {  // He is near
-                Vibro.Stop(); // in case of returning from far
+                if(State != bndNear) Vibro.Stop(); // in case of returning from far
                 TmrInd.Stop();
                 // Setup blink color if new color received, or if switching from non-near to near state
                 if(State != bndColorSwitch and State != bndRxMoodIgnore) {
@@ -441,6 +441,7 @@ void ReadAndSetupMode() {
     Duration = (Duration >> 3) + 1; // 1...8
     Duration = Duration * 1000;     // 1000...8000
     if(Duration > 6500) Duration = 6500;    // 16-bit timer, alas
+    Uart.Printf("Duration: %u\r", Duration);
     chSysLock();
     vsqMoodChange[1].Time_ms = Duration;
     chSysUnlock();
