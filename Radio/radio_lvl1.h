@@ -70,8 +70,9 @@ union rPkt_t {
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
 #define RCHNL_SERVICE   0
-#define RCHNL_EACH_OTH  1
-#define RCHNL_MIN       2
+#define RCHNL_COMMON    1
+#define RCHNL_EACH_OTH  2
+#define RCHNL_MIN       3
 #define RCHNL_MAX       19
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
 
@@ -155,7 +156,7 @@ public:
 class rLevel1_t {
 public:
     rPkt_t PktRx, PktTx;
-    bool MustSleep = true;
+    bool MustTx = false;
     thread_t *PThd;
     int8_t Rssi;
     RxTable_t RxTable;
@@ -170,6 +171,7 @@ public:
     void TaskReceiverMany();
     void TaskReceiverSingle();
     void TaskFeelEachOtherSingle();
+    void TaskFeelEachOtherMany();
 };
 
 extern rLevel1_t Radio;

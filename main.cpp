@@ -130,8 +130,25 @@ void App_t::ITask() {
 #if BTN_ENABLED
         if(Evt & EVT_BUTTONS) {
             Uart.Printf("Btn\r");
+            if(Mode == modeTx) {
+                if(Radio.MustTx == false) {
+                    Radio.MustTx = true;
+                    Led.StartOrContinue(lsqTx);
+                }
+                else {
+                    Radio.MustTx = false;
+                    Led.StartOrRestart(lsqModeTx);
+                }
+            }
         }
 #endif
+
+        if(Evt & EVT_RADIO_FORCE) {
+            Uart.Printf("Force\r");
+            if(Mode == modeLevel1 or Mode == modeLevel2) {
+                Vibro.StartOrContinue(vsqBrrBrr);
+            }
+        }
 
 //        if(Evt & EVT_OFF) {
 ////            Uart.Printf("Off\r");
@@ -163,7 +180,7 @@ void ReadAndSetupMode() {
     uint8_t b = GetDipSwitch();
     if(b == OldDipSettings) return;
     // Something has changed
-    Radio.MustSleep = true; // Sleep until we decide what to do
+    Radio.MustTx = false; // Just in case
     // Reset everything
     Vibro.Stop();
     Led.  Stop();
@@ -191,6 +208,13 @@ void ReadAndSetupMode() {
     chSysLock();
     CC.SetTxPower(CCPwrTable[pwrIndx]); // PwrIndx = 0...7; => Pwr = -30...0 dBm
     chSysUnlock();
+    // Start Idle indication
+    chThdSleepMilliseconds(720);    // Let blink end
+    switch(App.Mode) {
+        case modeTx:     Led.StartOrRestart(lsqModeTx);     break;
+        case modeLevel1: Led.StartOrRestart(lsqModeLevel1); break;
+        case modeLevel2: Led.StartOrRestart(lsqModeLevel2); break;
+    }
 }
 
 

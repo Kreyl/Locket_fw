@@ -107,7 +107,7 @@ void cc1101_t::SetChannel(uint8_t AChannel) {
 //    //Uart.Printf("\r");
 //}
 
-void cc1101_t::TransmitSync(void *Ptr) {
+void cc1101_t::Transmit(void *Ptr) {
     // WaitUntilChannelIsBusy();   // If this is not done, time after time FIFO is destroyed
     while(IState != CC_STB_IDLE) EnterIdle();
     WriteTX((uint8_t*)Ptr, IPktSz);
@@ -119,7 +119,7 @@ void cc1101_t::TransmitSync(void *Ptr) {
 }
 
 // Enter RX mode and wait reception for Timeout_ms.
-uint8_t cc1101_t::ReceiveSync(uint32_t Timeout_ms, void *Ptr, int8_t *PRssi) {
+uint8_t cc1101_t::Receive(uint32_t Timeout_ms, void *Ptr, int8_t *PRssi) {
     FlushRxFIFO();
     chSysLock();
     EnterRX();

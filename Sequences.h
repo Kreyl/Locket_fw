@@ -189,6 +189,7 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #endif
 
 #if 1 // ============================ LED RGB ==================================
+#define LOW_BRTNESS     4
 const LedRGBChunk_t lsqModeTxStart[] = {
         {csSetup, 0, clYellow},
         {csWait, 207},
@@ -199,6 +200,14 @@ const LedRGBChunk_t lsqModeTxStart[] = {
         {csSetup, 0, clBlack},
         {csEnd}
 };
+const LedRGBChunk_t lsqModeTx[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 3600},
+        {csSetup, 0, {LOW_BRTNESS, LOW_BRTNESS,0}},
+        {csWait, 207},
+        {csGoto, 0}
+};
+
 
 const LedRGBChunk_t lsqModeLevel1Start[] = {
         {csSetup, 0, clMagenta},
@@ -210,6 +219,13 @@ const LedRGBChunk_t lsqModeLevel1Start[] = {
         {csSetup, 0, clBlack},
         {csEnd}
 };
+const LedRGBChunk_t lsqModeLevel1[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 3600},
+        {csSetup, 0, {LOW_BRTNESS, 0, LOW_BRTNESS}},
+        {csWait, 207},
+        {csGoto, 0}
+};
 
 const LedRGBChunk_t lsqModeLevel2Start[] = {
         {csSetup, 0, clBlue},
@@ -219,6 +235,18 @@ const LedRGBChunk_t lsqModeLevel2Start[] = {
         {csSetup, 0, clBlue},
         {csWait, 207},
         {csSetup, 0, clBlack},
+        {csEnd}
+};
+const LedRGBChunk_t lsqModeLevel2[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 3600},
+        {csSetup, 0, {0, 0, LOW_BRTNESS}},
+        {csWait, 207},
+        {csGoto, 0}
+};
+
+const LedRGBChunk_t lsqTx[] {
+        {csSetup, 0, clYellow},
         {csEnd}
 };
 
@@ -234,7 +262,6 @@ const LedRGBChunk_t lsqModeLevel2Start[] = {
 //};
 
 #define LSQ_SPEED   360
-#define BRTNESS     180
 
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
@@ -368,7 +395,7 @@ const BeepChunk_t bsqBeepPillBad[] = {
 #define VIBRO_VOLUME    100  // 1 to 100
 
 #define VIBRO_SHORT_MS          99
-#define VIBRO_REPEAT_PERIOD     1305
+#define VIBRO_REPEAT_PERIOD     1008
 
 const BaseChunk_t vsqBrr[] = {
         {csSetup, VIBRO_VOLUME},
