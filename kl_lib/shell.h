@@ -5,8 +5,7 @@
  *      Author: Kreyl
  */
 
-#ifndef KL_LIB_SHELL_H_
-#define KL_LIB_SHELL_H_
+#pragma once
 
 #include <cstring>
 #include "kl_lib.h"
@@ -42,20 +41,49 @@ public:
         else if(Cnt < (CMD_BUF_SZ-1)) IString[Cnt++] = c;  // Add char if buffer not full
         return pdrProceed;
     }
-    uint8_t GetNextTokenString() {
+    uint8_t GetNextString() {
         Token = strtok(NULL, DELIMITERS);
-        return (*Token == '\0')? FAILURE : OK;
+        return (*Token == '\0')? EMPTY : OK;
     }
-    uint8_t GetNextNumber(int32_t *POutput) {
-        uint8_t r;
-        if((r = GetNextTokenString()) == OK) {
-            if(*Token == '\0') return EMPTY;
+    uint8_t GetNextInt32(int32_t *POutput) {
+        uint8_t r = GetNextString();
+        if(r != OK) return r;
+        else {
             char *p;
             *POutput = strtol(Token, &p, 0);
             return (*p == '\0')? OK : NOT_A_NUMBER;
         }
-        else return r;
     }
+    uint8_t GetNextByte(uint8_t *POutput) {
+        int32_t dw32;
+        uint8_t r = GetNextInt32(&dw32);
+        if(r != OK) return r;
+        else {
+            *POutput = (uint8_t)dw32;
+            return OK;
+        }
+    }
+
+    uint8_t GetArray(int32_t *Ptr, int32_t Len) {
+        int32_t dw32 = 0;
+        for(int32_t i=0; i<Len; i++) {
+            uint8_t r = GetNextInt32(&dw32);
+            if(r == OK) *Ptr++ = dw32;
+            else return r;
+        }
+        return OK;
+    }
+
+    uint8_t GetArray(uint8_t *Ptr, int32_t Len) {
+        int32_t dw32 = 0;
+        for(int32_t i=0; i<Len; i++) {
+            uint8_t r = GetNextInt32(&dw32);
+            if(r == OK) *Ptr++ = (uint8_t)dw32;
+            else return r;
+        }
+        return OK;
+    }
+
     bool NameIs(const char *SCmd) { return (strcasecmp(Name, SCmd) == 0); }
     Cmd_t() {
         Cnt = 0;
@@ -80,5 +108,3 @@ public:
 	void Reply(const char* CmdCode, int32_t Data) { Printf("%S,%d\r\n", CmdCode, Data); }
 	void Ack(int32_t Result) { Printf("Ack %d\r\n", Result); }
 };
-
-#endif /* KL_LIB_SHELL_H_ */

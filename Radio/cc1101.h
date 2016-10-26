@@ -6,10 +6,6 @@
  */
 
 #pragma once
-/*
- * Low-level operations are here.
- * Pkt level at top side, and SPI at bottom.
- */
 
 #include <inttypes.h>
 #include "kl_lib.h"
