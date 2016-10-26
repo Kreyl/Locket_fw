@@ -16,14 +16,14 @@ void PillMgr_t::Init() {
 
 void PillMgr_t::Standby() {
     i2c->Standby();
-    PillPwr.Lo();
+    PillPwr.SetLo();
     __NOP(); __NOP(); __NOP(); __NOP(); // Allow power to fade
     PillPwr.Deinit();
 }
 
 void PillMgr_t::Resume() {
     PillPwr.Init();
-    PillPwr.Hi();
+    PillPwr.SetHi();
     __NOP(); __NOP(); __NOP(); __NOP(); // Allow power to rise
     i2c->Resume();
 }

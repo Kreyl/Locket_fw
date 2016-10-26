@@ -13,7 +13,7 @@ SimpleSensors_t PinSensors;
 
 // ==== Sensors Thread ====
 static THD_WORKING_AREA(waPinSnsThread, 64);
-__attribute__((noreturn))
+__noreturn
 static void SensorsThread(void *arg) {
     chRegSetThreadName("PinSensors");
     PinSensors.ITask();
@@ -29,28 +29,9 @@ void SimpleSensors_t::Init() {
     chThdCreateStatic(waPinSnsThread, sizeof(waPinSnsThread), (tprio_t)90, (tfunc_t)SensorsThread, NULL);
 }
 
-void PrintStackSz() {
-    thread_t *PThd = chThdGetSelfX();
-    port_intctx *r13 = (port_intctx *)__get_PSP();
-    int32_t StkSz = PThd->p_stklimit - (stkalign_t *)(r13-1);
-    Uart.PrintfI("StackSz=%d\r", StkSz);
-}
-
-
-#define DSZ     sizeof(waPinSnsThread)
-
-__attribute__((noreturn))
+__noreturn
 void SimpleSensors_t::ITask() {
-//    PrintStackSz();
-//    Uart.Printf("DSZ=%u\r", DSZ);
-//    uint32_t dCnt = 108;
     while(true) {
-//        if(dCnt++ >= 99) {
-//            dCnt = 0;
-//            PrintStackSz();
-////            Uart.PrintfNow("%A\r", waPinSnsThread, DSZ, ' ');
-//        }
-
         chThdSleepMilliseconds(SNS_POLL_PERIOD_MS);
         ftVoidPSnsStLen PostProcessor = PinSns[0].Postprocessor;
         uint32_t GroupLen = 0;
@@ -73,9 +54,11 @@ void SimpleSensors_t::ITask() {
             if((i >= PIN_SNS_CNT) or (PinSns[i].Postprocessor != PostProcessor)) {
                 if(PostProcessor != nullptr) PostProcessor(PStates, GroupLen);
                 // Prepare for next group
-                PostProcessor = PinSns[i].Postprocessor;
+                if(i < PIN_SNS_CNT) {
+                    PostProcessor = PinSns[i].Postprocessor;
+                    PStates = &States[i];
+                }
                 GroupLen = 0;
-                PStates = &States[i];
             }
         } // while i
     } // while true

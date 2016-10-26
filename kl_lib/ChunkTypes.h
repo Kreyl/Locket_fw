@@ -9,7 +9,7 @@
 
 #include "color.h"
 #include "ch.h"
-#include "uart.h"
+//#include "uart.h"
 
 enum ChunkSort_t {csSetup, csWait, csGoto, csEnd};
 
@@ -81,27 +81,31 @@ public:
         PThread = APThread;
         EvtEnd = AEvt;
     }
-    void StartSequence(const TChunk *PChunk) {
-        if(PChunk == nullptr) Stop();
-        else {
-            chSysLock();
-            IPStartChunk = PChunk;   // Save first chunk
-            IPCurrentChunk = PChunk;
-            IProcessSequenceI();
-            chSysUnlock();
-        }
-    }
-    void Stop() {
+
+    void StartOrRestart(const TChunk *PChunk) {
         chSysLock();
-        if(chVTIsArmedI(&ITmr)) chVTResetI(&ITmr);
-        ISwitchOff();
-        IPStartChunk = nullptr;
-        IPCurrentChunk = nullptr;
+        IPStartChunk = PChunk;   // Save first chunk
+        IPCurrentChunk = PChunk;
+        IProcessSequenceI();
         chSysUnlock();
     }
-    const TChunk* GetCurrentSequence() { return IPStartChunk; }
 
-    bool IsIdle() const { return (IPStartChunk == nullptr); }
+    void StartOrContinue(const TChunk *PChunk) {
+        if(PChunk == IPStartChunk) return; // Same sequence
+        else StartOrRestart(PChunk);
+    }
+
+    void Stop() {
+        if(IPStartChunk != nullptr) {
+            chSysLock();
+            if(chVTIsArmedI(&ITmr)) chVTResetI(&ITmr);
+            IPStartChunk = nullptr;
+            IPCurrentChunk = nullptr;
+            chSysUnlock();
+        }
+        ISwitchOff();
+    }
+    const TChunk* GetCurrentSequence() { return IPStartChunk; }
 
     void IProcessSequenceI() {
         if(chVTIsArmedI(&ITmr)) chVTResetI(&ITmr);  // Reset timer
@@ -128,11 +132,7 @@ public:
                     break;
 
                 case csEnd:
-                    // Signal End Of Sequence evt
                     if(PThread != nullptr) chEvtSignalI(PThread, EvtEnd);
-                    // Clear pointers
-                    IPStartChunk = nullptr;
-                    IPCurrentChunk = nullptr;
                     return;
                     break;
             } // switch

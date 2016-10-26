@@ -11,6 +11,7 @@
 #include "ch.h"
 #include "pill.h"
 #include "kl_lib.h"
+#include "kl_i2c.h"
 
 #define PILL_I2C_STD_ADDR   0x50    // Standard address start of EEPROM - 0x01010aaa
 #define PILL_I2C_ADDR       (PILL_I2C_STD_ADDR | 0) // Only Zero addr

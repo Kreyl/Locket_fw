@@ -15,13 +15,15 @@
 
 #include "ch.h"
 #include "hal.h"
-#include <kl_lib.h>
+#include "kl_lib.h"
 #include "board.h"
 
 #include "main.h" // App.thd here
 #include "evt_mask.h"
 
+#ifndef SIMPLESENSORS_ENABLED
 #define SIMPLESENSORS_ENABLED   FALSE
+#endif
 #define SNS_POLL_PERIOD_MS      72
 
 #if SIMPLESENSORS_ENABLED
@@ -32,7 +34,7 @@ typedef void (*ftVoidPSnsStLen)(PinSnsState_t *PState, uint32_t Len);
 class PinSns_t : public PinInput_t {
 public:
     ftVoidPSnsStLen Postprocessor;
-    PinSns_t(PortPinInput_t APin, ftVoidPSnsStLen pp) : PinInput_t(APin), Postprocessor(pp) {}
+    PinSns_t(PinInputSetup_t APin, ftVoidPSnsStLen pp) : PinInput_t(APin), Postprocessor(pp) {}
 };
 
 // ================================= Settings ==================================

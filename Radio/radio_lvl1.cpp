@@ -36,11 +36,12 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
-        if(Radio.MustSleep) Radio.TryToSleep(450);
-        else {
-            if(App.Mode == modeBinding) Radio.TaskFeelEachOtherSingle();
-            else Radio.TryToSleep(450);
-        }
+//        if(Radio.MustSleep)
+            Radio.TryToSleep(450);
+//        else {
+//            if(App.Mode == modeBinding) Radio.TaskFeelEachOtherSingle();
+//            else Radio.TryToSleep(450);
+//        }
     } // while true
 }
 

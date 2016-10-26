@@ -177,6 +177,11 @@ public:
         G.Set(AColor.G);
         B.Set(AColor.B);
     }
+    void SetColor(uint8_t AR, uint8_t AG, uint8_t AB) {
+        R.Set(AR);
+        G.Set(AG);
+        B.Set(AB);
+    }
 };
 #endif
 
@@ -196,8 +201,8 @@ public:
         LedRGBParent_t::Init();
     }
     void SetColor(Color_t AColor) {
-        if(AColor == clBlack) PwrPin.Lo();
-        else PwrPin.Hi();
+        if(AColor == clBlack) PwrPin.SetLo();
+        else PwrPin.SetHi();
         R.Set(AColor.R);
         G.Set(AColor.G);
         B.Set(AColor.B);

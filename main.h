@@ -19,13 +19,13 @@
 #define ID_MAX                  36
 #define ID_DEFAULT              ID_MIN
 
-enum Mode_t {modeNone, modeBinding};
+enum Mode_t {modeTx, modeLevel1, modeLevel2};
 
 class App_t {
 private:
     thread_t *PThread;
 public:
-    Mode_t Mode = modeNone;
+    Mode_t Mode = modeTx;
     uint8_t ID;
     // Eternal methods
     void InitThread() { PThread = chThdGetSelfX(); }

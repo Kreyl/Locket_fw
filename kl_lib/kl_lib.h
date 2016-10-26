@@ -19,9 +19,6 @@ Define symbol BUILD_TIME in main.cpp options with value "\"${current_date}\"".
 Maybe, to calm Eclipse, it will be required to write extra quote in the end: "\"${current_date}\"""
 */
 
-// Lib version
-#define KL_LIB_VERSION      "20160701_1045"
-
 #if defined STM32L1XX
 #include "stm32l1xx.h"
 #elif defined STM32F0XX
@@ -112,6 +109,12 @@ typedef void (*ftVoidPVoidLen)(void*p, uint32_t Len);
 #define TRIM_VALUE(v, Max)  { if((v) > (Max)) (v) = (Max); }
 #define IS_LIKE(v, precise, deviation)  (((precise - deviation) < v) and (v < (precise + deviation)))
 #define BitIsSet(r, b)  ((r) & (b))
+
+// Example: uint32_t us = Proportion<uint32_t>(Angle, 0, 180, imin_us, imax_us);
+template <typename T>
+static inline T Proportion(T x, T in_min, T in_max, T out_min, T out_max) {
+  return ((x - in_min) * (out_max - out_min)) / (in_max - in_min) + out_min;
+}
 
 template <typename T>
 static T Average(T *p, uint32_t Len) {
@@ -432,6 +435,12 @@ struct PwmSetup_t {
     Inverted_t Inverted;
     PinOutMode_t OutputType;
     uint32_t TopValue;
+    PwmSetup_t(GPIO_TypeDef *APGpio, uint16_t APin,
+            TIM_TypeDef *APTimer, uint32_t ATimerChnl,
+            Inverted_t AInverted, PinOutMode_t AOutputType,
+            uint32_t ATopValue) : PGpio(APGpio), Pin(APin), PTimer(APTimer),
+                    TimerChnl(ATimerChnl), Inverted(AInverted), OutputType(AOutputType),
+                    TopValue(ATopValue) {}
 };
 
 #if defined STM32F2XX || defined STM32F4XX
@@ -705,6 +714,10 @@ static inline void PortInit(GPIO_TypeDef *PGpioPort,
         case psLow:      PGpioPort->OSPEEDR = 0x00000000; break;
         case psMedium:   PGpioPort->OSPEEDR = 0x55555555; break;
         case psHigh:     PGpioPort->OSPEEDR = 0xAAAAAAAA; break;
+#elif defined STM32F0XX
+        case psLow:      PGpioPort->OSPEEDR = 0x00000000; break;
+        case psMedium:   PGpioPort->OSPEEDR = 0x55555555; break;
+        case psHigh:     PGpioPort->OSPEEDR = 0xFFFFFFFF; break;
 #endif
     }
 }
@@ -749,8 +762,8 @@ private:
 public:
     void Init() const { PinSetupOut(PGpio, Pin, OutputType); }
     void Deinit() const { PinSetupAnalog(PGpio, Pin); }
-    void Hi() const { PinSetHi(PGpio, Pin); }
-    void Lo() const { PinSetLo(PGpio, Pin); }
+    void SetHi() const { PinSetHi(PGpio, Pin); }
+    void SetLo() const { PinSetLo(PGpio, Pin); }
     PinOutput_t(GPIO_TypeDef *APGPIO, uint16_t APin, PinOutMode_t AOutputType) :
         PGpio(APGPIO), Pin(APin), OutputType(AOutputType) {}
 };
@@ -771,8 +784,8 @@ public:
  * #define LED_R_PIN { GPIOB, 1, TIM3, 4, invInverted, omPushPull, 255 }
  * PinOutputPWM_t Led {LedPin};
 */
-class PinOutputPWM_t : private Timer_t {
-private:
+class PinOutputPWM_t : protected Timer_t {
+protected:
     const PwmSetup_t ISetup;
 public:
     void Set(const uint16_t AValue) const { *TMR_PCCR(ITmr, ISetup.TimerChnl) = AValue; }    // CCR[N] = AValue
@@ -780,6 +793,11 @@ public:
     void Deinit() const { Timer_t::Deinit(); PinSetupAnalog(ISetup.PGpio, ISetup.Pin); }
     void SetFrequencyHz(uint32_t FreqHz) const { Timer_t::SetUpdateFrequency(FreqHz); }
     PinOutputPWM_t(const PwmSetup_t &ASetup) : Timer_t(ASetup.PTimer), ISetup(ASetup) {}
+    PinOutputPWM_t(GPIO_TypeDef *PGpio, uint16_t Pin,
+            TIM_TypeDef *PTimer, uint32_t TimerChnl,
+            Inverted_t Inverted, PinOutMode_t OutputType,
+            uint32_t TopValue) : Timer_t(PTimer),
+                    ISetup(PGpio, Pin, PTimer, TimerChnl, Inverted, OutputType, TopValue) {}
 };
 #endif
 
@@ -1057,86 +1075,6 @@ public:
 };
 #endif
 
-#if I2C1_ENABLED // ========================= I2C ==============================
-struct i2cParams_t {
-    I2C_TypeDef *pi2c;
-    GPIO_TypeDef *PGpio;
-    uint16_t SclPin;
-    uint16_t SdaPin;
-    AlterFunc_t PinAF;
-    uint32_t BitrateHz;
-    // DMA
-    const stm32_dma_stream_t *PDmaTx;
-    const stm32_dma_stream_t *PDmaRx;
-};
-
-
-/* Example:
- * i2c_t i2c (I2C_ACC, ACC_I2C_GPIO, ACC_I2C_SCL_PIN, ACC_I2C_SDA_PIN,
- * 400000, I2C_ACC_DMA_TX, I2C_ACC_DMA_RX );
- */
-
-#define I2C_DMATX_MODE  STM32_DMA_CR_CHSEL(DmaChnl) |   \
-                        DMA_PRIORITY_LOW | \
-                        STM32_DMA_CR_MSIZE_BYTE | \
-                        STM32_DMA_CR_PSIZE_BYTE | \
-                        STM32_DMA_CR_MINC |     /* Memory pointer increase */ \
-                        STM32_DMA_CR_DIR_M2P |  /* Direction is memory to peripheral */ \
-                        STM32_DMA_CR_TCIE       /* Enable Transmission Complete IRQ */
-
-#define I2C_DMARX_MODE  STM32_DMA_CR_CHSEL(DmaChnl) |   \
-                        DMA_PRIORITY_LOW | \
-                        STM32_DMA_CR_MSIZE_BYTE | \
-                        STM32_DMA_CR_PSIZE_BYTE | \
-                        STM32_DMA_CR_MINC |         /* Memory pointer increase */ \
-                        STM32_DMA_CR_DIR_P2M |      /* Direction is peripheral to memory */ \
-                        STM32_DMA_CR_TCIE           /* Enable Transmission Complete IRQ */
-
-class i2c_t {
-private:
-    const i2cParams_t *PParams;
-    void SendStart()     { PParams->pi2c->CR1 |= I2C_CR1_START; }
-    void SendStop()      { PParams->pi2c->CR1 |= I2C_CR1_STOP; }
-    void AckEnable()     { PParams->pi2c->CR1 |= I2C_CR1_ACK; }
-    void AckDisable()    { PParams->pi2c->CR1 &= ~I2C_CR1_ACK; }
-    bool RxIsNotEmpty()  { return (PParams->pi2c->SR1 & I2C_SR1_RXNE); }
-    void ClearAddrFlag() { (void)PParams->pi2c->SR1; (void)PParams->pi2c->SR2; }
-    void SignalLastDmaTransfer() { PParams->pi2c->CR2 |= I2C_CR2_LAST; }
-    // Address and data
-    void SendAddrWithWrite(uint8_t Addr) { PParams->pi2c->DR = (uint8_t)(Addr<<1); }
-    void SendAddrWithRead (uint8_t Addr) { PParams->pi2c->DR = ((uint8_t)(Addr<<1)) | 0x01; }
-    void SendData(uint8_t b) { PParams->pi2c->DR = b; }
-    uint8_t ReceiveData() { return PParams->pi2c->DR; }
-    // Flags operations
-    uint8_t IBusyWait();
-    uint8_t WaitEv5();
-    uint8_t WaitEv6();
-    uint8_t WaitEv8();
-    uint8_t WaitAck();
-    uint8_t WaitRx();
-    uint8_t WaitStop();
-    uint8_t WaitBTF();
-    binary_semaphore_t BSemaphore;
-public:
-    bool Error;
-    thread_reference_t ThdRef;
-    void Init();
-    void Standby();
-    void Resume();
-    void Reset();
-    void ScanBus();
-    uint8_t WriteRead(uint8_t Addr, uint8_t *WPtr, uint8_t WLength, uint8_t *RPtr, uint8_t RLength);
-    uint8_t WriteWrite(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1, uint8_t *WPtr2, uint8_t WLength2);
-    uint8_t Write(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1);
-    i2c_t(const i2cParams_t *APParams) : PParams(APParams),
-                Error(false), ThdRef(nullptr) {}
-};
-
-#if I2C1_ENABLED
-extern i2c_t i2c1;
-#endif
-#endif // i2c common
-
 #if 1 // ====================== FLASH & EEPROM =================================
 #define FLASH_LIB_KL
 #define EEPROM_BASE_ADDR    ((uint32_t)0x08080000)
@@ -1343,8 +1281,13 @@ enum PllMul_t {
     pllMul16=14
 };
 
+#ifdef STM32F030
+enum PllSrc_t {plsHSIdiv2=0b00, plsHSIdivPREDIV=0b01, plsHSEdivPREDIV=0b10};
+enum ClkSrc_t {csHSI=0b00, csHSE=0b01, csPLL=0b10};
+#else
 enum PllSrc_t {plsHSIdiv2=0b00, plsHSIdivPREDIV=0b01, plsHSEdivPREDIV=0b10, plsHSI48divPREDIV=0b11};
 enum ClkSrc_t {csHSI=0b00, csHSE=0b01, csPLL=0b10, csHSI48=0b11};
+#endif
 
 enum AHBDiv_t {
     ahbDiv1=0b0000,
@@ -1366,7 +1309,9 @@ private:
     uint8_t EnablePLL();
     // To Hsi48 and back again
     uint32_t ISavedAhbDividers;
+#ifdef RCC_CFGR_SW_HSI48
     bool IHsi48WasOn;
+#endif
 public:
     // Frequency values
     uint32_t AHBFreqHz;     // HCLK: AHB Bus, Core, Memory, DMA; 48 MHz max
@@ -1387,13 +1332,19 @@ public:
     void DisableHSE()   { RCC->CR  &= ~RCC_CR_HSEON; }
     void DisableHSI()   { RCC->CR  &= ~RCC_CR_HSION; }
     void DisablePLL()   { RCC->CR  &= ~RCC_CR_PLLON; }
+#ifdef RCC_CR2_HSI48ON
     void DisableHSI48() { RCC->CR2 &= ~RCC_CR2_HSI48ON; }
+#endif
     void DisableCRS();
     // Checks
+#ifdef RCC_CR2_HSI48ON
     bool IsHSI48On() { return (RCC->CR2 & RCC_CR2_HSI48ON); }
+#endif
     uint32_t GetAhbApbDividers() { return RCC->CFGR & (RCC_CFGR_HPRE | RCC_CFGR_PPRE); }
     // Setups
+#ifdef RCC_CFGR3_USBSW
     void SelectUSBClock_HSI48() { RCC->CFGR3 &= ~RCC_CFGR3_USBSW; }
+#endif
     void SetupBusDividers(AHBDiv_t AHBDiv, APBDiv_t APBDiv);
     void SetupBusDividers(uint32_t Dividers);
     uint8_t SetupPLLDividers(uint8_t HsePreDiv, PllMul_t PllMul);

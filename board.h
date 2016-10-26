@@ -11,12 +11,14 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket4_1"
-#define APP_NAME            "Kess"
+#define APP_NAME            "JediAcademy"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      FALSE
 #define BTN_ENABLED         TRUE
+
+#define SIMPLESENSORS_ENABLED   BTN_ENABLED
 
 // MCU type as defined in the ST header.
 #define STM32L151xB

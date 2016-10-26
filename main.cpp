@@ -14,7 +14,6 @@
 #include "beeper.h"
 #include "Sequences.h"
 #include "radio_lvl1.h"
-#include "pill_mgr.h"
 #include "kl_adc.h"
 
 #if 1 // ======================== Variables and defines ========================
@@ -29,7 +28,7 @@ static uint8_t GetDipSwitch();
 static void ReadAndSetupMode();
 static uint8_t ISetID(int32_t NewID);
 Eeprom_t EE;
-static void ReadIDfromEE();
+void ReadIDfromEE();
 
 // ==== Periphery ====
 Vibro_t Vibro {VIBRO_PIN};
@@ -37,119 +36,10 @@ Vibro_t Vibro {VIBRO_PIN};
 Beeper_t Beeper {BEEPER_PIN};
 #endif
 
-#if BTN_ENABLED
-#define BTN_POLL_PERIOD_MS   27
-static void TmrBtnCallback(void *p);
-
-class Btn_t {
-private:
-    virtual_timer_t Tmr;
-    bool IWasPressed = false;
-    PinInput_t Pin {BTN_PIN};
-public:
-    void Init() {
-        chVTSet(&Tmr, MS2ST(BTN_POLL_PERIOD_MS), TmrBtnCallback, nullptr);
-        Pin.Init();
-    }
-    void OnTmrTick() {}
-    void ITmrCallback() {
-        chSysLockFromISR();
-        if(Pin.IsHi() and !IWasPressed) {
-            IWasPressed = true;
-            App.SignalEvtI(EVT_BUTTON);
-        }
-        else if(!Pin.IsHi() and IWasPressed) IWasPressed = false;
-        chVTSetI(&Tmr, MS2ST(BTN_POLL_PERIOD_MS), TmrBtnCallback, nullptr);
-        chSysUnlockFromISR();
-    }
-} Btn;
-
-void TmrBtnCallback(void *p) { Btn.ITmrCallback(); }
-#endif
-
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {MS2ST(1000), EVT_EVERY_SECOND, tktPeriodic};
-#endif
-
-#if 1 // ============================ Binding ==================================
-LedRGBChunk_t lsqBinding[] = {
-        {csSetup, 180, clWhite},
-        {csSetup, 180, clBlack},
-        {csWait, 999},
-        {csGoto, 0},
-};
-
-BaseChunk_t vsqMoodChange[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
-        {csSetup, 0},
-        {csWait, VIBRO_REPEAT_PERIOD},
-        {csEnd}
-};
-
-enum BindingState_t {bndOff, bndNear, bndFar, bndLost, bndDeathOccured, bndColorSwitch, bndRxMoodIgnore};
-
-// Timings
-#define BND_BLINK_PERIOD_MS         2700
-#define BND_FAR_BLINK_PERIOD_MS     720
-
-// Indication of "far" state
-struct FarIndication_t {
-    uint32_t Interval;
-    const BaseChunk_t *Vsq;
-};
-static const FarIndication_t FarIndication[] = {
-        {5, vsqBrr},
-        {5, vsqBrr},
-        {5, vsqBrr},
-        {5, vsqBrr},
-        {5, vsqBrr},
-        {5, vsqBrr},
-        // 30 s passed
-        {5, vsqBrrBrr},
-        {5, vsqBrrBrr},
-        {5, vsqBrrBrr},
-        {5, vsqBrrBrr},
-        // 50 s passed
-        {4, vsqBrrBrrBrr},
-        {3, vsqBrrBrrBrr},
-        {2, vsqBrrBrrBrr},
-        {2, vsqBrrBrrBrr},
-        // 60 s passed
-        {0, nullptr} // End of sequence, death is here
-};
-
-// Binding events
-enum BindingEvtType_t {bevtStart, bevtStop, bevtRadioPkt, bevtTmrIndTick, bevtTmrLost, bevtBtn, bevtTmrMood};
-struct BindingEvt_t {
-    BindingEvtType_t Type;
-    Color_t Color;
-    int32_t Rssi;
-};
-
-// Moods
-static const Color_t MoodClr[] = {clBlue, clGreen, clYellow, clWhite};
-#define MOOD_CNT    countof(MoodClr)
-
-class Binding_t {
-private:
-    BindingState_t State = bndOff;
-    const FarIndication_t *Pind;
-    TmrKL_t TmrInd  {MS2ST(3600), EVT_BND_TMR_IND,  tktOneShot};
-    TmrKL_t TmrLost {MS2ST(6300), EVT_BND_TMR_LOST, tktOneShot};
-    // Mood management
-    uint8_t MoodIndx = 0;
-    TmrKL_t TmrMoodSwitch {MS2ST(2700), EVT_BND_TMR_MOOD, tktOneShot};
-public:
-    void ProcessEvt(BindingEvtType_t Evt);
-    void Init() {
-        TmrInd.Init();
-        TmrLost.Init();
-        TmrMoodSwitch.Init();
-    }
-} Binding;
 #endif
 
 int main(void) {
@@ -179,10 +69,7 @@ int main(void) {
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
 
-    // === Vibro ===
     Vibro.Init();
-    Vibro.SetupSeqEndEvt(chThdGetSelfX(), EVT_VIBRO_END);
-    Vibro.StartSequence(vsqBrr);
 
 #if BEEPER_ENABLED // === Beeper ===
     Beeper.Init();
@@ -190,7 +77,6 @@ int main(void) {
     chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
 
-    Btn.Init();
 //    Adc.Init();
 
 #if PILL_ENABLED // === Pill ===
@@ -199,14 +85,17 @@ int main(void) {
     TmrCheckPill.InitAndStart();
 #endif
 
+#if BTN_ENABLED
+    PinSensors.Init();
+#endif
+
     TmrEverySecond.InitAndStart();
     App.SignalEvt(EVT_EVERY_SECOND); // check it now
 
-    Binding.Init();
-
-    if(Radio.Init() == OK) Led.StartSequence(lsqStart);
-    else Led.StartSequence(lsqFailure);
-    chThdSleepMilliseconds(1008);
+    if(Radio.Init() != OK) {
+        Led.StartOrRestart(lsqFailure);
+        chThdSleepMilliseconds(1008);
+    }
 
     // Main cycle
     App.ITask();
@@ -238,16 +127,9 @@ void App_t::ITask() {
         }
 #endif
 
-        if(Mode == modeBinding) {
-            if(Evt & EVT_RADIO)        Binding.ProcessEvt(bevtRadioPkt);
-            if(Evt & EVT_BND_TMR_IND)  Binding.ProcessEvt(bevtTmrIndTick);
-            if(Evt & EVT_BND_TMR_LOST) Binding.ProcessEvt(bevtTmrLost);
-            if(Evt & EVT_BND_TMR_MOOD) Binding.ProcessEvt(bevtTmrMood);
-        }
-
 #if BTN_ENABLED
-        if(Evt & EVT_BUTTON) {
-            if(Mode == modeBinding) Binding.ProcessEvt(bevtBtn);
+        if(Evt & EVT_BUTTONS) {
+            Uart.Printf("Btn\r");
         }
 #endif
 
@@ -274,138 +156,7 @@ void App_t::ITask() {
 #endif
 
     } // while true
-}
-
-#if 1 // ============================== Binding ================================
-void Binding_t::ProcessEvt(BindingEvtType_t Evt) {
-    Uart.Printf("* %u\r", Evt);
-    switch(Evt) {
-        case bevtStop:
-            State = bndOff;
-            Uart.Printf("bndOff\r");
-            Radio.MustSleep = true;
-            TmrInd.Stop();
-            TmrLost.Stop();
-            Led.Stop();
-            Vibro.Stop();
-            break;
-
-        case bevtStart:
-            State = bndNear;
-            Uart.Printf("bndNear1\r");
-            MoodIndx = 0;
-            lsqBinding[0].Color = clBlue;
-            lsqBinding[2].Time_ms = BND_BLINK_PERIOD_MS;
-            Led.StartSequence(lsqBinding);
-            TmrLost.Start();
-            // Transmit same color
-            lsqBinding[0].Color.ToRGB(&Radio.PktTx.R, &Radio.PktTx.G, &Radio.PktTx.B);
-            Radio.MustSleep = false;
-            break;
-
-        case bevtRadioPkt:
-            if(State == bndOff or State == bndDeathOccured) return;
-            TmrLost.Restart();
-            if(Radio.Rssi >= RSSI_BIND_THRS) {  // He is near
-                if(State != bndNear) Vibro.Stop(); // in case of returning from far
-                TmrInd.Stop();
-                // Setup blink color if new color received, or if switching from non-near to near state
-                if(State != bndColorSwitch and State != bndRxMoodIgnore) {
-                    Color_t FClr(Radio.PktRx.R, Radio.PktRx.G, Radio.PktRx.B);
-                    if(FClr != lsqBinding[0].Color or State != bndNear) {
-//                        FClr.Print();
-                        Led.Stop();
-                        lsqBinding[2].Time_ms = BND_BLINK_PERIOD_MS;
-                        lsqBinding[0].Color = FClr;
-                        Led.StartSequence(lsqBinding);
-                        Vibro.StartSequence(vsqMoodChange);
-                        // Transmit same color
-                        FClr.ToRGB(&Radio.PktTx.R, &Radio.PktTx.G, &Radio.PktTx.B);
-                    }
-                    if(State != bndNear) Uart.Printf("bndNear2\r");
-                    State = bndNear;
-                } // if not ignore
-            }
-            // He is far
-            else {
-                if(State != bndFar) {   // Ignore weak pkts if already in Far state
-                    State = bndFar;
-                    Uart.Printf("bndFar\r");
-                    // Start red blink
-                    Led.Stop();
-                    lsqBinding[2].Time_ms = BND_FAR_BLINK_PERIOD_MS;
-                    lsqBinding[0].Color = clRed;
-                    Led.StartSequence(lsqBinding);
-                    // Init variables and start timer for vibro
-                    Pind = FarIndication;
-//                    Vibro.StartSequence(Pind->Vsq);
-                    TmrInd.Start(S2ST(Pind->Interval));
-                }
-            }
-            break;
-
-        case bevtTmrIndTick:
-            if(State == bndFar) {
-                Pind++; // switch to next indication chunk
-                if(Pind->Interval == 0) { // this one was last
-                    State = bndDeathOccured;
-                    Uart.Printf("bndDeathOccured\r");
-                    Led.StartSequence(lsqDeath);
-                    Vibro.StartSequence(vsqDeath);
-                }
-                else { // Not last
-                    Vibro.StartSequence(Pind->Vsq);
-                    TmrInd.Start(S2ST(Pind->Interval));
-                }
-            }
-            break;
-
-        case bevtTmrLost:
-            if(State == bndNear or State == bndFar or State == bndColorSwitch or State == bndRxMoodIgnore) {
-                State = bndLost;
-                Uart.Printf("bndLost\r");
-                Led.StartSequence(lsqLost);
-                Vibro.StartSequence(vsqLost);
-            }
-            break;
-
-        case bevtBtn:
-            if(State == bndNear or State == bndColorSwitch) {
-                State = bndColorSwitch;
-                TmrMoodSwitch.Restart();
-                // Show next mood
-                MoodIndx++;
-                if(MoodIndx >= MOOD_CNT) MoodIndx = 0;
-                Led.Stop();
-                Led.SetColor(MoodClr[MoodIndx]);
-            }
-            else if(State == bndDeathOccured) {
-                Vibro.Stop();   // switch off vibro by btn
-            }
-            break;
-
-        case bevtTmrMood:   // Transmit choosen mood after iteration done
-            // After btn finally released
-            if(State == bndColorSwitch) {
-                Led.Stop();
-                lsqBinding[2].Time_ms = BND_BLINK_PERIOD_MS;
-                lsqBinding[0].Color = MoodClr[MoodIndx];
-                Led.StartSequence(lsqBinding);
-                Vibro.StartSequence(vsqBrr);
-                // Send choosen mood
-                MoodClr[MoodIndx].ToRGB(&Radio.PktTx.R, &Radio.PktTx.G, &Radio.PktTx.B);
-                // Ignore received color for a while
-                State = bndRxMoodIgnore;
-                TmrMoodSwitch.Restart();
-            }
-            // Time to react back to neighbor's mood
-            else if(State == bndRxMoodIgnore) {
-                State = bndNear;
-            }
-            break;
-    } // switch
-}
-#endif
+} // App_t::ITask()
 
 void ReadAndSetupMode() {
     static uint8_t OldDipSettings = 0xFF;
@@ -415,35 +166,30 @@ void ReadAndSetupMode() {
     Radio.MustSleep = true; // Sleep until we decide what to do
     // Reset everything
     Vibro.Stop();
-    Led.Stop();
-    Binding.ProcessEvt(bevtStop);
+    Led.  Stop();
     // Analyze switch
     OldDipSettings = b;
     Uart.Printf("Dip: %02X\r", b);
-    // Get mode
-    if(App.ID >= ID_MIN and App.ID <= ID_MAX) {
-        App.Mode = modeBinding;
-        Led.StartSequence(lsqBindingMode);
-        chThdSleepMilliseconds(999);
-        Binding.ProcessEvt(bevtStart);
+    uint8_t fMode = b >> 4;
+    uint8_t pwrIndx = (b & 0b000111);
+    // ==== Setup mode ====
+    if(fMode == 0b01) {
+        App.Mode = modeLevel1;
+        Led.StartOrRestart(lsqModeLevel1Start);
+    }
+    else if(fMode == 0b10) {
+        App.Mode = modeLevel2;
+        Led.StartOrRestart(lsqModeLevel2Start);
     }
     else {
-        App.Mode = modeNone;
-        Led.StartSequence(lsqFailure);
+        App.Mode = modeTx;
+        Led.StartOrRestart(lsqModeTxStart);
+        pwrIndx = 10;   // +10 dBm
     }
+    Vibro.StartOrRestart(vsqBrr);
     // ==== Setup TX power ====
-    uint8_t pwrIndx = (b & 0b000111);
     chSysLock();
-    CC.SetTxPower(CCPwrTable[pwrIndx]);
-    chSysUnlock();
-    // ==== Setup vibration duration ====
-    uint32_t Duration = (b & 0b111000);
-    Duration = (Duration >> 3) + 1; // 1...8
-    Duration = Duration * 1000;     // 1000...8000
-    if(Duration > 6500) Duration = 6500;    // 16-bit timer, alas
-    Uart.Printf("Duration: %u\r", Duration);
-    chSysLock();
-    vsqMoodChange[1].Time_ms = Duration;
+    CC.SetTxPower(CCPwrTable[pwrIndx]); // PwrIndx = 0...7; => Pwr = -30...0 dBm
     chSysUnlock();
 }
 
@@ -461,22 +207,9 @@ void App_t::OnCmd(Shell_t *PShell) {
     else if(PCmd->NameIs("GetID")) PShell->Reply("ID", App.ID);
 
     else if(PCmd->NameIs("SetID")) {
-        if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
         uint8_t r = ISetID(dw32);
         PShell->Ack(r);
-    }
-
-    else if(PCmd->NameIs("RPkt")) {
-        if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-        Radio.Rssi = dw32;
-        if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-        Radio.PktRx.R = dw32;
-        if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-        Radio.PktRx.G = dw32;
-        if(PCmd->GetNextNumber(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-        Radio.PktRx.B = dw32;
-        SignalEvt(EVT_RADIO);
-//        PShell->Ack(OK);
     }
 
     else PShell->Ack(CMD_UNKNOWN);

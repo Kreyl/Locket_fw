@@ -189,66 +189,52 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #endif
 
 #if 1 // ============================ LED RGB ==================================
-const LedRGBChunk_t lsqStart[] = {
-        {csSetup, 0, clRed},
+const LedRGBChunk_t lsqModeTxStart[] = {
+        {csSetup, 0, clYellow},
         {csWait, 207},
-        {csSetup, 0, clGreen},
+        {csSetup, 0, clBlack},
+        {csWait, 207},
+        {csSetup, 0, clYellow},
+        {csWait, 207},
+        {csSetup, 0, clBlack},
+        {csEnd}
+};
+
+const LedRGBChunk_t lsqModeLevel1Start[] = {
+        {csSetup, 0, clMagenta},
+        {csWait, 207},
+        {csSetup, 0, clBlack},
+        {csWait, 207},
+        {csSetup, 0, clMagenta},
+        {csWait, 207},
+        {csSetup, 0, clBlack},
+        {csEnd}
+};
+
+const LedRGBChunk_t lsqModeLevel2Start[] = {
+        {csSetup, 0, clBlue},
+        {csWait, 207},
+        {csSetup, 0, clBlack},
         {csWait, 207},
         {csSetup, 0, clBlue},
         {csWait, 207},
         {csSetup, 0, clBlack},
-        {csEnd},
+        {csEnd}
 };
 
-const LedRGBChunk_t lsqDetectorRxMode[] = {
-        {csSetup, 0,   clBlack},
-        {csSetup, 360, clMagenta},
-        {csSetup, 360, clBlack},
-        {csEnd},
-};
-const LedRGBChunk_t lsqDetectorTxMode[] = {
-        {csSetup, 0,   clBlack},
-        {csSetup, 360, clYellow},
-        {csSetup, 360, clBlack},
-        {csEnd},
-};
-const LedRGBChunk_t lsqBindingMode[] = {
-        {csSetup, 0, clBlack},
-        {csSetup, 360, clBlue},
-        {csSetup, 360, clBlack},
-        {csEnd},
-};
+//const LedRGBChunk_t lsqStart[] = {
+//        {csSetup, 0, clRed},
+//        {csWait, 207},
+//        {csSetup, 0, clGreen},
+//        {csWait, 207},
+//        {csSetup, 0, clBlue},
+//        {csWait, 207},
+//        {csSetup, 0, clBlack},
+//        {csEnd},
+//};
 
 #define LSQ_SPEED   360
 #define BRTNESS     180
-
-const LedRGBChunk_t lsqOff[] = {
-        {csSetup, LSQ_SPEED, clBlack},
-        {csEnd},
-};
-
-const LedRGBChunk_t lsqCyan[] = {
-        {csSetup, LSQ_SPEED, {0,BRTNESS,BRTNESS}},
-        {csEnd},
-};
-
-const LedRGBChunk_t lsqDeath[] = {
-        {csSetup, 0, clRed},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csWait, 99},
-        {csGoto, 0}
-};
-
-
-const LedRGBChunk_t lsqLost[] = {
-        {csSetup, 0, clMagenta},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csWait, 702},
-        {csGoto, 0}
-};
-
 
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
