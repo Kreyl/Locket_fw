@@ -144,7 +144,7 @@ void rLevel1_t::TaskFeelEachOtherMany() {
         if(TxSlot != 0) {
             uint32_t TimeBefore = TxSlot * SLOT_DURATION_MS;
 //            Uart.Printf("TB=%u\r", TimeBefore);
-            if(CycleN == 0) TryToReceive(TimeBefore);
+            if(CycleN == 0 and RxTable.GetCount() < RXTABLE_SZ) TryToReceive(TimeBefore);
             else TryToSleep(TimeBefore);
         }
         // ==== TX ====
@@ -156,7 +156,7 @@ void rLevel1_t::TaskFeelEachOtherMany() {
         if(TxSlot != (SLOT_CNT-1)) {
             uint32_t TimeAfter = ((SLOT_CNT-1) - TxSlot) * SLOT_DURATION_MS;
 //            Uart.Printf("TA=%u\r\r", TimeAfter);
-            if(CycleN == 0) TryToReceive(TimeAfter);
+            if(CycleN == 0 and RxTable.GetCount() < RXTABLE_SZ) TryToReceive(TimeAfter);
             else TryToSleep(TimeAfter);
         }
     } // for
