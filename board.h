@@ -27,9 +27,9 @@
 #define CRYSTAL_FREQ_HZ     12000000
 
 #define SYS_TIM_CLK         (Clk.APB1FreqHz)
-#define I2C1_ENABLED        TRUE
-#define I2C_USE_SEMAPHORE   TRUE
-#define ADC_REQUIRED        TRUE
+#define I2C1_ENABLED        PILL_ENABLED
+#define I2C_USE_SEMAPHORE   FALSE
+#define ADC_REQUIRED        FALSE
 
 #if 1 // ========================== GPIO =======================================
 // PortMinTim_t: GPIO, Pin, Tim, TimChnl, invInverted, omPushPull, TopValue

@@ -13,6 +13,8 @@
 #include "kl_lib.h"
 #include "kl_i2c.h"
 
+#if PILL_ENABLED
+
 #define PILL_I2C_STD_ADDR   0x50    // Standard address start of EEPROM - 0x01010aaa
 #define PILL_I2C_ADDR       (PILL_I2C_STD_ADDR | 0) // Only Zero addr
 #define PILL_DATA_ADDR      0x00    // Address of data
@@ -41,3 +43,4 @@ public:
 };
 
 extern PillMgr_t PillMgr;
+#endif

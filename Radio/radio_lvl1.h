@@ -57,9 +57,9 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #if 1 // =========================== Pkt_t =====================================
 union rPkt_t {
     uint32_t DWord32;
-    struct {
-        uint8_t R, G, B;
-    };
+//    struct {
+//        uint8_t R, G, B;
+//    };
     bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }
     rPkt_t& operator = (const rPkt_t &Right) { DWord32 = Right.DWord32; return *this; }
 } __attribute__ ((__packed__));
@@ -71,24 +71,26 @@ union rPkt_t {
 #if 1 // =================== Channels, cycles, Rssi  ===========================
 #define RCHNL_SERVICE   0
 #define RCHNL_COMMON    1
-#define RCHNL_EACH_OTH  2
+#define RCHNL_EACH_OTH  7
 #define RCHNL_MIN       3
 #define RCHNL_MAX       19
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
 
 #define RSSI_MIN        -95
 
-#define RSSI_BIND_THRS  -72
-#endif
+// Feel-Each-Other related
+#define CYCLE_CNT           4
+#define SLOT_CNT            30
+#define SLOT_DURATION_MS    5
 
-#if 1 // =========================== Timings ===================================
+// Timings
 #define RX_T_MS                 180      // pkt duration at 10k is around 12 ms
 #define RX_SLEEP_T_MS           810
 #define MIN_SLEEP_DURATION_MS   18
 #endif
 
 #if 1 // ============================= RX Table ================================
-#define RXTABLE_SZ              9
+#define RXTABLE_SZ              4
 #define RXT_PKT_REQUIRED        FALSE
 class RxTable_t {
 private:
@@ -101,6 +103,7 @@ private:
 public:
 #if RXT_PKT_REQUIRED
     void AddOrReplaceExistingPkt(rPkt_t &APkt) {
+        if(Cnt >= RXTABLE_SZ) return;   // Buffer is full, nothing to do here
         for(uint32_t i=0; i<Cnt; i++) {
             if(IBuf[i].ID == APkt.ID) {
                 IBuf[i] = APkt; // Replace with newer pkt
@@ -108,7 +111,7 @@ public:
             }
         }
         IBuf[Cnt] = APkt;
-        if(Cnt < (RXTABLE_SZ-1)) Cnt++;
+        Cnt++;
     }
 
     uint8_t GetPktByID(uint8_t ID, rPkt_t **ptr) {
@@ -129,11 +132,12 @@ public:
     }
 #else
     void AddId(uint8_t ID) {
+        if(Cnt >= RXTABLE_SZ) return;   // Buffer is full, nothing to do here
         for(uint32_t i=0; i<Cnt; i++) {
             if(IdBuf[i] == ID) return;
         }
         IdBuf[Cnt] = ID;
-        if(Cnt < (RXTABLE_SZ-1)) Cnt++;
+        Cnt++;
     }
 
 #endif
@@ -160,12 +164,14 @@ public:
     thread_t *PThd;
     int8_t Rssi;
     RxTable_t RxTable;
+    uint8_t TxPwr = CC_PwrMinus30dBm;
     uint8_t Init();
     // Inner use
     void TryToSleep(uint32_t SleepDuration) {
         if(SleepDuration >= MIN_SLEEP_DURATION_MS) CC.EnterPwrDown();
         chThdSleepMilliseconds(SleepDuration);
     }
+    void TryToReceive(uint32_t RxDuration);
     // Different modes of operation
     void TaskTransmitter();
     void TaskReceiverMany();

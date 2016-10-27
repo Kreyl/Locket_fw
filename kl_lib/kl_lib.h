@@ -261,9 +261,8 @@ public:
 #endif
 
 #if 1 // ========================== Random =====================================
-static inline int Random(int LowInclusive, int HighInclusive) {
-    return (rand() % (HighInclusive + 1 - LowInclusive)) + LowInclusive;
-}
+#define Random(LowInclusive, HighInclusive)     ((rand() % (HighInclusive + 1 - LowInclusive)) + LowInclusive)
+
 static inline void RandomSeed(unsigned int Seed) { srand(Seed); }
 #endif
 

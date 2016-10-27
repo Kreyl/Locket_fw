@@ -46,7 +46,6 @@ static void rLvl1Thread(void *arg) {
             case modeLevel2:
                 Radio.TaskReceiverSingle(); // Rx part
                 Radio.TaskFeelEachOtherMany();
-//                Radio.TryToSleep(450);
                 break;
         } // switch
     } // while true
@@ -135,7 +134,52 @@ void rLevel1_t::TaskFeelEachOtherSingle() {
 }
 
 void rLevel1_t::TaskFeelEachOtherMany() {
+    CC.SetChannel(RCHNL_EACH_OTH);
+    CC.SetTxPower(TxPwr);
+    PktTx.DWord32 = App.ID;
+    for(uint32_t CycleN=0; CycleN < CYCLE_CNT; CycleN++) {  // Iterate cycles
+        uint32_t TxSlot = Random(0, (SLOT_CNT-1));          // Decide when to transmit
+        // If TX slot is not zero, receive at zero cycle or sleep otherwise
+//        Uart.Printf("Txs=%u C=%u\r", TxSlot, CycleN);
+        if(TxSlot != 0) {
+            uint32_t TimeBefore = TxSlot * SLOT_DURATION_MS;
+//            Uart.Printf("TB=%u\r", TimeBefore);
+            if(CycleN == 0) TryToReceive(TimeBefore);
+            else TryToSleep(TimeBefore);
+        }
+        // ==== TX ====
+        DBG1_SET();
+        CC.Transmit(&PktTx);
+        DBG1_CLR();
 
+        // If TX slot is not last, receive at zero cycle or sleep otherwise
+        if(TxSlot != (SLOT_CNT-1)) {
+            uint32_t TimeAfter = ((SLOT_CNT-1) - TxSlot) * SLOT_DURATION_MS;
+//            Uart.Printf("TA=%u\r\r", TimeAfter);
+            if(CycleN == 0) TryToReceive(TimeAfter);
+            else TryToSleep(TimeAfter);
+        }
+    } // for
+}
+
+void rLevel1_t::TryToReceive(uint32_t RxDuration) {
+    systime_t TotalDuration_st = MS2ST(RxDuration);
+    systime_t TimeStart = chVTGetSystemTimeX();
+    systime_t RxDur_st = TotalDuration_st;
+    while(true) {
+        uint8_t RxRslt = CC.Receive_st(RxDur_st, &PktRx, &Rssi);
+        if(RxRslt == OK) {
+//            Uart.Printf("\rRID = %X", PktRx.DWord);
+            Uart.Printf("OtherRssi=%d\r", Rssi);
+            chSysLock();
+            RxTable.AddId(PktRx.DWord32);
+            chSysUnlock();
+        }
+        // Check if repeat or get out
+        systime_t Elapsed_st = chVTTimeElapsedSinceX(TimeStart);
+        if(Elapsed_st >= TotalDuration_st) break;
+        else RxDur_st = TotalDuration_st - Elapsed_st;
+    }
 }
 #endif // task
 
