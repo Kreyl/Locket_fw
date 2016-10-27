@@ -238,7 +238,7 @@ const LedRGBChunk_t lsqModeLevel2Start[] = {
         {csEnd}
 };
 const LedRGBChunk_t lsqModeLevel2[] = {
-        {csSetup, 0, clBlack},
+        {csSetup, 360, clBlack},
         {csWait, 3600},
         {csSetup, 0, {0, 0, LOW_BRTNESS}},
         {csWait, 207},
@@ -247,6 +247,16 @@ const LedRGBChunk_t lsqModeLevel2[] = {
 
 const LedRGBChunk_t lsqTx[] {
         {csSetup, 0, clYellow},
+        {csEnd}
+};
+
+const LedRGBChunk_t lsqTheyAreNear[] = {
+        {csSetup, 540, clBlue},
+        {csSetup, 540, {0, 0, 99}},
+        {csGoto, 0}
+};
+const LedRGBChunk_t lsqTheyDissapeared[] = {
+        {csSetup, 540, clBlack},
         {csEnd}
 };
 

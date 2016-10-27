@@ -16,6 +16,7 @@
 #define EVT_VIBRO_END       EVENT_MASK(6)
 
 #define EVT_RADIO_FORCE     EVENT_MASK(7)
+#define EVT_RXCHECK         EVENT_MASK(8)
 
 // Adc
 #define EVT_SAMPLING        EVENT_MASK(24)

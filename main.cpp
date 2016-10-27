@@ -40,6 +40,7 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {MS2ST(1000), EVT_EVERY_SECOND, tktPeriodic};
+static TmrKL_t TmrRxTableCheck {MS2ST(2007), EVT_RXCHECK, tktPeriodic};
 #endif
 
 int main(void) {
@@ -90,6 +91,7 @@ int main(void) {
 #endif
 
     TmrEverySecond.InitAndStart();
+    TmrRxTableCheck.InitAndStart();
     App.SignalEvt(EVT_EVERY_SECOND); // check it now
 
     if(Radio.Init() != OK) {
@@ -130,16 +132,31 @@ void App_t::ITask() {
 #if BTN_ENABLED
         if(Evt & EVT_BUTTONS) {
             Uart.Printf("Btn\r");
-            if(Mode == modeTx) {
-                if(Radio.MustTx == false) {
-                    Radio.MustTx = true;
-                    Led.StartOrContinue(lsqTx);
+            BtnEvtInfo_t EInfo;
+            while(BtnGetEvt(&EInfo) == OK) {
+                if(EInfo.Type == bePress) {
+                    if(Mode == modeTx) {
+                        if(Radio.MustTx == false) {
+                            Radio.MustTx = true;
+                            Led.StartOrContinue(lsqTx);
+                        }
+                        else {
+                            Radio.MustTx = false;
+                            Led.StartOrRestart(lsqModeTx);
+                        }
+                    } // if TX
+                    else if(Mode == modeLevel2) {
+                        ShowAliens = true;
+                        SignalEvt(EVT_RXCHECK);
+                    }
                 }
-                else {
-                    Radio.MustTx = false;
-                    Led.StartOrRestart(lsqModeTx);
+                else if(EInfo.Type == beRelease) {
+                    if(Mode == modeLevel2) {
+                        ShowAliens = false;
+                        Led.StartOrContinue(lsqModeLevel2);
+                    }
                 }
-            }
+            } // while
         }
 #endif
 
@@ -147,6 +164,16 @@ void App_t::ITask() {
             Uart.Printf("Force\r");
             if(Mode == modeLevel1 or Mode == modeLevel2) {
                 Vibro.StartOrContinue(vsqBrrBrr);
+            }
+        }
+
+        if(Evt & EVT_RXCHECK) {
+            if(ShowAliens == true) {
+                if(Radio.RxTable.GetCount() != 0) {
+                    Led.StartOrContinue(lsqTheyAreNear);
+                    Radio.RxTable.Clear();
+                }
+                else Led.StartOrContinue(lsqTheyDissapeared);
             }
         }
 
@@ -205,9 +232,7 @@ void ReadAndSetupMode() {
     }
     Vibro.StartOrRestart(vsqBrr);
     // ==== Setup TX power ====
-    chSysLock();
-    CC.SetTxPower(CCPwrTable[pwrIndx]); // PwrIndx = 0...7; => Pwr = -30...0 dBm
-    chSysUnlock();
+    Radio.TxPwr = CCPwrTable[pwrIndx];  // PwrIndx = 0...7; => Pwr = -30...0 dBm
     // Start Idle indication
     chThdSleepMilliseconds(720);    // Let blink end
     switch(App.Mode) {

@@ -171,9 +171,11 @@ void rLevel1_t::TryToReceive(uint32_t RxDuration) {
         if(RxRslt == OK) {
 //            Uart.Printf("\rRID = %X", PktRx.DWord);
             Uart.Printf("OtherRssi=%d\r", Rssi);
-            chSysLock();
-            RxTable.AddId(PktRx.DWord32);
-            chSysUnlock();
+            if(Rssi > RSSI_MIN) {
+                chSysLock();
+                RxTable.AddId(PktRx.DWord32);
+                chSysUnlock();
+            }
         }
         // Check if repeat or get out
         systime_t Elapsed_st = chVTTimeElapsedSinceX(TimeStart);

@@ -24,6 +24,7 @@ enum Mode_t {modeTx, modeLevel1, modeLevel2};
 class App_t {
 private:
     thread_t *PThread;
+    bool ShowAliens = false;
 public:
     Mode_t Mode = modeTx;
     uint8_t ID;
