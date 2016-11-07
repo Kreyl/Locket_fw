@@ -36,17 +36,18 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
-        switch(App.Mode) {
-            case modeTx:
-                if(Radio.MustTx) Radio.TaskTransmitter();
-                else Radio.TryToSleep(450);
-                break;
-
-            case modePlayer:
-//                Radio.TaskReceiverSingle(); // Rx part
-//                Radio.TaskFeelEachOtherMany();
-                break;
-        } // switch
+        chThdSleepMilliseconds(999);
+//        switch(App.Mode) {
+//            case modeTx:
+//                if(Radio.MustTx) Radio.TaskTransmitter();
+//                else Radio.TryToSleep(450);
+//                break;
+//
+//            case modePlayer:
+////                Radio.TaskReceiverSingle(); // Rx part
+////                Radio.TaskFeelEachOtherMany();
+//                break;
+//        } // switch
     } // while true
 }
 
@@ -68,7 +69,6 @@ void rLevel1_t::TaskReceiverSingle() {
 //        Uart.Printf("Ch=%u; Rssi=%d\r", Ch, Rssi);
         Uart.Printf("ForceRssi=%d\r", Rssi);
 //        if(PktRx.DWord32 == THE_WORD and Rssi > -63) App.SignalEvt(EVT_RADIO);
-        if(PktRx.DWord32 == THE_WORD) App.SignalEvt(EVT_RADIO_FORCE);
     }
 }
 

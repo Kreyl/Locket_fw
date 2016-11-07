@@ -15,8 +15,11 @@
 #define EVT_LED_SEQ_END     EVENT_MASK(5)
 #define EVT_VIBRO_END       EVENT_MASK(6)
 
-#define EVT_RADIO_FORCE     EVENT_MASK(7)
 #define EVT_RXCHECK         EVENT_MASK(8)
+
+// App-specific
+#define EVT_RX              EVENT_MASK(10)
+#define EVT_CSTATE_CHANGE   EVENT_MASK(11)
 
 // Adc
 #define EVT_SAMPLING        EVENT_MASK(24)

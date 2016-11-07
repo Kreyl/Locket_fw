@@ -24,11 +24,10 @@ enum Mode_t {modeTx, modePlayer};
 class App_t {
 private:
     thread_t *PThread;
-    bool ShowAliens = false;
 public:
     Mode_t Mode = modePlayer;
+    // Eternal
     uint8_t ID;
-    // Eternal methods
     void InitThread() { PThread = chThdGetSelfX(); }
     void SignalEvt(eventmask_t Evt) {
         chSysLock();
