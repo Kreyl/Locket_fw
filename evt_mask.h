@@ -20,6 +20,7 @@
 // App-specific
 #define EVT_RX              EVENT_MASK(10)
 #define EVT_CSTATE_CHANGE   EVENT_MASK(11)
+#define EVT_INDICATION      EVENT_MASK(12)
 
 // Adc
 #define EVT_SAMPLING        EVENT_MASK(24)

@@ -15,6 +15,7 @@
 #include "Sequences.h"
 #include "radio_lvl1.h"
 #include "kl_adc.h"
+#include "pill.h"
 
 #if 1 // ======================== Variables and defines ========================
 App_t App;
@@ -107,13 +108,53 @@ public:
 };
 static Cataclysm_t Cataclysm;
 
+bool IsInShelter = false;
+PillType_t PillType;
+
 enum HState_t {hstHealthy, hstIll, hstDead};
+
 class Health_t {
 public:
     HState_t State = hstHealthy;
     void Load() {}
     void Save() {}
-
+    void ProcessCChange(CStateChange_t CstCh, bool AIsInShelter) {
+        HState_t NewState = State;
+        switch(State) {
+            case hstHealthy:
+                // Become ill if met Danger or Panic state not being in shelter
+                if(ANY_OF_3(CstCh, cscI2D, cscI2P, cscM2D) and !AIsInShelter) NewState = hstIll;
+                break;
+            case hstIll:
+                // Die if met with Cataclysm End not being in shelter, or if met Cataclysm Start being ill
+                if((CstCh == cscEnd and !AIsInShelter) or ANY_OF_3(CstCh, cscI2M, cscI2D, cscI2P)) NewState = hstDead;
+                break;
+            case hstDead: break; // In this case, Cataclysm changes nothing
+        }
+        if(State != NewState) {
+            State = NewState;
+            App.SignalEvt(EVT_INDICATION);
+        }
+        Uart.Printf("HState1: %u\r", State);
+    }
+    void ProcessPill(PillType_t APillType) {
+        Uart.Printf("HPill: %u\r", APillType);
+        HState_t NewState = State;
+        switch(State) {
+            case hstHealthy: break;
+            case hstIll:
+                if(ANY_OF_2(APillType, ptCure, ptPanacea)) NewState = hstHealthy;
+                break;
+            case hstDead:
+                if(APillType == ptPanacea) NewState = hstHealthy;
+                break;
+        } // switch
+        if(State != NewState) {
+            State = NewState;
+            App.SignalEvt(EVT_INDICATION);
+        }
+        Uart.Printf("HState2: %u\r", State);
+    }
 };
 static Health_t Health;
 #endif
@@ -193,7 +234,8 @@ void App_t::ITask() {
         }
 
 #if PILL_ENABLED // ==== Pill ====
-//        if(Evt & EVT_PILL_CHECK) {
+        if(Evt & EVT_PILL_CHECK) {
+            Health.ProcessPill(PillType);
 //            PillMgr.Check();
 //            switch(PillMgr.State) {
 //                case pillJustConnected:
@@ -202,7 +244,7 @@ void App_t::ITask() {
 ////                case pillJustDisconnected: Uart.Printf("Pill Discon\r"); break;
 //                default: break;
 //            }
-//        }
+        }
 #endif
 
 #if 0 // ==== Led sequence end ====
@@ -260,7 +302,8 @@ void App_t::ITask() {
 
 #if 1 // ==== Cataclysm state changed ====
         if(Evt & EVT_CSTATE_CHANGE) {
-            Uart.Printf("C state: %u; chng: %u\r", Cataclysm.State, Cataclysm.StateChange);
+            Uart.Printf("C chng: %u\r", Cataclysm.StateChange);
+            Health.ProcessCChange(Cataclysm.StateChange, IsInShelter);
         }
 #endif
 
@@ -317,7 +360,7 @@ void ReadAndSetupMode() {
 void App_t::OnCmd(Shell_t *PShell) {
 	Cmd_t *PCmd = &PShell->Cmd;
     __attribute__((unused)) int32_t dw32 = 0;  // May be unused in some configurations
-    Uart.Printf("%S\r", PCmd->Name);
+//    Uart.Printf("%S\r", PCmd->Name);
     // Handle command
     if(PCmd->NameIs("Ping")) {
         PShell->Ack(OK);
@@ -339,6 +382,18 @@ void App_t::OnCmd(Shell_t *PShell) {
     else if(PCmd->NameIs("RX")) {
         if(PCmd->GetNextInt32(&Dbg32) != OK) { PShell->Ack(CMD_ERROR); return; }
         App.SignalEvt(EVT_RX);
+    }
+    else if(PCmd->NameIs("cst")) {
+        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+        Cataclysm.StateChange = (CStateChange_t)dw32;   // State transition
+        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+        IsInShelter = dw32;             // Is in shelter
+        App.SignalEvt(EVT_CSTATE_CHANGE);
+    }
+    else if(PCmd->NameIs("Pill")) {
+        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+        PillType = (PillType_t)dw32;
+        App.SignalEvt(EVT_PILL_CHECK);
     }
 
     else PShell->Ack(CMD_UNKNOWN);
