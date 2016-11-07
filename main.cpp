@@ -23,7 +23,7 @@ App_t App;
 #define EE_ADDR_DEVICE_ID       0
 #define EE_ADDR_COLOR           4
 
-static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
+static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
 static void ReadAndSetupMode();
 static uint8_t ISetID(int32_t NewID);
@@ -214,22 +214,18 @@ void ReadAndSetupMode() {
     // Analyze switch
     OldDipSettings = b;
     Uart.Printf("Dip: %02X\r", b);
-    uint8_t fMode = b >> 4;
+    uint8_t fMode = b >> 3;
     uint8_t pwrIndx = (b & 0b000111);
     // ==== Setup mode ====
-    if(fMode == 0b01) {
+    if(fMode == 0) {
         App.Mode = modeLevel1;
         Led.StartOrRestart(lsqModeLevel1Start);
     }
-    else if(fMode == 0b10) {
+    else {
         App.Mode = modeLevel2;
         Led.StartOrRestart(lsqModeLevel2Start);
     }
-    else {
-        App.Mode = modeTx;
-        Led.StartOrRestart(lsqModeTxStart);
-        pwrIndx = 10;   // +10 dBm
-    }
+
     Vibro.StartOrRestart(vsqBrr);
     // ==== Setup TX power ====
     Radio.TxPwr = CCPwrTable[pwrIndx];  // PwrIndx = 0...7; => Pwr = -30...0 dBm
