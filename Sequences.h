@@ -208,18 +208,20 @@ const LedRGBChunk_t lsqModeTx[] = {
         {csGoto, 0}
 };
 
-
-const LedRGBChunk_t lsqModeLevel1Start[] = {
-        {csSetup, 0, clMagenta},
+const LedRGBChunk_t lsqModePlayerStart[] = {
+        {csSetup, 0, clGreen},
         {csWait, 207},
         {csSetup, 0, clBlack},
         {csWait, 207},
-        {csSetup, 0, clMagenta},
+        {csSetup, 0, clGreen},
         {csWait, 207},
         {csSetup, 0, clBlack},
         {csEnd}
 };
-const LedRGBChunk_t lsqModeLevel1[] = {
+
+
+
+const LedRGBChunk_t lsqModePlayer[] = {
         {csSetup, 0, clBlack},
         {csWait, 3600},
         {csSetup, 0, {LOW_BRTNESS, 0, LOW_BRTNESS}},

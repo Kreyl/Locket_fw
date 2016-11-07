@@ -42,10 +42,9 @@ static void rLvl1Thread(void *arg) {
                 else Radio.TryToSleep(450);
                 break;
 
-            case modeLevel1:
-            case modeLevel2:
-                Radio.TaskReceiverSingle(); // Rx part
-                Radio.TaskFeelEachOtherMany();
+            case modePlayer:
+//                Radio.TaskReceiverSingle(); // Rx part
+//                Radio.TaskFeelEachOtherMany();
                 break;
         } // switch
     } // while true

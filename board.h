@@ -11,11 +11,11 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket4_1"
-#define APP_NAME            "JediAcademy"
+#define APP_NAME            "FirstDaysOfEmpire"
 
 // ==== High-level peripery control ====
-#define PILL_ENABLED        FALSE
-#define BEEPER_ENABLED      FALSE
+#define PILL_ENABLED        TRUE
+#define BEEPER_ENABLED      TRUE
 #define BTN_ENABLED         TRUE
 
 #define SIMPLESENSORS_ENABLED   BTN_ENABLED

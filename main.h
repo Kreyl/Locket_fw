@@ -19,14 +19,14 @@
 #define ID_MAX                  36
 #define ID_DEFAULT              ID_MIN
 
-enum Mode_t {modeTx, modeLevel1, modeLevel2};
+enum Mode_t {modeTx, modePlayer};
 
 class App_t {
 private:
     thread_t *PThread;
     bool ShowAliens = false;
 public:
-    Mode_t Mode = modeTx;
+    Mode_t Mode = modePlayer;
     uint8_t ID;
     // Eternal methods
     void InitThread() { PThread = chThdGetSelfX(); }

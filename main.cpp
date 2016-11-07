@@ -21,7 +21,7 @@ App_t App;
 
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
-#define EE_ADDR_COLOR           4
+#define EE_ADDR_HEALTH_STATE    8
 
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
@@ -41,6 +41,19 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {MS2ST(1000), EVT_EVERY_SECOND, tktPeriodic};
 static TmrKL_t TmrRxTableCheck {MS2ST(2007), EVT_RXCHECK, tktPeriodic};
+static uint32_t TimeS = 0;
+#endif
+
+#if 1 // ==================== Application-specific objects =====================
+enum CState_t {cstIdle, cstMenace, cstDanger, cstPanic};
+
+class Cataclysm_t {
+public:
+    CState_t State = cstIdle;
+    uint32_t TimeOfStart = 0;
+};
+static Cataclysm_t Cataclysm;
+
 #endif
 
 int main(void) {
@@ -74,16 +87,16 @@ int main(void) {
 
 #if BEEPER_ENABLED // === Beeper ===
     Beeper.Init();
-    Beeper.StartSequence(bsqBeepBeep);
+    Beeper.StartOrRestart(bsqBeepBeep);
     chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
 
 //    Adc.Init();
 
 #if PILL_ENABLED // === Pill ===
-    i2c1.Init();
-    PillMgr.Init();
-    TmrCheckPill.InitAndStart();
+//    i2c1.Init();
+//    PillMgr.Init();
+//    TmrCheckPill.InitAndStart();
 #endif
 
 #if BTN_ENABLED
@@ -91,8 +104,8 @@ int main(void) {
 #endif
 
     TmrEverySecond.InitAndStart();
-    TmrRxTableCheck.InitAndStart();
-    App.SignalEvt(EVT_EVERY_SECOND); // check it now
+//    TmrRxTableCheck.InitAndStart();
+//    App.SignalEvt(EVT_EVERY_SECOND); // check it now
 
     if(Radio.Init() != OK) {
         Led.StartOrRestart(lsqFailure);
@@ -108,20 +121,21 @@ void App_t::ITask() {
     while(true) {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
         if(Evt & EVT_EVERY_SECOND) {
+            TimeS++;
             ReadAndSetupMode();
         }
 
 #if PILL_ENABLED // ==== Pill ====
-        if(Evt & EVT_PILL_CHECK) {
-            PillMgr.Check();
-            switch(PillMgr.State) {
-                case pillJustConnected:
-                    Uart.Printf("Pill: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
-                    break;
-//                case pillJustDisconnected: Uart.Printf("Pill Discon\r"); break;
-                default: break;
-            }
-        }
+//        if(Evt & EVT_PILL_CHECK) {
+//            PillMgr.Check();
+//            switch(PillMgr.State) {
+//                case pillJustConnected:
+//                    Uart.Printf("Pill: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
+//                    break;
+////                case pillJustDisconnected: Uart.Printf("Pill Discon\r"); break;
+//                default: break;
+//            }
+//        }
 #endif
 
 #if 0 // ==== Led sequence end ====
@@ -145,26 +159,16 @@ void App_t::ITask() {
                             Led.StartOrRestart(lsqModeTx);
                         }
                     } // if TX
-                    else if(Mode == modeLevel2) {
-                        ShowAliens = true;
-                        SignalEvt(EVT_RXCHECK);
+                    // Player
+                    else {
+
                     }
-                }
-                else if(EInfo.Type == beRelease) {
-                    if(Mode == modeLevel2) {
-                        ShowAliens = false;
-                        Led.StartOrContinue(lsqModeLevel2);
-                    }
-                }
+                } // if Press
             } // while
         }
 #endif
 
         if(Evt & EVT_RADIO_FORCE) {
-            Uart.Printf("Force\r");
-            if(Mode == modeLevel1 or Mode == modeLevel2) {
-                Vibro.StartOrContinue(vsqBrrBrr);
-            }
         }
 
         if(Evt & EVT_RXCHECK) {
@@ -210,31 +214,25 @@ void ReadAndSetupMode() {
     Radio.MustTx = false; // Just in case
     // Reset everything
     Vibro.Stop();
-    Led.  Stop();
+    Led.Stop();
     // Analyze switch
     OldDipSettings = b;
     Uart.Printf("Dip: %02X\r", b);
-    uint8_t fMode = b >> 3;
-    uint8_t pwrIndx = (b & 0b000111);
-    // ==== Setup mode ====
-    if(fMode == 0) {
-        App.Mode = modeLevel1;
-        Led.StartOrRestart(lsqModeLevel1Start);
-    }
-    else {
-        App.Mode = modeLevel2;
-        Led.StartOrRestart(lsqModeLevel2Start);
-    }
-
     Vibro.StartOrRestart(vsqBrr);
-    // ==== Setup TX power ====
-    Radio.TxPwr = CCPwrTable[pwrIndx];  // PwrIndx = 0...7; => Pwr = -30...0 dBm
-    // Start Idle indication
-    chThdSleepMilliseconds(720);    // Let blink end
-    switch(App.Mode) {
-        case modeTx:     Led.StartOrRestart(lsqModeTx);     break;
-        case modeLevel1: Led.StartOrRestart(lsqModeLevel1); break;
-        case modeLevel2: Led.StartOrRestart(lsqModeLevel2); break;
+    if(b == 0) {
+        App.Mode = modePlayer;
+        Led.StartOrRestart(lsqModePlayerStart);
+        chThdSleepMilliseconds(720);    // Let blink end
+        // Get Health from EE
+        // TODO
+
+        Led.StartOrRestart(lsqModeTx);  // Start Idle indication
+}
+    else {
+        App.Mode = modeTx;
+        Led.StartOrRestart(lsqModeTxStart);
+        chThdSleepMilliseconds(720);    // Let blink end
+        Led.StartOrRestart(lsqModeTx);  // Start Idle indication
     }
 }
 
@@ -255,6 +253,11 @@ void App_t::OnCmd(Shell_t *PShell) {
         if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
         uint8_t r = ISetID(dw32);
         PShell->Ack(r);
+    }
+
+    else if(PCmd->NameIs("Evt")) {
+        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+        App.SignalEvt(dw32);
     }
 
     else PShell->Ack(CMD_UNKNOWN);
