@@ -107,8 +107,18 @@ typedef void (*ftVoidPVoidLen)(void*p, uint32_t Len);
 #define MAX(a, b)   ( ((a)>(b))? (a) : (b) )
 #define ABS(a)      ( ((a) < 0)? -(a) : (a) )
 #define TRIM_VALUE(v, Max)  { if((v) > (Max)) (v) = (Max); }
-#define IS_LIKE(v, precise, deviation)  (((precise - deviation) < v) and (v < (precise + deviation)))
 #define BitIsSet(r, b)  ((r) & (b))
+
+#define IS_LIKE(v, precise, deviation)  (((precise - deviation) < v) and (v < (precise + deviation)))
+#define IS_BETWEEN_INCL_BOTH(v, L, R)   ( ((v) >= (L)) and ((v) <= (R)) )
+#define IS_BETWEEN_INCL_L(v, L, R)      ( ((v) >= (L)) and ((v) <  (R)) )
+#define IS_BETWEEN_INCL_R(v, L, R)      ( ((v) >  (L)) and ((v) <= (R)) )
+#define IS_BETWEEN_EXCL(v, L, R)        ( ((v) >  (L)) and ((v) <  (R)) )
+
+#define ANY_OF_2(a, b1, b2)             (((a)==(b1)) or ((a)==(b2)))
+#define ANY_OF_3(a, b1, b2, b3)         (((a)==(b1)) or ((a)==(b2)) or ((a)==(b3)))
+#define ANY_OF_4(a, b1, b2, b3, b4)     (((a)==(b1)) or ((a)==(b2)) or ((a)==(b3)) or ((a)==(b4)))
+#define ANY_OF_5(a, b1, b2, b3, b4, b5) (((a)==(b1)) or ((a)==(b2)) or ((a)==(b3)) or ((a)==(b4)) or ((a)==(b5)))
 
 // Example: uint32_t us = Proportion<uint32_t>(Angle, 0, 180, imin_us, imax_us);
 template <typename T>
@@ -123,11 +133,6 @@ static T Average(T *p, uint32_t Len) {
     Rslt /= Len;
     return Rslt;
 }
-
-#define ANY_OF_2(a, b1, b2)             (((a)==(b1)) or ((a)==(b2)))
-#define ANY_OF_3(a, b1, b2, b3)         (((a)==(b1)) or ((a)==(b2)) or ((a)==(b3)))
-#define ANY_OF_4(a, b1, b2, b3, b4)     (((a)==(b1)) or ((a)==(b2)) or ((a)==(b3)) or ((a)==(b4)))
-#define ANY_OF_5(a, b1, b2, b3, b4, b5) (((a)==(b1)) or ((a)==(b2)) or ((a)==(b3)) or ((a)==(b4)) or ((a)==(b5)))
 
 // IRQ priorities
 #define IRQ_PRIO_LOW            15  // Minimum

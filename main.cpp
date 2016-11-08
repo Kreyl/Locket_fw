@@ -51,14 +51,15 @@ static int32_t Dbg32;
 #define C_MENACE_END_S      180
 #define C_DANGER_END_S      300
 #define C_PANIC_END_S       360 // Also duration of cataclysm, too
+#define C_GAP_S             18  // Allow some unsync
 
 enum CState_t {cstIdle=0, cstMenace=1, cstDanger=2, cstPanic=3};
 enum CStateChange_t {cscNone=0, cscI2M=1, cscI2D=2, cscI2P=3, cscM2D=4, cscD2P=5, cscEnd=6};
 
 class Cataclysm_t {
 private:
-    uint32_t TimeElapsed = 0;
-    uint32_t TimeOfStart;
+    int32_t TimeElapsed = 0;
+    int32_t TimeOfStart;
     void ProcessTimeElapsed() {
         // Calculate state by TimeElapsed
         CState_t NewState = cstMenace;
@@ -106,13 +107,48 @@ public:
         ProcessTimeElapsed();        // Get state and signal if needed
     }
     bool IsOngoing() { return State != cstIdle; }
-    //bool HappenedAfterBeginning(uint32_t
+    CState_t WhenEvtOccured(int32_t TimeOfEvent) {
+        int32_t LocalTime = TimeOfEvent - TimeOfStart;
+        //Uart.Printf("tStart: %d; tEvt: %d\r", TimeOfStart, TimeOfEvent);
+        Uart.Printf("LocalTime: %d\r", LocalTime);
+        if(IS_BETWEEN_INCL_BOTH(LocalTime, -C_GAP_S, C_MENACE_END_S)) return cstMenace;
+        else if(IS_BETWEEN_INCL_R(LocalTime, C_MENACE_END_S, C_DANGER_END_S)) return cstDanger;
+        else if(IS_BETWEEN_INCL_R(LocalTime, C_DANGER_END_S, C_PANIC_END_S)) return cstPanic;
+        else return cstIdle; // Not during C
+    }
 };
 static Cataclysm_t Cataclysm;
 
-bool IsInShelter = false;
+// ==== Sheltering ====
+enum ShelteringState_t {sstNotSheltered, sstShelteredM, sstShelteredDP};
+class Sheltering_t {
+public:
+    int32_t TimeOfBtnPress = 0;
+    ShelteringState_t State = sstNotSheltered;
+    void ProcessCChangeOrBtn() {
+        CState_t BtnPressPeriod = Cataclysm.WhenEvtOccured(TimeOfBtnPress);
+        ShelteringState_t NewState = State;
+        switch(State) {
+            case sstNotSheltered:
+                if(BtnPressPeriod == cstMenace) NewState = sstShelteredM;
+                else if(ANY_OF_2(BtnPressPeriod, cstDanger, cstPanic)) NewState = sstShelteredDP;
+                break;
+            case sstShelteredM:
+            case sstShelteredDP:
+                if(BtnPressPeriod == cstIdle) NewState = sstNotSheltered;
+                break;
+        } // switch
+        if(State != NewState) {
+            State = NewState;
+            App.SignalEvt(EVT_INDICATION);
+        }
+    }
+};
+static Sheltering_t Sheltering;
+
 PillType_t PillType;
 
+// ==== Health ====
 enum HState_t {hstHealthy, hstIll, hstDead};
 
 class Health_t {
@@ -120,16 +156,17 @@ public:
     HState_t State = hstHealthy;
     void Load() {}
     void Save() {}
-    void ProcessCChange(CStateChange_t CstCh, bool AIsInShelter) {
+    void ProcessCChange(CStateChange_t CstCh, ShelteringState_t ShState) {
+        Uart.Printf("CstCh: %u; ShState: %u\r", CstCh, ShState);
         HState_t NewState = State;
         switch(State) {
             case hstHealthy:
                 // Become ill if met Danger or Panic state not being in shelter
-                if(ANY_OF_3(CstCh, cscI2D, cscI2P, cscM2D) and !AIsInShelter) NewState = hstIll;
+                if(ANY_OF_3(CstCh, cscI2D, cscI2P, cscM2D) and ShState != sstShelteredM) NewState = hstIll;
                 break;
             case hstIll:
                 // Die if met with Cataclysm End not being in shelter, or if met Cataclysm Start being ill
-                if((CstCh == cscEnd and !AIsInShelter) or ANY_OF_3(CstCh, cscI2M, cscI2D, cscI2P)) NewState = hstDead;
+                if((CstCh == cscEnd and ShState == sstNotSheltered) or ANY_OF_3(CstCh, cscI2M, cscI2D, cscI2P)) NewState = hstDead;
                 break;
             case hstDead: break; // In this case, Cataclysm changes nothing
         }
@@ -184,18 +221,17 @@ int main(void) {
     Clk.PrintFreqs();
 //    RandomSeed(GetUniqID3());   // Init random algorythm with uniq ID
 
-    // === LED ===
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-
     Vibro.Init();
-
 #if BEEPER_ENABLED // === Beeper ===
     Beeper.Init();
     Beeper.StartOrRestart(bsqBeepBeep);
     chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
-
+#if BTN_ENABLED
+    PinSensors.Init();
+#endif
 //    Adc.Init();
 
 #if PILL_ENABLED // === Pill ===
@@ -203,12 +239,6 @@ int main(void) {
 //    PillMgr.Init();
 //    TmrCheckPill.InitAndStart();
 #endif
-
-#if BTN_ENABLED
-    PinSensors.Init();
-#endif
-
-    Health.Load();
 
     // ==== Time and timers ====
     TmrEverySecond.InitAndStart();
@@ -220,6 +250,9 @@ int main(void) {
 //        Led.StartOrRestart(lsqFailure);
 //        chThdSleepMilliseconds(1008);
     }
+
+    // ==== App-specific ====
+    Health.Load();
 
     App.SignalEvt(EVT_EVERY_SECOND); // check it now
     App.SignalEvt(EVT_INDICATION);
@@ -239,11 +272,6 @@ void App_t::ITask() {
 //            ReadAndSetupMode();
         }
 
-#if 0 // ==== Led sequence end ====
-        if(Evt & EVT_LED_SEQ_END) {
-        }
-#endif
-
 #if BTN_ENABLED
         if(Evt & EVT_BUTTONS) {
             Uart.Printf("Btn\r");
@@ -262,7 +290,8 @@ void App_t::ITask() {
                     } // if TX
                     // Player
                     else {
-
+                        Sheltering.TimeOfBtnPress = TimeS;
+                        Sheltering.ProcessCChangeOrBtn();
                     }
                 } // if Press
             } // while
@@ -284,18 +313,11 @@ void App_t::ITask() {
 //            }
         }
 
-//        if(Evt & EVT_OFF) {
-////            Uart.Printf("Off\r");
-//            chSysLock();
-//            Sleep::EnableWakeup1Pin();
-//            Sleep::EnterStandby();
-//            chSysUnlock();
-//        }
-
 #if 1 // ==== App specific ====
         if(Evt & EVT_CSTATE_CHANGE) {
-            Uart.Printf("C chng: %u\r", Cataclysm.StateChange);
-            Health.ProcessCChange(Cataclysm.StateChange, IsInShelter);
+//            Uart.Printf("C chng: %u\r", Cataclysm.StateChange);
+            Sheltering.ProcessCChangeOrBtn();
+            Health.ProcessCChange(Cataclysm.StateChange, Sheltering.State);
         }
 
         if(Evt & EVT_INDICATION) {
@@ -307,24 +329,25 @@ void App_t::ITask() {
             else {
                 // When Cataclysm is everywhere
                 if(Cataclysm.IsOngoing()) {
+                    bool Sheltered = ANY_OF_2(Sheltering.State, sstShelteredM, sstShelteredDP);
                     // LED
                     switch(Cataclysm.State) {
                         case cstMenace:
-                            if(IsInShelter) Led.StartOrContinue(lsqMenaceSh);
-                            else            Led.StartOrContinue(lsqMenaceNoSh);
+                            if(Sheltered) Led.StartOrContinue(lsqMenaceSh);
+                            else          Led.StartOrContinue(lsqMenaceNoSh);
                             break;
                         case cstDanger:
-                            if(IsInShelter) Led.StartOrContinue(lsqDangerSh);
-                            else            Led.StartOrContinue(lsqDangerNoSh);
+                            if(Sheltered) Led.StartOrContinue(lsqDangerSh);
+                            else          Led.StartOrContinue(lsqDangerNoSh);
                             break;
                         case cstPanic:
-                            if(IsInShelter) Led.StartOrContinue(lsqPanicSh);
-                            else            Led.StartOrContinue(lsqPanicNoSh);
+                            if(Sheltered) Led.StartOrContinue(lsqPanicSh);
+                            else          Led.StartOrContinue(lsqPanicNoSh);
                             break;
                         default: break;
                     }
                     // Vibro
-                    if(IsInShelter) Vibro.Stop();
+                    if(Sheltered) Vibro.Stop();
                     else Vibro.StartOrRestart(vsqCataclysm);
                 }
                 // When all is calm
@@ -362,6 +385,17 @@ void App_t::ITask() {
             if(pVibroSeqToPerform != nullptr) Vibro.StartSequence(pVibroSeqToPerform);
         }
 #endif
+#if 0 // ==== Led sequence end ====
+        if(Evt & EVT_LED_SEQ_END) {
+        }
+#endif
+        //        if(Evt & EVT_OFF) {
+        ////            Uart.Printf("Off\r");
+        //            chSysLock();
+        //            Sleep::EnableWakeup1Pin();
+        //            Sleep::EnterStandby();
+        //            chSysUnlock();
+        //        }
 
 #if UART_RX_ENABLED
         if(Evt & EVT_UART_NEW_CMD) {
@@ -427,13 +461,13 @@ void App_t::OnCmd(Shell_t *PShell) {
         if(PCmd->GetNextInt32(&Dbg32) != OK) { PShell->Ack(CMD_ERROR); return; }
         App.SignalEvt(EVT_RX);
     }
-    else if(PCmd->NameIs("cst")) {
-        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-        Cataclysm.StateChange = (CStateChange_t)dw32;   // State transition
-        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-        IsInShelter = dw32;             // Is in shelter
-        App.SignalEvt(EVT_CSTATE_CHANGE);
-    }
+//    else if(PCmd->NameIs("cst")) {
+//        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+//        Cataclysm.StateChange = (CStateChange_t)dw32;   // State transition
+//        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+//        IsInShelter = dw32;             // Is in shelter
+//        App.SignalEvt(EVT_CSTATE_CHANGE);
+//    }
     else if(PCmd->NameIs("Pill")) {
         if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
         PillType = (PillType_t)dw32;

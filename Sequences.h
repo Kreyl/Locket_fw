@@ -249,7 +249,7 @@ const LedRGBChunk_t lsqIll[] = {
         {csWait, 207},
         {csSetup, 180, clBlack},
         {csWait, 1207},
-        {csEnd}
+        {csGoto, 0}
 };
 
 const LedRGBChunk_t lsqDead[] = {
@@ -498,7 +498,7 @@ const BaseChunk_t vsqIll[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, 999},
         {csSetup, 0},
-        {csWait, 1207},
+        {csWait, 3600},
         {csSetup, VIBRO_VOLUME},
         {csWait, VIBRO_SHORT_MS},
         {csGoto, 2}
