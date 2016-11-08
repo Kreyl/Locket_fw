@@ -15,7 +15,7 @@
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        TRUE
-#define BEEPER_ENABLED      TRUE
+#define BEEPER_ENABLED      FALSE
 #define BTN_ENABLED         TRUE
 
 #define SIMPLESENSORS_ENABLED   BTN_ENABLED

@@ -381,8 +381,13 @@ void App_t::ITask() {
 #if PILL_ENABLED // ==== Pill ====
         if(Evt & EVT_PILL_CONNECTED) {
             Uart.Printf("Pill: %d\r", PillMgr.Pill.TypeInt32);
-            if(ANY_OF_2(PillMgr.Pill.Type, ptCure, ptPanacea)) {
-                Led.StartOrRestart(lsqPillOk);
+            if(PillMgr.Pill.Type == ptCure) {
+                Led.StartOrRestart(lsqPillCure);
+                chThdSleepMilliseconds(999);
+                Health.ProcessPill(PillMgr.Pill.Type);
+            }
+            else if(PillMgr.Pill.Type == ptPanacea) {
+                Led.StartOrRestart(lsqPillPanacea);
                 chThdSleepMilliseconds(999);
                 Health.ProcessPill(PillMgr.Pill.Type);
             }

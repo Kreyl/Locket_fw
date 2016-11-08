@@ -337,8 +337,14 @@ const LedRGBChunk_t lsqFailure[] = {
 };
 
 // ==== Pill ====
-const LedRGBChunk_t lsqPillOk[] = {
+const LedRGBChunk_t lsqPillCure[] = {
         {csSetup, 0, clGreen},
+        {csWait, 999},
+        {csSetup, 0, clBlack},
+        {csEnd},
+};
+const LedRGBChunk_t lsqPillPanacea[] = {
+        {csSetup, 0, clWhite},
         {csWait, 999},
         {csSetup, 0, clBlack},
         {csEnd},
