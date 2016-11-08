@@ -229,38 +229,86 @@ const LedRGBChunk_t lsqModePlayer[] = {
         {csGoto, 0}
 };
 
-const LedRGBChunk_t lsqModeLevel2Start[] = {
-        {csSetup, 0, clBlue},
-        {csWait, 207},
-        {csSetup, 0, clBlack},
-        {csWait, 207},
-        {csSetup, 0, clBlue},
-        {csWait, 207},
-        {csSetup, 0, clBlack},
-        {csEnd}
-};
-const LedRGBChunk_t lsqModeLevel2[] = {
-        {csSetup, 360, clBlack},
-        {csWait, 3600},
-        {csSetup, 0, {0, 0, LOW_BRTNESS}},
-        {csWait, 207},
-        {csGoto, 0}
-};
 
 const LedRGBChunk_t lsqTx[] {
         {csSetup, 0, clYellow},
         {csEnd}
 };
 
-const LedRGBChunk_t lsqTheyAreNear[] = {
-        {csSetup, 540, clBlue},
-        {csSetup, 540, {0, 0, 99}},
+// ==== Health ====
+const LedRGBChunk_t lsqHealthy[] = {
+        {csSetup, 360, {0,18,0}},
+        {csWait, 207},
+        {csSetup, 360, clBlack},
+        {csWait, 3600},
         {csGoto, 0}
 };
-const LedRGBChunk_t lsqTheyDissapeared[] = {
-        {csSetup, 540, clBlack},
+
+const LedRGBChunk_t lsqIll[] = {
+        {csSetup, 180, {180,0,180}},
+        {csWait, 207},
+        {csSetup, 180, clBlack},
+        {csWait, 1207},
         {csEnd}
 };
+
+const LedRGBChunk_t lsqDead[] = {
+        {csSetup, 360, clBlue},
+        {csEnd}
+};
+
+// ==== Cataclysm ====
+const LedRGBChunk_t lsqMenaceNoSh[] = {
+        {csSetup, 0, clYellow},
+        {csWait, 207},
+        {csSetup, 0, clBlack},
+        {csWait, 999},
+        {csGoto, 0}
+};
+const LedRGBChunk_t lsqMenaceSh[] = {
+        {csSetup, 0, clYellow},
+        {csWait, 207},
+        {csSetup, 0, clGreen},
+        {csWait, 144},
+        {csSetup, 0, clBlack},
+        {csWait, 999},
+        {csGoto, 0}
+};
+
+const LedRGBChunk_t lsqDangerNoSh[] = {
+        {csSetup, 0, clRed},
+        {csWait, 207},
+        {csSetup, 0, clBlack},
+        {csWait, 999},
+        {csGoto, 0}
+};
+const LedRGBChunk_t lsqDangerSh[] = {
+        {csSetup, 0, clRed},
+        {csWait, 207},
+        {csSetup, 0, clGreen},
+        {csWait, 144},
+        {csSetup, 0, clBlack},
+        {csWait, 999},
+        {csGoto, 0}
+};
+
+const LedRGBChunk_t lsqPanicNoSh[] = {
+        {csSetup, 0, clRed},
+        {csWait, 144},
+        {csSetup, 0, clBlack},
+        {csWait, 306},
+        {csGoto, 0}
+};
+const LedRGBChunk_t lsqPanicSh[] = {
+        {csSetup, 0, clRed},
+        {csWait, 144},
+        {csSetup, 0, clGreen},
+        {csWait, 144},
+        {csSetup, 0, clBlack},
+        {csWait, 306},
+        {csGoto, 0}
+};
+
 
 //const LedRGBChunk_t lsqStart[] = {
 //        {csSetup, 0, clRed},
@@ -445,20 +493,40 @@ const BaseChunk_t vsqBrrBrrBrr[] = {
         {csEnd}
 };
 
-const BaseChunk_t vsqDeath[] = {
+// ==== Health ====
+const BaseChunk_t vsqIll[] = {
         {csSetup, VIBRO_VOLUME},
-        {csWait, 207},
+        {csWait, 999},
         {csSetup, 0},
-        {csWait, 207},
-        {csGoto, 0}
+        {csWait, 1207},
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csGoto, 2}
 };
 
-const BaseChunk_t vsqLost[] = {
+const BaseChunk_t vsqDeath[] = {
         {csSetup, VIBRO_VOLUME},
-        {csWait, 702},
+        {csWait, 999},
         {csSetup, 0},
-        {csWait, 9000},
-        {csGoto, 0}
+        {csWait, 4005},
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csGoto, 2}
+};
+
+// Cataclysm
+const BaseChunk_t vsqCataclysm[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, 999},
+        {csSetup, 0},
+        {csWait, 999},
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csWait, 99},
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csGoto, 2}
 };
 
 /*

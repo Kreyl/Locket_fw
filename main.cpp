@@ -86,6 +86,7 @@ private:
             } // switch state
             State = NewState;
             App.SignalEvt(EVT_CSTATE_CHANGE);
+            App.SignalEvt(EVT_INDICATION);
         }
     }
 public:
@@ -104,6 +105,7 @@ public:
 //        Uart.Printf("Elapsed=%u\r", TimeElapsed);
         ProcessTimeElapsed();        // Get state and signal if needed
     }
+    bool IsOngoing() { return State != cstIdle; }
     //bool HappenedAfterBeginning(uint32_t
 };
 static Cataclysm_t Cataclysm;
@@ -208,15 +210,19 @@ int main(void) {
 
     Health.Load();
 
+    // ==== Time and timers ====
     TmrEverySecond.InitAndStart();
     TimeS = C_PANIC_END_S + 9;    // if cataclysm would start immideately
 //    TmrRxTableCheck.InitAndStart();
-    App.SignalEvt(EVT_EVERY_SECOND); // check it now
 
+    // ==== Radio ====
     if(Radio.Init() != OK) {
 //        Led.StartOrRestart(lsqFailure);
 //        chThdSleepMilliseconds(1008);
     }
+
+    App.SignalEvt(EVT_EVERY_SECOND); // check it now
+    App.SignalEvt(EVT_INDICATION);
 
     // Main cycle
     App.ITask();
@@ -232,20 +238,6 @@ void App_t::ITask() {
             Cataclysm.Tick1S();
 //            ReadAndSetupMode();
         }
-
-#if PILL_ENABLED // ==== Pill ====
-        if(Evt & EVT_PILL_CHECK) {
-            Health.ProcessPill(PillType);
-//            PillMgr.Check();
-//            switch(PillMgr.State) {
-//                case pillJustConnected:
-//                    Uart.Printf("Pill: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
-//                    break;
-////                case pillJustDisconnected: Uart.Printf("Pill Discon\r"); break;
-//                default: break;
-//            }
-        }
-#endif
 
 #if 0 // ==== Led sequence end ====
         if(Evt & EVT_LED_SEQ_END) {
@@ -300,10 +292,67 @@ void App_t::ITask() {
 //            chSysUnlock();
 //        }
 
-#if 1 // ==== Cataclysm state changed ====
+#if 1 // ==== App specific ====
         if(Evt & EVT_CSTATE_CHANGE) {
             Uart.Printf("C chng: %u\r", Cataclysm.StateChange);
             Health.ProcessCChange(Cataclysm.StateChange, IsInShelter);
+        }
+
+        if(Evt & EVT_INDICATION) {
+            // Always
+            if(Health.State == hstDead) {
+                Led.StartOrContinue(lsqDead);
+                Vibro.StartOrContinue(vsqDeath);
+            }
+            else {
+                // When Cataclysm is everywhere
+                if(Cataclysm.IsOngoing()) {
+                    // LED
+                    switch(Cataclysm.State) {
+                        case cstMenace:
+                            if(IsInShelter) Led.StartOrContinue(lsqMenaceSh);
+                            else            Led.StartOrContinue(lsqMenaceNoSh);
+                            break;
+                        case cstDanger:
+                            if(IsInShelter) Led.StartOrContinue(lsqDangerSh);
+                            else            Led.StartOrContinue(lsqDangerNoSh);
+                            break;
+                        case cstPanic:
+                            if(IsInShelter) Led.StartOrContinue(lsqPanicSh);
+                            else            Led.StartOrContinue(lsqPanicNoSh);
+                            break;
+                        default: break;
+                    }
+                    // Vibro
+                    if(IsInShelter) Vibro.Stop();
+                    else Vibro.StartOrRestart(vsqCataclysm);
+                }
+                // When all is calm
+                else {
+                    if(Health.State == hstHealthy) {
+                        Led.StartOrContinue(lsqHealthy);
+                        Vibro.Stop();
+                    }
+                    else { // Ill
+                        Led.StartOrContinue(lsqIll);
+                        Vibro.StartOrContinue(vsqIll);
+                    }
+                } // all calm
+            } // not dead
+        }
+#endif
+
+#if PILL_ENABLED // ==== Pill ====
+        if(Evt & EVT_PILL_CHECK) {
+            Health.ProcessPill(PillType);
+//            PillMgr.Check();
+//            switch(PillMgr.State) {
+//                case pillJustConnected:
+//                    Uart.Printf("Pill: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
+//                    break;
+////                case pillJustDisconnected: Uart.Printf("Pill Discon\r"); break;
+//                default: break;
+//            }
         }
 #endif
 
@@ -372,11 +421,6 @@ void App_t::OnCmd(Shell_t *PShell) {
         if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
         uint8_t r = ISetID(dw32);
         PShell->Ack(r);
-    }
-
-    else if(PCmd->NameIs("Evt")) {
-        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-        App.SignalEvt(dw32);
     }
 
     else if(PCmd->NameIs("RX")) {
