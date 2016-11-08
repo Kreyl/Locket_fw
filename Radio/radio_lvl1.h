@@ -57,6 +57,7 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #if 1 // =========================== Pkt_t =====================================
 union rPkt_t {
     uint32_t DWord32;
+    int32_t Time;
 //    struct {
 //        uint8_t R, G, B;
 //    };
@@ -72,8 +73,8 @@ union rPkt_t {
 #define RCHNL_SERVICE   0
 #define RCHNL_COMMON    1
 #define RCHNL_EACH_OTH  7
-#define RCHNL_MIN       3
-#define RCHNL_MAX       19
+#define RCHNL_MIN       1
+#define RCHNL_MAX       30
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
 
 #define RSSI_MIN        -75
@@ -160,7 +161,7 @@ public:
 class rLevel1_t {
 public:
     rPkt_t PktRx, PktTx;
-    bool MustTx = false;
+//    bool MustTx = false;
     thread_t *PThd;
     int8_t Rssi;
     RxTable_t RxTable;
@@ -174,7 +175,8 @@ public:
     void TryToReceive(uint32_t RxDuration);
     // Different modes of operation
     void TaskTransmitter();
-    void TaskReceiverMany();
+    void TaskReceiverManyByID();
+    void TaskReceiverManyByChannel();
     void TaskReceiverSingle();
     void TaskFeelEachOtherSingle();
     void TaskFeelEachOtherMany();

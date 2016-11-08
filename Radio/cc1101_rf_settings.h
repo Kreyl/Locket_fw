@@ -10,8 +10,8 @@
 // All this is for 27.0 MHz crystal, and for 868 MHz carrier
 
 // Bitrate
-//#define CC_BITRATE_10K        // 13ms 4-byte pkt tx duration
-#define CC_BITRATE_38K4       // 4.6ms
+#define CC_BITRATE_10K        // 13ms 4-byte pkt tx duration
+//#define CC_BITRATE_38K4       // 4.6ms
 //#define  CC_BITRATE_100K      // 2.8ms
 //#define CC_BITRATE_250K       // 2.14ms
 //#define CC_BITRATE_500K       // 1.9ms
@@ -26,7 +26,7 @@
 #define CC_FREQ0_VALUE      0xED        // Frequency control word, low byte.
 
 // ===================== Channel spacing =======================================
-#define CC_CHANNEL_SPACING  421     // 200, 400, 421(top)
+#define CC_CHANNEL_SPACING  200     // 200, 400, 421(top)
 
 #if CC_CHANNEL_SPACING == 200
 #define CC_MDMCFG0_VALUE    229     // Channel spacing mantissa. See exponent at MDMCFG1. RF studio.

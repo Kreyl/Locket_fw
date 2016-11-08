@@ -24,12 +24,12 @@
 #define EVT_ADC_DONE            EVENT_MASK(10)
 
 // App-specific
-#define EVT_RX                  EVENT_MASK(20)
-#define EVT_CSTATE_CHANGE       EVENT_MASK(21)
-#define EVT_INDICATION          EVENT_MASK(22)
+#define EVT_CSTATE_CHANGE       EVENT_MASK(20)
+#define EVT_INDICATION          EVENT_MASK(21)
 
 // Radio
-#define EVT_RXCHECK             EVENT_MASK(23)
+#define EVT_RX                  EVENT_MASK(30)
+#define EVT_RXCHECK             EVENT_MASK(31)
 
 
 

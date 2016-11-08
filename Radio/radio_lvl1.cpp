@@ -36,7 +36,8 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
-        chThdSleepMilliseconds(999);
+        Radio.TaskReceiverManyByChannel();
+//        chThdSleepMilliseconds(999);
 //        switch(App.Mode) {
 //            case modeTx:
 //                if(Radio.MustTx) Radio.TaskTransmitter();
@@ -72,7 +73,7 @@ void rLevel1_t::TaskReceiverSingle() {
     }
 }
 
-void rLevel1_t::TaskReceiverMany() {
+void rLevel1_t::TaskReceiverManyByID() {
     for(int N=0; N<2; N++) {
         // Iterate channels
         for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
@@ -88,6 +89,20 @@ void rLevel1_t::TaskReceiverMany() {
         TryToSleep(270);
     } // For N
 //    App.SignalEvt(EVT_RADIO); // RX table ready
+}
+
+void rLevel1_t::TaskReceiverManyByChannel() {
+    // Iterate channels
+    for(int32_t i = RCHNL_MIN; i <= RCHNL_MAX; i++) {
+        CC.SetChannel(i);
+        uint8_t RxRslt = CC.Receive(27, &PktRx, &Rssi);   // Double pkt duration
+        if(RxRslt == OK) {
+            Uart.Printf("Ch=%u; Rssi=%d\r", i, Rssi);
+            App.SignalEvt(EVT_RX);
+            TryToSleep(999);
+        }
+    } // for i
+    TryToSleep(270);
 }
 
 void rLevel1_t::TaskFeelEachOtherSingle() {

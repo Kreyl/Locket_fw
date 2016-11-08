@@ -45,8 +45,6 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 static TmrKL_t TmrEverySecond {MS2ST(144), EVT_EVERY_SECOND, tktPeriodic};
 static TmrKL_t TmrRxTableCheck {MS2ST(2007), EVT_RXCHECK, tktPeriodic};
 static uint32_t TimeS;
-
-static int32_t Dbg32;
 #endif
 
 #if 1 // ==================== Application-specific objects =====================
@@ -280,7 +278,7 @@ void App_t::ITask() {
         if(Evt & EVT_EVERY_SECOND) {
             TimeS++;
             Cataclysm.Tick1S();
-            ReadAndSetupMode();
+//            ReadAndSetupMode();
         }
 
 #if BTN_ENABLED
@@ -297,8 +295,9 @@ void App_t::ITask() {
 #endif
 
         if(Evt & EVT_RX) {
-            Uart.Printf("RX %u\r", Dbg32);
-            Cataclysm.ProcessSignal(Dbg32);
+            int32_t TimeRx = Radio.PktRx.Time;
+            Uart.Printf("RX %u\r", TimeRx);
+            Cataclysm.ProcessSignal(TimeRx);
         }
 
         if(Evt & EVT_RXCHECK) {
@@ -422,7 +421,7 @@ void ReadAndSetupMode() {
     uint8_t b = GetDipSwitch();
     if(b == OldDipSettings) return;
     // Something has changed
-    Radio.MustTx = false; // Just in case
+//    Radio.MustTx = false; // Just in case
     // Reset everything
     Vibro.Stop();
     Led.Stop();
@@ -467,7 +466,8 @@ void App_t::OnCmd(Shell_t *PShell) {
     }
 
     else if(PCmd->NameIs("RX")) {
-        if(PCmd->GetNextInt32(&Dbg32) != OK) { PShell->Ack(CMD_ERROR); return; }
+        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+        Radio.PktRx.Time = dw32;
         App.SignalEvt(EVT_RX);
     }
 //    else if(PCmd->NameIs("cst")) {
