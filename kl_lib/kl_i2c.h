@@ -39,6 +39,7 @@ struct i2cParams_t {
 class i2c_t {
 private:
     const i2cParams_t *PParams;
+    void IReset();
     void SendStart()     { PParams->pi2c->CR1 |= I2C_CR1_START; }
     void SendStop()      { PParams->pi2c->CR1 |= I2C_CR1_STOP; }
     void AckEnable()     { PParams->pi2c->CR1 |= I2C_CR1_ACK; }
@@ -60,18 +61,20 @@ private:
     uint8_t WaitRx();
     uint8_t WaitStop();
     uint8_t WaitBTF();
+#if I2C_USE_SEMAPHORE
     binary_semaphore_t BSemaphore;
+#endif
 public:
     bool Error;
     thread_reference_t ThdRef;
     void Init();
+    void ScanBus();
     void Standby();
     void Resume();
-    void Reset();
-    void ScanBus();
-    uint8_t WriteRead(uint8_t Addr, uint8_t *WPtr, uint8_t WLength, uint8_t *RPtr, uint8_t RLength);
+    uint8_t CheckAddress(uint32_t Addr);
+    uint8_t Write     (uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1);
+    uint8_t WriteRead (uint8_t Addr, uint8_t *WPtr,  uint8_t WLength,  uint8_t *RPtr, uint8_t RLength);
     uint8_t WriteWrite(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1, uint8_t *WPtr2, uint8_t WLength2);
-    uint8_t Write(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1);
     i2c_t(const i2cParams_t *APParams) : PParams(APParams),
                 Error(false), ThdRef(nullptr) {}
 };

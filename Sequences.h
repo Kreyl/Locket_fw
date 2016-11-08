@@ -310,18 +310,16 @@ const LedRGBChunk_t lsqPanicSh[] = {
 };
 
 
-//const LedRGBChunk_t lsqStart[] = {
-//        {csSetup, 0, clRed},
-//        {csWait, 207},
-//        {csSetup, 0, clGreen},
-//        {csWait, 207},
-//        {csSetup, 0, clBlue},
-//        {csWait, 207},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
-
-#define LSQ_SPEED   360
+const LedRGBChunk_t lsqStart[] = {
+        {csSetup, 0, clRed},
+        {csWait, 207},
+        {csSetup, 0, clGreen},
+        {csWait, 207},
+        {csSetup, 0, clBlue},
+        {csWait, 207},
+        {csSetup, 0, clBlack},
+        {csEnd},
+};
 
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
@@ -336,6 +334,20 @@ const LedRGBChunk_t lsqFailure[] = {
         {csWait, 99},
         {csSetup, 0, clBlack},
         {csEnd}
+};
+
+// ==== Pill ====
+const LedRGBChunk_t lsqPillOk[] = {
+        {csSetup, 0, clGreen},
+        {csWait, 999},
+        {csSetup, 0, clBlack},
+        {csEnd},
+};
+const LedRGBChunk_t lsqPillBad[] = {
+        {csSetup, 0, clRed},
+        {csWait, 999},
+        {csSetup, 0, clBlack},
+        {csEnd},
 };
 
 #endif

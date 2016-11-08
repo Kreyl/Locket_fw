@@ -24,7 +24,9 @@ void i2cDmaIrqHandler(void *p, uint32_t flags) {
 void i2c_t::Init() {
     Standby();
     Resume();
+#if I2C_USE_SEMAPHORE
     chBSemObjectInit(&BSemaphore, NOT_TAKEN);
+#endif
     // ==== DMA ====
     // Here only unchanged parameters of the DMA are configured.
 #ifdef STM32F2XX
@@ -85,7 +87,7 @@ void i2c_t::Resume() {
     PParams->pi2c->CR2 |= I2C_CR2_DMAEN;
 }
 
-void i2c_t::Reset() {
+void i2c_t::IReset() {
     Standby();
     Resume();
 }
@@ -93,7 +95,9 @@ void i2c_t::Reset() {
 uint8_t i2c_t::WriteRead(uint8_t Addr,
         uint8_t *WPtr, uint8_t WLength,
         uint8_t *RPtr, uint8_t RLength) {
+#if I2C_USE_SEMAPHORE
     if(chBSemWait(&BSemaphore) != MSG_OK) return BUSY;
+#endif
     uint8_t Rslt = OK;
     if(IBusyWait() != OK) { Rslt = BUSY; goto WriteReadEnd; }
     // Clear flags
@@ -143,14 +147,18 @@ uint8_t i2c_t::WriteRead(uint8_t Addr,
     else WaitBTF(); // if nothing to read, just stop
     SendStop();
     WriteReadEnd:
+#if I2C_USE_SEMAPHORE
     chBSemSignal(&BSemaphore);
+#endif
     return Rslt;
 }
 
 uint8_t i2c_t::WriteWrite(uint8_t Addr,
         uint8_t *WPtr1, uint8_t WLength1,
         uint8_t *WPtr2, uint8_t WLength2) {
+#if I2C_USE_SEMAPHORE
     if(chBSemWait(&BSemaphore) != MSG_OK) return BUSY;
+#endif
     uint8_t Rslt = OK;
     if(IBusyWait() != OK) { Rslt = BUSY; goto WriteWriteEnd; }
     // Clear flags
@@ -189,12 +197,46 @@ uint8_t i2c_t::WriteWrite(uint8_t Addr,
     WaitBTF();
     SendStop();
     WriteWriteEnd:
+#if I2C_USE_SEMAPHORE
     chBSemSignal(&BSemaphore);
+#endif
+    return Rslt;
+}
+
+uint8_t i2c_t::CheckAddress(uint32_t Addr) {
+#if I2C_USE_SEMAPHORE
+    if(chBSemWait(&BSemaphore) != MSG_OK) return FAILURE;
+#endif
+    uint8_t Rslt = FAILURE;
+    if(IBusyWait() != OK) {
+        Rslt = BUSY;
+        Uart.Printf("i2cC Busy\r");
+        goto ChckEnd;
+    }
+    IReset(); // Reset I2C
+    // Clear flags
+    PParams->pi2c->SR1 = 0;
+    while(RxIsNotEmpty()) (void)PParams->pi2c->DR;   // Read DR until it empty
+    ClearAddrFlag();
+    // Start transmission
+    SendStart();
+    if(WaitEv5() == OK) {
+        SendAddrWithWrite(Addr);
+        if(WaitEv6() == OK) Rslt = OK;
+        else Rslt = NOT_FOUND;
+    }
+    SendStop();
+    ChckEnd:
+#if I2C_USE_SEMAPHORE
+    chBSemSignal(&BSemaphore);
+#endif
     return Rslt;
 }
 
 uint8_t i2c_t::Write(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1) {
+#if I2C_USE_SEMAPHORE
     if(chBSemWait(&BSemaphore) != MSG_OK) return BUSY;
+#endif
     uint8_t Rslt = OK;
     if(IBusyWait() != OK) { Rslt = BUSY; goto WriteEnd; }
     // Clear flags
@@ -222,7 +264,9 @@ uint8_t i2c_t::Write(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1) {
     WaitBTF();
     SendStop();
     WriteEnd:
+#if I2C_USE_SEMAPHORE
     chBSemSignal(&BSemaphore);
+#endif
     return Rslt;
 }
 

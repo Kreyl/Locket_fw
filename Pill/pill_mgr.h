@@ -13,7 +13,7 @@
 #include "kl_lib.h"
 #include "kl_i2c.h"
 
-#if PILL_ENABLED
+#define PILL_CHECK_PERIOD_MS    540
 
 #define PILL_I2C_STD_ADDR   0x50    // Standard address start of EEPROM - 0x01010aaa
 #define PILL_I2C_ADDR       (PILL_I2C_STD_ADDR | 0) // Only Zero addr
@@ -30,8 +30,6 @@ private:
     void Standby();
     void Resume();
     bool IsConnectedNow;
-    uint8_t Read (uint8_t MemAddr, void *Ptr, uint32_t Length);
-    uint8_t Write(uint8_t MemAddr, void *Ptr, uint32_t Length);
 public:
     PillState_t State;
     Pill_t Pill;
@@ -40,7 +38,8 @@ public:
     void Init();
     void Check();
     uint8_t WritePill();
+    uint8_t Read (uint8_t MemAddr, void *Ptr, uint32_t Length);
+    uint8_t Write(uint8_t MemAddr, void *Ptr, uint32_t Length);
 };
 
 extern PillMgr_t PillMgr;
-#endif

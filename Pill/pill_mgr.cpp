@@ -7,13 +7,35 @@
 
 #include "pill_mgr.h"
 #include "board.h"
+#include "main.h"
 
-#if PILL_ENABLED
+PillMgr_t PillMgr { &I2C_PILL, PILL_PWR_PIN };
 
-PillMgr_t PillMgr { &i2c1, PILL_PWR_PIN };
+static THD_WORKING_AREA(waPillThread, 128);
+__noreturn
+static void PillThread(void *arg) {
+    chRegSetThreadName("Pill");
+    while(true) {
+        chThdSleepMilliseconds(PILL_CHECK_PERIOD_MS);
+        PillMgr.Check();
+        switch(PillMgr.State) {
+            case pillJustConnected:
+//                Uart.Printf("Pill: %d; %X\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.AbilityMsk);
+                App.SignalEvt(EVT_PILL_CONNECTED);
+                break;
+            case pillJustDisconnected:
+                App.SignalEvt(EVT_PILL_DISCONNECTED);
+//                Uart.Printf("Pill Discon\r");
+                break;
+            case pillNoChange:
+                break;
+        }
+    } // while true
+}
 
 void PillMgr_t::Init() {
     PillPwr.Init();   // Power
+    chThdCreateStatic(waPillThread, sizeof(waPillThread), NORMALPRIO, (tfunc_t)PillThread, NULL);
 }
 
 void PillMgr_t::Standby() {
@@ -31,10 +53,10 @@ void PillMgr_t::Resume() {
 }
 
 void PillMgr_t::Check() {
+//    Uart.Printf("PillChk\r");
     Resume();
     if(IsConnectedNow) {    // Check if disconnected
-        uint8_t Rslt = i2c->Write(PILL_I2C_ADDR, NULL, 0);
-        if(Rslt == OK) State = pillNoChange;
+        if(i2c->CheckAddress(PILL_I2C_ADDR) == OK) State = pillNoChange;
         else {
             IsConnectedNow = false;
             State = pillJustDisconnected;
@@ -81,7 +103,7 @@ uint8_t PillMgr_t::Write(uint8_t MemAddr, void *Ptr, uint32_t Length) {
             else {
                 Retries++;
                 if(Retries > 4) {
-                    Uart.Printf("Timeout\r");
+                    Uart.Printf("Timeout1\r");
                     Standby();
                     return TIMEOUT;
                 }
@@ -95,13 +117,12 @@ uint8_t PillMgr_t::Write(uint8_t MemAddr, void *Ptr, uint32_t Length) {
 //        Uart.Printf("Wait: try %u\r", Retries);
         chThdSleepMilliseconds(1);
         Retries++;
-        if(Retries > 4) {
-            Uart.Printf("Timeout\r");
+        if(Retries > 5) {
+//            Uart.Printf("Timeout2\r");
             Standby();
             return TIMEOUT;
         }
-    } while(i2c->Write(PILL_I2C_ADDR, NULL, 0) != OK);
+    } while(i2c->CheckAddress(PILL_I2C_ADDR) != OK);
     Standby();
     return OK;
 }
-#endif

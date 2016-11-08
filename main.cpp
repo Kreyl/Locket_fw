@@ -15,7 +15,9 @@
 #include "Sequences.h"
 #include "radio_lvl1.h"
 #include "kl_adc.h"
+#include "kl_i2c.h"
 #include "pill.h"
+#include "pill_mgr.h"
 
 #if 1 // ======================== Variables and defines ========================
 App_t App;
@@ -94,23 +96,20 @@ public:
     CState_t State = cstIdle;
     CStateChange_t StateChange = cscNone;
     void ProcessSignal(uint32_t ATimeElapsed) {
-//        if(State != cstIdle) return;    // Do not update time if Cataclysm is ongoing
         TimeElapsed = ATimeElapsed;
         TimeOfStart = TimeS - TimeElapsed;  // Calculate Time Of Start (needed for buttonpress process)
-//        Uart.Printf("TimeOfStart=%u\r", TimeOfStart);
         ProcessTimeElapsed();               // Get state and signal if needed
     }
     void Tick1S() {
         if(State == cstIdle) return; // Nothing to do here
         TimeElapsed++;
-//        Uart.Printf("Elapsed=%u\r", TimeElapsed);
         ProcessTimeElapsed();        // Get state and signal if needed
     }
     bool IsOngoing() { return State != cstIdle; }
     CState_t WhenEvtOccured(int32_t TimeOfEvent) {
         int32_t LocalTime = TimeOfEvent - TimeOfStart;
         //Uart.Printf("tStart: %d; tEvt: %d\r", TimeOfStart, TimeOfEvent);
-        Uart.Printf("LocalTime: %d\r", LocalTime);
+//        Uart.Printf("LocalTime: %d\r", LocalTime);
         if(IS_BETWEEN_INCL_BOTH(LocalTime, -C_GAP_S, C_MENACE_END_S)) return cstMenace;
         else if(IS_BETWEEN_INCL_R(LocalTime, C_MENACE_END_S, C_DANGER_END_S)) return cstDanger;
         else if(IS_BETWEEN_INCL_R(LocalTime, C_DANGER_END_S, C_PANIC_END_S)) return cstPanic;
@@ -149,15 +148,28 @@ static Sheltering_t Sheltering;
 PillType_t PillType;
 
 // ==== Health ====
-enum HState_t {hstHealthy, hstIll, hstDead};
+enum HState_t {hstHealthy=0, hstIll=1, hstDead=2};
 
 class Health_t {
 public:
     HState_t State = hstHealthy;
-    void Load() {}
-    void Save() {}
+    void Load() {
+        uint32_t estate = EE.Read32(EE_ADDR_HEALTH_STATE);
+        if(estate > 2) {
+            State = hstHealthy;
+            Uart.Printf("Using default state\r");
+        }
+        else {
+            State = (HState_t)estate;
+            Uart.Printf("Loaded State: %u\r", State);
+        }
+    }
+    void Save() {
+        EE.Write32(EE_ADDR_HEALTH_STATE, (uint32_t)State);
+    }
+
     void ProcessCChange(CStateChange_t CstCh, ShelteringState_t ShState) {
-        Uart.Printf("CstCh: %u; ShState: %u\r", CstCh, ShState);
+//        Uart.Printf("CstCh: %u; ShState: %u\r", CstCh, ShState);
         HState_t NewState = State;
         switch(State) {
             case hstHealthy:
@@ -172,6 +184,7 @@ public:
         }
         if(State != NewState) {
             State = NewState;
+            Save();
             App.SignalEvt(EVT_INDICATION);
         }
         Uart.Printf("HState1: %u\r", State);
@@ -190,6 +203,7 @@ public:
         } // switch
         if(State != NewState) {
             State = NewState;
+            Save();
             App.SignalEvt(EVT_INDICATION);
         }
         Uart.Printf("HState2: %u\r", State);
@@ -235,9 +249,8 @@ int main(void) {
 //    Adc.Init();
 
 #if PILL_ENABLED // === Pill ===
-//    i2c1.Init();
-//    PillMgr.Init();
-//    TmrCheckPill.InitAndStart();
+    i2c1.Init();
+    PillMgr.Init();
 #endif
 
     // ==== Time and timers ====
@@ -247,8 +260,8 @@ int main(void) {
 
     // ==== Radio ====
     if(Radio.Init() != OK) {
-//        Led.StartOrRestart(lsqFailure);
-//        chThdSleepMilliseconds(1008);
+        Led.StartOrRestart(lsqFailure);
+        chThdSleepMilliseconds(1008);
     }
 
     // ==== App-specific ====
@@ -366,16 +379,22 @@ void App_t::ITask() {
 #endif
 
 #if PILL_ENABLED // ==== Pill ====
-        if(Evt & EVT_PILL_CHECK) {
-            Health.ProcessPill(PillType);
-//            PillMgr.Check();
-//            switch(PillMgr.State) {
-//                case pillJustConnected:
-//                    Uart.Printf("Pill: %d %d\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.ChargeCnt);
-//                    break;
-////                case pillJustDisconnected: Uart.Printf("Pill Discon\r"); break;
-//                default: break;
-//            }
+        if(Evt & EVT_PILL_CONNECTED) {
+            Uart.Printf("Pill: %d\r", PillMgr.Pill.TypeInt32);
+            if(ANY_OF_2(PillMgr.Pill.Type, ptCure, ptPanacea)) {
+                Led.StartOrRestart(lsqPillOk);
+                chThdSleepMilliseconds(999);
+                Health.ProcessPill(PillMgr.Pill.Type);
+            }
+            else {
+                Led.StartOrRestart(lsqPillBad);
+                chThdSleepMilliseconds(999);
+            }
+            App.SignalEvt(EVT_INDICATION);  // Restart indication after pill show
+        }
+
+        if(Evt & EVT_PILL_DISCONNECTED) {
+            Uart.Printf("Pill Discon\r");
         }
 #endif
 
@@ -468,11 +487,43 @@ void App_t::OnCmd(Shell_t *PShell) {
 //        IsInShelter = dw32;             // Is in shelter
 //        App.SignalEvt(EVT_CSTATE_CHANGE);
 //    }
-    else if(PCmd->NameIs("Pill")) {
-        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-        PillType = (PillType_t)dw32;
-        App.SignalEvt(EVT_PILL_CHECK);
+
+#if PILL_ENABLED // ==== Pills ====
+    else if(PCmd->NameIs("PillRead32")) {
+        int32_t Cnt = 0;
+        if(PCmd->GetNextInt32(&Cnt) != OK) { PShell->Ack(CMD_ERROR); return; }
+        uint8_t MemAddr = 0, b = OK;
+        PShell->Printf("#PillData32 ");
+        for(int32_t i=0; i<Cnt; i++) {
+            b = PillMgr.Read(MemAddr, &dw32, 4);
+            if(b != OK) break;
+            PShell->Printf("%d ", dw32);
+            MemAddr += 4;
+        }
+        Uart.Printf("\r\n");
+        PShell->Ack(b);
     }
+
+    else if(PCmd->NameIs("PillWrite32")) {
+        uint8_t b = CMD_ERROR;
+        uint8_t MemAddr = 0;
+        // Iterate data
+        while(true) {
+            if(PCmd->GetNextInt32(&dw32) != OK) break;
+//            Uart.Printf("%X ", Data);
+            b = PillMgr.Write(MemAddr, &dw32, 4);
+            if(b != OK) break;
+            MemAddr += 4;
+        } // while
+        Uart.Ack(b);
+    }
+#endif
+
+//    else if(PCmd->NameIs("Pill")) {
+//        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+//        PillType = (PillType_t)dw32;
+//        App.SignalEvt(EVT_PILL_CHECK);
+//    }
 
     else PShell->Ack(CMD_UNKNOWN);
 }
