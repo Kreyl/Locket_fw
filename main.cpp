@@ -259,10 +259,9 @@ int main(void) {
 //    TmrRxTableCheck.InitAndStart();
 
     // ==== Radio ====
-    if(Radio.Init() != OK) {
-        Led.StartOrRestart(lsqFailure);
-        chThdSleepMilliseconds(1008);
-    }
+    if(Radio.Init() == OK) Led.StartOrRestart(lsqStart);
+    else Led.StartOrRestart(lsqFailure);
+    chThdSleepMilliseconds(1008);
 
     // ==== App-specific ====
     Health.Load();
@@ -280,9 +279,8 @@ void App_t::ITask() {
         __unused eventmask_t Evt = chEvtWaitAny(ALL_EVENTS);
         if(Evt & EVT_EVERY_SECOND) {
             TimeS++;
-//            Uart.Printf("t=%u\r", TimeS);
             Cataclysm.Tick1S();
-//            ReadAndSetupMode();
+            ReadAndSetupMode();
         }
 
 #if BTN_ENABLED
@@ -291,21 +289,8 @@ void App_t::ITask() {
             BtnEvtInfo_t EInfo;
             while(BtnGetEvt(&EInfo) == OK) {
                 if(EInfo.Type == bePress) {
-                    if(Mode == modeTx) {
-                        if(Radio.MustTx == false) {
-                            Radio.MustTx = true;
-                            Led.StartOrContinue(lsqTx);
-                        }
-                        else {
-                            Radio.MustTx = false;
-                            Led.StartOrRestart(lsqModeTx);
-                        }
-                    } // if TX
-                    // Player
-                    else {
-                        Sheltering.TimeOfBtnPress = TimeS;
-                        Sheltering.ProcessCChangeOrBtn();
-                    }
+                    Sheltering.TimeOfBtnPress = TimeS;
+                    Sheltering.ProcessCChangeOrBtn();
                 } // if Press
             } // while
         }
@@ -444,22 +429,22 @@ void ReadAndSetupMode() {
     // Analyze switch
     OldDipSettings = b;
     Uart.Printf("Dip: %02X\r", b);
-    Vibro.StartOrRestart(vsqBrr);
-    if(b == 0) {
-        App.Mode = modePlayer;
-        Led.StartOrRestart(lsqModePlayerStart);
-        chThdSleepMilliseconds(720);    // Let blink end
+//    Vibro.StartOrRestart(vsqBrr);
+//    if(b == 0) {
+//        App.Mode = modePlayer;
+//        Led.StartOrRestart(lsqModePlayerStart);
+//        chThdSleepMilliseconds(720);    // Let blink end
         // Get Health from EE
-        // TODO
+//        Health.Load();
 
-        Led.StartOrRestart(lsqModeTx);  // Start Idle indication
-}
-    else {
-        App.Mode = modeTx;
-        Led.StartOrRestart(lsqModeTxStart);
-        chThdSleepMilliseconds(720);    // Let blink end
-        Led.StartOrRestart(lsqModeTx);  // Start Idle indication
-    }
+//        Led.StartOrRestart(lsqModeTx);  // Start Idle indication
+//}
+//    else {
+//        App.Mode = modeTx;
+//        Led.StartOrRestart(lsqModeTxStart);
+//        chThdSleepMilliseconds(720);    // Let blink end
+//        Led.StartOrRestart(lsqModeTx);  // Start Idle indication
+//    }
 }
 
 
