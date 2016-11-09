@@ -42,7 +42,7 @@ Beeper_t Beeper {BEEPER_PIN};
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
-static TmrKL_t TmrEverySecond {MS2ST(1000), EVT_EVERY_SECOND, tktPeriodic};
+static TmrKL_t TmrEverySecond {MS2ST(144), EVT_EVERY_SECOND, tktPeriodic};
 static TmrKL_t TmrRxTableCheck {MS2ST(2007), EVT_RXCHECK, tktPeriodic};
 static uint32_t TimeS;
 #endif
@@ -132,7 +132,7 @@ public:
                 break;
             case sstShelteredM:
             case sstShelteredDP:
-                if(BtnPressPeriod == cstIdle) NewState = sstNotSheltered;
+                if(!Cataclysm.IsOngoing()) NewState = sstNotSheltered;
                 break;
         } // switch
         if(State != NewState) {
@@ -313,8 +313,9 @@ void App_t::ITask() {
 #if 1 // ==== App specific ====
         if(Evt & EVT_CSTATE_CHANGE) {
 //            Uart.Printf("C chng: %u\r", Cataclysm.StateChange);
-            Sheltering.ProcessCChangeOrBtn();
+            if(Cataclysm.StateChange != cscEnd) Sheltering.ProcessCChangeOrBtn();
             Health.ProcessCChange(Cataclysm.StateChange, Sheltering.State);
+            if(Cataclysm.StateChange == cscEnd) Sheltering.ProcessCChangeOrBtn();
         }
 
         if(Evt & EVT_INDICATION) {

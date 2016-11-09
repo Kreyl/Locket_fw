@@ -237,7 +237,7 @@ const LedRGBChunk_t lsqTx[] {
 
 // ==== Health ====
 const LedRGBChunk_t lsqHealthy[] = {
-        {csSetup, 360, {0,18,0}},
+        {csSetup, 360, {0,9,0}},
         {csWait, 207},
         {csSetup, 360, clBlack},
         {csWait, 3600},
@@ -294,18 +294,18 @@ const LedRGBChunk_t lsqDangerSh[] = {
 
 const LedRGBChunk_t lsqPanicNoSh[] = {
         {csSetup, 0, clRed},
-        {csWait, 144},
+        {csWait, 126},
         {csSetup, 0, clBlack},
-        {csWait, 306},
+        {csWait, 144},
         {csGoto, 0}
 };
 const LedRGBChunk_t lsqPanicSh[] = {
         {csSetup, 0, clRed},
-        {csWait, 144},
+        {csWait, 126},
         {csSetup, 0, clGreen},
-        {csWait, 144},
+        {csWait, 126},
         {csSetup, 0, clBlack},
-        {csWait, 306},
+        {csWait, 144},
         {csGoto, 0}
 };
 
