@@ -42,9 +42,9 @@ Beeper_t Beeper {BEEPER_PIN};
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
-static TmrKL_t TmrEverySecond {MS2ST(144), EVT_EVERY_SECOND, tktPeriodic};
+static TmrKL_t TmrEverySecond {MS2ST(1000), EVT_EVERY_SECOND, tktPeriodic};
 static TmrKL_t TmrRxTableCheck {MS2ST(2007), EVT_RXCHECK, tktPeriodic};
-static uint32_t TimeS;
+static int32_t TimeS;
 #endif
 
 #if 1 // ==================== Application-specific objects =====================
@@ -59,11 +59,14 @@ enum CStateChange_t {cscNone=0, cscI2M=1, cscI2D=2, cscI2P=3, cscM2D=4, cscD2P=5
 class Cataclysm_t {
 private:
     int32_t TimeElapsed = 0;
-    int32_t TimeOfStart;
+    int32_t TimeOfStart, TimeOfEnd = 0;
     void ProcessTimeElapsed() {
         // Calculate state by TimeElapsed
         CState_t NewState = cstMenace;
-        if(TimeElapsed > C_PANIC_END_S) NewState = cstIdle;
+        if(TimeElapsed > C_PANIC_END_S) {
+            NewState = cstIdle;
+            TimeOfEnd = TimeS;
+        }
         else if(TimeElapsed > C_DANGER_END_S) NewState = cstPanic;
         else if(TimeElapsed > C_MENACE_END_S) NewState = cstDanger;
 //        Uart.Printf("Elapsed=%u; St=%u; Nst=%u\r", TimeElapsed, State, NewState);
@@ -94,6 +97,12 @@ public:
     CState_t State = cstIdle;
     CStateChange_t StateChange = cscNone;
     void ProcessSignal(uint32_t ATimeElapsed) {
+        // Ignore Signal if occured soon after Cataclysm end
+        if(!IsOngoing()) {
+            int32_t TimeSinceEnd = TimeS - TimeOfEnd;
+            Uart.Printf("TimeSinceEnd: %d\r", TimeSinceEnd);
+            if(TimeSinceEnd < 120) return;
+        }
         TimeElapsed = ATimeElapsed;
         TimeOfStart = TimeS - TimeElapsed;  // Calculate Time Of Start (needed for buttonpress process)
         ProcessTimeElapsed();               // Get state and signal if needed
@@ -167,7 +176,7 @@ public:
     }
 
     void ProcessCChange(CStateChange_t CstCh, ShelteringState_t ShState) {
-//        Uart.Printf("CstCh: %u; ShState: %u\r", CstCh, ShState);
+        Uart.Printf("CstCh: %u; ShState: %u\r", CstCh, ShState);
         HState_t NewState = State;
         switch(State) {
             case hstHealthy:
