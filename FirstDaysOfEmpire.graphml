@@ -304,7 +304,6 @@
       </data>
     </node>
     <node id="n17">
-      <data key="d5"/>
       <data key="d6">
         <y:ShapeNode>
           <y:Geometry height="30.0" width="118.30625279995718" x="678.7625472000395" y="728.2547571199952"/>
@@ -322,7 +321,6 @@
       </data>
     </node>
     <node id="n18">
-      <data key="d5"/>
       <data key="d6">
         <y:ShapeNode>
           <y:Geometry height="30.0" width="118.30625279995718" x="678.7625472000395" y="772.5095142399905"/>
@@ -340,7 +338,6 @@
       </data>
     </node>
     <node id="n19">
-      <data key="d5"/>
       <data key="d6">
         <y:ShapeNode>
           <y:Geometry height="30.0" width="118.30625279995718" x="678.7625472000395" y="816.7642713599857"/>
@@ -358,7 +355,6 @@
       </data>
     </node>
     <node id="n20">
-      <data key="d5"/>
       <data key="d6">
         <y:ShapeNode>
           <y:Geometry height="46.74491903999842" width="140.07999999999993" x="985.3391999999994" y="925.9430297599995"/>
@@ -461,7 +457,6 @@
       </data>
     </node>
     <node id="n26">
-      <data key="d5"/>
       <data key="d6">
         <y:ShapeNode>
           <y:Geometry height="46.74491903999842" width="140.07999999999993" x="534.6127999999984" y="49.95839999999998"/>
@@ -479,7 +474,6 @@
       </data>
     </node>
     <node id="n27">
-      <data key="d5"/>
       <data key="d6">
         <y:ShapeNode>
           <y:Geometry height="46.74491903999842" width="140.07999999999993" x="700.219199999998" y="49.95839999999998"/>
@@ -497,7 +491,6 @@
       </data>
     </node>
     <node id="n28">
-      <data key="d5"/>
       <data key="d6">
         <y:ShapeNode>
           <y:Geometry height="46.74491903999842" width="140.07999999999993" x="1056.8207999999993" y="49.95839999999998"/>
@@ -775,7 +768,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e16" source="n2" target="n1">
-      <data key="d9"/>
       <data key="d10">
         <y:BezierEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
@@ -804,7 +796,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e18" source="n20" target="n22">
-      <data key="d9"/>
       <data key="d10">
         <y:BezierEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
@@ -814,7 +805,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e19" source="n22" target="n1">
-      <data key="d9"/>
       <data key="d10">
         <y:BezierEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
@@ -826,7 +816,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e20" source="n24" target="n23">
-      <data key="d9"/>
       <data key="d10">
         <y:SplineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
@@ -844,7 +833,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e21" source="n23" target="n24">
-      <data key="d9"/>
       <data key="d10">
         <y:SplineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
@@ -852,11 +840,11 @@ Panacea<y:LabelModel>
           </y:Path>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="center" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="72.6953125" x="-72.2637673038248" y="-50.826193011559326">BtnTime == I<y:LabelModel>
+          <y:EdgeLabel alignment="center" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="25.3515625" x="-63.59189230382492" y="-54.826193011559326">End<y:LabelModel>
               <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
             </y:LabelModel>
             <y:ModelParameter>
-              <y:SmartEdgeLabelModelParameter angle="6.283185307179586" distance="15.791293749174772" distanceToCenter="true" position="left" ratio="6.278052534422193" segment="-2"/>
+              <y:SmartEdgeLabelModelParameter angle="6.283185307179586" distance="29.54475577452053" distanceToCenter="true" position="left" ratio="-12.15782977779465" segment="-1"/>
             </y:ModelParameter>
             <y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/>
           </y:EdgeLabel>
@@ -864,7 +852,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e22" source="n24" target="n25">
-      <data key="d9"/>
       <data key="d10">
         <y:SplineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
@@ -885,7 +872,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e23" source="n25" target="n24">
-      <data key="d9"/>
       <data key="d10">
         <y:SplineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
@@ -894,11 +880,11 @@ Panacea<y:LabelModel>
           </y:Path>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="center" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="72.6953125" x="-46.3828223905349" y="-73.25263418422958">BtnTime == I<y:LabelModel>
+          <y:EdgeLabel alignment="center" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="25.3515625" x="-46.35657123254566" y="-65.88360754150085">End<y:LabelModel>
               <y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/>
             </y:LabelModel>
             <y:ModelParameter>
-              <y:SmartEdgeLabelModelParameter angle="6.283185307179586" distance="22.04250304532604" distanceToCenter="true" position="right" ratio="0.20250152697685608" segment="1"/>
+              <y:SmartEdgeLabelModelParameter angle="6.283185307179586" distance="22.04250304532604" distanceToCenter="true" position="center" ratio="0.13562540489427186" segment="1"/>
             </y:ModelParameter>
             <y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/>
           </y:EdgeLabel>
@@ -906,7 +892,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e24" source="n26" target="n2">
-      <data key="d9"/>
       <data key="d10">
         <y:SplineEdge>
           <y:Path sx="0.0" sy="0.0" tx="-81.05599999999981" ty="-158.23493657599886"/>
@@ -916,7 +901,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e25" source="n27" target="n2">
-      <data key="d9"/>
       <data key="d10">
         <y:SplineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
@@ -928,7 +912,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e26" source="n2" target="n1">
-      <data key="d9"/>
       <data key="d10">
         <y:GenericEdge configuration="com.yworks.edge.framed">
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
@@ -948,7 +931,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e27" source="n22" target="n0">
-      <data key="d9"/>
       <data key="d10">
         <y:GenericEdge configuration="com.yworks.edge.framed">
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
@@ -968,7 +950,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e28" source="n22" target="n1">
-      <data key="d9"/>
       <data key="d10">
         <y:GenericEdge configuration="com.yworks.edge.framed">
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
@@ -988,7 +969,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e29" source="n0" target="n1">
-      <data key="d9"/>
       <data key="d10">
         <y:GenericEdge configuration="com.yworks.edge.framed">
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
@@ -1006,7 +986,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e30" source="n28" target="n0">
-      <data key="d9"/>
       <data key="d10">
         <y:SplineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
@@ -1018,7 +997,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e31" source="n2" target="n22">
-      <data key="d9"/>
       <data key="d10">
         <y:GenericEdge configuration="com.yworks.edge.framed">
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
@@ -1036,7 +1014,6 @@ Panacea<y:LabelModel>
       </data>
     </edge>
     <edge id="e32" source="n2" target="n22">
-      <data key="d9"/>
       <data key="d10">
         <y:QuadCurveEdge straightness="0.1">
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
