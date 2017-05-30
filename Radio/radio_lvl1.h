@@ -12,6 +12,7 @@
 #include "cc1101.h"
 #include "kl_buf.h"
 #include "uart.h"
+#include "MsgQ.h"
 
 #if 0 // ========================= Signal levels ===============================
 // Python translation for db
@@ -57,7 +58,6 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #if 1 // =========================== Pkt_t =====================================
 union rPkt_t {
     uint32_t DWord32;
-    int32_t Time;
 //    struct {
 //        uint8_t R, G, B;
 //    };
@@ -68,6 +68,15 @@ union rPkt_t {
 
 #define THE_WORD        0xCA115EA1
 #endif
+
+// Message queue
+#define R_MSGQ_LEN      4
+#define R_MSG_SET_PWR   1
+#define R_MSG_SET_CHNL  2
+struct RMsg_t {
+    uint8_t Cmd;
+    uint8_t Value;
+} __attribute__((packed));
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
 #define RCHNL_SERVICE   0
@@ -146,12 +155,12 @@ public:
     void Clear() { Cnt = 0; }
 
     void Print() {
-        Uart.Printf("RxTable Cnt: %u\r", Cnt);
+        Printf("RxTable Cnt: %u\r", Cnt);
         for(uint32_t i=0; i<Cnt; i++) {
 #if RXT_PKT_REQUIRED
-            Uart.Printf("ID: %u; State: %u\r", IBuf[i].ID, IBuf[i].State);
+            Printf("ID: %u; State: %u\r", IBuf[i].ID, IBuf[i].State);
 #else
-            Uart.Printf("ID: %u\r", IdBuf[i]);
+            Printf("ID: %u\r", IdBuf[i]);
 #endif
         }
     }
@@ -160,18 +169,14 @@ public:
 
 class rLevel1_t {
 public:
+    EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
     rPkt_t PktRx, PktTx;
 //    bool MustTx = false;
-    thread_t *PThd;
     int8_t Rssi;
     RxTable_t RxTable;
-    uint8_t TxPwr = CC_PwrMinus30dBm;
     uint8_t Init();
     // Inner use
-    void TryToSleep(uint32_t SleepDuration) {
-        if(SleepDuration >= MIN_SLEEP_DURATION_MS) CC.EnterPwrDown();
-        chThdSleepMilliseconds(SleepDuration);
-    }
+    void TryToSleep(uint32_t SleepDuration);
     void TryToReceive(uint32_t RxDuration);
     // Different modes of operation
     void TaskTransmitter();

@@ -25,8 +25,6 @@
 #ifndef _STM32_REGISTRY_H_
 #define _STM32_REGISTRY_H_
 
-#include "board.h" // @KL
-
 #if defined(STM32L100xB) || defined(STM32L151xB) || defined(STM32L152xB)
 #define STM32L1XX_PROD_CAT      1
 

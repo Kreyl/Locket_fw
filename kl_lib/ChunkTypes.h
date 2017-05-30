@@ -50,64 +50,19 @@ struct BeepChunk_t {   // Value == Volume
 #if 1 // ====================== Base sequencer class ===========================
 enum SequencerLoopTask_t {sltProceed, sltBreak};
 
-class BaseSequenceProcess_t {
-protected:
-    virtual SequencerLoopTask_t ISetup() = 0; // BaseSequencer_t::IProcessSequence() can call this
-    virtual void ISwitchOff() = 0;  // BaseSequencer_t::Stop() can call this
-public:
-    virtual void IProcessSequenceI() = 0;   // Common timer callback can call this
-};
-
-// Common Timer callback
-static void GeneralSequencerTmrCallback(void *p) {
-    chSysLockFromISR();
-    ((BaseSequenceProcess_t*)p)->IProcessSequenceI();
-    chSysUnlockFromISR();
-}
-
 template <class TChunk>
-class BaseSequencer_t : public BaseSequenceProcess_t {
-private:
-    virtual_timer_t ITmr;
+class BaseSequencer_t : private IrqHandler_t {
 protected:
+    virtual_timer_t ITmr;
     const TChunk *IPStartChunk, *IPCurrentChunk;
-    BaseSequencer_t() : IPStartChunk(nullptr), IPCurrentChunk(nullptr),
-            PThread(nullptr), EvtEnd(0) {}
-    void SetupDelay(uint32_t ms) { chVTSetI(&ITmr, MS2ST(ms), GeneralSequencerTmrCallback, this); }
     thread_t *PThread;
     eventmask_t EvtEnd;
-public:
-    void SetupSeqEndEvt(thread_t *APThread, eventmask_t AEvt = 0) {
-        PThread = APThread;
-        EvtEnd = AEvt;
-    }
+    virtual void ISwitchOff() = 0;
+    virtual SequencerLoopTask_t ISetup() = 0;
+    void SetupDelay(uint32_t ms) { chVTSetI(&ITmr, MS2ST(ms), TmrKLCallback, this); }
 
-    void StartOrRestart(const TChunk *PChunk) {
-        chSysLock();
-        IPStartChunk = PChunk;   // Save first chunk
-        IPCurrentChunk = PChunk;
-        IProcessSequenceI();
-        chSysUnlock();
-    }
-
-    void StartOrContinue(const TChunk *PChunk) {
-        if(PChunk == IPStartChunk) return; // Same sequence
-        else StartOrRestart(PChunk);
-    }
-
-    void Stop() {
-        if(IPStartChunk != nullptr) {
-            chSysLock();
-            if(chVTIsArmedI(&ITmr)) chVTResetI(&ITmr);
-            IPStartChunk = nullptr;
-            IPCurrentChunk = nullptr;
-            chSysUnlock();
-        }
-        ISwitchOff();
-    }
-    const TChunk* GetCurrentSequence() { return IPStartChunk; }
-
-    void IProcessSequenceI() {
+    // Process sequence
+    void IIrqHandler() {
         if(chVTIsArmedI(&ITmr)) chVTResetI(&ITmr);  // Reset timer
         while(true) {   // Process the sequence
             switch(IPCurrentChunk->ChunkSort) {
@@ -132,7 +87,7 @@ public:
                     break;
 
                 case csEnd:
-                    if(PThread != nullptr) chEvtSignalI(PThread, EvtEnd);
+//                    if(PThread != nullptr) chEvtSignalI(PThread, EvtEnd); // XXX
                     IPStartChunk = nullptr;
                     IPCurrentChunk = nullptr;
                     return;
@@ -140,5 +95,35 @@ public:
             } // switch
         } // while
     } // IProcessSequenceI
+public:
+    void SetupSeqEndEvt(thread_t *APThread, eventmask_t AEvt = 0) {
+        PThread = APThread;
+        EvtEnd = AEvt;
+    }
+
+    void StartOrRestart(const TChunk *PChunk) {
+        chSysLock();
+        IPStartChunk = PChunk;   // Save first chunk
+        IPCurrentChunk = PChunk;
+        IIrqHandler();
+        chSysUnlock();
+    }
+
+    void StartOrContinue(const TChunk *PChunk) {
+        if(PChunk == IPStartChunk) return; // Same sequence
+        else StartOrRestart(PChunk);
+    }
+
+    void Stop() {
+        if(IPStartChunk != nullptr) {
+            chSysLock();
+            if(chVTIsArmedI(&ITmr)) chVTResetI(&ITmr);
+            IPStartChunk = nullptr;
+            IPCurrentChunk = nullptr;
+            chSysUnlock();
+        }
+        ISwitchOff();
+    }
+    const TChunk* GetCurrentSequence() { return IPStartChunk; }
 };
 #endif

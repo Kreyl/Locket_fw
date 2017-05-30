@@ -2,39 +2,18 @@
 
 #include "kl_lib.h"
 
-#if defined STM32L1XX
+#if defined STM32L1XX || defined STM32F2XX
 struct i2cParams_t {
     I2C_TypeDef *pi2c;
     GPIO_TypeDef *PGpio;
     uint16_t SclPin;
     uint16_t SdaPin;
-    AlterFunc_t PinAF;
     uint32_t BitrateHz;
     // DMA
     const stm32_dma_stream_t *PDmaTx;
     const stm32_dma_stream_t *PDmaRx;
+    uint32_t DmaModeTx, DmaModeRx;
 };
-
-/* Example:
- * i2c_t i2c (I2C_ACC, ACC_I2C_GPIO, ACC_I2C_SCL_PIN, ACC_I2C_SDA_PIN,
- * 400000, I2C_ACC_DMA_TX, I2C_ACC_DMA_RX );
- */
-
-#define I2C_DMATX_MODE  STM32_DMA_CR_CHSEL(DmaChnl) |   \
-                        DMA_PRIORITY_LOW | \
-                        STM32_DMA_CR_MSIZE_BYTE | \
-                        STM32_DMA_CR_PSIZE_BYTE | \
-                        STM32_DMA_CR_MINC |     /* Memory pointer increase */ \
-                        STM32_DMA_CR_DIR_M2P |  /* Direction is memory to peripheral */ \
-                        STM32_DMA_CR_TCIE       /* Enable Transmission Complete IRQ */
-
-#define I2C_DMARX_MODE  STM32_DMA_CR_CHSEL(DmaChnl) |   \
-                        DMA_PRIORITY_LOW | \
-                        STM32_DMA_CR_MSIZE_BYTE | \
-                        STM32_DMA_CR_PSIZE_BYTE | \
-                        STM32_DMA_CR_MINC |         /* Memory pointer increase */ \
-                        STM32_DMA_CR_DIR_P2M |      /* Direction is peripheral to memory */ \
-                        STM32_DMA_CR_TCIE           /* Enable Transmission Complete IRQ */
 
 class i2c_t {
 private:
@@ -71,6 +50,10 @@ public:
     void ScanBus();
     void Standby();
     void Resume();
+    void Reset() {
+        Standby();
+        Resume();
+    }
     uint8_t CheckAddress(uint32_t Addr);
     uint8_t Write     (uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1);
     uint8_t WriteRead (uint8_t Addr, uint8_t *WPtr,  uint8_t WLength,  uint8_t *RPtr, uint8_t RLength);
@@ -82,27 +65,31 @@ public:
 #if I2C1_ENABLED
 extern i2c_t i2c1;
 #endif
+#if I2C2_ENABLED
+extern i2c_t i2c2;
+#endif
 
 #endif // MCU type
 
-#ifdef STM32L476
+#if defined STM32L4XX || defined STM32F030
 struct i2cParams_t {
     I2C_TypeDef *pi2c;
     GPIO_TypeDef *PGpio;
     uint16_t SclPin;
     uint16_t SdaPin;
     AlterFunc_t PinAF;
-    uint32_t Timing;    // Setting for TIMINGR register
     // DMA
     const stm32_dma_stream_t *PDmaTx;
     const stm32_dma_stream_t *PDmaRx;
     uint32_t DmaModeTx, DmaModeRx;
     // IRQ
     uint32_t IrqEvtNumber, IrqErrorNumber;
+#if defined STM32L4XX    // Clock
+    i2cClk_t ClkSrc;
+#endif
 };
 
 #define I2C_TIMEOUT_MS      999
-#define I2C_USE_SEMAPHORE   TRUE
 
 enum i2cState_t {istIdle, istWriteRead, istWriteWrite, istRead, istWrite, istFailure};
 

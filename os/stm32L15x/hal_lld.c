@@ -22,9 +22,8 @@
  * @{
  */
 
-/* TODO: LSEBYP like in F3.*/
-
 #include "hal.h"
+
 
 /**
  * @brief   Low level HAL driver initialization.
@@ -41,19 +40,16 @@ void hal_lld_init(void) {
   /* PWR clock enabled.*/
   rccEnablePWRInterface(FALSE);
 
+  /* SYSCFG clock enabled here because it is a multi-functional unit shared
+     among multiple drivers.*/
+  rccEnableAPB2(RCC_APB2ENR_SYSCFGEN, TRUE);
+
 #if defined(STM32_DMA_REQUIRED)
   dmaInit();
 #endif
-
-  // @KL
-  /* SYSCFG clock enabled here because it is a multi-functional unit shared
-      among multiple drivers.*/
-   rccEnableAPB2(RCC_APB2ENR_SYSCFGEN, TRUE);
-
 
   /* Programmable voltage detector enable.*/
 #if STM32_PVD_ENABLE
   PWR->CR |= PWR_CR_PVDE | (STM32_PLS & STM32_PLS_MASK);
 #endif /* STM32_PVD_ENABLE */
 }
-

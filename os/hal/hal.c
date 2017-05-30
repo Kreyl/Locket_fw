@@ -24,6 +24,26 @@
 
 #include "hal.h"
 
+/*===========================================================================*/
+/* Driver local definitions.                                                 */
+/*===========================================================================*/
+
+/*===========================================================================*/
+/* Driver exported variables.                                                */
+/*===========================================================================*/
+
+/*===========================================================================*/
+/* Driver local variables and types.                                         */
+/*===========================================================================*/
+
+/*===========================================================================*/
+/* Driver local functions.                                                   */
+/*===========================================================================*/
+
+/*===========================================================================*/
+/* Driver exported functions.                                                */
+/*===========================================================================*/
+
 /**
  * @brief   HAL initialization.
  * @details This function invokes the low level initialization code then
@@ -36,10 +56,10 @@
 void halInit(void) {
 
   /* Initializes the OS Abstraction Layer.*/
-//  osalInit(); // @KL nothing here
+  osalInit();   // @KL: nothing here
 
   /* Platform low level initializations.*/
-  hal_lld_init();   // @KL APB, AHB, DMA, PWR
+  hal_lld_init();
 
 #if (HAL_USE_PAL == TRUE) || defined(__DOXYGEN__)
   palInit(&pal_default_config);
@@ -108,6 +128,7 @@ void halInit(void) {
   halCommunityInit();
 #endif
 #endif
+
 
 /*
  *  The ST driver is a special case, it is only initialized if the OSAL is

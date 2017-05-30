@@ -31,33 +31,33 @@ protected:
     T IBuf[Sz], *PRead=IBuf, *PWrite=IBuf;
 public:
     uint8_t Get(T *p) {
-        if(IFullSlotsCount == 0) return EMPTY;
+        if(IFullSlotsCount == 0) return retvEmpty;
         memcpy(p, PRead, sizeof(T));
         if(++PRead > (IBuf + Sz - 1)) PRead = IBuf;     // Circulate buffer
         IFullSlotsCount--;
-        return OK;
+        return retvOk;
     }
     uint8_t GetPAndMove(T **pp) {
-    	if(IFullSlotsCount == 0) return EMPTY;
+    	if(IFullSlotsCount == 0) return retvEmpty;
     	*pp = PRead;
         if(++PRead > (IBuf + Sz - 1)) PRead = IBuf;     // Circulate buffer
         IFullSlotsCount--;
-        return OK;
+        return retvOk;
     }
     uint8_t GetLastP(T **pp) {
-    	if(IFullSlotsCount == 0) return EMPTY;
+    	if(IFullSlotsCount == 0) return retvEmpty;
 		*pp = PRead;
-		return OK;
+		return retvOk;
     }
 
     uint8_t PutAnyway(T *p) {
 		memcpy(PWrite, p, sizeof(T));
 		if(++PWrite > (IBuf + Sz - 1)) PWrite = IBuf;   // Circulate buffer
 		if(IFullSlotsCount < Sz) IFullSlotsCount++;
-		return OK;
+		return retvOk;
 	}
     uint8_t Put(T *p) {
-        if(IFullSlotsCount >= Sz) return OVERFLOW;
+        if(IFullSlotsCount >= Sz) return retvOverflow;
         return PutAnyway(p);
     }
 
@@ -137,7 +137,7 @@ public:
     }
 
     uint8_t Put(T *p, uint32_t Length) {
-        uint8_t Rslt = FAILURE;
+        uint8_t Rslt = retvFail;
         if(this->GetEmptyCount() >= Length) {    // check if Buffer overflow
             this->IFullSlotsCount += Length;                      // 'Length' slots will be occupied
             uint32_t PartSz = (this->IBuf + Sz) - this->PWrite;  // Data from PWrite to right bound
@@ -150,31 +150,31 @@ public:
             memcpy(this->PWrite, p, Length);
             this->PWrite += Length;
             if(this->PWrite >= (this->IBuf + Sz)) this->PWrite = this->IBuf; // Circulate pointer
-            Rslt = OK;
+            Rslt = retvOk;
         }
         return Rslt;
     }
 
     uint8_t Get(T *p) {
-        if(this->IFullSlotsCount == 0) return FAILURE;
+        if(this->IFullSlotsCount == 0) return retvFail;
         *p = *this->PRead;
         if(++this->PRead > (this->IBuf + Sz - 1)) this->PRead = this->IBuf;     // Circulate buffer
         this->IFullSlotsCount--;
-        return OK;
+        return retvOk;
     }
 
     uint8_t Put(T Value) {
         *this->PWrite = Value;
         if(++this->PWrite > (this->IBuf + Sz - 1)) this->PWrite = this->IBuf;   // Circulate buffer
-        if(this->IFullSlotsCount >= Sz) return OVERFLOW;
+        if(this->IFullSlotsCount >= Sz) return retvOverflow;
         else {
             this->IFullSlotsCount++;
-            return OK;
+            return retvOk;
         }
     }
 
     uint8_t PutIfNotOverflow(T *p) {
-        if(this->IFullSlotsCount >= Sz) return OVERFLOW;
+        if(this->IFullSlotsCount >= Sz) return retvOverflow;
         else return Put(p);
     }
 };

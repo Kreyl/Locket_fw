@@ -275,7 +275,7 @@
 extern "C" {
 #endif
   void chSysInit(void);
-  void chSysHalt(const char *reason, const char *message);
+  void chSysHalt(const char *reason);
   bool chSysIntegrityCheckI(unsigned testmask);
   void chSysTimerHandlerI(void);
   syssts_t chSysGetStatusAndLockX(void);

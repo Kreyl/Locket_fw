@@ -11,12 +11,12 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket4_1"
-#define APP_NAME            "FirstDaysOfEmpire"
+#define APP_NAME            "TxID and Pwr"
 
 // ==== High-level peripery control ====
-#define PILL_ENABLED        TRUE
+#define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      FALSE
-#define BTN_ENABLED         TRUE
+#define BTN_ENABLED         FALSE
 
 #define SIMPLESENSORS_ENABLED   BTN_ENABLED
 
@@ -37,7 +37,6 @@
 #define UART_GPIO       GPIOA
 #define UART_TX_PIN     9
 #define UART_RX_PIN     10
-#define UART_AF         AF7 // for USART1 @ GPIOA
 
 // LED
 #define LED_EN_PIN      { GPIOB, 2, omPushPull }
@@ -49,8 +48,7 @@
 #define BTN_PIN         { GPIOA, 0, pudPullDown }
 
 // Vibro
-#define VIBRO_TOP       99
-#define VIBRO_PIN       { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, VIBRO_TOP }
+#define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, 99 }
 
 // Beeper
 #define BEEPER_TOP      22
@@ -70,22 +68,13 @@
 #define I2C1_GPIO       GPIOB
 #define I2C1_SCL        6
 #define I2C1_SDA        7
-#define I2C1_AF         AF4
 #endif
 
 // Pill power
 #define PILL_PWR_PIN    { GPIOB, 3, omPushPull }
 
-// Radio
-#define CC_GPIO         GPIOA
-#define CC_GDO2         2
-#define CC_GDO0         3
-#define CC_SCK          5
-#define CC_MISO         6
-#define CC_MOSI         7
-#define CC_CS           4
-// Input pin (do not touch)
-#define CC_GDO0_IRQ     { CC_GPIO, CC_GDO0, pudNone }
+// Radio: SPI, PGpio, Sck, Miso, Mosi, Cs, Gdo0
+#define CC_Setup0       SPI1, GPIOA, 5,6,7, 4, 3
 
 #endif // GPIO
 
@@ -97,15 +86,9 @@
 #define I2C_PILL        i2c1
 #endif
 
-#if 1 // =========================== SPI =======================================
-#define CC_SPI          SPI1
-#define CC_SPI_AF       AF5
-#endif
-
 #if 1 // ========================== USART ======================================
-#define UART            USART1
-#define UART_TX_REG     UART->DR
-#define UART_RX_REG     UART->DR
+#define CMD_UART        USART1
+#define UART_TXBUF_SZ   256
 #endif
 
 #if ADC_REQUIRED // ======================= Inner ADC ==========================
@@ -135,6 +118,7 @@
 #if I2C1_ENABLED // ==== I2C ====
 #define I2C1_DMA_TX     STM32_DMA1_STREAM6
 #define I2C1_DMA_RX     STM32_DMA1_STREAM7
+#define I2C1_DMA_CHNL   0   // Dummy
 #endif
 
 #if ADC_REQUIRED

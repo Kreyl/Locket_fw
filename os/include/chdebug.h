@@ -169,7 +169,7 @@ typedef struct {
   if (CH_DBG_ENABLE_CHECKS != FALSE) {                                      \
     if (!(c)) {                                                             \
   /*lint -restore*/                                                         \
-      chSysHalt(__func__, "");  /* @KL */                                   \
+      chSysHalt(__func__);                                                  \
     }                                                                       \
   }                                                                         \
 } while (false)
@@ -195,7 +195,7 @@ typedef struct {
   if (CH_DBG_ENABLE_ASSERTS != FALSE) {                                     \
     if (!(c)) {                                                             \
   /*lint -restore*/                                                         \
-      chSysHalt(__func__, r);    /* @KL: add r */                           \
+      chSysHalt(__func__);                                                  \
     }                                                                       \
   }                                                                         \
 } while (false)

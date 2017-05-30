@@ -7,8 +7,8 @@
 
 #include "pill_mgr.h"
 #include "board.h"
-#include "main.h"
 
+#if PILL_ENABLED
 PillMgr_t PillMgr { &I2C_PILL, PILL_PWR_PIN };
 
 static THD_WORKING_AREA(waPillThread, 128);
@@ -126,3 +126,4 @@ uint8_t PillMgr_t::Write(uint8_t MemAddr, void *Ptr, uint32_t Length) {
     Standby();
     return OK;
 }
+#endif // PILL_ENABLED

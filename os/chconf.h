@@ -220,7 +220,7 @@
  *
  * @note    The default is @p TRUE.
  */
-#define CH_CFG_USE_EVENTS                   TRUE
+#define CH_CFG_USE_EVENTS                   FALSE
 
 /**
  * @brief   Events Flags APIs with timeout.
@@ -230,7 +230,7 @@
  * @note    The default is @p TRUE.
  * @note    Requires @p CH_CFG_USE_EVENTS.
  */
-#define CH_CFG_USE_EVENTS_TIMEOUT           TRUE
+#define CH_CFG_USE_EVENTS_TIMEOUT           FALSE
 
 /**
  * @brief   Synchronous Messages APIs.
@@ -484,23 +484,8 @@
  * @details This hook is invoked in case to a system halting error before
  *          the system is halted.
  */
-
-// ==== @KL ====
-#if defined _FROM_ASM_
-#define PrintfC(a, b)
-#else
-#ifdef __cplusplus
-extern "C" {
-#endif
-extern void PrintfCNow(const char *format, ...);
-#ifdef __cplusplus
-}
-#endif
-#endif
-
-#define CH_CFG_SYSTEM_HALT_HOOK(reason, message) {                          \
+#define CH_CFG_SYSTEM_HALT_HOOK(reason) {                                   \
   /* System halt code here.*/                                               \
-        PrintfCNow("\rHalt: %S: %S", reason, message);                      \
 }
 
 /** @} */

@@ -459,7 +459,7 @@ static inline void osalInit(void) {
  */
 static inline void osalSysHalt(const char *reason) {
 
-  chSysHalt(reason, __func__);  // @KL: + __func__
+  chSysHalt(reason);
 }
 
 /**

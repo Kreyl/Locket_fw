@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstring>
+#include <stdarg.h>
 #include "kl_lib.h"
 
 #define CMD_BUF_SZ		99
@@ -43,45 +44,47 @@ public:
     }
     uint8_t GetNextString() {
         Token = strtok(NULL, DELIMITERS);
-        return (*Token == '\0')? EMPTY : OK;
+        return (*Token == '\0')? retvEmpty : retvOk;
     }
-    uint8_t GetNextInt32(int32_t *POutput) {
+
+    template <typename T>
+    uint8_t GetNext(T *POutput) {
         uint8_t r = GetNextString();
-        if(r != OK) return r;
-        else {
+        if(r == retvOk) {
             char *p;
-            *POutput = strtol(Token, &p, 0);
-            return (*p == '\0')? OK : NOT_A_NUMBER;
+            int32_t dw32 = strtol(Token, &p, 0);
+            if(*p == '\0') *POutput = (T)dw32;
+            else r = retvNotANumber;
         }
-    }
-    uint8_t GetNextByte(uint8_t *POutput) {
-        int32_t dw32;
-        uint8_t r = GetNextInt32(&dw32);
-        if(r != OK) return r;
-        else {
-            *POutput = (uint8_t)dw32;
-            return OK;
-        }
+        return r;
     }
 
-    uint8_t GetArray(int32_t *Ptr, int32_t Len) {
-        int32_t dw32 = 0;
+    template <typename T>
+    uint8_t GetArray(T *Ptr, int32_t Len) {
         for(int32_t i=0; i<Len; i++) {
-            uint8_t r = GetNextInt32(&dw32);
-            if(r == OK) *Ptr++ = dw32;
+            T Number;
+            uint8_t r = GetNext<T>(&Number);
+            if(r == retvOk) *Ptr++ = Number;
             else return r;
         }
-        return OK;
+        return retvOk;
     }
 
-    uint8_t GetArray(uint8_t *Ptr, int32_t Len) {
-        int32_t dw32 = 0;
-        for(int32_t i=0; i<Len; i++) {
-            uint8_t r = GetNextInt32(&dw32);
-            if(r == OK) *Ptr++ = (uint8_t)dw32;
-            else return r;
+    /*  int32_t Indx, Value;
+        if(PCmd->GetParams<int32_t>(2, &Indx, &Value) == retvOk) {...}
+        else PShell->Ack(retvCmdError);    */
+    template <typename T>
+    uint8_t GetParams(uint8_t Cnt, ...) {
+        uint8_t Rslt = retvOk;
+        va_list args;
+        va_start(args, Cnt);
+        while(Cnt--) {
+            T* ptr = va_arg(args, T*);
+            Rslt = GetNext<T>(ptr);
+            if(Rslt != retvOk) break;
         }
-        return OK;
+        va_end(args);
+        return Rslt;
     }
 
     bool NameIs(const char *SCmd) { return (strcasecmp(Name, SCmd) == 0); }
@@ -94,17 +97,115 @@ public:
 };
 
 class Shell_t {
-protected:
-	thread_t *IPThd;
 public:
 	Cmd_t Cmd;
-	void SignalCmdProcessed() {
-	    chSysLock();
-	    if(IPThd->p_state == CH_STATE_SUSPENDED) chSchReadyI(IPThd);
-	    chSysUnlock();
-	}
-
-	virtual void Printf(const char *S, ...);
+	bool CmdProcessInProgress;
+	void SignalCmdProcessed() { CmdProcessInProgress = false; }
+	virtual void Printf(const char *format, ...) = 0;
 	void Reply(const char* CmdCode, int32_t Data) { Printf("%S,%d\r\n", CmdCode, Data); }
 	void Ack(int32_t Result) { Printf("Ack %d\r\n", Result); }
 };
+
+
+// Parent class for everything that prints
+class PrintfHelper_t {
+private:
+    uint8_t IPutUint(uint32_t n, uint32_t base, uint32_t width, char filler);
+protected:
+    virtual uint8_t IPutChar(char c) = 0;
+    virtual void IStartTransmissionIfNotYet() = 0;
+public:
+    void IVsPrintf(const char *format, va_list args);
+    void PrintEOL();
+};
+
+
+// Functions
+void Printf(const char *format, ...);
+void PrintfI(const char *format, ...);
+void PrintfEOL();
+//void PrintfNow(const char *format, ...);
+
+extern "C" {
+void PrintfC(const char *format, ...);
+//void PrintfCNow(const char *format, ...);
+}
+
+#if 1 // ========================= Byte protocol ===============================
+#define BYTECMD_DATA_SZ     99
+class ByteCmd_t {
+private:
+//    char IString[CMD_BUF_SZ];
+    bool Completed;
+    uint8_t IBuf[BYTECMD_DATA_SZ];
+    bool FirstHalfOfByte = true, WasStarted = false;
+    void AddHalfOfByte(uint8_t Half) {
+        if(FirstHalfOfByte) {
+            IBuf[Cnt] = Half << 4;
+            FirstHalfOfByte = false;
+        }
+        else {
+            IBuf[Cnt++] |= Half;
+            FirstHalfOfByte = true;
+        }
+    }
+public:
+    uint8_t CmdCode, *Data = &IBuf[1];
+    uint32_t Cnt;
+    ProcessDataResult_t PutChar(char c) {
+        // Reset cmd if it was completed, and after that new char arrived
+        if(Completed) {
+            Completed = false;
+            Cnt = 0;
+            FirstHalfOfByte = true;
+            WasStarted = false;
+        }
+        // Process char
+        if(c == '#') {  // Start of new cmd
+            Cnt = 0;
+            FirstHalfOfByte = true;
+            WasStarted = true;
+        }
+        else if(WasStarted) {   // Do all the next if was started
+            if(c == '\b') { if(Cnt > 0) Cnt--; }    // Do backspace
+            else if(c == '#') { Cnt = 0; FirstHalfOfByte = true; }
+            else if((c == '\r') or (c == '\n')) {   // End of line, check if cmd completed
+                if(Cnt != 0) {  // if not empty
+                    CmdCode = IBuf[0];
+                    Cnt--;  // Remove CmdCode out of cnt
+                    Completed = true;
+                    return pdrNewCmd;
+                }
+            }
+            // Some other char, maybe good one
+            else if(Cnt < BYTECMD_DATA_SZ) {
+                if     (c >= '0' and c <= '9') AddHalfOfByte(c - '0');
+                else if(c >= 'A' and c <= 'F') AddHalfOfByte(c - 'A' + 0xA);
+                else if(c >= 'a' and c <= 'f') AddHalfOfByte(c - 'a' + 0xA);
+            }
+        }
+        return pdrProceed;
+    }
+
+};
+
+class ByteShell_t {
+private:
+    uint8_t HalfByte2Char(uint8_t hb) {
+        hb &= 0x0F;
+        if(hb < 0x0A) return ('0' + hb);    // 0...9
+        else return ('A' + hb - 0x0A);      // A...F
+    }
+public:
+    ByteCmd_t Cmd;
+    bool CmdProcessInProgress;
+    void SignalCmdProcessed() { CmdProcessInProgress = false; }
+    virtual uint8_t IPutChar(char c) = 0;
+    virtual void IStartTransmissionIfNotYet() = 0;
+    void Reply(uint8_t CmdCode, uint32_t Len, uint8_t *PData);
+//    void SendCmd(uint8_t CmdCode, uint32_t Len, ...);
+    //void Reply(const uint8_t CmdCode, int32_t Data) { Printf("%S,%d\r\n", CmdCode, Data); }
+    void Ack(uint8_t Result) { Reply(0x90, 1, &Result); }
+};
+
+#endif

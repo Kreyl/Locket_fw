@@ -194,33 +194,13 @@
 #define STM32_RTCSEL_HSEDIV     (3 << 16)   /**< RTC source is HSE divided. */
 /** @} */
 
-/*===========================================================================*/
-/* Driver pre-compile time settings.                                         */
-/*===========================================================================*/
-
-/**
- * @name    Configuration options
- * @{
- */
-/**
- * @brief   Disables the PWR/RCC initialization in the HAL.
- */
-#if !defined(STM32_NO_INIT) || defined(__DOXYGEN__)
-#define STM32_NO_INIT               FALSE
-#endif
-
-/** @} */
-
-/*===========================================================================*/
-/* Derived constants and error checks.                                       */
-/*===========================================================================*/
-
 /*
  * Configuration-related checks.
  */
 #if !defined(STM32L1xx_MCUCONF)
 #error "Using a wrong mcuconf.h file, STM32L1xx_MCUCONF not defined"
 #endif
+
 
 /* Various helpers.*/
 #include "nvic.h"
@@ -232,6 +212,7 @@
 extern "C" {
 #endif
   void hal_lld_init(void);
+  void stm32_clock_init(void);
 #ifdef __cplusplus
 }
 #endif
