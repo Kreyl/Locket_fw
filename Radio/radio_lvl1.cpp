@@ -39,7 +39,7 @@ static void rLvl1Thread(void *arg) {
         if(msg.Cmd == R_MSG_SET_PWR) CC.SetTxPower(msg.Value);
         if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
         Radio.TaskTransmitter();
-        chThdSleepMilliseconds(54);
+        chThdSleepMilliseconds(27);
 //        Radio.TaskReceiverManyByChannel();
 //        chThdSleepMilliseconds(999);
 //        switch(App.Mode) {
@@ -59,7 +59,10 @@ static void rLvl1Thread(void *arg) {
 void rLevel1_t::TaskTransmitter() {
 //    CC.SetChannel(ID2RCHNL(App.ID));
 //    CC.SetChannel(RCHNL_COMMON);
-    PktTx.DWord32 = THE_WORD;
+//    PktTx.DWord32 = THE_WORD;
+    PktTx.R = 0;
+    PktTx.G = 255;
+    PktTx.B = 0;
     DBG1_SET();
     CC.Transmit(&PktTx);
     DBG1_CLR();

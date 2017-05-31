@@ -99,7 +99,7 @@ int main(void) {
     // ==== Radio ====
     if(Radio.Init() == retvOk) {
         Led.StartOrRestart(lsqStart);
-        RMsg_t msg = {R_MSG_SET_CHNL, 0};
+        RMsg_t msg = {R_MSG_SET_CHNL, 1};
         Radio.RMsgQ.SendNowOrExit(msg);
     }
     else Led.StartOrRestart(lsqFailure);
