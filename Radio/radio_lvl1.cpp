@@ -63,6 +63,7 @@ void rLevel1_t::TaskTransmitter() {
     PktTx.R = 0;
     PktTx.G = 255;
     PktTx.B = 0;
+    PktTx.MinPwrToReact = -63;
     DBG1_SET();
     CC.Transmit(&PktTx);
     DBG1_CLR();

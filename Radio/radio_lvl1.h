@@ -60,6 +60,7 @@ union rPkt_t {
     uint32_t DWord32;
     struct {
         uint8_t R, G, B;
+        int8_t MinPwrToReact;
     };
     bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }
     rPkt_t& operator = (const rPkt_t &Right) { DWord32 = Right.DWord32; return *this; }
