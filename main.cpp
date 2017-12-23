@@ -14,6 +14,9 @@
 #include "pill.h"
 #include "pill_mgr.h"
 #include "MsgQ.h"
+#include "ColorTable.h"
+#include "vibro.h"
+#include "buttons.h"
 
 #if 1 // ======================== Variables and defines ========================
 // Forever
@@ -24,12 +27,32 @@ static void OnCmd(Shell_t *PShell);
 
 static void ReadAndSetupMode();
 
+// Colors and sequences
+LedRGBChunk_t lsqOn[] = {
+        {csSetup, 99, clRed},
+        {csEnd}
+};
+
+//LedRGBChunk_t lsqStart[] = {
+//        {csSetup, 360, clRed},
+//        {csSetup, 360, clBlack},
+//        {csEnd}
+//};
+
+const LedRGBChunk_t lsqOff[] = {
+        {csSetup, 99, clBlack},
+        {csEnd}
+};
+
+Color_t *appColor = &lsqOn[0].Color;
+Color_t txColor = clGreen;
+
 #define ID_MIN                  1
 #define ID_MAX                  36
 #define ID_DEFAULT              ID_MIN
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
-#define EE_ADDR_HEALTH_STATE    8
+#define EE_ADDR_COLOR           4
 
 int32_t ID;
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
@@ -38,7 +61,7 @@ static uint8_t ISetID(int32_t NewID);
 void ReadIDfromEE();
 
 // ==== Periphery ====
-//Vibro_t Vibro {VIBRO_PIN};
+Vibro_t Vibro {VIBRO_SETUP};
 #if BEEPER_ENABLED
 Beeper_t Beeper {BEEPER_PIN};
 #endif
@@ -66,6 +89,13 @@ int main(void) {
     Uart.Init(115200);
     ReadIDfromEE();
     Printf("\r%S %S; ID=%u\r", APP_NAME, BUILD_TIME, ID);
+    // Get color from ee
+    ColorTable.Indx = EE::Read32(EE_ADDR_COLOR);
+    if(ColorTable.Indx >= ColorTable.Count) ColorTable.Indx = 0;
+    *appColor = *ColorTable.GetCurrent();
+    lsqOn[0].Color = *appColor;
+    txColor = *appColor;
+
 //    Uart.Printf("ID: %X %X %X\r", GetUniqID1(), GetUniqID2(), GetUniqID3());
 //    if(Sleep::WasInStandby()) {
 //        Uart.Printf("WasStandby\r");
@@ -75,15 +105,15 @@ int main(void) {
 //    RandomSeed(GetUniqID3());   // Init random algorythm with uniq ID
 
     Led.Init();
-//    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-//    Vibro.Init();
+    Vibro.Init();
+    Vibro.StartOrRestart(vsqBrr);
 #if BEEPER_ENABLED // === Beeper ===
     Beeper.Init();
     Beeper.StartOrRestart(bsqBeepBeep);
     chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
-#if BTN_ENABLED
-//    PinSensors.Init();
+#if BUTTONS_ENABLED
+    SimpleSensors::Init();
 #endif
 //    Adc.Init();
 
@@ -94,11 +124,10 @@ int main(void) {
 
     // ==== Time and timers ====
     TmrEverySecond.StartOrRestart();
-//    TmrRxTableCheck.InitAndStart();
 
     // ==== Radio ====
     if(Radio.Init() == retvOk) {
-        Led.StartOrRestart(lsqStart);
+        Led.StartOrRestart(lsqOn);
         RMsg_t msg = {R_MSG_SET_CHNL, 1};
         Radio.RMsgQ.SendNowOrExit(msg);
     }
@@ -119,20 +148,22 @@ void ITask() {
                 ReadAndSetupMode();
                 break;
 
-#if BTN_ENABLED
+#if BUTTONS_ENABLED
             case evtIdButtons:
-                Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
+//                Printf("Btn %u\r", Msg.BtnEvtInfo.Type);
+                // Uncomment if on/off required
+//                if(Msg.BtnEvtInfo.Type == beShortPress) Led.StartOrRestart(lsqOn);
+                if(Msg.BtnEvtInfo.Type == beRepeat) {
+                    *appColor = *ColorTable.GetNext();
+                    Led.StartOrRestart(lsqOn);
+                }
+                else if(Msg.BtnEvtInfo.Type == beRelease) {
+//                    Led.StartOrRestart(lsqOff);
+                    // Save color indx to EE
+                    EE::Write32(EE_ADDR_COLOR, ColorTable.Indx);
+                    txColor = *appColor;
+                }
                 break;
-        if(Evt & EVT_BUTTONS) {
-            Uart.Printf("Btn\r");
-            BtnEvtInfo_t EInfo;
-            while(BtnGetEvt(&EInfo) == OK) {
-                if(EInfo.Type == bePress) {
-                    Sheltering.TimeOfBtnPress = TimeS;
-                    Sheltering.ProcessCChangeOrBtn();
-                } // if Press
-            } // while
-        }
 #endif
 
 //        if(Evt & EVT_RX) {
