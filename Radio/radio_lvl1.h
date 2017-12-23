@@ -61,7 +61,7 @@ union rPkt_t {
     struct {
         uint8_t R, G, B;
         int8_t MinPwrToReact;
-    };
+    } __packed;
     bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }
     rPkt_t& operator = (const rPkt_t &Right) { DWord32 = Right.DWord32; return *this; }
 } __attribute__ ((__packed__));
@@ -83,7 +83,7 @@ struct RMsg_t {
 #define RCHNL_SERVICE   0
 #define RCHNL_COMMON    1
 #define RCHNL_EACH_OTH  7
-#define RCHNL_MIN       1
+#define RCHNL_MIN       0
 #define RCHNL_MAX       30
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
 

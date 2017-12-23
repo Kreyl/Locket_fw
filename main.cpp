@@ -44,7 +44,6 @@ const LedRGBChunk_t lsqOff[] = {
         {csEnd}
 };
 
-Color_t *appColor = &lsqOn[0].Color;
 Color_t txColor = clGreen;
 
 #define ID_MIN                  1
@@ -92,9 +91,8 @@ int main(void) {
     // Get color from ee
     ColorTable.Indx = EE::Read32(EE_ADDR_COLOR);
     if(ColorTable.Indx >= ColorTable.Count) ColorTable.Indx = 0;
-    *appColor = *ColorTable.GetCurrent();
-    lsqOn[0].Color = *appColor;
-    txColor = *appColor;
+    lsqOn[0].Color = *ColorTable.GetCurrent();
+    txColor = lsqOn[0].Color;
 
 //    Uart.Printf("ID: %X %X %X\r", GetUniqID1(), GetUniqID2(), GetUniqID3());
 //    if(Sleep::WasInStandby()) {
@@ -154,14 +152,14 @@ void ITask() {
                 // Uncomment if on/off required
 //                if(Msg.BtnEvtInfo.Type == beShortPress) Led.StartOrRestart(lsqOn);
                 if(Msg.BtnEvtInfo.Type == beRepeat) {
-                    *appColor = *ColorTable.GetNext();
+                    lsqOn[0].Color = *ColorTable.GetNext();
                     Led.StartOrRestart(lsqOn);
                 }
                 else if(Msg.BtnEvtInfo.Type == beRelease) {
 //                    Led.StartOrRestart(lsqOff);
                     // Save color indx to EE
                     EE::Write32(EE_ADDR_COLOR, ColorTable.Indx);
-                    txColor = *appColor;
+                    txColor = lsqOn[0].Color;
                 }
                 break;
 #endif

@@ -16,9 +16,9 @@ struct ColorTable_t {
     const uint32_t Count;
     const Color_t *Clr;
     const Color_t* GetNext() {
-        const Color_t *Rslt = &Clr[Indx];
         Indx++;
         if(Indx >= Count) Indx=0;
+        const Color_t *Rslt = &Clr[Indx];
         return Rslt;
     }
     const Color_t* GetCurrent() { return &Clr[Indx]; }

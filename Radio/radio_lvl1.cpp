@@ -8,8 +8,11 @@
 #include "radio_lvl1.h"
 #include "cc1101.h"
 #include "uart.h"
+#include "color.h"
 
 cc1101_t CC(CC_Setup0);
+extern Color_t txColor;
+extern int32_t ID;
 
 //#define DBG_PINS
 
@@ -57,13 +60,12 @@ static void rLvl1Thread(void *arg) {
 }
 
 void rLevel1_t::TaskTransmitter() {
-//    CC.SetChannel(ID2RCHNL(App.ID));
+    CC.SetChannel(ID2RCHNL(ID));
 //    CC.SetChannel(RCHNL_COMMON);
 //    PktTx.DWord32 = THE_WORD;
-    PktTx.R = 0;
-    PktTx.G = 255;
-    PktTx.B = 0;
+    txColor.ToRGB(&PktTx.R, &PktTx.G, &PktTx.B);
     PktTx.MinPwrToReact = -63;
+    CC.Recalibrate();
     DBG1_SET();
     CC.Transmit(&PktTx);
     DBG1_CLR();
@@ -224,6 +226,7 @@ uint8_t rLevel1_t::Init() {
         CC.SetTxPower(CC_PwrMinus30dBm);
         CC.SetPktSize(RPKT_LEN);
 //        CC.SetChannel(ID2RCHNL(ID));
+//        CC.SetChannel(RCHNL_COMMON);
 //        CC.EnterPwrDown();
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
