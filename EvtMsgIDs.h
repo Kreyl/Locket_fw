@@ -11,11 +11,31 @@ enum EvtMsgId_t {
     evtIdNone = 0, // Always
 
     // Pretending to eternity
-    evtIdShellCmd = 1,
-    evtIdEverySecond = 2,
-    evtIdAdcRslt = 3,
+    evtIdShellCmd,
+    evtIdEverySecond,
 
-    // Not eternal
-    evtIdButtons = 15,
-    evtIdRadioCmd = 18,
+    // Audio
+    evtIdSoundPlayStop,
+    evtIdSoundFileEnd,
+
+    // Usb
+    evtIdUsbConnect,
+    evtIdUsbDisconnect,
+    evtIdUsbReady,
+    evtIdUsbNewCmd,
+    evtIdUsbInDone,
+    evtIdUsbOutDone,
+
+    // Misc periph
+    evtIdButtons,
+    evtIdAcc,
+    evtIdPwrOffTimeout,
+
+    // App specific
+    evtIdLedDone,
+    evtIdClash,
+    evtIdSwingStart,
+    evtIdSpinStart,
+    evtIdStab,
+    evtIdScrew,
 };

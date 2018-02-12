@@ -10,16 +10,7 @@
 #include <inttypes.h>
 
 // ==== General ====
-#define BOARD_NAME          "Locket4_1"
-#define APP_NAME            "TxID and Pwr"
-
 // ==== High-level peripery control ====
-#define PILL_ENABLED        FALSE
-#define BEEPER_ENABLED      FALSE
-#define BUTTONS_ENABLED     TRUE
-
-#define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
-
 // MCU type as defined in the ST header.
 #define STM32L151xB
 
@@ -27,7 +18,7 @@
 #define CRYSTAL_FREQ_HZ     12000000
 
 #define SYS_TIM_CLK         (Clk.APB1FreqHz)
-#define I2C1_ENABLED        PILL_ENABLED
+#define I2C1_ENABLED        FALSE
 #define I2C_USE_SEMAPHORE   FALSE
 #define ADC_REQUIRED        FALSE
 
@@ -38,43 +29,12 @@
 #define UART_TX_PIN     9
 #define UART_RX_PIN     10
 
-// LED
-#define LED_EN_PIN      { GPIOB, 2, omPushPull }
-#define LED_R_PIN       { GPIOB, 1, TIM3, 4, invInverted, omOpenDrain, 255 }
-#define LED_G_PIN       { GPIOB, 0, TIM3, 3, invInverted, omOpenDrain, 255 }
-#define LED_B_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
-
-// Button
-#define BTN_PIN         GPIOA, 0, pudPullDown
-
-// Vibro
-#define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, 99 }
-
-// Beeper
-#define BEEPER_TOP      22
-#define BEEPER_PIN      { GPIOB, 15, TIM11, 1, invNotInverted, omPushPull, BEEPER_TOP }
-
-// DIP switch
-#define DIP_SW_CNT      6
-#define DIP_SW1         { GPIOA, 15, pudPullUp }
-#define DIP_SW2         { GPIOC, 13, pudPullUp }
-#define DIP_SW3         { GPIOC, 14, pudPullUp }
-#define DIP_SW4         { GPIOA, 12, pudPullUp }
-#define DIP_SW5         { GPIOA, 11, pudPullUp }
-#define DIP_SW6         { GPIOA, 8,  pudPullUp }
-
 // I2C
 #if I2C1_ENABLED
 #define I2C1_GPIO       GPIOB
 #define I2C1_SCL        6
 #define I2C1_SDA        7
 #endif
-
-// Pill power
-#define PILL_PWR_PIN    { GPIOB, 3, omPushPull }
-
-// Radio: SPI, PGpio, Sck, Miso, Mosi, Cs, Gdo0
-#define CC_Setup0       SPI1, GPIOA, 5,6,7, 4, 3
 
 #endif // GPIO
 
