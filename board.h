@@ -18,7 +18,7 @@
 #define CRYSTAL_FREQ_HZ     12000000
 
 #define SYS_TIM_CLK         (Clk.APB1FreqHz)
-#define I2C1_ENABLED        FALSE
+#define I2C1_ENABLED        TRUE
 #define I2C_USE_SEMAPHORE   FALSE
 #define ADC_REQUIRED        FALSE
 
@@ -34,6 +34,7 @@
 #define I2C1_GPIO       GPIOB
 #define I2C1_SCL        6
 #define I2C1_SDA        7
+#define I2C1_AF         AF4 // I2C @ GPIOB
 #endif
 
 #endif // GPIO
