@@ -11,12 +11,6 @@
 #include "uart.h"
 #include "kl_i2c.h"
 
-#define SNSADDR1    0x48
-#define SNSADDR2    0x49
-#define SNSADDR3    0x4A
-
-#define T_CONST     31250L
-
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
 extern CmdUart_t Uart;
 //void OnCmd(Shell_t *PShell);
@@ -32,16 +26,21 @@ int main(void) {
     chSysInit();
 
     Uart.Init(115200);
+    Printf("\rLocket\r");
     Clk.PrintFreqs();
 
     // ==== Init hardware ====
-    PinSetupOut(GPIOA, 7, omPushPull);
+    PinSetupOut(GPIOB, 5, omPushPull);
+    PinSetupInput(GPIOA, 0, pudPullDown);
 
     // Main cycle
     while(true) {
-        PinSetHi(GPIOA, 7);
-        chThdSleepMilliseconds(99);
-        PinSetLo(GPIOA, 7);
-        chThdSleepMilliseconds(99);
+        if(PinIsHi(GPIOA, 0)) {
+            PinSetHi(GPIOB, 5);
+            chThdSleepMilliseconds(99);
+            PinSetLo(GPIOB, 5);
+            chThdSleepMilliseconds(99);
+        }
+        else chThdSleepMilliseconds(99);
     }
 }
