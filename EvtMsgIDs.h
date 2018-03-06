@@ -11,11 +11,12 @@ enum EvtMsgId_t {
     evtIdNone = 0, // Always
 
     // Pretending to eternity
-    evtIdShellCmd = 1,
-    evtIdEverySecond = 2,
-    evtIdAdcRslt = 3,
+    evtIdShellCmd,
+    evtIdEverySecond,
+    evtIdAdcRslt,
 
     // Not eternal
-    evtIdButtons = 15,
-    evtIdRadioCmd = 18,
+    evtIdButtons,
+    evtIdRadioCmd,
+    evtIdCheckRxTable,
 };

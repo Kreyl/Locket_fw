@@ -7,6 +7,7 @@
 
 #include "board.h"
 #include "led.h"
+#include "vibro.h"
 #include "Sequences.h"
 #include "radio_lvl1.h"
 #include "kl_i2c.h"
@@ -14,6 +15,9 @@
 #include "pill.h"
 #include "pill_mgr.h"
 #include "MsgQ.h"
+#include "main.h"
+
+AppMode_t AppMode = appmTx;
 
 #if 1 // ======================== Variables and defines ========================
 // Forever
@@ -24,9 +28,6 @@ static void OnCmd(Shell_t *PShell);
 
 static void ReadAndSetupMode();
 
-#define ID_MIN                  1
-#define ID_MAX                  36
-#define ID_DEFAULT              ID_MIN
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
 #define EE_ADDR_HEALTH_STATE    8
@@ -38,7 +39,7 @@ static uint8_t ISetID(int32_t NewID);
 void ReadIDfromEE();
 
 // ==== Periphery ====
-//Vibro_t Vibro {VIBRO_PIN};
+Vibro_t Vibro {VIBRO_SETUP};
 #if BEEPER_ENABLED
 Beeper_t Beeper {BEEPER_PIN};
 #endif
@@ -47,7 +48,7 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {MS2ST(1000), evtIdEverySecond, tktPeriodic};
-//static TmrKL_t TmrRxTableCheck {MS2ST(2007), EVT_RXCHECK, tktPeriodic};
+//static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
 static int32_t TimeS;
 #endif
 
@@ -76,7 +77,7 @@ int main(void) {
 
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-//    Vibro.Init();
+    Vibro.Init();
 #if BEEPER_ENABLED // === Beeper ===
     Beeper.Init();
     Beeper.StartOrRestart(bsqBeepBeep);
@@ -94,14 +95,10 @@ int main(void) {
 
     // ==== Time and timers ====
     TmrEverySecond.StartOrRestart();
-//    TmrRxTableCheck.InitAndStart();
+//    TmrRxTableCheck.StartOrRestart();
 
     // ==== Radio ====
-    if(Radio.Init() == retvOk) {
-        Led.StartOrRestart(lsqStart);
-        RMsg_t msg = {R_MSG_SET_CHNL, 1};
-        Radio.RMsgQ.SendNowOrExit(msg);
-    }
+    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
     else Led.StartOrRestart(lsqFailure);
     chThdSleepMilliseconds(1008);
 
@@ -141,15 +138,16 @@ void ITask() {
 //            Cataclysm.ProcessSignal(TimeRx);
 //        }
 
-//        if(Evt & EVT_RXCHECK) {
-//            if(ShowAliens == true) {
-//                if(Radio.RxTable.GetCount() != 0) {
-//                    Led.StartOrContinue(lsqTheyAreNear);
-//                    Radio.RxTable.Clear();
-//                }
-//                else Led.StartOrContinue(lsqTheyDissapeared);
-//            }
-//        }
+            case evtIdCheckRxTable: {
+                uint32_t Cnt = Radio.RxTable.GetCount();
+                switch(Cnt) {
+                    case 0: Vibro.Stop(); break;
+                    case 1: Vibro.StartOrContinue(vsqBrr); break;
+                    case 2: Vibro.StartOrContinue(vsqBrrBrr); break;
+                    default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
+                }
+                Radio.RxTable.Clear();
+            } break;
 
 #if PILL_ENABLED // ==== Pill ====
         if(Evt & EVT_PILL_CONNECTED) {
@@ -226,35 +224,29 @@ void ReadAndSetupMode() {
     static uint8_t OldDipSettings = 0xFF;
     uint8_t b = GetDipSwitch();
     if(b == OldDipSettings) return;
-    // Something has changed
-//    Radio.MustTx = false; // Just in case
-    // Reset everything
-//    Vibro.Stop();
-//    Led.Stop();
-    // Analyze switch
+    // ==== Something has changed ====
+    Printf("Dip: 0x%02X\r", b);
     OldDipSettings = b;
-    Printf("Dip: %02X\r", b);
-
-    RMsg_t msg;
-    msg.Cmd = R_MSG_SET_PWR;
-    msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
-    Radio.RMsgQ.SendNowOrExit(msg);
-//    Vibro.StartOrRestart(vsqBrr);
-//    if(b == 0) {
-//        App.Mode = modePlayer;
-//        Led.StartOrRestart(lsqModePlayerStart);
-//        chThdSleepMilliseconds(720);    // Let blink end
-        // Get Health from EE
-//        Health.Load();
-
-//        Led.StartOrRestart(lsqModeTx);  // Start Idle indication
-//}
-//    else {
-//        App.Mode = modeTx;
-//        Led.StartOrRestart(lsqModeTxStart);
-//        chThdSleepMilliseconds(720);    // Let blink end
-//        Led.StartOrRestart(lsqModeTx);  // Start Idle indication
-//    }
+    // Reset everything
+    Vibro.Stop();
+    Led.Stop();
+    // Select mode
+    if(b & 0b100000) {
+        AppMode = appmTx;
+        Led.StartOrRestart(lsqTx);
+        // Select power
+        b &= 0b11111; // Remove high bit
+        RMsg_t msg;
+        msg.Cmd = R_MSG_SET_PWR;
+        msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
+        Radio.RMsgQ.SendNowOrExit(msg);
+    }
+    else {
+        if(AppMode != appmRx) {
+            Led.StartOrRestart(lsqRx);
+            AppMode = appmRx;
+        }
+    }
 }
 
 
@@ -274,6 +266,10 @@ void OnCmd(Shell_t *PShell) {
     else if(PCmd->NameIs("SetID")) {
         if(PCmd->GetNext<int32_t>(&ID) != retvOk) { PShell->Ack(retvCmdError); return; }
         uint8_t r = ISetID(ID);
+        RMsg_t msg;
+        msg.Cmd = R_MSG_SET_CHNL;
+        msg.Value = ID2RCHNL(ID);
+        Radio.RMsgQ.SendNowOrExit(msg);
         PShell->Ack(r);
     }
 

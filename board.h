@@ -11,7 +11,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket4_1"
-#define APP_NAME            "TxID and Pwr"
+#define APP_NAME            "SomeTxSomeRx"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
