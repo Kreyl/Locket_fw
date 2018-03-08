@@ -8,7 +8,6 @@
 #include "radio_lvl1.h"
 #include "cc1101.h"
 #include "uart.h"
-#include "main.h"
 
 cc1101_t CC(CC_Setup0);
 
@@ -36,13 +35,14 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
+        chThdSleepMilliseconds(12);
         // Process queue
-        RMsg_t msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
-        if(msg.Cmd == R_MSG_SET_PWR) CC.SetTxPower(msg.Value);
-        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
-        // Process task
-        if(AppMode == appmTx) Radio.TaskTransmitter();
-        else Radio.TaskReceiverManyByID();
+//        RMsg_t msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
+//        if(msg.Cmd == R_MSG_SET_PWR) CC.SetTxPower(msg.Value);
+//        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
+//        // Process task
+//        if(AppMode == appmTx) Radio.TaskTransmitter();
+//        else Radio.TaskReceiverManyByID();
     } // while true
 }
 
@@ -72,23 +72,23 @@ void rLevel1_t::TaskTransmitter() {
 //}
 
 void rLevel1_t::TaskReceiverManyByID() {
-    for(int N=0; N<4; N++) { // Iterate channels N times
-        // Iterate channels
-        for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
-            if(i == ID) continue;   // Do not listen self
-            CC.SetChannel(ID2RCHNL(i));
-//            Printf("%u\r", i);
-            uint8_t RxRslt = CC.Receive(18, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
-            if(RxRslt == retvOk) {
-                Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
-                if(PktRx.DWord32 == THE_WORD and Rssi > RSSI_MIN) RxTable.AddId(i);
-//                else Printf("PktErr\r");
-            }
-        } // for i
-        TryToSleep(270);
-    } // For N
-    EvtMsg_t msg(evtIdCheckRxTable);
-    EvtQMain.SendNowOrExit(msg);
+//    for(int N=0; N<4; N++) { // Iterate channels N times
+//        // Iterate channels
+//        for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
+//            if(i == ID) continue;   // Do not listen self
+//            CC.SetChannel(ID2RCHNL(i));
+////            Printf("%u\r", i);
+//            uint8_t RxRslt = CC.Receive(18, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
+//            if(RxRslt == retvOk) {
+//                Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
+//                if(PktRx.DWord32 == THE_WORD and Rssi > RSSI_MIN) RxTable.AddId(i);
+////                else Printf("PktErr\r");
+//            }
+//        } // for i
+//        TryToSleep(270);
+//    } // For N
+//    EvtMsg_t msg(evtIdCheckRxTable);
+//    EvtQMain.SendNowOrExit(msg);
 }
 
 //void rLevel1_t::TaskReceiverManyByChannel() {
@@ -215,7 +215,7 @@ uint8_t rLevel1_t::Init() {
     if(CC.Init() == retvOk) {
         CC.SetTxPower(CC_PwrMinus30dBm);
         CC.SetPktSize(RPKT_LEN);
-        CC.SetChannel(ID2RCHNL(ID));
+        CC.SetChannel(0);
 //        CC.EnterPwrDown();
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
