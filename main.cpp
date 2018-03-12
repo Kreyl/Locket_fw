@@ -13,8 +13,8 @@
 
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
 extern CmdUart_t Uart;
-//void OnCmd(Shell_t *PShell);
-//void ITask();
+void OnCmd(Shell_t *PShell);
+void ITask();
 
 int main(void) {
     // ==== Init Vcore & clock system ====
@@ -34,13 +34,33 @@ int main(void) {
     PinSetupInput(GPIOA, 0, pudPullDown);
 
     // Main cycle
-    while(true) {
-        if(PinIsHi(GPIOA, 0)) {
-            PinSetHi(GPIOB, 5);
-            chThdSleepMilliseconds(99);
-            PinSetLo(GPIOB, 5);
-            chThdSleepMilliseconds(99);
-        }
-        else chThdSleepMilliseconds(99);
-    }
+    ITask();
 }
+
+__noreturn
+void ITask() {
+    while(true) {
+        EvtMsg_t Msg = EvtQMain.Fetch(TIME_INFINITE);
+        switch(Msg.ID) {
+#if UART_RX_ENABLED
+            case evtIdShellCmd:
+                OnCmd((Shell_t*)Msg.Ptr);
+                ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
+                break;
+#endif
+            default: Printf("Unhandled Msg %u\r", Msg.ID); break;
+        } // Switch
+    } // while true
+} // ITask()
+
+
+#if UART_RX_ENABLED // ================= Command processing ====================
+void OnCmd(Shell_t *PShell) {
+    Cmd_t *PCmd = &PShell->Cmd;
+    // Handle command
+    if(PCmd->NameIs("Ping")) {
+        PShell->Ack(retvOk);
+    }
+    else PShell->Ack(retvCmdUnknown);
+}
+#endif
