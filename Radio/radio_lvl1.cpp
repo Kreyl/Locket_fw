@@ -54,6 +54,7 @@ void rLevel1_t::TaskTransmitter() {
 //    PktTx.G = 255;
 //    PktTx.B = 0;
     DBG1_SET();
+    CC.Recalibrate();
     CC.Transmit(&PktTx);
     DBG1_CLR();
     chThdSleepMilliseconds(12);
@@ -78,6 +79,7 @@ void rLevel1_t::TaskReceiverManyByID() {
             if(i == ID) continue;   // Do not listen self
             CC.SetChannel(ID2RCHNL(i));
 //            Printf("%u\r", i);
+            CC.Recalibrate();
             uint8_t RxRslt = CC.Receive(18, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
             if(RxRslt == retvOk) {
                 Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);

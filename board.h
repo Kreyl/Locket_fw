@@ -16,9 +16,9 @@
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      FALSE
-#define BTN_ENABLED         FALSE
+#define BUTTONS_ENABLED     TRUE
 
-#define SIMPLESENSORS_ENABLED   BTN_ENABLED
+#define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
 // MCU type as defined in the ST header.
 #define STM32L151xB
@@ -45,7 +45,7 @@
 #define LED_B_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
 
 // Button
-#define BTN_PIN         { GPIOA, 0, pudPullDown }
+#define BTN_PIN         GPIOA, 0, pudPullDown
 
 // Vibro
 #define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, 99 }

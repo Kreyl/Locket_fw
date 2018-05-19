@@ -16,6 +16,8 @@
 #include "pill_mgr.h"
 #include "MsgQ.h"
 #include "main.h"
+#include "SimpleSensors.h"
+#include "buttons.h"
 
 AppMode_t AppMode = appmTx;
 
@@ -83,8 +85,8 @@ int main(void) {
     Beeper.StartOrRestart(bsqBeepBeep);
     chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
-#if BTN_ENABLED
-//    PinSensors.Init();
+#if BUTTONS_ENABLED
+    SimpleSensors::Init();
 #endif
 //    Adc.Init();
 
@@ -116,20 +118,12 @@ void ITask() {
                 ReadAndSetupMode();
                 break;
 
-#if BTN_ENABLED
+#if BUTTONS_ENABLED
             case evtIdButtons:
-                Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
+//                Printf("Btn %u\r", Msg.BtnEvtInfo.Type);
+                if(AppMode == appmTx) Led.StartOrRestart(lsqTx);
+                else Led.StartOrRestart(lsqRx);
                 break;
-        if(Evt & EVT_BUTTONS) {
-            Uart.Printf("Btn\r");
-            BtnEvtInfo_t EInfo;
-            while(BtnGetEvt(&EInfo) == OK) {
-                if(EInfo.Type == bePress) {
-                    Sheltering.TimeOfBtnPress = TimeS;
-                    Sheltering.ProcessCChangeOrBtn();
-                } // if Press
-            } // while
-        }
 #endif
 
 //        if(Evt & EVT_RX) {
