@@ -82,7 +82,7 @@ struct RMsg_t {
 #define RCHNL_SERVICE   0
 #define RCHNL_COMMON    1
 #define RCHNL_EACH_OTH  7
-#define RCHNL_MIN       1
+#define RCHNL_MIN       10
 #define RCHNL_MAX       30
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
 
