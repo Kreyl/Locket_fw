@@ -7,7 +7,8 @@
                         STM32_DMA_CR_MSIZE_BYTE | \
                         STM32_DMA_CR_PSIZE_BYTE | \
                         STM32_DMA_CR_MINC |     /* Memory pointer increase */ \
-                        STM32_DMA_CR_DIR_M2P    /* Direction is memory to peripheral */ \
+                        STM32_DMA_CR_DIR_M2P |  /* Direction is memory to peripheral */ \
+                        STM32_DMA_CR_TCIE
 
 #define I2C_DMARX_MODE(Chnl) \
                         STM32_DMA_CR_CHSEL(Chnl) |   \
@@ -15,7 +16,8 @@
                         STM32_DMA_CR_MSIZE_BYTE | \
                         STM32_DMA_CR_PSIZE_BYTE | \
                         STM32_DMA_CR_MINC |         /* Memory pointer increase */ \
-                        STM32_DMA_CR_DIR_P2M        /* Direction is peripheral to memory */ \
+                        STM32_DMA_CR_DIR_P2M |      /* Direction is peripheral to memory */ \
+                        STM32_DMA_CR_TCIE
 
 #if defined STM32L1XX || defined STM32F2XX
 #if defined STM32F2XX
@@ -44,16 +46,16 @@ static const i2cParams_t I2C2Params = {
         I2C2_BAUDRATE,
         I2C2_DMA_TX,
         I2C2_DMA_RX,
-        (I2C_DMATX_MODE | STM32_DMA_CR_CHSEL(I2C2_DMA_CHNL)),
-        (I2C_DMARX_MODE | STM32_DMA_CR_CHSEL(I2C2_DMA_CHNL))
+        (I2C_DMATX_MODE(I2C2_DMA_CHNL)),
+        (I2C_DMARX_MODE(I2C2_DMA_CHNL))
 };
 i2c_t i2c2 {&I2C2Params};
 #endif
 
+extern "C"
 void i2cDmaIrqHandler(void *p, uint32_t flags) {
     chSysLockFromISR();
     i2c_t *pi2c = (i2c_t*)p;
-//    Uart.PrintfNow("\r===T===");
     chThdResumeI(&pi2c->ThdRef, (msg_t)0);
     chSysUnlockFromISR();
 }
@@ -89,7 +91,7 @@ void i2c_t::Resume() {
     Error = false;
     // ==== GPIOs ====
     AlterFunc_t PinAF;
-#if defined STM32L1XX
+#if defined STM32L1XX || defined STM32F2XX
     PinAF = AF4; // for all I2Cs everywhere
 //#elif defined STM32F0XX
 //    PinAF = AF4;
@@ -463,13 +465,18 @@ i2c_t i2c2 {&I2C2Params};
 static const i2cParams_t I2C3Params = {
         I2C3,
         I2C3_GPIO, I2C3_SCL, I2C3_SDA, I2C_AF,
-        0xE14,                          // Calculated by Cube for 100kHz
         I2C3_DMA_TX,
         I2C3_DMA_RX,
-        (STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_M2P | STM32_DMA_CR_CHSEL(I2C3_DMA_CHNL) | DMA_PRIORITY_MEDIUM),
-        (STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_P2M | STM32_DMA_CR_CHSEL(I2C3_DMA_CHNL) | DMA_PRIORITY_MEDIUM),
+        I2C_DMATX_MODE(I2C3_DMA_CHNL),
+        I2C_DMARX_MODE(I2C3_DMA_CHNL),
+#if defined STM32L4XX
         STM32_I2C3_EVENT_NUMBER,
-        STM32_I2C3_ERROR_NUMBER
+        STM32_I2C3_ERROR_NUMBER,
+        I2C_CLK_SRC
+#else
+        STM32_I2C1_GLOBAL_NUMBER,
+        STM32_I2C1_GLOBAL_NUMBER,
+#endif
 };
 i2c_t i2c3 {&I2C3Params};
 #endif
@@ -506,9 +513,20 @@ void i2c_t::Init() {
     // ==== Setup timings ====
     // Get input clock
     uint32_t ClkHz;
-    if(PParams->ClkSrc == i2cclkHSI) ClkHz = HSI_FREQ_HZ;
-    else if(PParams->ClkSrc == i2cclkPCLK1) ClkHz = Clk.APB1FreqHz;
-    else ClkHz = Clk.GetSysClkHz();
+    if(PParams->ClkSrc == i2cclkHSI) {
+        Clk.SetI2CClkSrc(pi2c, i2cclkHSI);
+        ClkHz = HSI_FREQ_HZ;
+    }
+#if defined STM32L4XX
+    else if(PParams->ClkSrc == i2cclkPCLK1) {
+        Clk.SetI2CClkSrc(pi2c, i2cclkPCLK1);
+        ClkHz = Clk.APB1FreqHz;
+    }
+#endif
+    else {
+        Clk.SetI2CClkSrc(pi2c, i2cclkSYSCLK);
+        ClkHz = Clk.GetSysClkHz();
+    }
     // Calc prescaler
     uint32_t Prescaler = ClkHz / 16000000;
     if(Prescaler > 0) Prescaler--;

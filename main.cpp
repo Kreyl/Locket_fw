@@ -68,7 +68,7 @@ int main(void) {
     // ==== Init hardware ====
     Uart.Init(115200);
     ReadIDfromEE();
-    Printf("\r%S %S; ID=%u\r", APP_NAME, BUILD_TIME, ID);
+    Printf("\r%S %S; ID=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), ID);
 //    Uart.Printf("ID: %X %X %X\r", GetUniqID1(), GetUniqID2(), GetUniqID3());
 //    if(Sleep::WasInStandby()) {
 //        Uart.Printf("WasStandby\r");
@@ -79,7 +79,7 @@ int main(void) {
 
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-    Vibro.Init();
+//    Vibro.Init();
 #if BEEPER_ENABLED // === Beeper ===
     Beeper.Init();
     Beeper.StartOrRestart(bsqBeepBeep);
@@ -132,16 +132,16 @@ void ITask() {
 //            Cataclysm.ProcessSignal(TimeRx);
 //        }
 
-            case evtIdCheckRxTable: {
-                uint32_t Cnt = Radio.RxTable.GetCount();
-                switch(Cnt) {
-                    case 0: Vibro.Stop(); break;
-                    case 1: Vibro.StartOrContinue(vsqBrr); break;
-                    case 2: Vibro.StartOrContinue(vsqBrrBrr); break;
-                    default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
-                }
-                Radio.RxTable.Clear();
-            } break;
+//            case evtIdCheckRxTable: {
+//                uint32_t Cnt = Radio.RxTable.GetCount();
+//                switch(Cnt) {
+//                    case 0: Vibro.Stop(); break;
+//                    case 1: Vibro.StartOrContinue(vsqBrr); break;
+//                    case 2: Vibro.StartOrContinue(vsqBrrBrr); break;
+//                    default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
+//                }
+//                Radio.RxTable.Clear();
+//            } break;
 
 #if PILL_ENABLED // ==== Pill ====
         if(Evt & EVT_PILL_CONNECTED) {
@@ -253,7 +253,7 @@ void OnCmd(Shell_t *PShell) {
     if(PCmd->NameIs("Ping")) {
         PShell->Ack(retvOk);
     }
-    else if(PCmd->NameIs("Version")) PShell->Printf("%S %S\r", APP_NAME, BUILD_TIME);
+    else if(PCmd->NameIs("Version")) PShell->Printf("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
 
     else if(PCmd->NameIs("GetID")) PShell->Reply("ID", ID);
 

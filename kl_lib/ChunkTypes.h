@@ -9,9 +9,9 @@
 
 #include "color.h"
 #include "ch.h"
-//#include "uart.h"
+#include "MsgQ.h"
 
-enum ChunkSort_t {csSetup, csWait, csGoto, csEnd};
+enum ChunkSort_t {csSetup, csWait, csGoto, csEnd, csRepeat};
 
 // The beginning of any sort of chunk. Everyone must contain it.
 #define BaseChunk_Vars \
@@ -21,6 +21,7 @@ enum ChunkSort_t {csSetup, csWait, csGoto, csEnd};
         uint32_t Volume;            \
         uint32_t Time_ms;           \
         uint32_t ChunkToJumpTo;     \
+        int32_t RepeatCnt;          \
     }
 
 // ==== Different types of chunks ====
@@ -55,8 +56,8 @@ class BaseSequencer_t : private IrqHandler_t {
 protected:
     virtual_timer_t ITmr;
     const TChunk *IPStartChunk, *IPCurrentChunk;
-    thread_t *PThread;
-    eventmask_t EvtEnd;
+    int32_t RepeatCounter = -1;
+    EvtMsg_t IEvtMsg;
     virtual void ISwitchOff() = 0;
     virtual SequencerLoopTask_t ISetup() = 0;
     void SetupDelay(uint32_t ms) { chVTSetI(&ITmr, MS2ST(ms), TmrKLCallback, this); }
@@ -87,22 +88,32 @@ protected:
                     break;
 
                 case csEnd:
-//                    if(PThread != nullptr) chEvtSignalI(PThread, EvtEnd); // XXX
+                    if(IEvtMsg.ID != evtIdNone) EvtQMain.SendNowOrExitI(IEvtMsg);
                     IPStartChunk = nullptr;
                     IPCurrentChunk = nullptr;
                     return;
+                    break;
+
+                case csRepeat:
+                    if(RepeatCounter == -1) RepeatCounter = IPCurrentChunk->RepeatCnt;
+                    if(RepeatCounter == 0) {    // All was repeated, goto next
+                        RepeatCounter = -1;     // reset counter
+                        IPCurrentChunk++;
+                    }
+                    else {  // repeating in progress
+                        IPCurrentChunk = IPStartChunk;  // Always from beginning
+                        RepeatCounter--;
+                    }
                     break;
             } // switch
         } // while
     } // IProcessSequenceI
 public:
-    void SetupSeqEndEvt(thread_t *APThread, eventmask_t AEvt = 0) {
-        PThread = APThread;
-        EvtEnd = AEvt;
-    }
+    void SetupSeqEndEvt(EvtMsg_t AEvtMsg) { IEvtMsg = AEvtMsg; }
 
     void StartOrRestart(const TChunk *PChunk) {
         chSysLock();
+        RepeatCounter = -1;
         IPStartChunk = PChunk;   // Save first chunk
         IPCurrentChunk = PChunk;
         IIrqHandler();
@@ -125,5 +136,6 @@ public:
         ISwitchOff();
     }
     const TChunk* GetCurrentSequence() { return IPStartChunk; }
+    bool IsIdle() { return (IPStartChunk == nullptr and IPCurrentChunk == nullptr); }
 };
 #endif

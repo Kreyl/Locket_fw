@@ -73,6 +73,7 @@ union EvtMsg_t {
     EvtMsg_t() : Ptr(nullptr), ID(0) {}
     EvtMsg_t(uint8_t AID) : ID(AID) {}
     EvtMsg_t(uint8_t AID, void *APtr) : Ptr(APtr), ID(AID) {}
+    EvtMsg_t(uint8_t AID, int32_t AValue) : Value(AValue), ID(AID) {}
     EvtMsg_t(uint8_t AID, uint8_t AValueID, int32_t AValue) : Value(AValue), ValueID(AValueID), ID(AID) {}
 } __attribute__((__packed__));
 
@@ -110,7 +111,7 @@ public:
 
     /* Posts a message into a mailbox.
      * The function returns a timeout condition if the queue is full */
-    uint8_t SendNowOrExitI(T &Msg) {
+    uint8_t SendNowOrExitI(const T &Msg) {
         if(chSemGetCounterI(&EmptySem) <= (cnt_t)0) return retvTimeout; // Q is full
         chSemFastWaitI(&EmptySem);
         *WritePtr++ = Msg;
@@ -119,7 +120,7 @@ public:
         return retvOk;
     }
 
-    uint8_t SendNowOrExit(T &Msg) {
+    uint8_t SendNowOrExit(const T &Msg) {
         chSysLock();
         uint8_t Rslt = SendNowOrExitI(Msg);
         chSysUnlock();
@@ -129,7 +130,7 @@ public:
     /* Posts a message into a mailbox.
      * The invoking thread waits until a empty slot in the mailbox becomes available
      * or the specified time runs out. */
-    uint8_t SendWaitingAbility(T &Msg, systime_t timeout) {
+    uint8_t SendWaitingAbility(const T &Msg, systime_t timeout) {
         chSysLock();
         msg_t rdymsg = chSemWaitTimeoutS(&EmptySem, timeout);
         if(rdymsg == MSG_OK) {
