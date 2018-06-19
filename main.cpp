@@ -18,8 +18,7 @@
 #include "main.h"
 #include "SimpleSensors.h"
 #include "buttons.h"
-
-AppMode_t AppMode = appmTx;
+#include "ColorTable.h"
 
 #if 1 // ======================== Variables and defines ========================
 // Forever
@@ -32,12 +31,12 @@ static void ReadAndSetupMode();
 
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
-#define EE_ADDR_HEALTH_STATE    8
+#define EE_ADDR_COLOR           4
 
 int32_t ID;
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
-static uint8_t ISetID(int32_t NewID);
+//static uint8_t ISetID(int32_t NewID);
 void ReadIDfromEE();
 
 // ==== Periphery ====
@@ -47,6 +46,20 @@ Beeper_t Beeper {BEEPER_PIN};
 #endif
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+
+// Colors and sequences
+LedRGBChunk_t lsqOn[] = {
+        {csSetup, 99, clRed},
+        {csEnd}
+};
+
+const LedRGBChunk_t lsqOff[] = {
+        {csSetup, 99, clBlack},
+        {csEnd}
+};
+
+Color_t txColor = clGreen;
+
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {MS2ST(1000), evtIdEverySecond, tktPeriodic};
@@ -75,6 +88,13 @@ int main(void) {
 //        Sleep::ClearStandbyFlag();
 //    }
     Clk.PrintFreqs();
+
+    // Get color from ee
+    ColorTable.Indx = EE::Read32(EE_ADDR_COLOR);
+    if(ColorTable.Indx >= ColorTable.Count) ColorTable.Indx = 0;
+    lsqOn[0].Color = *ColorTable.GetCurrent();
+    txColor = lsqOn[0].Color;
+
 //    RandomSeed(GetUniqID3());   // Init random algorythm with uniq ID
 
     Led.Init();
@@ -97,7 +117,6 @@ int main(void) {
 
     // ==== Time and timers ====
     TmrEverySecond.StartOrRestart();
-//    TmrRxTableCheck.StartOrRestart();
 
     // ==== Radio ====
     if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
@@ -123,17 +142,21 @@ void ITask() {
 #if BUTTONS_ENABLED
             case evtIdButtons:
                 if(ID == 7) {
-
-
+                    if(Msg.BtnEvtInfo.Type == beRepeat or Msg.BtnEvtInfo.Type == beShortPress) {
+                        Printf("Press\r");
+                        lsqOn[0].Color = *ColorTable.GetNext();
+                        Led.StartOrRestart(lsqOn);
+                    }
+                    else if(Msg.BtnEvtInfo.Type == beRelease) {
+                        Printf("Release\r");
+//                    Led.StartOrRestart(lsqOff);
+                        // Save color indx to EE
+                        EE::Write32(EE_ADDR_COLOR, ColorTable.Indx);
+                        txColor = lsqOn[0].Color;
+                    }
                 }
                 break;
 #endif
-
-//        if(Evt & EVT_RX) {
-//            int32_t TimeRx = Radio.PktRx.Time;
-//            Uart.Printf("RX %u\r", TimeRx);
-//            Cataclysm.ProcessSignal(TimeRx);
-//        }
 
 //            case evtIdCheckRxTable: {
 //                uint32_t Cnt = Radio.RxTable.GetCount();
@@ -189,12 +212,11 @@ void ITask() {
         //            chSysUnlock();
         //        }
 
-#if UART_RX_ENABLED
             case evtIdShellCmd:
                 OnCmd((Shell_t*)Msg.Ptr);
                 ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
                 break;
-#endif
+
             default: Printf("Unhandled Msg %u\r", Msg.ID); break;
         } // Switch
     } // while true
@@ -228,19 +250,25 @@ void ReadAndSetupMode() {
     Vibro.Stop();
     Led.Stop();
 
+    RMsg_t msg;
     // Get ID
     ID = b >> 3;
     Printf("ID=%u\r", ID);
+    msg.Cmd = R_MSG_SET_CHNL;
+    msg.Value = ID2RCHNL(ID);
+    Radio.RMsgQ.SendNowOrExit(msg);
+
     // Select TX pwr
-    RMsg_t msg;
     msg.Cmd = R_MSG_SET_PWR;
     if(ID == 7) {
-        msg.Value = CC_PwrPlus10dBm;
-        Led.StartOrRestart(lsqMaster);
+        msg.Value = PwrTable[10];
+        Printf("Pwr=%u\r", 10);
+        Led.StartOrRestart(lsqOn);
     }
     else {
         b &= 0b111; // Remove high bits
         msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
+        Printf("Pwr=%u\r", b);
         Led.StartOrRestart(lsqPlayer);
     }
     Radio.RMsgQ.SendNowOrExit(msg);

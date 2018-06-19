@@ -13,6 +13,7 @@
 #include "kl_buf.h"
 #include "uart.h"
 #include "MsgQ.h"
+#include "color.h"
 
 #if 0 // ========================= Signal levels ===============================
 // Python translation for db
@@ -56,14 +57,15 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #endif
 
 #if 1 // =========================== Pkt_t =====================================
-union rPkt_t {
-    uint32_t DWord32;
-    struct {
-        uint8_t R, G, B;
-    };
-    bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }
-    rPkt_t& operator = (const rPkt_t &Right) { DWord32 = Right.DWord32; return *this; }
-} __attribute__ ((__packed__));
+struct rPkt_t  {
+    uint8_t ID;
+    Color_t Clr;
+    rPkt_t& operator = (const rPkt_t &Right) {
+        ID = Right.ID;
+        Clr.DWord32 = Right.Clr.DWord32;
+        return *this;
+    }
+} __packed;
 #define RPKT_LEN    sizeof(rPkt_t)
 
 #define THE_WORD        0xCA115EA1

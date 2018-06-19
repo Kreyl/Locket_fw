@@ -7,11 +7,6 @@
 
 #pragma once
 
-#define ID_MIN                  1
-#define ID_MAX                  15
-#define ID_DEFAULT              ID_MIN
+#define ID_MIN                  0
+#define ID_MAX                  7
 extern int32_t ID;
-
-enum AppMode_t {appmTx, appmRx};
-
-extern AppMode_t AppMode;
