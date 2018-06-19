@@ -67,8 +67,8 @@ int main(void) {
 
     // ==== Init hardware ====
     Uart.Init(115200);
-    ReadIDfromEE();
-    Printf("\r%S %S; ID=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), ID);
+//    ReadIDfromEE();
+    Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
 //    Uart.Printf("ID: %X %X %X\r", GetUniqID1(), GetUniqID2(), GetUniqID3());
 //    if(Sleep::WasInStandby()) {
 //        Uart.Printf("WasStandby\r");
@@ -104,6 +104,8 @@ int main(void) {
     else Led.StartOrRestart(lsqFailure);
     chThdSleepMilliseconds(1008);
 
+    ReadAndSetupMode();
+
     // Main cycle
     ITask();
 }
@@ -120,9 +122,10 @@ void ITask() {
 
 #if BUTTONS_ENABLED
             case evtIdButtons:
-//                Printf("Btn %u\r", Msg.BtnEvtInfo.Type);
-                if(AppMode == appmTx) Led.StartOrRestart(lsqTx);
-                else Led.StartOrRestart(lsqRx);
+                if(ID == 7) {
+
+
+                }
                 break;
 #endif
 
@@ -224,23 +227,23 @@ void ReadAndSetupMode() {
     // Reset everything
     Vibro.Stop();
     Led.Stop();
-    // Select mode
-    if(b & 0b100000) {
-        AppMode = appmTx;
-        Led.StartOrRestart(lsqTx);
-        // Select power
-        b &= 0b11111; // Remove high bit
-        RMsg_t msg;
-        msg.Cmd = R_MSG_SET_PWR;
-        msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
-        Radio.RMsgQ.SendNowOrExit(msg);
+
+    // Get ID
+    ID = b >> 3;
+    Printf("ID=%u\r", ID);
+    // Select TX pwr
+    RMsg_t msg;
+    msg.Cmd = R_MSG_SET_PWR;
+    if(ID == 7) {
+        msg.Value = CC_PwrPlus10dBm;
+        Led.StartOrRestart(lsqMaster);
     }
     else {
-        if(AppMode != appmRx) {
-            Led.StartOrRestart(lsqRx);
-            AppMode = appmRx;
-        }
+        b &= 0b111; // Remove high bits
+        msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
+        Led.StartOrRestart(lsqPlayer);
     }
+    Radio.RMsgQ.SendNowOrExit(msg);
 }
 
 
@@ -255,17 +258,17 @@ void OnCmd(Shell_t *PShell) {
     }
     else if(PCmd->NameIs("Version")) PShell->Printf("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
 
-    else if(PCmd->NameIs("GetID")) PShell->Reply("ID", ID);
-
-    else if(PCmd->NameIs("SetID")) {
-        if(PCmd->GetNext<int32_t>(&ID) != retvOk) { PShell->Ack(retvCmdError); return; }
-        uint8_t r = ISetID(ID);
-        RMsg_t msg;
-        msg.Cmd = R_MSG_SET_CHNL;
-        msg.Value = ID2RCHNL(ID);
-        Radio.RMsgQ.SendNowOrExit(msg);
-        PShell->Ack(r);
-    }
+//    else if(PCmd->NameIs("GetID")) PShell->Reply("ID", ID);
+//
+//    else if(PCmd->NameIs("SetID")) {
+//        if(PCmd->GetNext<int32_t>(&ID) != retvOk) { PShell->Ack(retvCmdError); return; }
+//        uint8_t r = ISetID(ID);
+//        RMsg_t msg;
+//        msg.Cmd = R_MSG_SET_CHNL;
+//        msg.Value = ID2RCHNL(ID);
+//        Radio.RMsgQ.SendNowOrExit(msg);
+//        PShell->Ack(r);
+//    }
 
 
 #if PILL_ENABLED // ==== Pills ====
@@ -309,7 +312,7 @@ void OnCmd(Shell_t *PShell) {
 }
 #endif
 
-#if 1 // =========================== ID management =============================
+#if 0 // =========================== ID management =============================
 void ReadIDfromEE() {
     ID = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
     if(ID < ID_MIN or ID > ID_MAX) {
