@@ -213,7 +213,7 @@ const LedRGBChunk_t lsqStart[] = {
         {csWait, 207},
         {csSetup, 0, clBlue},
         {csWait, 207},
-        {csSetup, 0, clBlack},
+//        {csSetup, 0, clBlack},
         {csSetup, 0, {0,7,0}},
         {csEnd},
 };
@@ -233,19 +233,17 @@ const LedRGBChunk_t lsqFailure[] = {
         {csEnd}
 };
 
-const LedRGBChunk_t lsqMaster[] = {
+const LedRGBChunk_t lsqMagic[] = {
         {csSetup, 603, clRed},
-//        {csWait, 207},
-//        {csSetup, 603, clBlack},
-//        {csSetup, 0, {7,0,0}},
+        {csWait, 207},
+        {csSetup, 603, {4,0,0}},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqPlayer[] = {
         {csSetup, 603, clBlue},
         {csWait, 207},
-        {csSetup, 603, {0,0,7}},
-//        {csSetup, 0, {0,0,7}},
+        {csSetup, 603, {0,0,4}},
         {csEnd},
 };
 
@@ -386,7 +384,8 @@ const BeepChunk_t bsqBeepPillBad[] = {
 #define VIBRO_VOLUME    100  // 1 to 100
 
 #define VIBRO_SHORT_MS          99
-#define VIBRO_REPEAT_PERIOD     1008
+#define VIBRO_LONG_MS           450
+#define VIBRO_REPEAT_PERIOD     1800
 
 const BaseChunk_t vsqBrr[] = {
         {csSetup, VIBRO_VOLUME},
@@ -424,55 +423,12 @@ const BaseChunk_t vsqBrrBrrBrr[] = {
         {csEnd}
 };
 
-// ==== Health ====
-const BaseChunk_t vsqIll[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
-        {csSetup, 0},
-        {csWait, 3600},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
-};
-
-const BaseChunk_t vsqDeath[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
-        {csSetup, 0},
-        {csWait, 4005},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
-};
-
-// Cataclysm
-const BaseChunk_t vsqCataclysm[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
-        {csSetup, 0},
-        {csWait, 999},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 99},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
-};
-
-/*
-const BaseChunk_t vsqError[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
-        {csSetup, 0},
-        {csEnd}
-};
 
 const BaseChunk_t vsqSingle[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, VIBRO_SHORT_MS},
         {csSetup, 0},
-        {csWait, 1800},
+        {csWait, VIBRO_REPEAT_PERIOD},
         {csGoto, 0}
 };
 const BaseChunk_t vsqPair[] = {
@@ -483,7 +439,7 @@ const BaseChunk_t vsqPair[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, VIBRO_SHORT_MS},
         {csSetup, 0},
-        {csWait, 1350},
+        {csWait, VIBRO_REPEAT_PERIOD},
         {csGoto, 0}
 };
 const BaseChunk_t vsqMany[] = {
@@ -498,8 +454,63 @@ const BaseChunk_t vsqMany[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, VIBRO_SHORT_MS},
         {csSetup, 0},
-        {csWait, 1008},
+        {csWait, VIBRO_REPEAT_PERIOD},
         {csGoto, 0}
 };
-*/
+
+// Magic is near
+const BaseChunk_t vsqMagicOnly[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_LONG_MS},
+        {csSetup, 0},
+        {csWait, VIBRO_REPEAT_PERIOD},
+        {csGoto, 0}
+};
+
+const BaseChunk_t vsqSingleWMagic[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csWait, 99},               // }
+        {csSetup, VIBRO_VOLUME},    // }
+        {csWait, VIBRO_LONG_MS},    // }
+        {csSetup, 0},               // } Magic
+        {csWait, VIBRO_REPEAT_PERIOD},
+        {csGoto, 0}
+};
+const BaseChunk_t vsqPairWMagic[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csWait, 99},
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csWait, 99},               // }
+        {csSetup, VIBRO_VOLUME},    // }
+        {csWait, VIBRO_LONG_MS},    // }
+        {csSetup, 0},               // } Magic
+        {csWait, VIBRO_REPEAT_PERIOD},
+        {csGoto, 0}
+};
+const BaseChunk_t vsqManyWMagic[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csWait, 99},
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csWait, 99},
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csWait, 99},               // }
+        {csSetup, VIBRO_VOLUME},    // }
+        {csWait, VIBRO_LONG_MS},    // }
+        {csSetup, 0},               // } Magic
+        {csWait, VIBRO_REPEAT_PERIOD},
+        {csGoto, 0}
+};
+
 #endif

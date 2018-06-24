@@ -14,6 +14,7 @@
 #include "uart.h"
 #include "MsgQ.h"
 #include "color.h"
+#include "main.h"
 
 #if 0 // ========================= Signal levels ===============================
 // Python translation for db
@@ -58,11 +59,9 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 
 #if 1 // =========================== Pkt_t =====================================
 struct rPkt_t  {
-    uint8_t ID;
-    Color_t Clr;
+    int32_t ID;
     rPkt_t& operator = (const rPkt_t &Right) {
         ID = Right.ID;
-        Clr.DWord32 = Right.Clr.DWord32;
         return *this;
     }
 } __packed;
@@ -92,8 +91,8 @@ struct RMsg_t {
 
 // Feel-Each-Other related
 #define CYCLE_CNT           4
-#define SLOT_CNT            30
-#define SLOT_DURATION_MS    5
+#define SLOT_CNT            108
+#define SLOT_DURATION_MS    2
 
 // Timings
 #define RX_T_MS                 180      // pkt duration at 10k is around 12 ms
@@ -102,17 +101,18 @@ struct RMsg_t {
 #endif
 
 #if 1 // ============================= RX Table ================================
-#define RXTABLE_SZ              4
+#define RXTABLE_SZ              ID_MAX
 #define RXT_PKT_REQUIRED        FALSE
 class RxTable_t {
 private:
+    uint32_t Cnt = 0;
+public:
 #if RXT_PKT_REQUIRED
     rPkt_t IBuf[RXTABLE_SZ];
 #else
     uint8_t IdBuf[RXTABLE_SZ];
 #endif
-    uint32_t Cnt = 0;
-public:
+
 #if RXT_PKT_REQUIRED
     void AddOrReplaceExistingPkt(rPkt_t &APkt) {
         if(Cnt >= RXTABLE_SZ) return;   // Buffer is full, nothing to do here
@@ -151,9 +151,14 @@ public:
         IdBuf[Cnt] = ID;
         Cnt++;
     }
-
 #endif
     uint32_t GetCount() { return Cnt; }
+    bool IDPresents(uint8_t ID) {
+        for(uint32_t i=0; i<Cnt; i++) {
+            if(IdBuf[i] == ID) return true;
+        }
+        return false;
+    }
     void Clear() { Cnt = 0; }
 
     void Print() {

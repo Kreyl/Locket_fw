@@ -1,10 +1,3 @@
-/*
- * main.cpp
- *
- *  Created on: 20 февр. 2014 г.
- *      Author: g.kruglov
- */
-
 #include "board.h"
 #include "led.h"
 #include "vibro.h"
@@ -36,7 +29,7 @@ static void ReadAndSetupMode();
 int32_t ID;
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
-//static uint8_t ISetID(int32_t NewID);
+static uint8_t ISetID(int32_t NewID);
 void ReadIDfromEE();
 
 // ==== Periphery ====
@@ -47,23 +40,9 @@ Beeper_t Beeper {BEEPER_PIN};
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
-// Colors and sequences
-LedRGBChunk_t lsqOn[] = {
-        {csSetup, 99, clRed},
-        {csEnd}
-};
-
-const LedRGBChunk_t lsqOff[] = {
-        {csSetup, 99, clBlack},
-        {csEnd}
-};
-
-Color_t txColor = clGreen;
-
-
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {MS2ST(1000), evtIdEverySecond, tktPeriodic};
-//static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
+static TmrKL_t TmrRxTableCheck {MS2ST(3600), evtIdCheckRxTable, tktPeriodic};
 static int32_t TimeS;
 #endif
 
@@ -80,8 +59,8 @@ int main(void) {
 
     // ==== Init hardware ====
     Uart.Init(115200);
-//    ReadIDfromEE();
-    Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
+    ReadIDfromEE();
+    Printf("\r%S ID=%u %S\r", APP_NAME, ID, XSTRINGIFY(BUILD_TIME));
 //    Uart.Printf("ID: %X %X %X\r", GetUniqID1(), GetUniqID2(), GetUniqID3());
 //    if(Sleep::WasInStandby()) {
 //        Uart.Printf("WasStandby\r");
@@ -89,17 +68,11 @@ int main(void) {
 //    }
     Clk.PrintFreqs();
 
-    // Get color from ee
-    ColorTable.Indx = EE::Read32(EE_ADDR_COLOR);
-    if(ColorTable.Indx >= ColorTable.Count) ColorTable.Indx = 0;
-    lsqOn[0].Color = *ColorTable.GetCurrent();
-    txColor = lsqOn[0].Color;
-
 //    RandomSeed(GetUniqID3());   // Init random algorythm with uniq ID
 
     Led.Init();
-//    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-//    Vibro.Init();
+    Vibro.Init();
+    Vibro.StartOrRestart(vsqBrr);
 #if BEEPER_ENABLED // === Beeper ===
     Beeper.Init();
     Beeper.StartOrRestart(bsqBeepBeep);
@@ -117,9 +90,13 @@ int main(void) {
 
     // ==== Time and timers ====
     TmrEverySecond.StartOrRestart();
+    TmrRxTableCheck.StartOrRestart();
 
     // ==== Radio ====
-    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
+    if(Radio.Init() == retvOk) {
+        if(ID >= MAGIC_ID_MIN) Led.StartOrRestart(lsqMagic);
+        else Led.StartOrRestart(lsqPlayer);
+    }
     else Led.StartOrRestart(lsqFailure);
     chThdSleepMilliseconds(1008);
 
@@ -158,16 +135,37 @@ void ITask() {
                 break;
 #endif
 
-//            case evtIdCheckRxTable: {
-//                uint32_t Cnt = Radio.RxTable.GetCount();
-//                switch(Cnt) {
-//                    case 0: Vibro.Stop(); break;
-//                    case 1: Vibro.StartOrContinue(vsqBrr); break;
-//                    case 2: Vibro.StartOrContinue(vsqBrrBrr); break;
-//                    default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
-//                }
-//                Radio.RxTable.Clear();
-//            } break;
+            case evtIdCheckRxTable: {
+                uint32_t Cnt = Radio.RxTable.GetCount();
+                if(Cnt > 0 and ID < MAGIC_ID_MIN) { // Do not indicate if magic thing
+                    // Analyze RxTable: count aliens, check if magic is near
+                    uint8_t AlienCnt = 0;
+                    bool MagicIsNear = false;
+                    for(uint32_t i=0; i<Cnt; i++) {
+                        if(Radio.RxTable.IdBuf[i] < MAGIC_ID_MIN) AlienCnt++;
+                        else MagicIsNear = true;
+                    }
+                    // Indicate depending on situation
+                    if(MagicIsNear) {
+                        switch(AlienCnt) {
+                            case 0: Vibro.StartOrContinue(vsqMagicOnly); break;
+                            case 1: Vibro.StartOrContinue(vsqSingleWMagic); break;
+                            case 2: Vibro.StartOrContinue(vsqPairWMagic); break;
+                            default: Vibro.StartOrContinue(vsqManyWMagic); break;
+                        }
+                    }
+                    else {
+                        switch(Cnt) {
+                            case 0: Vibro.Stop(); break;
+                            case 1: Vibro.StartOrContinue(vsqSingle); break;
+                            case 2: Vibro.StartOrContinue(vsqPair); break;
+                            default: Vibro.StartOrContinue(vsqMany); break;
+                        }
+                    }
+                } // if cnt
+                else Vibro.Stop(); // Noone near
+                Radio.RxTable.Clear();
+            } break;
 
 #if PILL_ENABLED // ==== Pill ====
         if(Evt & EVT_PILL_CONNECTED) {
@@ -247,30 +245,16 @@ void ReadAndSetupMode() {
     Printf("Dip: 0x%02X\r", b);
     OldDipSettings = b;
     // Reset everything
-    Vibro.Stop();
-    Led.Stop();
+//    Vibro.Stop();
+//    Led.Stop();
 
     RMsg_t msg;
-    // Get ID
-    ID = b >> 3;
-    Printf("ID=%u\r", ID);
-    msg.Cmd = R_MSG_SET_CHNL;
-    msg.Value = ID2RCHNL(ID);
-    Radio.RMsgQ.SendNowOrExit(msg);
 
     // Select TX pwr
     msg.Cmd = R_MSG_SET_PWR;
-    if(ID == 7) {
-        msg.Value = PwrTable[10];
-        Printf("Pwr=%u\r", 10);
-        Led.StartOrRestart(lsqOn);
-    }
-    else {
-        b &= 0b111; // Remove high bits
-        msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
-        Printf("Pwr=%u\r", b);
-        Led.StartOrRestart(lsqPlayer);
-    }
+    b &= 0b1111; // Remove high bits
+    msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
+    Printf("Pwr=%u\r", b);
     Radio.RMsgQ.SendNowOrExit(msg);
 }
 
@@ -286,17 +270,13 @@ void OnCmd(Shell_t *PShell) {
     }
     else if(PCmd->NameIs("Version")) PShell->Printf("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
 
-//    else if(PCmd->NameIs("GetID")) PShell->Reply("ID", ID);
-//
-//    else if(PCmd->NameIs("SetID")) {
-//        if(PCmd->GetNext<int32_t>(&ID) != retvOk) { PShell->Ack(retvCmdError); return; }
-//        uint8_t r = ISetID(ID);
-//        RMsg_t msg;
-//        msg.Cmd = R_MSG_SET_CHNL;
-//        msg.Value = ID2RCHNL(ID);
-//        Radio.RMsgQ.SendNowOrExit(msg);
-//        PShell->Ack(r);
-//    }
+    else if(PCmd->NameIs("GetID")) PShell->Reply("ID", ID);
+
+    else if(PCmd->NameIs("SetID")) {
+        if(PCmd->GetNext<int32_t>(&ID) != retvOk) { PShell->Ack(retvCmdError); return; }
+        uint8_t r = ISetID(ID);
+        PShell->Ack(r);
+    }
 
 
 #if PILL_ENABLED // ==== Pills ====
@@ -340,7 +320,7 @@ void OnCmd(Shell_t *PShell) {
 }
 #endif
 
-#if 0 // =========================== ID management =============================
+#if 1 // =========================== ID management =============================
 void ReadIDfromEE() {
     ID = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
     if(ID < ID_MIN or ID > ID_MAX) {
