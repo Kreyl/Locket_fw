@@ -12,7 +12,7 @@
 
 cc1101_t CC(CC_Setup0);
 
-#define DBG_PINS
+//#define DBG_PINS
 
 #ifdef DBG_PINS
 #define DBG_GPIO1   GPIOB
@@ -29,7 +29,6 @@ cc1101_t CC(CC_Setup0);
 #endif
 
 rLevel1_t Radio;
-extern Color_t txColor;
 extern int32_t ID;
 
 #if 1 // ================================ Task =================================
@@ -48,14 +47,13 @@ static void rLvl1Thread(void *arg) {
 }
 
 void rLevel1_t::TaskTransmitter() {
-    PktTx.ID = ID;
-    PktTx.Clr = txColor;
+    PktTx.TheWord = 0xCA115EA1;
     DBG1_SET();
     CC.Recalibrate();
     CC.Transmit(&PktTx, RPKT_LEN);
     DBG1_CLR();
 //    Printf("%u\r", PktTx.ID);
-    chThdSleepMilliseconds(4);
+    chThdSleepMilliseconds(7);
 }
 
 //void rLevel1_t::TaskReceiverSingle() {
