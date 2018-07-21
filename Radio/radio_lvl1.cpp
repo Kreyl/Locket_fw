@@ -47,13 +47,13 @@ static void rLvl1Thread(void *arg) {
 }
 
 void rLevel1_t::TaskTransmitter() {
-    PktTx.TheWord = 0xCA115EA1;
+    PktTx.ID = ID;
     DBG1_SET();
     CC.Recalibrate();
     CC.Transmit(&PktTx, RPKT_LEN);
     DBG1_CLR();
 //    Printf("%u\r", PktTx.ID);
-    chThdSleepMilliseconds(7);
+    chThdSleepMilliseconds(11);
 }
 
 //void rLevel1_t::TaskReceiverSingle() {

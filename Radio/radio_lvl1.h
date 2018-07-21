@@ -58,9 +58,9 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 
 #if 1 // =========================== Pkt_t =====================================
 struct rPkt_t  {
-    uint32_t TheWord;
+    uint32_t ID;
     rPkt_t& operator = (const rPkt_t &Right) {
-        TheWord = Right.TheWord;
+        ID = Right.ID;
         return *this;
     }
 } __packed;
