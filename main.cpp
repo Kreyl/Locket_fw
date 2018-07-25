@@ -1,10 +1,3 @@
-/*
- * main.cpp
- *
- *  Created on: 20 февр. 2014 г.
- *      Author: g.kruglov
- */
-
 #include "board.h"
 #include "led.h"
 #include "vibro.h"
@@ -18,19 +11,19 @@
 #include "main.h"
 #include "SimpleSensors.h"
 #include "buttons.h"
-#include "ColorTable.h"
 
 #if 1 // ======================== Variables and defines ========================
 // Forever
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
-extern CmdUart_t Uart;
+static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
+CmdUart_t Uart{&CmdUartParams};
 static void ITask();
 static void OnCmd(Shell_t *PShell);
 
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
 
-int32_t ID;
+uint8_t ID;
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
 static uint8_t ISetID(int32_t NewID);
@@ -39,6 +32,9 @@ void ReadIDfromEE();
 void ReadAndSetupMode();
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+
+uint8_t SignalTx = 0; // Initially, transmit nothing
+uint8_t WhatToRx = 0; // Initially, react to nothing
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {MS2ST(1000), evtIdEverySecond, tktPeriodic};
@@ -55,7 +51,8 @@ int main(void) {
     EvtQMain.Init();
 
     // ==== Init hardware ====
-    Uart.Init(115200);
+    Uart.Init();
+    Uart.StartRx();
     ReadIDfromEE();
     Printf("\r%S %S ID=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), ID);
     Clk.PrintFreqs();
@@ -66,9 +63,9 @@ int main(void) {
     TmrEverySecond.StartOrRestart();
 
     // ==== Radio ====
-    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
-    else Led.StartOrRestart(lsqFailure);
-    chThdSleepMilliseconds(1008);
+//    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
+//    else Led.StartOrRestart(lsqFailure);
+//    chThdSleepMilliseconds(1008);
 
     // Main cycle
     ITask();
@@ -117,17 +114,24 @@ void ReadAndSetupMode() {
     // ==== Something has changed ====
     Printf("Dip: 0x%02X\r", b);
     OldDipSettings = b;
-    RMsg_t msg;
-    // Select TX pwr
-    msg.Cmd = R_MSG_SET_PWR;
-    b &= 0b1111; // Remove high bits
-    msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
-    Printf("Pwr=%u\r", b);
-    Radio.RMsgQ.SendNowOrExit(msg);
+    uint8_t tmp;
+    // What to Tx
+    tmp = b & 0b111000;
+    SignalTx = tmp >> 2;
+    // What to Rx
+    tmp = b & 0b000111;
+    WhatToRx = tmp << 1;
+    // Display
+    if(SignalTx & SIGN_OATH)  Printf("Tx Oath\r");
+    if(SignalTx & SIGN_LIGHT) Printf("Tx Light\r");
+    if(SignalTx & SIGN_DARK)  Printf("Tx Dark\r");
+    if(WhatToRx & SIGN_OATH)  Printf("Rx Oath\r");
+    if(WhatToRx & SIGN_LIGHT) Printf("Rx Light\r");
+    if(WhatToRx & SIGN_DARK)  Printf("Rx Dark\r");
 }
 
 
-#if UART_RX_ENABLED // ================= Command processing ====================
+#if 1 // ======================= Command processing ============================
 void OnCmd(Shell_t *PShell) {
 	Cmd_t *PCmd = &PShell->Cmd;
     __attribute__((unused)) int32_t dw32 = 0;  // May be unused in some configurations
@@ -141,7 +145,7 @@ void OnCmd(Shell_t *PShell) {
     else if(PCmd->NameIs("GetID")) PShell->Reply("ID", ID);
 
     else if(PCmd->NameIs("SetID")) {
-        if(PCmd->GetNext<int32_t>(&ID) != retvOk) { PShell->Ack(retvCmdError); return; }
+        if(PCmd->GetNext<uint8_t>(&ID) != retvOk) { PShell->Ack(retvCmdError); return; }
         uint8_t r = ISetID(ID);
         RMsg_t msg;
         msg.Cmd = R_MSG_SET_CHNL;
@@ -159,7 +163,7 @@ void ReadIDfromEE() {
     ID = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
     if(ID < ID_MIN or ID > ID_MAX) {
         Printf("\rUsing default ID\r");
-        ID = ID_DEFAULT;
+        ID = 1;
     }
 }
 

@@ -29,7 +29,7 @@ cc1101_t CC(CC_Setup0);
 #endif
 
 rLevel1_t Radio;
-extern int32_t ID;
+extern uint8_t ID;
 
 #if 1 // ================================ Task =================================
 static THD_WORKING_AREA(warLvl1Thread, 256);

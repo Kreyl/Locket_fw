@@ -4,7 +4,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket4_1"
-#define APP_NAME            "TxOnly"
+#define APP_NAME            "HI2018"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
@@ -79,11 +79,6 @@
 #define I2C_PILL        i2c1
 #endif
 
-#if 1 // ========================== USART ======================================
-#define CMD_UART        USART1
-#define UART_TXBUF_SZ   256
-#endif
-
 #if ADC_REQUIRED // ======================= Inner ADC ==========================
 // Clock divider: clock is generated from the APB2
 #define ADC_CLK_DIVIDER     adcDiv2
@@ -107,6 +102,24 @@
 #define UART_DMA_TX     STM32_DMA1_STREAM4
 #define UART_DMA_RX     STM32_DMA1_STREAM5
 #define UART_DMA_CHNL   0   // Dummy
+#define UART_DMA_TX_MODE(Chnl) \
+                            (STM32_DMA_CR_CHSEL(Chnl) | \
+                            DMA_PRIORITY_LOW | \
+                            STM32_DMA_CR_MSIZE_BYTE | \
+                            STM32_DMA_CR_PSIZE_BYTE | \
+                            STM32_DMA_CR_MINC |       /* Memory pointer increase */ \
+                            STM32_DMA_CR_DIR_M2P |    /* Direction is memory to peripheral */ \
+                            STM32_DMA_CR_TCIE         /* Enable Transmission Complete IRQ */)
+
+#define UART_DMA_RX_MODE(Chnl) \
+                            (STM32_DMA_CR_CHSEL((Chnl)) | \
+                            DMA_PRIORITY_MEDIUM | \
+                            STM32_DMA_CR_MSIZE_BYTE | \
+                            STM32_DMA_CR_PSIZE_BYTE | \
+                            STM32_DMA_CR_MINC |       /* Memory pointer increase */ \
+                            STM32_DMA_CR_DIR_P2M |    /* Direction is peripheral to memory */ \
+                            STM32_DMA_CR_CIRC         /* Circular buffer enable */)
+
 
 #if I2C1_ENABLED // ==== I2C ====
 #define I2C1_DMA_TX     STM32_DMA1_STREAM6
@@ -126,3 +139,14 @@
 #endif // ADC
 
 #endif // DMA
+
+#if 1 // ========================== USART ======================================
+#define PRINTF_FLOAT_EN FALSE
+#define UART_TXBUF_SZ   512
+#define UART_RXBUF_SZ   99
+
+#define CMD_UART_PARAMS \
+    USART1, UART_GPIO, UART_TX_PIN, UART_GPIO, UART_RX_PIN, \
+    UART_DMA_TX, UART_DMA_RX, UART_DMA_TX_MODE(UART_DMA_CHNL), UART_DMA_RX_MODE(UART_DMA_CHNL)
+
+#endif
