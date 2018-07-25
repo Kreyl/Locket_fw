@@ -30,14 +30,39 @@ static uint8_t ISetID(int32_t NewID);
 void ReadIDfromEE();
 
 void ReadAndSetupMode();
+void CheckRxTable();
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+Vibro_t Vibro {VIBRO_SETUP};
 
 uint8_t SignalTx = 0; // Initially, transmit nothing
-uint8_t WhatToRx = 0; // Initially, react to nothing
+bool ReactToSilmAndOath = false;
+bool ReactToLight = false;
+bool ReactToDark = false;
+
+static struct MegaSeq_t {
+    uint8_t Cnt, CurrIndx;
+    LedRGBChunk_t *Lsq[7];
+    void Reset() {
+        Cnt = 0;
+        CurrIndx = 0;
+    }
+    void PutLsq(LedRGBChunk_t *PLsq) {
+        if(Cnt >= 7) return;
+        Lsq[Cnt] = PLsq;
+        Cnt++;
+    }
+    bool IsEnd() { return CurrIndx == Cnt; }
+    LedRGBChunk_t* GetNextLsq() {
+        LedRGBChunk_t* p = Lsq[CurrIndx];
+        CurrIndx++;
+        return p;
+    }
+} MegaSeq;
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {MS2ST(1000), evtIdEverySecond, tktPeriodic};
+static TmrKL_t TmrRxTableCheck {MS2ST(4500), evtIdCheckRxTable, tktPeriodic};
 #endif
 
 int main(void) {
@@ -58,14 +83,18 @@ int main(void) {
     Clk.PrintFreqs();
 
     Led.Init();
+    Led.SetupSeqEndEvt(EvtMsg_t(evtIdLedEnd));
+    Vibro.Init();
+    Vibro.StartOrRestart(vsqBrr);
 
     // ==== Time and timers ====
     TmrEverySecond.StartOrRestart();
+    TmrRxTableCheck.StartOrRestart();
 
     // ==== Radio ====
-//    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
-//    else Led.StartOrRestart(lsqFailure);
-//    chThdSleepMilliseconds(1008);
+    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
+    else Led.StartOrRestart(lsqFailure);
+    chThdSleepMilliseconds(1008);
 
     // Main cycle
     ITask();
@@ -80,6 +109,12 @@ void ITask() {
                 ReadAndSetupMode();
                 break;
 
+            case evtIdCheckRxTable: CheckRxTable(); break;
+
+            case evtIdLedEnd:
+                if(!MegaSeq.IsEnd()) Led.StartOrRestart(MegaSeq.GetNextLsq());
+                break;
+
             case evtIdShellCmd:
                 OnCmd((Shell_t*)Msg.Ptr);
                 ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
@@ -90,29 +125,59 @@ void ITask() {
     } // while true
 } // ITask()
 
-__unused
-static const uint8_t PwrTable[12] = {
-        CC_PwrMinus30dBm, // 0
-        CC_PwrMinus27dBm, // 1
-        CC_PwrMinus25dBm, // 2
-        CC_PwrMinus20dBm, // 3
-        CC_PwrMinus15dBm, // 4
-        CC_PwrMinus10dBm, // 5
-        CC_PwrMinus6dBm,  // 6
-        CC_Pwr0dBm,       // 7
-        CC_PwrPlus5dBm,   // 8
-        CC_PwrPlus7dBm,   // 9
-        CC_PwrPlus10dBm,  // 10
-        CC_PwrPlus12dBm   // 11
-};
+void ProcessLsq(LedRGBChunk_t *PLsq, uint8_t Cnt) {
+    if(Cnt > 0) {
+        if(Cnt == 1)      PLsq[2].RepeatCnt = 0; // Single blink, no repeat
+        else if(Cnt == 2) PLsq[2].RepeatCnt = 1; // Double blink
+        else              PLsq[2].RepeatCnt = 2; // Triple blink
+        MegaSeq.PutLsq(PLsq);  // Add lsq to megasequence
+    }
+}
 
-__unused
+void CheckRxTable() {
+    uint8_t TableCnt = Radio.RxTable.GetCount();
+    uint8_t SignalCnt = 0; // Count of sources of signal to consider
+    uint8_t SilmCnt = 0, OatherCnt = 0, LightCnt = 0, DarkCnt = 0;
+    // Analyze RxTable
+    if(TableCnt > 0) {
+        uint8_t ConsiderThisSignal;
+        for(uint32_t i=0; i<TableCnt; i++) {
+            uint8_t Signal = Radio.RxTable.Buf[i].Signal; // To make things shorter
+            ConsiderThisSignal = 0;
+            if(ReactToSilmAndOath and (Signal & SIGN_SILMARIL)) { SilmCnt++;   ConsiderThisSignal = 1; }
+            if(ReactToSilmAndOath and (Signal & SIGN_OATH))     { OatherCnt++; ConsiderThisSignal = 1; }
+            if(ReactToLight       and (Signal & SIGN_LIGHT))    { LightCnt++;  ConsiderThisSignal = 1; }
+            if(ReactToDark        and (Signal & SIGN_DARK))     { DarkCnt++;   ConsiderThisSignal = 1; }
+            SignalCnt += ConsiderThisSignal;
+        }
+        Radio.RxTable.Clear();
+    } // TableCnt > 0
+    else return; // Nobody near
+//    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdIndicate));
+    // ==== Indicate ====
+    if(SignalCnt == 0) return; // Nobody near is of our interest
+    // Vibro
+    if(SignalCnt == 1) Vibro.StartOrRestart(vsqBrr);
+    else if(SignalCnt == 2) Vibro.StartOrRestart(vsqBrrBrr);
+    else Vibro.StartOrRestart(vsqBrrBrrBrr);
+    // Sequence of light
+    MegaSeq.Reset();
+    ProcessLsq(lsqSilm,  SilmCnt);
+    ProcessLsq(lsqOath,  OatherCnt);
+    ProcessLsq(lsqLight, LightCnt);
+    ProcessLsq(lsqDark,  DarkCnt);
+    // End of all
+    MegaSeq.PutLsq(lsqNone);
+    // Start Led
+    if(!MegaSeq.IsEnd()) Led.StartOrRestart(MegaSeq.GetNextLsq());
+}
+
 void ReadAndSetupMode() {
     static uint8_t OldDipSettings = 0xFF;
     uint8_t b = GetDipSwitch();
     if(b == OldDipSettings) return;
     // ==== Something has changed ====
-    Printf("Dip: 0x%02X\r", b);
+//    Printf("Dip: 0x%02X\r", b);
     OldDipSettings = b;
     uint8_t tmp;
     // What to Tx
@@ -120,7 +185,7 @@ void ReadAndSetupMode() {
     SignalTx = tmp >> 2;
     // What to Rx
     tmp = b & 0b000111;
-    WhatToRx = tmp << 1;
+    uint8_t WhatToRx = tmp << 1;
     // Display
     if(SignalTx & SIGN_OATH)  Printf("Tx Oath\r");
     if(SignalTx & SIGN_LIGHT) Printf("Tx Light\r");
@@ -128,6 +193,10 @@ void ReadAndSetupMode() {
     if(WhatToRx & SIGN_OATH)  Printf("Rx Oath\r");
     if(WhatToRx & SIGN_LIGHT) Printf("Rx Light\r");
     if(WhatToRx & SIGN_DARK)  Printf("Rx Dark\r");
+    // Setup
+    ReactToSilmAndOath = (WhatToRx & SIGN_OATH);
+    ReactToLight = (WhatToRx & SIGN_LIGHT);
+    ReactToDark = (WhatToRx & SIGN_DARK);
 }
 
 
@@ -147,10 +216,6 @@ void OnCmd(Shell_t *PShell) {
     else if(PCmd->NameIs("SetID")) {
         if(PCmd->GetNext<uint8_t>(&ID) != retvOk) { PShell->Ack(retvCmdError); return; }
         uint8_t r = ISetID(ID);
-        RMsg_t msg;
-        msg.Cmd = R_MSG_SET_CHNL;
-        msg.Value = ID2RCHNL(ID);
-        Radio.RMsgQ.SendNowOrExit(msg);
         PShell->Ack(r);
     }
 

@@ -190,22 +190,6 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
-//const LedRGBChunk_t lsqModeTxStart[] = {
-//        {csSetup, 0, clYellow},
-//        {csWait, 207},
-//        {csSetup, 0, clBlack},
-//        {csWait, 207},
-//        {csSetup, 0, clYellow},
-//        {csWait, 207},
-//        {csSetup, 0, clBlack},
-//        {csEnd}
-//};
-
-//const LedRGBChunk_t lsqTx[] {
-//        {csSetup, 0, clYellow},
-//        {csEnd}
-//};
-
 const LedRGBChunk_t lsqStart[] = {
         {csSetup, 0, clRed},
         {csWait, 207},
@@ -214,7 +198,7 @@ const LedRGBChunk_t lsqStart[] = {
         {csSetup, 0, clBlue},
         {csWait, 207},
         {csSetup, 0, clBlack},
-        {csSetup, 0, {0,7,0}},
+        {csSetup, 0, {0,4,0}},
         {csEnd},
 };
 
@@ -233,20 +217,39 @@ const LedRGBChunk_t lsqFailure[] = {
         {csEnd}
 };
 
-const LedRGBChunk_t lsqMaster[] = {
-        {csSetup, 603, clRed},
-//        {csWait, 207},
-//        {csSetup, 603, clBlack},
-//        {csSetup, 0, {7,0,0}},
-        {csEnd},
+#define SMOOTH  360
+
+LedRGBChunk_t lsqSilm[] = {
+        {csSetup, SMOOTH, clBlue},
+        {csSetup, SMOOTH, clBlack},
+        {csRepeat, 0},
+        {csEnd}
 };
 
-const LedRGBChunk_t lsqPlayer[] = {
-        {csSetup, 603, clBlue},
-        {csWait, 207},
-        {csSetup, 603, {0,0,7}},
-//        {csSetup, 0, {0,0,7}},
-        {csEnd},
+LedRGBChunk_t lsqOath[] = {
+        {csSetup, SMOOTH, clYellow},
+        {csSetup, SMOOTH, clBlack},
+        {csRepeat, 0},
+        {csEnd}
+};
+
+LedRGBChunk_t lsqLight[] = {
+        {csSetup, SMOOTH, clGreen},
+        {csSetup, SMOOTH, clBlack},
+        {csRepeat, 0},
+        {csEnd}
+};
+
+LedRGBChunk_t lsqDark[] = {
+        {csSetup, SMOOTH, clRed},
+        {csSetup, SMOOTH, clBlack},
+        {csRepeat, 0},
+        {csEnd}
+};
+
+LedRGBChunk_t lsqNone[] = {
+        {csSetup, SMOOTH, {0,4,0}},
+        {csEnd}
 };
 
 // ==== Pill ====

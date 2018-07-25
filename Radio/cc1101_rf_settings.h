@@ -12,8 +12,8 @@
 // Bitrate
 //#define CC_BITRATE_10K
 //#define CC_BITRATE_38K4
-#define  CC_BITRATE_100K
-//#define CC_BITRATE_250K
+//#define  CC_BITRATE_100K
+#define CC_BITRATE_250K
 //#define CC_BITRATE_500K
 
 // ============================ Common use values ==============================
