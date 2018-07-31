@@ -153,7 +153,9 @@ void rLevel1_t::ITask() {
                 }
                 break;
 
-            case rmsgSetPwr: CC.SetTxPower(msg.Value); break;
+            case rmsgSetPwr:
+//                CC.SetTxPower(msg.Value);
+                break;
             case rmsgSetChnl:
                 //CC.SetChannel(msg.Value);
                 break;
