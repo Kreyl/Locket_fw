@@ -44,7 +44,8 @@ private:
     uint8_t Reset()       { return WriteStrobe(CC_SRES); }
     uint8_t EnterTX()     { return WriteStrobe(CC_STX);  }
     uint8_t EnterRX()     { return WriteStrobe(CC_SRX);  }
-    uint8_t FlushRxFIFO() { return WriteStrobe(CC_SFRX); }
+    uint8_t FlushRxFIFO();
+    uint8_t FlushTxFIFO();
 public:
     uint8_t Init();
     void SetChannel(uint8_t AChannel);

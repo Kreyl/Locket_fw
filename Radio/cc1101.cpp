@@ -123,6 +123,15 @@ void cc1101_t::SetChannel(uint8_t AChannel) {
     WriteRegister(CC_CHANNR, AChannel);         // Now set channel
 }
 
+uint8_t cc1101_t::FlushRxFIFO() {
+//    while(IState != CC_STB_IDLE) EnterIdle();
+    return WriteStrobe(CC_SFRX);
+}
+uint8_t cc1101_t::FlushTxFIFO() {
+//    while(!(IState == CC_STB_IDLE or IState == CC_STB_TX_UNDF)) EnterIdle();
+    return WriteStrobe(CC_SFTX);
+}
+
 //void cc1101_t::WaitUntilChannelIsBusy() {
 //    uint8_t b;
 //    for(uint32_t i=0; i<207; i++) {
@@ -134,12 +143,15 @@ void cc1101_t::SetChannel(uint8_t AChannel) {
 //}
 
 void cc1101_t::Transmit(void *Ptr, uint8_t Len) {
+//    uint8_t b;
+//    ReadRegister(CC_TXBYTES, &b);
+//    if(b!=0) Printf("Tx %X\r", b);
     ICallback = nullptr;
 //     WaitUntilChannelIsBusy();   // If this is not done, time after time FIFO is destroyed
-//    while(IState != CC_STB_IDLE) EnterIdle();
-    EnterTX();  // Start transmission of preamble while writing FIFO
+//    FlushTxFIFO();
     if(Len < 64) {
         WriteTX((uint8_t*)Ptr, Len);
+        EnterTX();
         // Enter TX and wait IRQ
         chSysLock();
         chThdSuspendS(&ThdRef); // Wait IRQ
@@ -329,6 +341,7 @@ uint8_t cc1101_t::WriteStrobe (uint8_t AStrobe) {
 }
 
 uint8_t cc1101_t::WriteTX(uint8_t* Ptr, uint8_t Length) {
+
     CsLo();                                                     // Start transmission
     if(BusyWait() != retvOk) { // Wait for chip to become ready
         CsHi();
@@ -362,11 +375,13 @@ uint8_t cc1101_t::ReadFIFO(void *Ptr, int8_t *PRssi, uint8_t Len) {
          for(uint8_t i=0; i<Len; i++) { // Read bytes
              b = ISpi.ReadWriteByte(0);
              *p++ = b;
+//             Printf("%X ", b);
          }
          // Receive two additional info bytes
          b = ISpi.ReadWriteByte(0); // RSSI
          ISpi.ReadWriteByte(0);     // LQI
          CsHi();                    // End transmission
+//         PrintfEOL();
          if(PRssi != nullptr) *PRssi = RSSI_dBm(b);
          return retvOk;
      }

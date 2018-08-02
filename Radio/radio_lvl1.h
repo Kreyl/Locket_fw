@@ -43,8 +43,7 @@ union rPkt_t  {
 #endif
 
 #if 1 // =========================== Timings ===================================
-#define TIMESLOT_DURATION_ST    18
-#define MIN_SLEEP_DURATION_MS   18
+#define TIMESLOT_DURATION_ST    22
 #define SCYCLES_TO_KEEP_TIMESRC 4   // After that amount of supercycles, TimeSrcID become self ID
 #endif
 

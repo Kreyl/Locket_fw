@@ -39,10 +39,10 @@ static class RadioTime_t {
 private:
     virtual_timer_t TmrTimeslot;
     void StopTimerI()  { chVTResetI(&TmrTimeslot); }
-    uint16_t TimeSrcTimeout;
+    uint8_t TimeSrcTimeout;
 public:
-    volatile uint32_t CycleN = 0, TimeSlot = 0;
-    uint16_t TimeSrcId = ID;
+    volatile uint8_t CycleN = 0, TimeSlot = 0;
+    uint8_t TimeSrcId = ID;
     void StartTimerI() { chVTSetI(&TmrTimeslot, TIMESLOT_DURATION_ST, TmrTimeslotCallback, nullptr); }
     void IncTimeSlot() {
         TimeSlot++;
@@ -128,6 +128,7 @@ void rLevel1_t::ITask() {
                 CC.Recalibrate(); // Recalibrate before every TX, do not calibrate before RX
                 CC.Transmit(&PktTx, RPKT_LEN);
                 DBG1_CLR();
+//                Printf("TttxE\r");
                 break;
 
             case rmsgTimeToRx:
@@ -138,6 +139,7 @@ void rLevel1_t::ITask() {
                 break;
 
             case rmsgTimeToSleep:
+//                Printf("Tts\r");
                 DBG2_CLR();
                 CCState = ccstIdle;
                 CC.EnterIdle();
@@ -146,7 +148,7 @@ void rLevel1_t::ITask() {
             case rmsgPktRx:
                 CCState = ccstIdle;
                 if(CC.ReadFIFO(&PktRx, &Rssi, RPKT_LEN) == retvOk) {  // if pkt successfully received
-//                    Printf("Rssi %d; ", Rssi);
+                    Printf("%d; ", Rssi);
                     PktRx.Print();
                     RadioTime.Adjust();
                     RxTable.AddOrReplaceExistingPkt(PktRx);
@@ -174,7 +176,7 @@ uint8_t rLevel1_t::Init() {
 
     RMsgQ.Init();
     if(CC.Init() == retvOk) {
-        CC.SetTxPower(CC_PwrMinus30dBm);
+        CC.SetTxPower(CC_Pwr0dBm);
         CC.SetPktSize(RPKT_LEN);
         CC.SetChannel(RCHNL);
         // Measure timeslot duration
