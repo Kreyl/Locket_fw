@@ -32,7 +32,6 @@ cc1101_t CC(CC_Setup0);
 
 rLevel1_t Radio;
 void TmrTimeslotCallback(void *p);
-extern uint8_t SignalTx;
 
 void TmrTxStartCallback(void *p);
 void TmrCycleCallback(void *p);
@@ -103,7 +102,7 @@ void rLevel1_t::ITask() {
             case rmsgTimeToTx:
                 DBG2_CLR();
                 PktTx.ID = ID;
-                PktTx.Signal = SignalTx;
+                PktTx.Type = Type;
 //                PktTx.Print();
                 DBG1_SET();
                 CC.Recalibrate();

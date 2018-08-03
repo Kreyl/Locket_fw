@@ -20,13 +20,13 @@ union rPkt_t  {
     uint32_t IDWord;
     struct {
         uint16_t ID;
-        uint16_t Signal;
+        uint16_t Type;
     } __packed;
     rPkt_t& operator = (const rPkt_t &Right) {
         IDWord = Right.IDWord;
         return *this;
     }
-    void Print() { Printf("ID: %u; Signal: %X\r", ID, Signal); }
+    void Print() { Printf("ID: %u; Type: %u\r", ID, Type); }
 } __packed;
 
 #define RPKT_LEN    sizeof(rPkt_t)
@@ -35,7 +35,7 @@ union rPkt_t  {
 #if 1 // =================== Channels, cycles, Rssi  ===========================
 #define RCHNL               7
 #define RCYCLE_CNT          4
-#define TIMESLOT_CNT        180
+#define TIMESLOT_CNT        99
 #endif
 
 #if 1 // =========================== Timings ===================================
@@ -43,7 +43,7 @@ union rPkt_t  {
 #endif
 
 #if 1 // ============================= RX Table ================================
-#define RXTABLE_SZ              50
+#define RXTABLE_SZ              10
 class RxTable_t {
 private:
     uint32_t Cnt = 0;
