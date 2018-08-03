@@ -61,8 +61,8 @@ static struct MegaSeq_t {
 } MegaSeq;
 
 // ==== Timers ====
-static TmrKL_t TmrEverySecond {MS2ST(1000), evtIdEverySecond, tktPeriodic};
-static TmrKL_t TmrRxTableCheck {MS2ST(4500), evtIdCheckRxTable, tktPeriodic};
+static TmrKL_t TmrEverySecond  {MS2ST(1000), evtIdEverySecond, tktPeriodic};
+static TmrKL_t TmrRxTableCheck {MS2ST(4005), evtIdCheckRxTable, tktOneShot};
 #endif
 
 int main(void) {
@@ -112,7 +112,8 @@ void ITask() {
             case evtIdCheckRxTable: CheckRxTable(); break;
 
             case evtIdLedEnd:
-                if(!MegaSeq.IsEnd()) Led.StartOrRestart(MegaSeq.GetNextLsq());
+                if(MegaSeq.IsEnd()) TmrRxTableCheck.StartOrRestart(MS2ST(2700)); // Restart check timer
+                else Led.StartOrRestart(MegaSeq.GetNextLsq());
                 break;
 
             case evtIdShellCmd:
@@ -152,10 +153,11 @@ void CheckRxTable() {
         }
         Radio.RxTable.Clear();
     } // TableCnt > 0
-    else return; // Nobody near
-//    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdIndicate));
+    if((SignalCnt == 0) or (TableCnt == 0)) { // Nobody near is of our interest
+        TmrRxTableCheck.StartOrRestart(MS2ST(4005)); // Restart check timer
+        return;
+    }
     // ==== Indicate ====
-    if(SignalCnt == 0) return; // Nobody near is of our interest
     // Vibro
     if(SignalCnt == 1) Vibro.StartOrRestart(vsqBrr);
     else if(SignalCnt == 2) Vibro.StartOrRestart(vsqBrrBrr);

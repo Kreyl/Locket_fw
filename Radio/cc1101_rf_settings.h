@@ -13,8 +13,8 @@
 //#define CC_BITRATE_10K
 //#define CC_BITRATE_38K4
 //#define  CC_BITRATE_100K
-#define CC_BITRATE_250K
-//#define CC_BITRATE_500K
+//#define CC_BITRATE_250K
+#define CC_BITRATE_500K
 
 // ============================ Common use values ==============================
 #define CC_TX_FIFO_SIZE     33
@@ -51,6 +51,7 @@
 // ==== MCSM1 ==== bits 7:6 not used, 5:4 ClearChannel mode, 3:2 RxOff mode, 1:0 TxOff mode
 #define CC_CCA_MODE         0b00000000  // Always clear
 //#define CC_CCA_MODE         0b00100000  // Unless currently receiving a packet
+//#define CC_CCA_MODE         0b00110000  // If RSSI below threshold unless currently receiving a packet
 #define CC_RXOFF_MODE       0b00000000  // RX->IDLE
 //#define CC_RXOFF_MODE       0b00001100  // RX->RX
 #define CC_TXOFF_MODE       0b00000000  // TX->IDLE

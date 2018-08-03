@@ -217,7 +217,7 @@ const LedRGBChunk_t lsqFailure[] = {
         {csEnd}
 };
 
-#define SMOOTH  360
+#define SMOOTH  135
 
 LedRGBChunk_t lsqSilm[] = {
         {csSetup, SMOOTH, clBlue},
