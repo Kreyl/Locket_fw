@@ -134,8 +134,8 @@ void rLevel1_t::ITask() {
             case rmsgPktRx:
                 DBG2_CLR();
                 if(CC.ReadFIFO(&PktRx, &Rssi, RPKT_LEN) == retvOk) {  // if pkt successfully received
-                    Printf("%d; ", Rssi);
-                    PktRx.Print();
+//                    Printf("%d; ", Rssi);
+//                    PktRx.Print();
                     if(Rssi > RSSI_LOWEST and PktRx.ID <= ID_MAX) {
                         PktRx.Rssi = Rssi; // Put received RSSI to pkt
                         RxTable.AddOrReplaceExistingPkt(PktRx);

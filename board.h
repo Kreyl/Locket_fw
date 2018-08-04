@@ -4,7 +4,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "LocketOld"
-#define APP_NAME            "WhiteFlowers"
+#define APP_NAME            "LcktWhiteFlowers"
 
 // ==== High-level peripery control ====
 #define BEEPER_ENABLED      FALSE
