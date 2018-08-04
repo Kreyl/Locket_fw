@@ -204,13 +204,17 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 
 const LedRGBChunk_t lsqStartWhite[] = {
         {csSetup, 180, clWhite},
-        {csWait, 207},
-        {csSetup, 0, clGreen},
-        {csWait, 207},
-        {csSetup, 0, clBlue},
-        {csWait, 207},
-        {csSetup, 0, clBlack},
-        {csSetup, 0, {0,4,0}},
+        {csSetup, 180, {0,2,0}},
+        {csEnd},
+};
+const LedRGBChunk_t lsqStartBlue[] = {
+        {csSetup, 180, clBlue},
+        {csSetup, 180, {0,2,0}},
+        {csEnd},
+};
+const LedRGBChunk_t lsqStartRed[] = {
+        {csSetup, 180, clRed},
+        {csSetup, 180, {2,0,0}},
         {csEnd},
 };
 
@@ -229,60 +233,21 @@ const LedRGBChunk_t lsqFailure[] = {
         {csEnd}
 };
 
-#define SMOOTH  135
+#define SMOOTH  180
 
-LedRGBChunk_t lsqSilm[] = {
+const LedRGBChunk_t lsqWhiteOn[] = {
+        {csSetup, SMOOTH, clWhite},
+        {csEnd}
+};
+const LedRGBChunk_t lsqBlueOn[] = {
         {csSetup, SMOOTH, clBlue},
-        {csSetup, SMOOTH, clBlack},
-        {csRepeat, 0},
         {csEnd}
 };
 
-LedRGBChunk_t lsqOath[] = {
-        {csSetup, SMOOTH, clYellow},
-        {csSetup, SMOOTH, clBlack},
-        {csRepeat, 0},
+const LedRGBChunk_t lsqOff[] = {
+        {csSetup, SMOOTH, {0,2,0}},
         {csEnd}
 };
-
-LedRGBChunk_t lsqLight[] = {
-        {csSetup, SMOOTH, clGreen},
-        {csSetup, SMOOTH, clBlack},
-        {csRepeat, 0},
-        {csEnd}
-};
-
-LedRGBChunk_t lsqDark[] = {
-        {csSetup, SMOOTH, clRed},
-        {csSetup, SMOOTH, clBlack},
-        {csRepeat, 0},
-        {csEnd}
-};
-
-LedRGBChunk_t lsqNone[] = {
-        {csSetup, SMOOTH, {0,4,0}},
-        {csEnd}
-};
-
-// ==== Pill ====
-//const LedRGBChunk_t lsqPillCure[] = {
-//        {csSetup, 0, clGreen},
-//        {csWait, 999},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
-//const LedRGBChunk_t lsqPillPanacea[] = {
-//        {csSetup, 0, clWhite},
-//        {csWait, 999},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
-//const LedRGBChunk_t lsqPillBad[] = {
-//        {csSetup, 0, clRed},
-//        {csWait, 999},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
 
 #endif
 
@@ -308,7 +273,7 @@ const LedSmoothChunk_t lsqEnterIdle[] = {
 
 #endif
 
-#if 1 // ============================= Beeper ==================================
+#if 0 // ============================= Beeper ==================================
 #define BEEP_VOLUME     2   // Maximum 10
 
 #if 1 // ==== Notes ====

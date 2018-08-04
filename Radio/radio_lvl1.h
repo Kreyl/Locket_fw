@@ -19,8 +19,10 @@
 union rPkt_t  {
     uint32_t IDWord;
     struct {
-        uint16_t ID;
-        uint16_t Type;
+        uint8_t dummy;
+        uint8_t ID;
+        uint8_t Type;
+        int8_t Rssi; // Put here received rssi value
     } __packed;
     rPkt_t& operator = (const rPkt_t &Right) {
         IDWord = Right.IDWord;
@@ -36,6 +38,9 @@ union rPkt_t  {
 #define RCHNL               7
 #define RCYCLE_CNT          4
 #define TIMESLOT_CNT        99
+
+#define RSSI_LOWEST         -90
+#define RSSI_NEAR           -63
 #endif
 
 #if 1 // =========================== Timings ===================================
