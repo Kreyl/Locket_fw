@@ -213,8 +213,8 @@ const LedRGBChunk_t lsqStart[] = {
         {csWait, 207},
         {csSetup, 0, clBlue},
         {csWait, 207},
-        {csSetup, 0, clBlack},
-        {csSetup, 0, {0,7,0}},
+//        {csSetup, 0, clBlack},
+        {csSetup, 0, {0,4,0}},
         {csEnd},
 };
 
@@ -234,18 +234,16 @@ const LedRGBChunk_t lsqFailure[] = {
 };
 
 const LedRGBChunk_t lsqTx[] = {
-        {csSetup, 603, clRed},
+        {csSetup, 360, clRed},
         {csWait, 207},
-        {csSetup, 603, clBlack},
-//        {csSetup, 0, {7,0,0}},
+        {csSetup, 360, {7,0,0}},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqRx[] = {
-        {csSetup, 603, clBlue},
+        {csSetup, 360, clBlue},
         {csWait, 207},
-        {csSetup, 603, clBlack},
-//        {csSetup, 0, {0,0,7}},
+        {csSetup, 360, {0,0,7}},
         {csEnd},
 };
 

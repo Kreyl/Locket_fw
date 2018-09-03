@@ -39,7 +39,7 @@ static void rLvl1Thread(void *arg) {
         // Process queue
         RMsg_t msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
         if(msg.Cmd == R_MSG_SET_PWR) CC.SetTxPower(msg.Value);
-        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
+//        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
         // Process task
         if(AppMode == appmTx) Radio.TaskTransmitter();
         else Radio.TaskReceiverManyByID();
@@ -47,7 +47,7 @@ static void rLvl1Thread(void *arg) {
 }
 
 void rLevel1_t::TaskTransmitter() {
-//    CC.SetChannel(ID2RCHNL(App.ID));
+    CC.SetChannel(ID2RCHNL(ID));
 //    CC.SetChannel(RCHNL_COMMON);
     PktTx.DWord32 = THE_WORD;
 //    PktTx.R = 0;
@@ -57,7 +57,7 @@ void rLevel1_t::TaskTransmitter() {
     CC.Recalibrate();
     CC.Transmit(&PktTx);
     DBG1_CLR();
-    chThdSleepMilliseconds(12);
+    chThdSleepMilliseconds(27);
 }
 
 //void rLevel1_t::TaskReceiverSingle() {
@@ -74,23 +74,21 @@ void rLevel1_t::TaskTransmitter() {
 
 void rLevel1_t::TaskReceiverManyByID() {
     for(int N=0; N<4; N++) { // Iterate channels N times
+        TryToSleep(270);
         // Iterate channels
         for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
             if(i == ID) continue;   // Do not listen self
             CC.SetChannel(ID2RCHNL(i));
 //            Printf("%u\r", i);
             CC.Recalibrate();
-            uint8_t RxRslt = CC.Receive(18, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
+            uint8_t RxRslt = CC.Receive(54, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
             if(RxRslt == retvOk) {
-                Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
+//                Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
                 if(PktRx.DWord32 == THE_WORD and Rssi > RSSI_MIN) RxTable.AddId(i);
-//                else Printf("PktErr\r");
             }
         } // for i
-        TryToSleep(270);
     } // For N
-    EvtMsg_t msg(evtIdCheckRxTable);
-    EvtQMain.SendNowOrExit(msg);
+    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdCheckRxTable));
 }
 
 //void rLevel1_t::TaskReceiverManyByChannel() {

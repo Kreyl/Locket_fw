@@ -32,7 +32,6 @@ static void ReadAndSetupMode();
 
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
-#define EE_ADDR_HEALTH_STATE    8
 
 int32_t ID;
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
@@ -78,8 +77,8 @@ int main(void) {
 //    RandomSeed(GetUniqID3());   // Init random algorythm with uniq ID
 
     Led.Init();
-//    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-//    Vibro.Init();
+    Vibro.Init();
+
 #if BEEPER_ENABLED // === Beeper ===
     Beeper.Init();
     Beeper.StartOrRestart(bsqBeepBeep);
@@ -100,9 +99,12 @@ int main(void) {
 //    TmrRxTableCheck.StartOrRestart();
 
     // ==== Radio ====
-    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
-    else Led.StartOrRestart(lsqFailure);
-    chThdSleepMilliseconds(1008);
+    if(Radio.Init() == retvOk) Vibro.StartOrRestart(vsqBrr);
+    else {
+        Led.StartOrRestart(lsqFailure);
+        chThdSleepMilliseconds(1008);
+    }
+
 
     // Main cycle
     ITask();
@@ -126,22 +128,16 @@ void ITask() {
                 break;
 #endif
 
-//        if(Evt & EVT_RX) {
-//            int32_t TimeRx = Radio.PktRx.Time;
-//            Uart.Printf("RX %u\r", TimeRx);
-//            Cataclysm.ProcessSignal(TimeRx);
-//        }
-
-//            case evtIdCheckRxTable: {
-//                uint32_t Cnt = Radio.RxTable.GetCount();
-//                switch(Cnt) {
-//                    case 0: Vibro.Stop(); break;
-//                    case 1: Vibro.StartOrContinue(vsqBrr); break;
-//                    case 2: Vibro.StartOrContinue(vsqBrrBrr); break;
-//                    default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
-//                }
-//                Radio.RxTable.Clear();
-//            } break;
+            case evtIdCheckRxTable: {
+                uint32_t Cnt = Radio.RxTable.GetCount();
+                Radio.RxTable.Clear();
+                switch(Cnt) {
+                    case 0: Vibro.Stop(); break;
+                    case 1: Vibro.StartOrContinue(vsqBrr); break;
+                    case 2: Vibro.StartOrContinue(vsqBrrBrr); break;
+                    default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
+                }
+            } break;
 
 #if PILL_ENABLED // ==== Pill ====
         if(Evt & EVT_PILL_CONNECTED) {
@@ -178,13 +174,6 @@ void ITask() {
         if(Evt & EVT_LED_SEQ_END) {
         }
 #endif
-        //        if(Evt & EVT_OFF) {
-        ////            Uart.Printf("Off\r");
-        //            chSysLock();
-        //            Sleep::EnableWakeup1Pin();
-        //            Sleep::EnterStandby();
-        //            chSysUnlock();
-        //        }
 
 #if UART_RX_ENABLED
             case evtIdShellCmd:
@@ -242,7 +231,6 @@ void ReadAndSetupMode() {
         }
     }
 }
-
 
 #if UART_RX_ENABLED // ================= Command processing ====================
 void OnCmd(Shell_t *PShell) {

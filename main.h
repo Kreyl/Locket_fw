@@ -8,7 +8,7 @@
 #pragma once
 
 #define ID_MIN                  1
-#define ID_MAX                  15
+#define ID_MAX                  10
 #define ID_DEFAULT              ID_MIN
 extern int32_t ID;
 
