@@ -22,11 +22,23 @@ static inline uint32_t ClrCalcDelay(uint16_t AValue, uint32_t Smooth) {
 }
 
 struct Color_t {
+private:
+    uint8_t SetSingleBrt(uint32_t v, uint32_t Brt) {
+        if(v > 0) {
+            v = (v * Brt) / 100UL;
+            if(v == 0) v = 1;
+        }
+        return v;
+    }
+public:
     union {
         uint32_t DWord32;
         struct {
-            uint8_t R, G, B, Lum;
-        };
+            uint8_t R, G, B;
+            union {
+                uint8_t Lum, W;
+            };
+        } __attribute__((packed));
     };
     bool operator == (const Color_t &AColor) const { return (DWord32 == AColor.DWord32); }
     bool operator != (const Color_t &AColor) const { return (DWord32 != AColor.DWord32); }
@@ -113,6 +125,13 @@ struct Color_t {
         Delay2 = (Lum == AClr.Lum)? 0 : ClrCalcDelay(Lum, SmoothValue);
         return (Delay2 > Delay)? Delay2 : Delay;
     }
+    // Brt = [0; 100]
+    void SetRGBWBrightness(Color_t &AClr, uint32_t Brt) {
+        R = SetSingleBrt(AClr.R, Brt);
+        G = SetSingleBrt(AClr.G, Brt);
+        B = SetSingleBrt(AClr.B, Brt);
+        W = SetSingleBrt(AClr.W, Brt);
+    }
     void Print() { Printf("{%u, %u, %u; %u}\r", R, G, B, Lum); }
     Color_t() : R(0), G(0), B(0), Lum(LUM_MAX) {}
     Color_t(uint8_t AR, uint8_t AG, uint8_t AB) : R(AR), G(AG), B(AB), Lum(LUM_MAX) {}
@@ -120,7 +139,7 @@ struct Color_t {
 } __attribute__((packed));
 
 
-// ============================ Common methods =================================
+#if 1 // ============================ Common methods ===========================
 #define RED_OF(c)           (((c) & 0xF800)>>8)
 #define GREEN_OF(c)         (((c)&0x007E)>>3)
 #define BLUE_OF(c)          (((c)&0x001F)<<3)
@@ -155,35 +174,11 @@ static uint16_t ColorBlend(Color_t fg, Color_t bg, uint16_t alpha) {
     return RGBTo565(r, g, b);
 }
 
-// ==== Colors ====
-#define clBlack     ((Color_t){0,   0,   0})
-#define clRed       ((Color_t){255, 0,   0})
-#define clGreen     ((Color_t){0,   255, 0})
-#define clBlue      ((Color_t){0,   0,   255})
-#define clYellow    ((Color_t){255, 255, 0})
-#define clMagenta   ((Color_t){255, 0, 255})
-#define clCyan      ((Color_t){0, 255, 255})
-#define clWhite     ((Color_t){255, 255, 255})
-
-#define clGrey      ((Color_t){126, 126, 126})
-#define clLightGrey ((Color_t){180, 180, 180})
-#define clDarkGrey  ((Color_t){54, 54, 54})
-
-#define CL_DARK_V       27
-#define clDarkRed       ((Color_t){CL_DARK_V, 0,         0})
-#define clDarkGreen     ((Color_t){0,         CL_DARK_V, 0})
-#define clDarkBlue      ((Color_t){0,         0,         CL_DARK_V})
-#define clDarkYellow    ((Color_t){CL_DARK_V, CL_DARK_V, 0})
-#define clDarkMagenta   ((Color_t){CL_DARK_V, 0,         CL_DARK_V})
-#define clDarkCyan      ((Color_t){0,         CL_DARK_V, CL_DARK_V})
-#define clDarkWhite     ((Color_t){CL_DARK_V, CL_DARK_V, CL_DARK_V})
-
-#define clLightBlue ((Color_t){90, 90, 255})
-
 __attribute__((__always_inline__))
 static inline int32_t Abs32(int32_t w) {
     return (w < 0)? -w : w;
 }
+#endif
 
 #if 1 // ============================== HSL ====================================
 struct ColorHSL_t {
@@ -220,6 +215,10 @@ struct ColorHSL_t {
 #endif
 
 #if 1 // ============================== HSV ====================================
+#define CLR_HSV_H_MAX   360
+#define CLR_HSV_S_MAX   100
+#define CLR_HSV_V_MAX   100
+
 struct ColorHSV_t {
     union {
         uint32_t DWord32;
@@ -252,6 +251,7 @@ struct ColorHSV_t {
     }
 
     ColorHSV_t(uint16_t AH, uint8_t AS, uint8_t AV) : H(AH), S(AS), V(AV) {}
+    ColorHSV_t(const ColorHSV_t &AClr) : H(AClr.H), S(AClr.S), V(AClr.V) {}
 } __attribute__((packed));
 
 // Colors
@@ -262,4 +262,40 @@ struct ColorHSV_t {
 #define hsvBlue      ((ColorHSV_t){240, 100, 100})
 #define hsvMagenta   ((ColorHSV_t){300, 100, 100})
 #define hsvWhite     ((ColorHSV_t){0,   0,   100})
+#endif
+
+#if 1 // ============================= Colors ==================================
+#define clBlack     ((Color_t){0,   0,   0})
+#define clRed       ((Color_t){255, 0,   0})
+#define clGreen     ((Color_t){0,   255, 0})
+#define clBlue      ((Color_t){0,   0,   255})
+#define clYellow    ((Color_t){255, 255, 0})
+#define clMagenta   ((Color_t){255, 0, 255})
+#define clCyan      ((Color_t){0, 255, 255})
+#define clWhite     ((Color_t){255, 255, 255})
+
+#define clGrey      ((Color_t){126, 126, 126})
+#define clLightGrey ((Color_t){180, 180, 180})
+#define clDarkGrey  ((Color_t){54, 54, 54})
+
+#define CL_DARK_V       27
+#define clDarkRed       ((Color_t){CL_DARK_V, 0,         0})
+#define clDarkGreen     ((Color_t){0,         CL_DARK_V, 0})
+#define clDarkBlue      ((Color_t){0,         0,         CL_DARK_V})
+#define clDarkYellow    ((Color_t){CL_DARK_V, CL_DARK_V, 0})
+#define clDarkMagenta   ((Color_t){CL_DARK_V, 0,         CL_DARK_V})
+#define clDarkCyan      ((Color_t){0,         CL_DARK_V, CL_DARK_V})
+#define clDarkWhite     ((Color_t){CL_DARK_V, CL_DARK_V, CL_DARK_V})
+
+#define clLightBlue ((Color_t){90, 90, 255})
+
+// RGBW
+#define clRGBWBlack     ((Color_t){0,   0,   0,   0})
+#define clRGBWRed       ((Color_t){255, 0,   0,   0})
+#define clRGBWGreen     ((Color_t){0,   255, 0,   0})
+#define clRGBWBlue      ((Color_t){0,   0,   255, 0})
+#define clRGBWYellow    ((Color_t){255, 255, 0,   0})
+#define clRGBWMagenta   ((Color_t){255, 0, 255,   0})
+#define clRGBWCyan      ((Color_t){0, 255, 255,   0})
+#define clRGBWWhite     ((Color_t){0,   0,   0, 255})
 #endif

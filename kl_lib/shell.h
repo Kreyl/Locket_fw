@@ -42,8 +42,9 @@ public:
         else if(Cnt < (CMD_BUF_SZ-1)) IString[Cnt++] = c;  // Add char if buffer not full
         return pdrProceed;
     }
-    uint8_t GetNextString() {
+    uint8_t GetNextString(char **PStr = nullptr) {
         Token = strtok(NULL, DELIMITERS);
+        if(PStr != nullptr) *PStr = Token;
         return (*Token == '\0')? retvEmpty : retvOk;
     }
 
@@ -99,8 +100,7 @@ public:
 class Shell_t {
 public:
 	Cmd_t Cmd;
-	bool CmdProcessInProgress;
-	void SignalCmdProcessed() { CmdProcessInProgress = false; }
+	virtual void SignalCmdProcessed() = 0;
 	virtual void Printf(const char *format, ...) = 0;
 	void Reply(const char* CmdCode, int32_t Data) { Printf("%S,%d\r\n", CmdCode, Data); }
 	void Ack(int32_t Result) { Printf("Ack %d\r\n", Result); }
@@ -119,12 +119,13 @@ public:
     void PrintEOL();
 };
 
-
 // Functions
 void Printf(const char *format, ...);
 void PrintfI(const char *format, ...);
 void PrintfEOL();
 //void PrintfNow(const char *format, ...);
+
+char* PrintfToBuf(char* PBuf, const char *format, ...);
 
 extern "C" {
 void PrintfC(const char *format, ...);
