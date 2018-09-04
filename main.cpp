@@ -13,6 +13,7 @@
 #include "buttons.h"
 
 AppMode_t AppMode = appmCrystal;
+bool ButtonMustTx = false;
 
 #if 1 // ======================== Variables and defines ========================
 // Forever
@@ -81,7 +82,7 @@ void ITask() {
                 break;
 
             case evtIdButtons:
-                Printf("Btn\r");
+//                Printf("Btn\r");
                 if(AppMode == appmButton) {
                     if(Msg.BtnEvtInfo.Type == beShortPress) {
                         ButtonMustTx = true;
