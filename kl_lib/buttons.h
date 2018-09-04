@@ -30,7 +30,7 @@
 #define BUTTONS_CNT                 1
 // Select required events etc.
 #define BTN_SHORTPRESS              TRUE    // beShortPress evt
-#define BTN_RELEASE                 TRUE
+#define BTN_RELEASE                 FALSE
 #define BTN_LONGPRESS               FALSE    // Send LongPress evt
 #define BTN_REPEAT                  FALSE   // Send Repeat evt
 #define BTN_COMBO                   FALSE    // Allow combo

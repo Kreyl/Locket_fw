@@ -56,7 +56,7 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #endif
 
 #if 1 // =========================== Pkt_t =====================================
-union rPkt_t {
+struct rPkt_t {
     uint32_t DWord;
     uint32_t Type;
 //    bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }

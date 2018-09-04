@@ -12,9 +12,6 @@
 #include "SimpleSensors.h"
 #include "buttons.h"
 
-AppMode_t AppMode = appmCrystal;
-bool ButtonMustTx = false;
-
 #if 1 // ======================== Variables and defines ========================
 // Forever
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
@@ -28,6 +25,9 @@ static void ReadAndSetupMode();
 #define EE_ADDR_DEVICE_ID       0
 
 int32_t ID;
+AppMode_t AppMode = appmCrystal;
+bool ButtonMustTx = false;
+
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
 static uint8_t ISetID(int32_t NewID);
@@ -84,14 +84,9 @@ void ITask() {
             case evtIdButtons:
 //                Printf("Btn\r");
                 if(AppMode == appmButton) {
-                    if(Msg.BtnEvtInfo.Type == beShortPress) {
-                        ButtonMustTx = true;
-                        Led.StartOrContinue(lsqBtnTx);
-                    }
-                    else {
-                        ButtonMustTx = false;
-                        Led.StartOrContinue(lsqBtn);
-                    }
+                    ButtonMustTx = !ButtonMustTx;
+                    if(ButtonMustTx) Led.StartOrContinue(lsqBtnTx);
+                    else Led.StartOrContinue(lsqBtn);
                 }
                 break;
 
