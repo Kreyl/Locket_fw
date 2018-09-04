@@ -9,185 +9,6 @@
 
 #include "ChunkTypes.h"
 
-#if 0 // ============================ LED blink ================================
-const LedChunk_t lsqIdle[] = {
-        {csSetup, 0, clBlack},
-        {csEnd}
-};
-
-const LedChunk_t lsqError[] = {
-        {csSetup, 0, clRed},
-        {csWait, 4005},
-        {csSetup, 0, clBlack},
-        {csEnd}
-};
-
-// ======= Adding / removing IDs ========
-// ==== Access ====
-#define LSQ_ACCESS_ADD_CLR      clGreen
-#define LSQ_ACCESS_REMOVE_CLR   clRed
-const LedChunk_t lsqAddingAccessWaiting[] = {
-        {csSetup, 0, LSQ_ACCESS_ADD_CLR},
-        {csEnd}
-};
-const LedChunk_t lsqAddingAccessNew[] = {
-        {csSetup, 0, clBlack},
-        {csWait, 180},
-        {csSetup, 0, LSQ_ACCESS_ADD_CLR},
-        {csEnd}
-};
-const LedChunk_t lsqAddingAccessError[] = {
-        {csSetup, 0, clRed},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csWait, 99},
-        {csSetup, 0, clRed},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csWait, 99},
-        {csSetup, 0, clRed},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csWait, 99},
-        {csSetup, 0, LSQ_ACCESS_ADD_CLR},
-        {csEnd}
-};
-
-const LedChunk_t lsqRemovingAccessWaiting[] = {
-        {csSetup, 0, LSQ_ACCESS_REMOVE_CLR},
-        {csEnd}
-};
-const LedChunk_t lsqRemovingAccessNew[] = {
-        {csSetup, 0, clBlack},
-        {csWait, 180},
-        {csSetup, 0, LSQ_ACCESS_REMOVE_CLR},
-        {csEnd}
-};
-
-// ==== Adder ====
-#define LSQ_ADDER_ADD_CLR       clBlue
-#define LSQ_ADDER_REMOVE_CLR    clMagenta
-const LedChunk_t lsqAddingAdderWaiting[] = {
-        {csSetup, 0, LSQ_ADDER_ADD_CLR},
-        {csEnd}
-};
-const LedChunk_t lsqAddingAdderNew[] = {
-        {csSetup, 0, clBlack},
-        {csWait, 180},
-        {csSetup, 0, LSQ_ADDER_ADD_CLR},
-        {csEnd}
-};
-const LedChunk_t lsqAddingAdderError[] = {
-        {csSetup, 0, clRed},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csWait, 99},
-        {csSetup, 0, clRed},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csWait, 99},
-        {csSetup, 0, clRed},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csWait, 99},
-        {csSetup, 0, LSQ_ADDER_ADD_CLR},
-        {csEnd}
-};
-
-const LedChunk_t lsqRemovingAdderWaiting[] = {
-        {csSetup, 0, LSQ_ADDER_REMOVE_CLR},
-        {csEnd}
-};
-const LedChunk_t lsqRemovingAdderNew[] = {
-        {csSetup, 0, clBlack},
-        {csWait, 180},
-        {csSetup, 0, LSQ_ADDER_REMOVE_CLR},
-        {csEnd}
-};
-
-// ==== Remover ====
-#define LSQ_REMOVER_ADD_CLR     clCyan
-#define LSQ_REMOVER_REMOVE_CLR  clYellow
-const LedChunk_t lsqAddingRemoverWaiting[] = {
-        {csSetup, 0, LSQ_REMOVER_ADD_CLR},
-        {csEnd}
-};
-const LedChunk_t lsqAddingRemoverNew[] = {
-        {csSetup, 0, clBlack},
-        {csWait, 180},
-        {csSetup, 0, LSQ_REMOVER_ADD_CLR},
-        {csEnd}
-};
-const LedChunk_t lsqAddingRemoverError[] = {
-        {csSetup, 0, clRed},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csWait, 99},
-        {csSetup, 0, clRed},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csWait, 99},
-        {csSetup, 0, clRed},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csWait, 99},
-        {csSetup, 0, LSQ_REMOVER_ADD_CLR},
-        {csEnd}
-};
-
-const LedChunk_t lsqRemovingRemoverWaiting[] = {
-        {csSetup, 0, LSQ_REMOVER_REMOVE_CLR},
-        {csEnd}
-};
-const LedChunk_t lsqRemovingRemoverNew[] = {
-        {csSetup, 0, clBlack},
-        {csWait, 180},
-        {csSetup, 0, LSQ_REMOVER_REMOVE_CLR},
-        {csEnd}
-};
-
-// ==== Erase all ====
-const LedChunk_t lsqEraseAll[] = {
-        {csSetup, 0, clRed},
-        {csWait, 180},
-        {csSetup, 0, clBlack},
-        {csWait, 180},
-        {csSetup, 0, clRed},
-        {csWait, 180},
-        {csSetup, 0, clBlack},
-        {csWait, 180},
-        {csSetup, 0, clRed},
-        {csWait, 180},
-        {csSetup, 0, clBlack},
-        {csWait, 180},
-        {csSetup, 0, clRed},
-        {csWait, 180},
-        {csSetup, 0, clBlack},
-        {csEnd}
-};
-
-// General
-const LedChunk_t lsqBlinkGreen[] = {
-        {csSetup, 0, clGreen},
-        {csWait, 180},
-        {csSetup, 0, clBlack},
-        {csEnd}
-};
-
-const LedChunk_t lsqBlinkGreenX2[] = {
-        {csSetup, 0, clGreen},
-        {csWait, 180},
-        {csSetup, 0, clBlack},
-        {csWait, 180},
-        {csSetup, 0, clGreen},
-        {csWait, 180},
-        {csSetup, 0, clBlack},
-//        {csWait, 999},
-//        {csGoto, 0}
-        {csEnd}
-};
-#endif
-
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
 //const LedRGBChunk_t lsqModeTxStart[] = {
@@ -201,22 +22,7 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 //        {csEnd}
 //};
 
-//const LedRGBChunk_t lsqTx[] {
-//        {csSetup, 0, clYellow},
-//        {csEnd}
-//};
 
-const LedRGBChunk_t lsqStart[] = {
-        {csSetup, 0, clRed},
-        {csWait, 207},
-        {csSetup, 0, clGreen},
-        {csWait, 207},
-        {csSetup, 0, clBlue},
-        {csWait, 207},
-        {csSetup, 0, clBlack},
-        {csSetup, 0, {0,7,0}},
-        {csEnd},
-};
 
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
@@ -233,21 +39,31 @@ const LedRGBChunk_t lsqFailure[] = {
         {csEnd}
 };
 
-const LedRGBChunk_t lsqTx[] = {
-        {csSetup, 603, clRed},
-        {csWait, 207},
-        {csSetup, 603, clBlack},
-//        {csSetup, 0, {7,0,0}},
+// Modes
+const LedRGBChunk_t lsqCrystal[] = {
+        {csSetup, 270, clRed},
+        {csSetup, 270, {4,0,0}},
+        {csEnd},
+};
+const LedRGBChunk_t lsqKey[] = {
+        {csSetup, 270, clMagenta},
+        {csSetup, 270, {4,0,4}},
+        {csEnd},
+};
+const LedRGBChunk_t lsqBtn[] = {
+        {csSetup, 270, clYellow},
+        {csSetup, 270, {4,4,0}},
         {csEnd},
 };
 
-const LedRGBChunk_t lsqRx[] = {
-        {csSetup, 603, clBlue},
-        {csWait, 207},
-        {csSetup, 603, clBlack},
-//        {csSetup, 0, {0,0,7}},
-        {csEnd},
+// Btn
+const LedRGBChunk_t lsqBtnTx[] = {
+        {csSetup, 270, clRed},
+        {csSetup, 270, {11,0,0}},
+        {csGoto, 0},
 };
+
+
 
 // ==== Pill ====
 //const LedRGBChunk_t lsqPillCure[] = {

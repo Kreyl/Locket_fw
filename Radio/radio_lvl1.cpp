@@ -12,7 +12,7 @@
 
 cc1101_t CC(CC_Setup0);
 
-#define DBG_PINS
+//#define DBG_PINS
 
 #ifdef DBG_PINS
 #define DBG_GPIO1   GPIOB
@@ -29,6 +29,7 @@ cc1101_t CC(CC_Setup0);
 #endif
 
 rLevel1_t Radio;
+rPkt_t PktTx;
 
 #if 1 // ================================ Task =================================
 static THD_WORKING_AREA(warLvl1Thread, 256);
@@ -39,59 +40,40 @@ static void rLvl1Thread(void *arg) {
         // Process queue
         RMsg_t msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
         if(msg.Cmd == R_MSG_SET_PWR) CC.SetTxPower(msg.Value);
-        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
-        // Process task
-        if(AppMode == appmTx) Radio.TaskTransmitter();
-        else Radio.TaskReceiverManyByID();
+//        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
+        if(AppMode != appmButton or ButtonMustTx) {
+            CC.SetChannel(ID2RCHNL(ID));
+            PktTx.DWord = THE_WORD;
+            PktTx.Type = AppMode;
+            DBG1_SET();
+            CC.Recalibrate();
+            CC.Transmit(&PktTx);
+            DBG1_CLR();
+        }
+        chThdSleepMilliseconds(18);
     } // while true
 }
 
-void rLevel1_t::TaskTransmitter() {
-//    CC.SetChannel(ID2RCHNL(App.ID));
-//    CC.SetChannel(RCHNL_COMMON);
-    PktTx.DWord32 = THE_WORD;
-//    PktTx.R = 0;
-//    PktTx.G = 255;
-//    PktTx.B = 0;
-    DBG1_SET();
-    CC.Recalibrate();
-    CC.Transmit(&PktTx);
-    DBG1_CLR();
-    chThdSleepMilliseconds(12);
-}
-
-//void rLevel1_t::TaskReceiverSingle() {
-////    uint8_t Ch = ID2RCHNL(App.ID - 1);
-////    CC.SetChannel(Ch);
-//    CC.SetChannel(RCHNL_COMMON);
-//    uint8_t RxRslt = CC.Receive(11, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
-//    if(RxRslt == OK) {
-////        Uart.Printf("Ch=%u; Rssi=%d\r", Ch, Rssi);
-//        Uart.Printf("ForceRssi=%d\r", Rssi);
-////        if(PktRx.DWord32 == THE_WORD and Rssi > -63) App.SignalEvt(EVT_RADIO);
-//    }
+//void rLevel1_t::TaskReceiverManyByID() {
+//    for(int N=0; N<4; N++) { // Iterate channels N times
+//        // Iterate channels
+//        for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
+//            if(i == ID) continue;   // Do not listen self
+//            CC.SetChannel(ID2RCHNL(i));
+////            Printf("%u\r", i);
+//            CC.Recalibrate();
+//            uint8_t RxRslt = CC.Receive(18, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
+//            if(RxRslt == retvOk) {
+//                Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
+//                if(PktRx.DWord32 == THE_WORD and Rssi > RSSI_MIN) RxTable.AddId(i);
+////                else Printf("PktErr\r");
+//            }
+//        } // for i
+//        TryToSleep(270);
+//    } // For N
+//    EvtMsg_t msg(evtIdCheckRxTable);
+//    EvtQMain.SendNowOrExit(msg);
 //}
-
-void rLevel1_t::TaskReceiverManyByID() {
-    for(int N=0; N<4; N++) { // Iterate channels N times
-        // Iterate channels
-        for(int32_t i = ID_MIN; i <= ID_MAX; i++) {
-            if(i == ID) continue;   // Do not listen self
-            CC.SetChannel(ID2RCHNL(i));
-//            Printf("%u\r", i);
-            CC.Recalibrate();
-            uint8_t RxRslt = CC.Receive(18, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
-            if(RxRslt == retvOk) {
-                Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
-                if(PktRx.DWord32 == THE_WORD and Rssi > RSSI_MIN) RxTable.AddId(i);
-//                else Printf("PktErr\r");
-            }
-        } // for i
-        TryToSleep(270);
-    } // For N
-    EvtMsg_t msg(evtIdCheckRxTable);
-    EvtQMain.SendNowOrExit(msg);
-}
 
 //void rLevel1_t::TaskReceiverManyByChannel() {
 //    // Iterate channels
