@@ -46,10 +46,13 @@ const LedRGBChunk_t lsqCrystal[] = {
         {csEnd},
 };
 const LedRGBChunk_t lsqKey[] = {
-        {csSetup, 0, {255, 99, 4}},
-        {csWait, 1530},
         {csSetup, 0, {9,2,0}},
         {csEnd},
+};
+const LedRGBChunk_t lsqKeyActivated[] = {
+        {csSetup, 270, {255, 99, 4}},
+        {csSetup, 270, {9,2,0}},
+        {csGoto, 0},
 };
 const LedRGBChunk_t lsqBtn[] = {
         {csSetup, 270, clYellow},

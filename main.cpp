@@ -26,7 +26,7 @@ static void ReadAndSetupMode();
 
 int32_t ID;
 AppMode_t AppMode = appmCrystal;
-bool ButtonMustTx = false;
+bool ButtonActivated = false;
 
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
@@ -82,11 +82,16 @@ void ITask() {
                 break;
 
             case evtIdButtons:
-//                Printf("Btn\r");
+                Printf("Btn\r");
                 if(AppMode == appmButton) {
-                    ButtonMustTx = !ButtonMustTx;
-                    if(ButtonMustTx) Led.StartOrContinue(lsqBtnTx);
+                    ButtonActivated = !ButtonActivated;
+                    if(ButtonActivated) Led.StartOrContinue(lsqBtnTx);
                     else Led.StartOrContinue(lsqBtn);
+                }
+                else if(AppMode == appmKey) {
+                    ButtonActivated = !ButtonActivated;
+                    if(ButtonActivated) Led.StartOrContinue(lsqKeyActivated);
+                    else Led.StartOrContinue(lsqKey);
                 }
                 break;
 
@@ -125,7 +130,7 @@ void ReadAndSetupMode() {
     OldDipSettings = b;
     // Reset everything
     Led.Stop();
-    ButtonMustTx = false;
+    ButtonActivated = false;
     // Select mode
     uint8_t m = (b & 0b110000) >> 4;
     if(m == 0) {

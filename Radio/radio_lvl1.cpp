@@ -41,10 +41,12 @@ static void rLvl1Thread(void *arg) {
         RMsg_t msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
         if(msg.Cmd == R_MSG_SET_PWR) CC.SetTxPower(msg.Value);
 //        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
-        if(AppMode != appmButton or ButtonMustTx) {
+        if(AppMode != appmButton or ButtonActivated) {
+            Printf("t\r");
             CC.SetChannel(ID2RCHNL(ID));
             PktTx.DWord = THE_WORD;
             PktTx.Type = AppMode;
+            PktTx.Activated = (uint16_t)ButtonActivated;
             DBG1_SET();
             CC.Recalibrate();
             CC.Transmit(&PktTx);
