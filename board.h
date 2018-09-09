@@ -4,7 +4,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket4_1"
-#define APP_NAME            "SomeTxSomeRx"
+#define APP_NAME            "TxRx+FeelEachOther"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
