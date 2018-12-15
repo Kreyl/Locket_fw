@@ -25,7 +25,6 @@ static void ReadAndSetupMode();
 #define EE_ADDR_DEVICE_ID       0
 
 int32_t ID;
-AppMode_t AppMode = appmCrystal;
 bool ButtonActivated = false;
 
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
@@ -52,7 +51,8 @@ int main(void) {
 
     // ==== Init hardware ====
     Uart.Init(115200);
-    ReadIDfromEE();
+//    ReadIDfromEE();
+    ID = 1;
     Printf("\r%S %S; ID=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), ID);
     Clk.PrintFreqs();
 
@@ -63,10 +63,9 @@ int main(void) {
     TmrEverySecond.StartOrRestart();
 
     // ==== Radio ====
-    if(Radio.Init() != retvOk) {
-        Led.StartOrRestart(lsqFailure);
-        chThdSleepMilliseconds(1008);
-    }
+    if(Radio.Init() == retvOk) Led.StartOrContinue(lsqStart);
+    else Led.StartOrRestart(lsqFailure);
+    chThdSleepMilliseconds(1008);
 
     // Main cycle
     ITask();
@@ -83,16 +82,9 @@ void ITask() {
 
             case evtIdButtons:
                 Printf("Btn\r");
-                if(AppMode == appmButton) {
-                    ButtonActivated = !ButtonActivated;
-                    if(ButtonActivated) Led.StartOrContinue(lsqBtnTx);
-                    else Led.StartOrContinue(lsqBtn);
-                }
-                else if(AppMode == appmKey) {
-                    ButtonActivated = !ButtonActivated;
-                    if(ButtonActivated) Led.StartOrContinue(lsqKeyActivated);
-                    else Led.StartOrContinue(lsqKey);
-                }
+                ButtonActivated = !ButtonActivated;
+                if(ButtonActivated) Led.StartOrContinue(lsqBtnTx);
+                else Led.StartOrContinue(lsqIdle);
                 break;
 
             case evtIdShellCmd:
@@ -129,22 +121,7 @@ void ReadAndSetupMode() {
     Printf("Dip: 0x%02X\r", b);
     OldDipSettings = b;
     // Reset everything
-    Led.Stop();
     ButtonActivated = false;
-    // Select mode
-    uint8_t m = (b & 0b110000) >> 4;
-    if(m == 0) {
-        AppMode = appmCrystal;
-        Led.StartOrRestart(lsqCrystal);
-    }
-    else if(m == 1) {
-        AppMode = appmKey;
-        Led.StartOrRestart(lsqKey);
-    }
-    else {
-        AppMode = appmButton;
-        Led.StartOrRestart(lsqBtn);
-    }
     // Select power
     b &= 0b001111; // Remove high bits
     RMsg_t msg;

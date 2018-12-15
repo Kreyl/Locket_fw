@@ -11,16 +11,11 @@
 
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
-//const LedRGBChunk_t lsqModeTxStart[] = {
-//        {csSetup, 0, clYellow},
-//        {csWait, 207},
-//        {csSetup, 0, clBlack},
-//        {csWait, 207},
-//        {csSetup, 0, clYellow},
-//        {csWait, 207},
-//        {csSetup, 0, clBlack},
-//        {csEnd}
-//};
+const LedRGBChunk_t lsqStart[] = {
+        {csSetup, 270, clGreen},
+        {csSetup, 270, {0,7,0}},
+        {csEnd}
+};
 
 
 
@@ -39,31 +34,16 @@ const LedRGBChunk_t lsqFailure[] = {
         {csEnd}
 };
 
-// Modes
-const LedRGBChunk_t lsqCrystal[] = {
-        {csSetup, 270, clRed},
-        {csSetup, 270, {4,0,0}},
-        {csEnd},
-};
-const LedRGBChunk_t lsqKey[] = {
-        {csSetup, 0, {9,2,0}},
-        {csEnd},
-};
-const LedRGBChunk_t lsqKeyActivated[] = {
-        {csSetup, 270, {255, 99, 4}},
-        {csSetup, 270, {9,2,0}},
-        {csGoto, 0},
-};
-const LedRGBChunk_t lsqBtn[] = {
-        {csSetup, 270, clYellow},
-        {csSetup, 270, {4,4,0}},
+const LedRGBChunk_t lsqIdle[] = {
+        {csSetup, 720, {0, 36, 0}},
+        {csSetup, 720, {0,7,0}},
         {csEnd},
 };
 
 // Btn
 const LedRGBChunk_t lsqBtnTx[] = {
-        {csSetup, 270, clRed},
-        {csSetup, 270, {11,0,0}},
+        {csSetup, 720, {36, 36, 0}},
+        {csSetup, 720, {4,4,0}},
         {csGoto, 0},
 };
 

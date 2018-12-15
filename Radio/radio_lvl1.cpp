@@ -37,22 +37,12 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
-        // Process queue
-        RMsg_t msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
-        if(msg.Cmd == R_MSG_SET_PWR) CC.SetTxPower(msg.Value);
-//        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
-        if(AppMode != appmButton or ButtonActivated) {
-            Printf("t\r");
-            CC.SetChannel(ID2RCHNL(ID));
-            PktTx.DWord = THE_WORD;
-            PktTx.Type = AppMode;
-            PktTx.Activated = (uint16_t)ButtonActivated;
-            DBG1_SET();
-            CC.Recalibrate();
-            CC.Transmit(&PktTx);
-            DBG1_CLR();
+        CC.Recalibrate();
+        uint8_t RxRslt = CC.Receive(99, &PktTx, &Radio.Rssi);
+        if(RxRslt == retvOk) {
+            Printf("ID=%u; Rssi=%d\r", PktTx.ID, Radio.Rssi);
         }
-        chThdSleepMilliseconds(18);
+        else Printf("t");
     } // while true
 }
 
@@ -199,9 +189,9 @@ uint8_t rLevel1_t::Init() {
 
     RMsgQ.Init();
     if(CC.Init() == retvOk) {
-        CC.SetTxPower(CC_PwrMinus30dBm);
+        CC.SetTxPower(CC_Pwr0dBm);
         CC.SetPktSize(RPKT_LEN);
-        CC.SetChannel(ID2RCHNL(ID));
+        CC.SetChannel(4);
 //        CC.EnterPwrDown();
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);

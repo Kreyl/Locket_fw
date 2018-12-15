@@ -12,7 +12,4 @@
 #define ID_DEFAULT              ID_MIN
 extern int32_t ID;
 
-enum AppMode_t : uint8_t {appmCrystal = 0, appmKey = 1, appmButton = 2};
-
-extern AppMode_t AppMode;
 extern bool ButtonActivated;
