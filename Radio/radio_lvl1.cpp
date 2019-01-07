@@ -47,6 +47,7 @@ static void rLvl1Thread(void *arg) {
 }
 
 void rLevel1_t::TaskTransmitter() {
+    Printf("t");
 //    CC.SetChannel(ID2RCHNL(App.ID));
 //    CC.SetChannel(RCHNL_COMMON);
     PktTx.DWord32 = THE_WORD;
@@ -73,6 +74,7 @@ void rLevel1_t::TaskTransmitter() {
 //}
 
 void rLevel1_t::TaskReceiverManyByID() {
+
     for(int N=0; N<4; N++) { // Iterate channels N times
         // Iterate channels
         for(int32_t i = ID_MIN; i <= ID_MAX; i++) {

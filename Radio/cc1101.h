@@ -14,7 +14,9 @@
 
 #define CC_BUSYWAIT_TIMEOUT     99000   // tics, not ms
 
-class cc1101_t : public IrqHandler_t {
+void IIrqHandler();
+
+class cc1101_t {
 private:
     const Spi_t ISpi;
     const GPIO_TypeDef *PGpio;
@@ -22,7 +24,6 @@ private:
     const PinIrq_t IGdo0;
     uint8_t IState; // Inner CC state, returned as first byte
     uint8_t IPktSz;
-    thread_reference_t ThdRef;
     // Pins
     uint8_t BusyWait() {
         for(uint32_t i=0; i<CC_BUSYWAIT_TIMEOUT; i++) {
@@ -46,6 +47,7 @@ private:
     uint8_t EnterRX()     { return WriteStrobe(CC_SRX);  }
     uint8_t FlushRxFIFO() { return WriteStrobe(CC_SFRX); }
 public:
+    thread_reference_t ThdRef;
     uint8_t Init();
     void SetChannel(uint8_t AChannel);
     void SetTxPower(uint8_t APwr)  { WriteRegister(CC_PATABLE, APwr); }
@@ -64,12 +66,11 @@ public:
     }
     uint8_t ReadFIFO(void *Ptr, int8_t *PRssi);
 
-    void IIrqHandler() { chThdResumeI(&ThdRef, MSG_OK); }   // NotNull check perfprmed inside chThdResumeI
     cc1101_t(
             SPI_TypeDef *ASpi, GPIO_TypeDef *APGpio,
             uint16_t ASck, uint16_t AMiso, uint16_t AMosi, uint16_t ACs, uint16_t AGdo0):
         ISpi(ASpi), PGpio(APGpio),
         Sck(ASck), Miso(AMiso), Mosi(AMosi), Cs(ACs),
-        IGdo0(APGpio, AGdo0, pudNone, this),
+        IGdo0(APGpio, AGdo0, pudNone, IIrqHandler),
         IState(0), IPktSz(0), ThdRef(nullptr) {}
 };
