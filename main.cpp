@@ -73,15 +73,15 @@ int main(void) {
 
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-    Vibro.Init();
-    Vibro.StartOrRestart(vsqBrrBrr);
+//    Vibro.Init();
+//    Vibro.StartOrRestart(vsqBrrBrr);
 #if BEEPER_ENABLED // === Beeper ===
-    Beeper.Init();
-    Beeper.StartOrRestart(bsqBeepBeep);
+//    Beeper.Init();
+//    Beeper.StartOrRestart(bsqBeepBeep);
 //    chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
 #if BUTTONS_ENABLED
-    SimpleSensors::Init();
+//    SimpleSensors::Init();
 #endif
 //    Adc.Init();
 
@@ -91,7 +91,7 @@ int main(void) {
 #endif
 
     // ==== Time and timers ====
-    TmrEverySecond.StartOrRestart();
+//    TmrEverySecond.StartOrRestart();
 //    TmrRxTableCheck.StartOrRestart();
 
     // ==== Radio ====

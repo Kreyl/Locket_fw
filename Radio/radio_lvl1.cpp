@@ -10,9 +10,14 @@
 #include "uart.h"
 #include "main.h"
 
+#include "led.h"
+#include "Sequences.h"
+extern LedRGBwPower_t Led;
+
 cc1101_t CC(CC_Setup0);
 
-#define DBG_PINS
+
+//#define DBG_PINS
 
 #ifdef DBG_PINS
 #define DBG_GPIO1   GPIOB
@@ -37,12 +42,22 @@ static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
         // Process queue
-        RMsg_t msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
-        if(msg.Cmd == R_MSG_SET_PWR) CC.SetTxPower(msg.Value);
-        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
+//        RMsg_t msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
+//        if(msg.Cmd == R_MSG_SET_PWR) CC.SetTxPower(msg.Value);
+//        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
         // Process task
-        if(AppMode == appmTx) Radio.TaskTransmitter();
-        else Radio.TaskReceiverManyByID();
+//        if(AppMode == appmTx)
+        Radio.TaskTransmitter();
+//        else Radio.TaskReceiverManyByID();
+//        int8_t Rssi;
+//        rPkt_t PktRx;
+//        CC.Recalibrate();
+//        uint8_t RxRslt = CC.Receive(90, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
+//        if(RxRslt == retvOk) {
+//            Printf("Rssi=%d\r", Rssi);
+//            Led.StartOrRestart(lsqRx);
+//        }
+
     } // while true
 }
 
@@ -58,7 +73,7 @@ void rLevel1_t::TaskTransmitter() {
     CC.Recalibrate();
     CC.Transmit(&PktTx);
     DBG1_CLR();
-    chThdSleepMilliseconds(12);
+    chThdSleepMilliseconds(45);
 }
 
 //void rLevel1_t::TaskReceiverSingle() {
@@ -217,9 +232,9 @@ uint8_t rLevel1_t::Init() {
 
     RMsgQ.Init();
     if(CC.Init() == retvOk) {
-        CC.SetTxPower(CC_PwrMinus30dBm);
+        CC.SetTxPower(CC_Pwr0dBm);
         CC.SetPktSize(RPKT_LEN);
-        CC.SetChannel(ID2RCHNL(ID));
+        CC.SetChannel(0);
 //        CC.EnterPwrDown();
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);

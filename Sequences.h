@@ -242,10 +242,9 @@ const LedRGBChunk_t lsqTx[] = {
 };
 
 const LedRGBChunk_t lsqRx[] = {
-        {csSetup, 603, clBlue},
+        {csSetup, 0, clBlue},
         {csWait, 207},
-        {csSetup, 603, clBlack},
-//        {csSetup, 0, {0,0,7}},
+        {csSetup, 0, {0,7,0}},
         {csEnd},
 };
 
