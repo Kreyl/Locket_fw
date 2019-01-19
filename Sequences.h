@@ -206,17 +206,78 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 //        {csEnd}
 //};
 
-const LedRGBChunk_t lsqStart[] = {
-        {csSetup, 0, clRed},
-        {csWait, 207},
+//const LedRGBChunk_t lsqStart[] = {
+//        {csSetup, 0, clRed},
+//        {csWait, 207},
+//        {csSetup, 0, clGreen},
+//        {csWait, 207},
+//        {csSetup, 0, clBlue},
+//        {csWait, 207},
+//        {csSetup, 0, clBlack},
+//        {csSetup, 0, {0,7,0}},
+//        {csEnd},
+//};
+
+const LedRGBChunk_t lsqOnPillConnect[] = {
         {csSetup, 0, clGreen},
-        {csWait, 207},
-        {csSetup, 0, clBlue},
-        {csWait, 207},
+        {csWait, 450},
         {csSetup, 0, clBlack},
-        {csSetup, 0, {0,7,0}},
         {csEnd},
 };
+
+
+const LedRGBChunk_t lsqParalyzerStart[] = {
+        {csSetup, 0, clBlue},
+        {csWait, 810},
+        {csSetup, 0, clBlack},
+        {csEnd},
+};
+const LedRGBChunk_t lsqRegenStart[] = {
+        {csSetup, 0, clYellow},
+        {csWait, 810},
+        {csSetup, 0, clBlack},
+        {csEnd},
+};
+const LedRGBChunk_t lsqAccelStart[] = {
+        {csSetup, 0, clMagenta},
+        {csWait, 810},
+        {csSetup, 0, clBlack},
+        {csEnd},
+};
+const LedRGBChunk_t lsqLightStart[] = {
+        {csSetup, 0, clWhite},
+        {csWait, 810},
+        {csSetup, 0, clBlack},
+        {csEnd},
+};
+
+// Activated
+const LedRGBChunk_t lsqParalyzer[] = {
+        {csSetup, 0, clBlue},
+        {csEnd},
+};
+const LedRGBChunk_t lsqRegen[] = {
+        {csSetup, 0, clYellow},
+        {csWait, 450},
+        {csSetup, 0, clBlack},
+        {csWait, 450},
+        {csGoto, 0},
+};
+const LedRGBChunk_t lsqAccel[] = {
+        {csSetup, 0, clMagenta},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqBlow[] = {
+        {csSetup, 0, clRed},
+        {csWait, 153},
+        {csSetup, 0, clGreen},
+        {csWait, 153},
+        {csSetup, 0, clBlue},
+        {csWait, 153},
+        {csGoto, 0},
+};
+
 
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
@@ -232,42 +293,6 @@ const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clBlack},
         {csEnd}
 };
-
-const LedRGBChunk_t lsqTx[] = {
-        {csSetup, 603, clRed},
-        {csWait, 207},
-        {csSetup, 603, clBlack},
-//        {csSetup, 0, {7,0,0}},
-        {csEnd},
-};
-
-const LedRGBChunk_t lsqRx[] = {
-        {csSetup, 0, clBlue},
-        {csWait, 207},
-        {csSetup, 0, {0,7,0}},
-        {csEnd},
-};
-
-// ==== Pill ====
-//const LedRGBChunk_t lsqPillCure[] = {
-//        {csSetup, 0, clGreen},
-//        {csWait, 999},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
-//const LedRGBChunk_t lsqPillPanacea[] = {
-//        {csSetup, 0, clWhite},
-//        {csWait, 999},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
-//const LedRGBChunk_t lsqPillBad[] = {
-//        {csSetup, 0, clRed},
-//        {csWait, 999},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
-
 #endif
 
 #if 0 // =========================== LED Smooth ================================
@@ -424,40 +449,23 @@ const BaseChunk_t vsqBrrBrrBrr[] = {
 };
 
 // ==== Health ====
-const BaseChunk_t vsqIll[] = {
+const BaseChunk_t vsqRegen[] = {
         {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
+        {csWait, 270},
         {csSetup, 0},
-        {csWait, 3600},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
+        {csWait, 630},
+        {csGoto, 0}
 };
 
-const BaseChunk_t vsqDeath[] = {
+const BaseChunk_t vsqBlow[] = {
         {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
+        {csWait, 153},
         {csSetup, 0},
-        {csWait, 4005},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
+        {csWait, 153},
+        {csGoto, 0}
 };
 
-// Cataclysm
-const BaseChunk_t vsqCataclysm[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
-        {csSetup, 0},
-        {csWait, 999},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 99},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
-};
+
 
 /*
 const BaseChunk_t vsqError[] = {

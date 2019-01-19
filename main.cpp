@@ -38,14 +38,16 @@ Vibro_t Vibro {VIBRO_SETUP};
 Beeper_t Beeper {BEEPER_PIN};
 #endif
 
-LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+DevType_t DeviceType = devtNone;
+PillType_t PillType = pilltNone;
 
-AppMode_t AppMode = appmTx;
+LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {MS2ST(1000), evtIdEverySecond, tktPeriodic};
 //static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
 static int32_t TimeS;
+static int32_t IndicationTimeout = 0;
 #endif
 
 int main(void) {
@@ -61,7 +63,7 @@ int main(void) {
 
     // ==== Init hardware ====
     Uart.Init();
-    ReadIDfromEE();
+//    ReadIDfromEE();
     Printf("\r%S %S; ID=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), ID);
 //    Uart.Printf("ID: %X %X %X\r", GetUniqID1(), GetUniqID2(), GetUniqID3());
 //    if(Sleep::WasInStandby()) {
@@ -73,15 +75,15 @@ int main(void) {
 
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-//    Vibro.Init();
-//    Vibro.StartOrRestart(vsqBrrBrr);
+    Vibro.Init();
+    Vibro.StartOrRestart(vsqBrrBrr);
 #if BEEPER_ENABLED // === Beeper ===
 //    Beeper.Init();
 //    Beeper.StartOrRestart(bsqBeepBeep);
 //    chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
 #if BUTTONS_ENABLED
-//    SimpleSensors::Init();
+    SimpleSensors::Init();
 #endif
 //    Adc.Init();
 
@@ -91,13 +93,13 @@ int main(void) {
 #endif
 
     // ==== Time and timers ====
-//    TmrEverySecond.StartOrRestart();
+    TmrEverySecond.StartOrRestart();
 //    TmrRxTableCheck.StartOrRestart();
 
     // ==== Radio ====
-    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
-    else Led.StartOrRestart(lsqFailure);
-    chThdSleepMilliseconds(1008);
+//    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
+//    else Led.StartOrRestart(lsqFailure);
+//    chThdSleepMilliseconds(1008);
 
     // Main cycle
     ITask();
@@ -111,20 +113,43 @@ void ITask() {
             case evtIdEverySecond:
                 TimeS++;
                 ReadAndSetupMode();
+                if(IndicationTimeout > 0) {
+                    if(--IndicationTimeout == 0) {
+                        Led.Stop();
+                        Vibro.Stop();
+                    }
+                }
                 break;
 
 #if BUTTONS_ENABLED
-            case evtIdButtons:
+            case evtIdButtons: {
                 Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
-                if(AppMode == appmTx) {
-                    AppMode = appmRx;
-                    Led.SetColor(clGreen);
+                int32_t Zero = 0;
+                if(DeviceType == devtParalyzer and PillType == pilltParalyzer) {
+                    PillMgr.Write(0, &Zero, 4);
+                    Led.StartOrRestart(lsqParalyzer);
+                    IndicationTimeout = 10;
                 }
-                else {
-                    AppMode = appmTx;
-                    Led.SetColor(clRed);
+                else if(DeviceType == devtRegen and PillType == pilltRegen) {
+                    PillMgr.Write(0, &Zero, 4);
+                    Led.StartOrRestart(lsqRegen);
+                    Vibro.StartOrRestart(vsqRegen);
+                    IndicationTimeout = 600;
                 }
-                break;
+                else if(DeviceType == devtAccelerator and PillType == pilltAccelerator) {
+                    PillMgr.Write(0, &Zero, 4);
+                    Led.StartOrRestart(lsqAccel);
+                    Vibro.StartOrRestart(vsqRegen);
+                    IndicationTimeout = 10;
+                }
+                else if(PillType == pilltBlow) {
+                    PillMgr.Write(0, &Zero, 4);
+                    Led.StartOrRestart(lsqBlow);
+                    Vibro.StartOrRestart(vsqBlow);
+                    IndicationTimeout = 60;
+                }
+                PillType = pilltNone;
+            } break;
 #endif
 
 //        if(Evt & EVT_RX) {
@@ -145,28 +170,19 @@ void ITask() {
             } break;
 
 #if PILL_ENABLED // ==== Pill ====
-        if(Evt & EVT_PILL_CONNECTED) {
-            Uart.Printf("Pill: %d\r", PillMgr.Pill.TypeInt32);
-            if(PillMgr.Pill.Type == ptCure) {
-                Led.StartOrRestart(lsqPillCure);
-                chThdSleepMilliseconds(999);
-                Health.ProcessPill(PillMgr.Pill.Type);
-            }
-            else if(PillMgr.Pill.Type == ptPanacea) {
-                Led.StartOrRestart(lsqPillPanacea);
-                chThdSleepMilliseconds(999);
-                Health.ProcessPill(PillMgr.Pill.Type);
-            }
-            else {
-                Led.StartOrRestart(lsqPillBad);
-                chThdSleepMilliseconds(999);
-            }
-            App.SignalEvt(EVT_INDICATION);  // Restart indication after pill show
-        }
+            case evtIdPillConnected:
+                Printf("Pill: %u\r", PillMgr.Pill.DWord32);
+                Led.StartOrRestart(lsqOnPillConnect);
+                if(PillMgr.Pill.DWord32 >= pilltNone and PillMgr.Pill.DWord32 <= pilltBlow) {
+                    PillType = (PillType_t)PillMgr.Pill.DWord32;
+                }
+                break;
 
-        if(Evt & EVT_PILL_DISCONNECTED) {
-            Uart.Printf("Pill Discon\r");
-        }
+            case evtIdPillDisconnected:
+                Printf("Pill disconn\r");
+//                Led.StartOrRestart(lsqNoPill);
+                PillType = pilltNone;
+                break;
 #endif
 
 #if 0 // ==== Vibro seq end ====
@@ -220,18 +236,32 @@ void ReadAndSetupMode() {
     // ==== Something has changed ====
     Printf("Dip: 0x%02X\r", b);
     OldDipSettings = b;
+
+    if(b >= devtParalyzer and b <= devtLight) {
+        DeviceType = (DevType_t)b;
+        // XXX
+//        switch(DeviceType) {
+//            case devtNone: break;
+//            case devtParalyzer: Led.StartOrRestart(lsqParalyzerStart); break;
+//            case devtRegen: Led.StartOrRestart(lsqRegenStart); break;
+//            case devtAccelerator: Led.StartOrRestart(lsqAccelStart); break;
+//            case devtLight: Led.StartOrRestart(lsqLightStart); break;
+//        }
+    }
+
+
     // Reset everything
-    Vibro.Stop();
-    Led.Stop();
+//    Vibro.Stop();
+//    Led.Stop();
     // Select mode
 //    if(b & 0b100000) {
 //        Led.StartOrRestart(lsqTx);
     // Select power
-    b &= 0b11111; // Remove high bits
-    RMsg_t msg;
-    msg.Cmd = R_MSG_SET_PWR;
-    msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
-    Radio.RMsgQ.SendNowOrExit(msg);
+//    b &= 0b11111; // Remove high bits
+//    RMsg_t msg;
+//    msg.Cmd = R_MSG_SET_PWR;
+//    msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
+//    Radio.RMsgQ.SendNowOrExit(msg);
 }
 
 
@@ -260,34 +290,52 @@ void OnCmd(Shell_t *PShell) {
 
 
 #if PILL_ENABLED // ==== Pills ====
-    else if(PCmd->NameIs("PillRead32")) {
-        int32_t Cnt = 0;
-        if(PCmd->GetNextInt32(&Cnt) != OK) { PShell->Ack(CMD_ERROR); return; }
-        uint8_t MemAddr = 0, b = OK;
-        PShell->Printf("#PillData32 ");
-        for(int32_t i=0; i<Cnt; i++) {
-            b = PillMgr.Read(MemAddr, &dw32, 4);
-            if(b != OK) break;
-            PShell->Printf("%d ", dw32);
-            MemAddr += 4;
+    else if(PCmd->NameIs("ReadPill")) {
+        int32_t DWord32;
+        uint8_t Rslt = PillMgr.Read(0, &DWord32, 4);
+        if(Rslt == retvOk) {
+            PShell->Print("Read %d\r\n", DWord32);
         }
-        Uart.Printf("\r\n");
-        PShell->Ack(b);
+        else PShell->Ack(retvFail);
     }
 
-    else if(PCmd->NameIs("PillWrite32")) {
-        uint8_t b = CMD_ERROR;
-        uint8_t MemAddr = 0;
-        // Iterate data
-        while(true) {
-            if(PCmd->GetNextInt32(&dw32) != OK) break;
-//            Uart.Printf("%X ", Data);
-            b = PillMgr.Write(MemAddr, &dw32, 4);
-            if(b != OK) break;
-            MemAddr += 4;
-        } // while
-        Uart.Ack(b);
+    else if(PCmd->NameIs("WritePill")) {
+        int32_t DWord32;
+        if(PCmd->GetNext<int32_t>(&DWord32) == retvOk) {
+            uint8_t Rslt = PillMgr.Write(0, &DWord32, 4);
+            PShell->Ack(Rslt);
+        }
+        else PShell->Ack(retvCmdError);
     }
+
+//    else if(PCmd->NameIs("PillRead32")) {
+//        int32_t Cnt = 0;
+//        if(PCmd->GetNext<int32_t>(&Cnt) != OK) { PShell->Ack(CMD_ERROR); return; }
+//        uint8_t MemAddr = 0, b = OK;
+//        PShell->Printf("#PillData32 ");
+//        for(int32_t i=0; i<Cnt; i++) {
+//            b = PillMgr.Read(MemAddr, &dw32, 4);
+//            if(b != OK) break;
+//            PShell->Printf("%d ", dw32);
+//            MemAddr += 4;
+//        }
+//        Uart.Printf("\r\n");
+//        PShell->Ack(b);
+//    }
+//
+//    else if(PCmd->NameIs("PillWrite32")) {
+//        uint8_t b = CMD_ERROR;
+//        uint8_t MemAddr = 0;
+//        // Iterate data
+//        while(true) {
+//            if(PCmd->GetNextInt32(&dw32) != OK) break;
+////            Uart.Printf("%X ", Data);
+//            b = PillMgr.Write(MemAddr, &dw32, 4);
+//            if(b != OK) break;
+//            MemAddr += 4;
+//        } // while
+//        Uart.Ack(b);
+//    }
 #endif
 
 //    else if(PCmd->NameIs("Pill")) {
