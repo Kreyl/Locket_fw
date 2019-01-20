@@ -279,6 +279,73 @@ const LedRGBChunk_t lsqBlow[] = {
 };
 
 
+// Master
+const LedRGBChunk_t lsqMasterNone[] = {
+        {csSetup, 0, clGreen},
+        {csEnd},
+};
+const LedRGBChunk_t lsqMasterParalyzer[] = {
+        {csSetup, 0, clBlue},
+        {csEnd},
+};
+const LedRGBChunk_t lsqMasterRegen[] = {
+        {csSetup, 0, clYellow},
+        {csEnd},
+};
+const LedRGBChunk_t lsqMasterAccel[] = {
+        {csSetup, 0, clMagenta},
+        {csEnd},
+};
+const LedRGBChunk_t lsqMasterLight[] = {
+        {csSetup, 0, clWhite},
+        {csEnd},
+};
+const LedRGBChunk_t lsqMasterBlow[] = {
+        {csSetup, 0, clRed},
+        {csEnd},
+};
+
+
+const LedRGBChunk_t lsqMasterNoneWr[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 450},
+        {csSetup, 0, clGreen},
+        {csEnd},
+};
+const LedRGBChunk_t lsqMasterParalyzerWr[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 450},
+        {csSetup, 0, clBlue},
+        {csEnd},
+};
+const LedRGBChunk_t lsqMasterRegenWr[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 450},
+        {csSetup, 0, clYellow},
+        {csEnd},
+};
+const LedRGBChunk_t lsqMasterAccelWr[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 450},
+        {csSetup, 0, clMagenta},
+        {csEnd},
+};
+const LedRGBChunk_t lsqMasterLightWr[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 450},
+        {csSetup, 0, clWhite},
+        {csEnd},
+};
+const LedRGBChunk_t lsqMasterBlowWr[] = {
+        {csSetup, 0, clBlack},
+        {csWait, 450},
+        {csSetup, 0, clRed},
+        {csEnd},
+};
+
+
+
+
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
         {csWait, 99},

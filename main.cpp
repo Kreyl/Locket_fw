@@ -41,6 +41,8 @@ Beeper_t Beeper {BEEPER_PIN};
 DevType_t DeviceType = devtNone;
 PillType_t PillType = pilltNone;
 
+PillType_t PillToWrite = pilltNone;
+
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
@@ -122,34 +124,49 @@ void ITask() {
                 break;
 
 #if BUTTONS_ENABLED
-            case evtIdButtons: {
+            case evtIdButtons:
                 Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
-                int32_t Zero = 0;
-                if(DeviceType == devtParalyzer and PillType == pilltParalyzer) {
-                    PillMgr.Write(0, &Zero, 4);
-                    Led.StartOrRestart(lsqParalyzer);
-                    IndicationTimeout = 10;
+                if(DeviceType == devtMaster) {
+                    if(PillToWrite == pilltBlow) PillToWrite = pilltNone;
+                    else PillToWrite = (PillType_t)((int)PillToWrite + 1);
+                    switch(PillToWrite) {
+                        case pilltNone: Led.StartOrRestart(lsqMasterNone); break;
+                        case pilltParalyzer: Led.StartOrRestart(lsqMasterParalyzer); break;
+                        case pilltRegen: Led.StartOrRestart(lsqMasterRegen); break;
+                        case pilltAccelerator: Led.StartOrRestart(lsqMasterAccel); break;
+                        case pilltLight: Led.StartOrRestart(lsqMasterLight); break;
+                        case pilltBlow: Led.StartOrRestart(lsqMasterBlow); break;
+                    }
                 }
-                else if(DeviceType == devtRegen and PillType == pilltRegen) {
-                    PillMgr.Write(0, &Zero, 4);
-                    Led.StartOrRestart(lsqRegen);
-                    Vibro.StartOrRestart(vsqRegen);
-                    IndicationTimeout = 600;
+                // Player mode
+                else {
+                    int32_t Zero = 0;
+                    if(DeviceType == devtParalyzer and PillType == pilltParalyzer) {
+                        PillMgr.Write(0, &Zero, 4);
+                        Led.StartOrRestart(lsqParalyzer);
+                        IndicationTimeout = 10;
+                    }
+                    else if(DeviceType == devtRegen and PillType == pilltRegen) {
+                        PillMgr.Write(0, &Zero, 4);
+                        Led.StartOrRestart(lsqRegen);
+                        Vibro.StartOrRestart(vsqRegen);
+                        IndicationTimeout = 600;
+                    }
+                    else if(DeviceType == devtAccelerator and PillType == pilltAccelerator) {
+                        PillMgr.Write(0, &Zero, 4);
+                        Led.StartOrRestart(lsqAccel);
+                        Vibro.StartOrRestart(vsqRegen);
+                        IndicationTimeout = 10;
+                    }
+                    else if(PillType == pilltBlow) {
+                        PillMgr.Write(0, &Zero, 4);
+                        Led.StartOrRestart(lsqBlow);
+                        Vibro.StartOrRestart(vsqBlow);
+                        IndicationTimeout = 60;
+                    }
+                    PillType = pilltNone;
                 }
-                else if(DeviceType == devtAccelerator and PillType == pilltAccelerator) {
-                    PillMgr.Write(0, &Zero, 4);
-                    Led.StartOrRestart(lsqAccel);
-                    Vibro.StartOrRestart(vsqRegen);
-                    IndicationTimeout = 10;
-                }
-                else if(PillType == pilltBlow) {
-                    PillMgr.Write(0, &Zero, 4);
-                    Led.StartOrRestart(lsqBlow);
-                    Vibro.StartOrRestart(vsqBlow);
-                    IndicationTimeout = 60;
-                }
-                PillType = pilltNone;
-            } break;
+                break;
 #endif
 
 //        if(Evt & EVT_RX) {
@@ -172,9 +189,27 @@ void ITask() {
 #if PILL_ENABLED // ==== Pill ====
             case evtIdPillConnected:
                 Printf("Pill: %u\r", PillMgr.Pill.DWord32);
-                Led.StartOrRestart(lsqOnPillConnect);
-                if(PillMgr.Pill.DWord32 >= pilltNone and PillMgr.Pill.DWord32 <= pilltBlow) {
-                    PillType = (PillType_t)PillMgr.Pill.DWord32;
+                if(DeviceType == devtMaster) {
+                    int32_t WhatToWrite = (int32_t)PillToWrite;
+                    if(PillMgr.Write(0, &WhatToWrite, 4) == retvOk) {
+                        switch(PillToWrite) {
+                            case pilltNone: Led.StartOrRestart(lsqMasterNoneWr); break;
+                            case pilltParalyzer: Led.StartOrRestart(lsqMasterParalyzerWr); break;
+                            case pilltRegen: Led.StartOrRestart(lsqMasterRegenWr); break;
+                            case pilltAccelerator: Led.StartOrRestart(lsqMasterAccelWr); break;
+                            case pilltLight: Led.StartOrRestart(lsqMasterLightWr); break;
+                            case pilltBlow: Led.StartOrRestart(lsqMasterBlowWr); break;
+                        }
+                    }
+                }
+                // Player mode
+                else {
+                    if(IndicationTimeout == 0) { // Ignore pill if device is activated
+                        Led.StartOrRestart(lsqOnPillConnect);
+                        if(PillMgr.Pill.DWord32 >= pilltNone and PillMgr.Pill.DWord32 <= pilltBlow) {
+                            PillType = (PillType_t)PillMgr.Pill.DWord32;
+                        }
+                    }
                 }
                 break;
 
@@ -237,18 +272,20 @@ void ReadAndSetupMode() {
     Printf("Dip: 0x%02X\r", b);
     OldDipSettings = b;
 
-    if(b >= devtParalyzer and b <= devtLight) {
-        DeviceType = (DevType_t)b;
-        // XXX
-//        switch(DeviceType) {
-//            case devtNone: break;
-//            case devtParalyzer: Led.StartOrRestart(lsqParalyzerStart); break;
-//            case devtRegen: Led.StartOrRestart(lsqRegenStart); break;
-//            case devtAccelerator: Led.StartOrRestart(lsqAccelStart); break;
-//            case devtLight: Led.StartOrRestart(lsqLightStart); break;
-//        }
+    if(b & 0x80) {
+        DeviceType = devtMaster;
+        switch(PillToWrite) {
+            case pilltNone: Led.StartOrRestart(lsqMasterNone); break;
+            case pilltParalyzer: Led.StartOrRestart(lsqMasterParalyzer); break;
+            case pilltRegen: Led.StartOrRestart(lsqMasterRegen); break;
+            case pilltAccelerator: Led.StartOrRestart(lsqMasterAccel); break;
+            case pilltLight: Led.StartOrRestart(lsqMasterLight); break;
+            case pilltBlow: Led.StartOrRestart(lsqMasterBlow); break;
+        }
     }
-
+    else if(b >= devtParalyzer and b <= devtLight) {
+        DeviceType = (DevType_t)b;
+    }
 
     // Reset everything
 //    Vibro.Stop();

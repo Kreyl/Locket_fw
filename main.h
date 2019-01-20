@@ -20,5 +20,6 @@ enum DevType_t {
     devtParalyzer = 1,
     devtRegen = 2,
     devtAccelerator = 3,
-    devtLight = 4
+    devtLight = 4,
+    devtMaster = 9
 };
