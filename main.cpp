@@ -99,6 +99,7 @@ int main(void) {
 //    TmrRxTableCheck.StartOrRestart();
 
     // ==== Radio ====
+    Radio.Init();
 //    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
 //    else Led.StartOrRestart(lsqFailure);
 //    chThdSleepMilliseconds(1008);

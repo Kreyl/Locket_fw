@@ -36,18 +36,18 @@ cc1101_t CC(CC_Setup0);
 rLevel1_t Radio;
 
 #if 1 // ================================ Task =================================
-static THD_WORKING_AREA(warLvl1Thread, 256);
-__noreturn
-static void rLvl1Thread(void *arg) {
-    chRegSetThreadName("rLvl1");
-    while(true) {
+//static THD_WORKING_AREA(warLvl1Thread, 256);
+//__noreturn
+//static void rLvl1Thread(void *arg) {
+//    chRegSetThreadName("rLvl1");
+//    while(true) {
         // Process queue
 //        RMsg_t msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
 //        if(msg.Cmd == R_MSG_SET_PWR) CC.SetTxPower(msg.Value);
 //        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
         // Process task
 //        if(AppMode == appmTx)
-        Radio.TaskTransmitter();
+//        Radio.TaskTransmitter();
 //        else Radio.TaskReceiverManyByID();
 //        int8_t Rssi;
 //        rPkt_t PktRx;
@@ -58,8 +58,8 @@ static void rLvl1Thread(void *arg) {
 //            Led.StartOrRestart(lsqRx);
 //        }
 
-    } // while true
-}
+//    } // while true
+//}
 
 void rLevel1_t::TaskTransmitter() {
     Printf("t");
@@ -235,9 +235,9 @@ uint8_t rLevel1_t::Init() {
         CC.SetTxPower(CC_Pwr0dBm);
         CC.SetPktSize(RPKT_LEN);
         CC.SetChannel(0);
-//        CC.EnterPwrDown();
+        CC.EnterPwrDown();
         // Thread
-        chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
+//        chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return retvOk;
     }
     else return retvFail;
