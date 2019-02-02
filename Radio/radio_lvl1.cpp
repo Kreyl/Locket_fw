@@ -12,10 +12,8 @@
 
 #include "led.h"
 #include "Sequences.h"
-extern LedRGBwPower_t Led;
 
 cc1101_t CC(CC_Setup0);
-
 
 //#define DBG_PINS
 
@@ -62,17 +60,31 @@ static void rLvl1Thread(void *arg) {
 }
 
 void rLevel1_t::TaskTransmitter() {
-    Printf("t");
-//    CC.SetChannel(ID2RCHNL(App.ID));
-//    CC.SetChannel(RCHNL_COMMON);
-    PktTx.DWord32 = THE_WORD;
-//    PktTx.R = 0;
-//    PktTx.G = 255;
-//    PktTx.B = 0;
-    DBG1_SET();
-    CC.Recalibrate();
-    CC.Transmit(&PktTx);
-    DBG1_CLR();
+    switch(AppState) {
+        case appstIdle: break; // Do nothing
+
+        case appstTx1:
+            Printf("t1 ");
+            PktTx.R = TX1_CLR_R;
+            PktTx.G = TX1_CLR_G;
+            PktTx.B = TX1_CLR_B;
+            DBG1_SET();
+            CC.Recalibrate();
+            CC.Transmit(&PktTx);
+            DBG1_CLR();
+            break;
+
+        case appstTx2:
+            Printf("t2 ");
+            PktTx.R = TX2_CLR_R;
+            PktTx.G = TX2_CLR_G;
+            PktTx.B = TX2_CLR_B;
+            DBG1_SET();
+            CC.Recalibrate();
+            CC.Transmit(&PktTx);
+            DBG1_CLR();
+            break;
+    }
     chThdSleepMilliseconds(45);
 }
 
@@ -232,7 +244,7 @@ uint8_t rLevel1_t::Init() {
 
     RMsgQ.Init();
     if(CC.Init() == retvOk) {
-        CC.SetTxPower(CC_Pwr0dBm);
+        CC.SetTxPower(CC_PwrPlus10dBm);
         CC.SetPktSize(RPKT_LEN);
         CC.SetChannel(0);
 //        CC.EnterPwrDown();

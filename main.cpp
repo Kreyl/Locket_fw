@@ -40,12 +40,11 @@ Beeper_t Beeper {BEEPER_PIN};
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
-AppMode_t AppMode = appmTx;
-
 // ==== Timers ====
-static TmrKL_t TmrEverySecond {MS2ST(1000), evtIdEverySecond, tktPeriodic};
+//static TmrKL_t TmrEverySecond {MS2ST(1000), evtIdEverySecond, tktPeriodic};
 //static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
-static int32_t TimeS;
+//static int32_t TimeS;
+AppState_t AppState = appstIdle;
 #endif
 
 int main(void) {
@@ -81,7 +80,7 @@ int main(void) {
 //    chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
 #if BUTTONS_ENABLED
-//    SimpleSensors::Init();
+    SimpleSensors::Init();
 #endif
 //    Adc.Init();
 
@@ -109,20 +108,20 @@ void ITask() {
         EvtMsg_t Msg = EvtQMain.Fetch(TIME_INFINITE);
         switch(Msg.ID) {
             case evtIdEverySecond:
-                TimeS++;
-                ReadAndSetupMode();
+//                TimeS++;
+//                ReadAndSetupMode();
                 break;
 
 #if BUTTONS_ENABLED
             case evtIdButtons:
                 Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
-                if(AppMode == appmTx) {
-                    AppMode = appmRx;
-                    Led.SetColor(clGreen);
-                }
-                else {
-                    AppMode = appmTx;
-                    Led.SetColor(clRed);
+                if(Msg.BtnEvtInfo.BtnID == 0) AppState = appstIdle;
+                else if(Msg.BtnEvtInfo.BtnID == 1) AppState = appstTx1;
+                else if(Msg.BtnEvtInfo.BtnID == 2) AppState = appstTx2;
+                switch(AppState) {
+                    case appstIdle: Led.StartOrContinue(lsqIdle); break;
+                    case appstTx1:  Led.StartOrContinue(lsqTx1); break;
+                    case appstTx2:  Led.StartOrContinue(lsqTx2); break;
                 }
                 break;
 #endif
