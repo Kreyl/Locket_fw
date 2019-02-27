@@ -35,11 +35,13 @@
 #define BTN_REPEAT                  TRUE   // Send Repeat evt
 #define BTN_COMBO                   FALSE    // Allow combo
 #define BTN_LONG_COMBO              FALSE    // Allow longpress combo
+#define BTN_DOUBLE_CLICK            FALSE
 #define BTN_GETSTATE_REQUIRED       FALSE
 
 #define BTN_REPEAT_PERIOD_MS        540
 #define BTN_LONGPRESS_DELAY_MS      999
 #define BTN_DELAY_BEFORE_REPEAT_MS  450
+#define BTN_DOUBLECLICK_DELAY_MS    500
 
 // Define correct button behavior depending on schematic
 #define BTN_IDLE_LOW                TRUE
@@ -61,7 +63,7 @@
 
 // ==== Types ==== Do not touch
 // BtnEvent: contains info about event type, count of participating btns and array with btn IDs
-enum BtnEvt_t {beShortPress, beLongPress, beRelease, beRepeat, beCombo, beLongCombo};
+enum BtnEvt_t {beShortPress, beLongPress, beRelease, beRepeat, beCombo, beLongCombo, beDoubleClick};
 struct BtnEvtInfo_t {
     BtnEvt_t Type;
 #if BTN_COMBO || BTN_LONG_COMBO

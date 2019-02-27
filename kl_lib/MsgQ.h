@@ -57,14 +57,15 @@ union EvtMsg_t {
                 int32_t Value;
                 uint8_t ValueID;
             } __attribute__((__packed__));
-            uint8_t b[EMSG_DATA8_CNT];
-            uint16_t w16[EMSG_DATA16_CNT];
+//            uint8_t b[EMSG_DATA8_CNT];
+//            uint16_t w16[EMSG_DATA16_CNT];
 #if BUTTONS_ENABLED
             BtnEvtInfo_t BtnEvtInfo;
 #endif
         } __attribute__((__packed__));
         uint8_t ID;
     } __attribute__((__packed__));
+
     EvtMsg_t& operator = (const EvtMsg_t &Right) {
         DWord[0] = Right.DWord[0];
         DWord[1] = Right.DWord[1];
@@ -81,12 +82,18 @@ union EvtMsg_t {
 template<typename T, uint32_t Sz>
 class EvtMsgQ_t {
 private:
-    T IBuf[Sz];
-    T *ReadPtr = IBuf, *WritePtr = IBuf;
+    union {
+        uint64_t __Align;
+        T IBuf[Sz];
+    };
+    T *ReadPtr, *WritePtr;
     semaphore_t FullSem;    // Full counter
     semaphore_t EmptySem;   // Empty counter
 public:
+    EvtMsgQ_t() : __Align(0), ReadPtr(IBuf), WritePtr(IBuf) {}
     void Init() {
+        ReadPtr = IBuf;
+        WritePtr = IBuf;
         chSemObjectInit(&EmptySem, Sz);
         chSemObjectInit(&FullSem, (cnt_t)0);
     }
@@ -123,6 +130,7 @@ public:
     uint8_t SendNowOrExit(const T &Msg) {
         chSysLock();
         uint8_t Rslt = SendNowOrExitI(Msg);
+        chSchRescheduleS();
         chSysUnlock();
         return Rslt;
     }
