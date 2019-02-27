@@ -40,8 +40,6 @@ Beeper_t Beeper {BEEPER_PIN};
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
-AppMode_t AppMode = appmTx;
-
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {MS2ST(1000), evtIdEverySecond, tktPeriodic};
 //static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
@@ -91,7 +89,7 @@ int main(void) {
 #endif
 
     // ==== Time and timers ====
-//    TmrEverySecond.StartOrRestart();
+    TmrEverySecond.StartOrRestart();
 //    TmrRxTableCheck.StartOrRestart();
 
     // ==== Radio ====
