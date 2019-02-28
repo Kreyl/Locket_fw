@@ -71,7 +71,7 @@ int main(void) {
 
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-//    Vibro.Init();
+    Vibro.Init();
 //    Vibro.StartOrRestart(vsqBrrBrr);
 #if BEEPER_ENABLED // === Beeper ===
 //    Beeper.Init();
@@ -109,6 +109,17 @@ void ITask() {
             case evtIdEverySecond:
                 TimeS++;
                 ReadAndSetupMode();
+                if((TimeS % 3) == 0) {
+                    uint32_t Cnt = Radio.RxTable.GetCount();
+                    Printf("Cnt: %u\r", Cnt);
+                    switch(Cnt) {
+                        case 0: Vibro.Stop(); break;
+                        case 1: Vibro.StartOrContinue(vsqBrr); break;
+                        case 2: Vibro.StartOrContinue(vsqBrrBrr); break;
+                        default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
+                    }
+                    Radio.RxTable.Clear();
+                }
                 break;
 
 #if BUTTONS_ENABLED
@@ -130,17 +141,6 @@ void ITask() {
 //            Uart.Printf("RX %u\r", TimeRx);
 //            Cataclysm.ProcessSignal(TimeRx);
 //        }
-
-            case evtIdCheckRxTable: {
-                uint32_t Cnt = Radio.RxTable.GetCount();
-                switch(Cnt) {
-                    case 0: Vibro.Stop(); break;
-                    case 1: Vibro.StartOrContinue(vsqBrr); break;
-                    case 2: Vibro.StartOrContinue(vsqBrrBrr); break;
-                    default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
-                }
-                Radio.RxTable.Clear();
-            } break;
 
 #if PILL_ENABLED // ==== Pill ====
         if(Evt & EVT_PILL_CONNECTED) {
@@ -220,7 +220,7 @@ void ReadAndSetupMode() {
     OldDipSettings = b;
     // Reset everything
     Vibro.Stop();
-    Led.Stop();
+//    Led.Stop();
     // Select mode
 //    if(b & 0b100000) {
 //        Led.StartOrRestart(lsqTx);

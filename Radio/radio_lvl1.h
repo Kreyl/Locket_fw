@@ -91,7 +91,7 @@ struct RMsg_t {
 
 // Feel-Each-Other related
 #define CYCLE_CNT           4
-#define SLOT_CNT            108
+#define SLOT_CNT            36
 #define SLOT_DURATION_MS    2
 
 // Timings
