@@ -4,7 +4,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket4_1"
-#define APP_NAME            "PathOfSith"
+#define APP_NAME            "Mushroomer"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE

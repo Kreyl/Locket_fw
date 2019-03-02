@@ -40,17 +40,21 @@ static void rLvl1Thread(void *arg) {
         // Process queue
         RMsg_t msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
         if(msg.Cmd == R_MSG_SET_PWR) CC.SetTxPower(msg.Value);
-//        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
-        if(AppMode != appmButton or ButtonMustTx) {
-            CC.SetChannel(ID2RCHNL(ID));
-            PktTx.DWord = THE_WORD;
-            PktTx.Type = AppMode;
+        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
+        // Process main cycle
+        if(MustTx) {
+            PktTx.DWord1 = TheColor.DWord32;
+            PktTx.DWord2 = TheColor.DWord32;
             DBG1_SET();
             CC.Recalibrate();
             CC.Transmit(&PktTx);
             DBG1_CLR();
+            chThdSleepMilliseconds(18);
         }
-        chThdSleepMilliseconds(18);
+        else {
+            CC.EnterPwrDown();
+            chThdSleepMilliseconds(450);
+        }
     } // while true
 }
 

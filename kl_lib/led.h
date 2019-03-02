@@ -221,9 +221,9 @@ public:
                 LedRGBParent_t(ARed, AGreen, ABlue, AFreq) {}
 
     void SetColor(Color_t AColor) {
-        R.Set(AColor.R * AColor.Lum);
-        G.Set(AColor.G * AColor.Lum);
-        B.Set(AColor.B * AColor.Lum);
+//        R.Set(AColor.R * AColor.Lum);
+//        G.Set(AColor.G * AColor.Lum);
+//        B.Set(AColor.B * AColor.Lum);
     }
 };
 #endif

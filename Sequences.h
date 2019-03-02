@@ -39,32 +39,6 @@ const LedRGBChunk_t lsqFailure[] = {
         {csEnd}
 };
 
-// Modes
-const LedRGBChunk_t lsqCrystal[] = {
-        {csSetup, 270, clRed},
-        {csSetup, 270, {4,0,0}},
-        {csEnd},
-};
-const LedRGBChunk_t lsqKey[] = {
-        {csSetup, 270, clMagenta},
-        {csSetup, 270, {4,0,4}},
-        {csEnd},
-};
-const LedRGBChunk_t lsqBtn[] = {
-        {csSetup, 270, clYellow},
-        {csSetup, 270, {4,4,0}},
-        {csEnd},
-};
-
-// Btn
-const LedRGBChunk_t lsqBtnTx[] = {
-        {csSetup, 270, clRed},
-        {csSetup, 270, {11,0,0}},
-        {csGoto, 0},
-};
-
-
-
 // ==== Pill ====
 //const LedRGBChunk_t lsqPillCure[] = {
 //        {csSetup, 0, clGreen},
@@ -201,7 +175,7 @@ const BeepChunk_t bsqBeepPillBad[] = {
 #if 1 // ============================== Vibro ==================================
 #define VIBRO_VOLUME    100  // 1 to 100
 
-#define VIBRO_SHORT_MS          99
+#define VIBRO_SHORT_MS          90
 #define VIBRO_REPEAT_PERIOD     1008
 
 const BaseChunk_t vsqBrr[] = {
