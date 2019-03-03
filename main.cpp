@@ -25,16 +25,16 @@ static void ReadAndSetupMode();
 #define EE_ADDR_DEVICE_ID       0
 
 int32_t ID;
-Color_t TheColor;
+ColorHSV_t TheColor;
 bool MustTx;
 
-LedRGBChunk_t lsqTx[] = {
-        {csSetup, 450, clRed},
-        {csSetup, 450, {11,0,0}},
+LedHSVChunk_t lsqTx[] = {
+        {csSetup, 450, hsvRed},
+        {csSetup, 450, hsvRed},
         {csGoto, 0},
 };
-LedRGBChunk_t lsqIdle[] = {
-        {csSetup, 270, clRed},
+LedHSVChunk_t lsqIdle[] = {
+        {csSetup, 270, hsvRed},
         {csEnd},
 };
 
@@ -44,7 +44,7 @@ static uint8_t ISetID(int32_t NewID);
 void ReadIDfromEE();
 
 // ==== Periphery ====
-LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+LedHSVwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t Vibro {VIBRO_SETUP};
 
 // ==== Timers ====
@@ -128,26 +128,20 @@ static const uint8_t PwrTable[12] = {
         CC_PwrPlus12dBm   // 11
 };
 
-#define MIDDLE          90
 #define LOW_BRT_HSV     11
-static const Color_t ClrTable[] = {
-        {255,0,0},     {0,255,0},   {0,0,255},
-        {255,0,255},   {255,255,0}, {0,255,255},
-        {MIDDLE,MIDDLE,MIDDLE},
-        {MIDDLE,255,0}, {MIDDLE,0,255},
-        {0,MIDDLE,255}, {255,MIDDLE,0},
-        {0,255,MIDDLE}, {255,0,MIDDLE},
-        {MIDDLE,MIDDLE,255},{MIDDLE,255,MIDDLE},{255,MIDDLE,MIDDLE}
+static const ColorHSV_t ClrTable[] = {
+        {0,   100, 100}, { 20, 100, 100}, { 40, 100, 100}, { 60, 100, 100},
+        { 90, 100, 100}, {120, 100, 100}, {140, 100, 100}, {160, 100, 100},
+        {180, 100, 100}, {200, 100, 100}, {220, 100, 100}, {240, 100, 100},
+        {260, 100, 100}, {280, 100, 100}, {300, 100, 100}, {330, 100, 100},
 };
 
 void SetupColors(int ClrID) {
     TheColor = ClrTable[ClrID];
     lsqTx[0].Color = TheColor;
-    ColorHSV_t hsv;
-    hsv.FromRGB(TheColor);
-    hsv.V = LOW_BRT_HSV;
-    lsqTx[1].Color = hsv.ToRGB();
-    lsqIdle[0].Color = hsv.ToRGB();
+    lsqTx[1].Color = TheColor;
+    lsqTx[1].Color.V = LOW_BRT_HSV;
+    lsqIdle[0].Color = lsqTx[1].Color;
     if(MustTx) Led.StartOrRestart(lsqTx);
     else Led.StartOrRestart(lsqIdle);
 }

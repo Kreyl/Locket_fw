@@ -44,8 +44,9 @@ static void rLvl1Thread(void *arg) {
         // Process main cycle
         if(MustTx) {
 //            Printf("t");
-            PktTx.DWord1 = TheColor.DWord32;
-            PktTx.DWord2 = TheColor.DWord32;
+            Color_t ClrRGB = TheColor.ToRGB();
+            PktTx.DWord1 = ClrRGB.DWord32;
+            PktTx.DWord2 = ClrRGB.DWord32;
             DBG1_SET();
             CC.Recalibrate();
             CC.Transmit(&PktTx);

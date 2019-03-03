@@ -14,5 +14,5 @@
 #define ID_DEFAULT              ID_MIN
 
 extern int32_t ID;
-extern Color_t TheColor;
+extern ColorHSV_t TheColor;
 extern bool MustTx;

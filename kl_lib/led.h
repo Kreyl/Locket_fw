@@ -333,7 +333,7 @@ public:
             const PwmSetup_t ABlue,
             const PinOutput_t APwrPin,
             const uint32_t AFreq = 0xFFFFFFFF) :
-                LedRGBParent_t(ARed, AGreen, ABlue, AFreq), PwrPin(APwrPin) {}
+                LedHSVParent_t(ARed, AGreen, ABlue, AFreq), PwrPin(APwrPin) {}
     void Init() {
         PwrPin.Init();
         LedHSVParent_t::Init();
