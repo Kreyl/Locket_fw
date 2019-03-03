@@ -54,6 +54,7 @@ static TmrKL_t TmrEverySecond {MS2ST(1000), evtIdEverySecond, tktPeriodic};
 int main(void) {
     // ==== Init Vcore & clock system ====
     SetupVCore(vcore1V2);
+//    Clk.SetMSI4MHz();
     Clk.UpdateFreqValues();
 
     // === Init OS ===

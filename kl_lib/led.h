@@ -46,7 +46,7 @@ class LedSmooth_t : public BaseSequencer_t<LedSmoothChunk_t> {
 private:
     const PinOutputPWM_t IChnl;
     uint8_t ICurrentBrightness;
-//    void SetupDelay(uint32_t ms) { chVTSetI(&ITmr, MS2ST(ms), LedSmoothTmrCallback, this); }
+    const uint32_t PWMFreq;
     void ISwitchOff() { SetBrightness(0); }
     SequencerLoopTask_t ISetup() {
         if(ICurrentBrightness != IPCurrentChunk->Brightness) {
@@ -73,10 +73,11 @@ private:
         return sltProceed;
     }
 public:
-    LedSmooth_t(const PwmSetup_t APinSetup) :
-        BaseSequencer_t(), IChnl(APinSetup), ICurrentBrightness(0) {}
+    LedSmooth_t(const PwmSetup_t APinSetup, const uint32_t AFreq = 0xFFFFFFFF) :
+        BaseSequencer_t(), IChnl(APinSetup), ICurrentBrightness(0), PWMFreq(AFreq) {}
     void Init() {
         IChnl.Init();
+        IChnl.SetFrequencyHz(PWMFreq);
         SetBrightness(0);
     }
     void SetBrightness(uint8_t ABrightness) { IChnl.Set(ABrightness); }
@@ -221,9 +222,138 @@ public:
                 LedRGBParent_t(ARed, AGreen, ABlue, AFreq) {}
 
     void SetColor(Color_t AColor) {
-//        R.Set(AColor.R * AColor.Lum);
-//        G.Set(AColor.G * AColor.Lum);
-//        B.Set(AColor.B * AColor.Lum);
+        R.Set(AColor.R * AColor.Brt);
+        G.Set(AColor.G * AColor.Brt);
+        B.Set(AColor.B * AColor.Brt);
+    }
+};
+#endif
+
+#if 1 // ============================ LedHSV ===================================
+class LedHSVParent_t : public BaseSequencer_t<LedHSVChunk_t> {
+protected:
+    const PinOutputPWM_t  R, G, B;
+    const uint32_t PWMFreq;
+    ColorHSV_t ICurrColor;
+    void ISwitchOff() {
+        SetColor(clBlack);
+        ICurrColor.V = 0;
+    }
+    SequencerLoopTask_t ISetup() {
+        if(ICurrColor != IPCurrentChunk->Color) {
+            if(IPCurrentChunk->Value == 0) {     // If smooth time is zero,
+                SetColor(IPCurrentChunk->Color); // set color now,
+                ICurrColor = IPCurrentChunk->Color;
+                IPCurrentChunk++;                // and goto next chunk
+            }
+            else {
+                ICurrColor.Adjust(IPCurrentChunk->Color);
+                SetColor(ICurrColor);
+                // Check if completed now
+                if(ICurrColor == IPCurrentChunk->Color) IPCurrentChunk++;
+                else { // Not completed
+                    // Calculate time to next adjustment
+                    uint32_t Delay = ICurrColor.DelayToNextAdj(IPCurrentChunk->Color, IPCurrentChunk->Value);
+                    SetupDelay(Delay);
+                    return sltBreak;
+                } // Not completed
+            } // if time > 256
+        } // if color is different
+        else IPCurrentChunk++; // Color is the same, goto next chunk
+        return sltProceed;
+    }
+public:
+    LedHSVParent_t(
+            const PwmSetup_t ARed,
+            const PwmSetup_t AGreen,
+            const PwmSetup_t ABlue,
+            const uint32_t APWMFreq = 0xFFFFFFFF) :
+        BaseSequencer_t(), R(ARed), G(AGreen), B(ABlue), PWMFreq(APWMFreq) {}
+    void Init() {
+        R.Init();
+        R.SetFrequencyHz(PWMFreq);
+        G.Init();
+        G.SetFrequencyHz(PWMFreq);
+        B.Init();
+        B.SetFrequencyHz(PWMFreq);
+        SetColor(clBlack);
+    }
+    bool IsOff() { return (ICurrColor == hsvBlack) and IsIdle(); }
+    void SetColor(Color_t ColorRgb) {
+        R.Set(ColorRgb.R);
+        G.Set(ColorRgb.G);
+        B.Set(ColorRgb.B);
+    }
+    void SetColor(ColorHSV_t ColorHsv) {
+        SetColor(ColorHsv.ToRGB());
+    }
+    void SetColorAndMakeCurrent(ColorHSV_t ColorHsv) {
+        SetColor(ColorHsv.ToRGB());
+        ICurrColor = ColorHsv;
+    }
+    void SetCurrentH(uint16_t NewH) {
+        ICurrColor.H = NewH;
+        SetColor(ICurrColor);
+    }
+};
+#endif
+
+#if 1 // ============================== LedHSV =================================
+class LedHSV_t : public LedHSVParent_t {
+public:
+    LedHSV_t(
+            const PwmSetup_t ARed,
+            const PwmSetup_t AGreen,
+            const PwmSetup_t ABlue,
+            const uint32_t AFreq = 0xFFFFFFFF) :
+                LedHSVParent_t(ARed, AGreen, ABlue, AFreq) {}
+
+    void SetColor(Color_t AColor) {
+        R.Set(AColor.R);
+        G.Set(AColor.G);
+        B.Set(AColor.B);
+    }
+    void SetColor(ColorHSV_t AColor) {
+        Color_t RGBClr = AColor.ToRGB();
+        R.Set(RGBClr.R);
+        G.Set(RGBClr.G);
+        B.Set(RGBClr.B);
+    }
+};
+#endif
+
+#if 1 // =========================== RGB LED with power ========================
+class LedHSVwPower_t : public LedHSVParent_t {
+private:
+    const PinOutput_t PwrPin;
+public:
+    LedHSVwPower_t(
+            const PwmSetup_t ARed,
+            const PwmSetup_t AGreen,
+            const PwmSetup_t ABlue,
+            const PinOutput_t APwrPin,
+            const uint32_t AFreq = 0xFFFFFFFF) :
+                LedRGBParent_t(ARed, AGreen, ABlue, AFreq), PwrPin(APwrPin) {}
+    void Init() {
+        PwrPin.Init();
+        LedHSVParent_t::Init();
+    }
+    void SetColor(Color_t AColor) {
+        if(AColor == clBlack) PwrPin.SetLo();
+        else PwrPin.SetHi();
+        R.Set(AColor.R);
+        G.Set(AColor.G);
+        B.Set(AColor.B);
+    }
+    void SetColor(ColorHSV_t AColor) {
+        if(AColor.V == 0) PwrPin.SetLo();
+        else {
+            PwrPin.SetHi();
+            Color_t RGBClr = AColor.ToRGB();
+            R.Set(RGBClr.R);
+            G.Set(RGBClr.G);
+            B.Set(RGBClr.B);
+        }
     }
 };
 #endif

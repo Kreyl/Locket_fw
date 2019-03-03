@@ -43,6 +43,7 @@ static void rLvl1Thread(void *arg) {
         if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
         // Process main cycle
         if(MustTx) {
+//            Printf("t");
             PktTx.DWord1 = TheColor.DWord32;
             PktTx.DWord2 = TheColor.DWord32;
             DBG1_SET();

@@ -138,9 +138,9 @@ void cc1101_t::Transmit(void *Ptr) {
 //    while(IState != CC_STB_IDLE) EnterIdle();
     //Recalibrate();
     EnterTX();  // Start transmission of preamble while writing FIFO
+    chSysLock();
     WriteTX((uint8_t*)Ptr, IPktSz);
     // Enter TX and wait IRQ
-    chSysLock();
     chThdSuspendS(&ThdRef); // Wait IRQ
     chSysUnlock();          // Will be here when IRQ fires
 }

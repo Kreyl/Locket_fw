@@ -9,7 +9,7 @@
 
 #include "ChunkTypes.h"
 
-#if 1 // ============================ LED RGB ==================================
+#if 0 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
 //const LedRGBChunk_t lsqModeTxStart[] = {
 //        {csSetup, 0, clYellow},
@@ -61,6 +61,17 @@ const LedRGBChunk_t lsqFailure[] = {
 
 #endif
 
+#if 1 // =========================== LED HSV ===================================
+const LedHSVChunk_t lsqFailure[] = {
+        {csSetup, 0, hsvRed},
+        {csWait, 99},
+        {csSetup, 0, hsvBlack},
+        {csWait, 99},
+        {csRepeat, 3},
+        {csEnd}
+};
+#endif
+
 #if 0 // =========================== LED Smooth ================================
 #define LED_TOP_BRIGHTNESS  255
 
@@ -83,7 +94,7 @@ const LedSmoothChunk_t lsqEnterIdle[] = {
 
 #endif
 
-#if 1 // ============================= Beeper ==================================
+#if 0 // ============================= Beeper ==================================
 #define BEEP_VOLUME     2   // Maximum 10
 
 #if 1 // ==== Notes ====
