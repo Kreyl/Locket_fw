@@ -1,7 +1,7 @@
 # Locket_fw
 Firmware for the Locket Project ([Russian description](https://ostranna.ru/gamedesign/locket), [English description](https://ostranna.ru/?lang=en))
 
-Locket is the device for LARPs. It has stm32 microcontroller, 868 MHz radio, buttons, vibro, RGB led, beeper and accelerometer. It is placed in nice 3d-printed case. Locket may be used for rather complex gamedesign.
+Locket is the device for LARPs. It has stm32 microcontroller, 868 MHz radio, buttons, vibro, RGB led, beeper and accelerometer. It is placed in nice 3d-printed case. Locket may be used for rather complex gamedesign. It is powered by two AAA batteries. 
 
 Locket has several hardware (and firmware) versions (we call them new lockets, old lockets and ancient lockets). Master branch is for old lockets, for new lockets use master v.5
 Some branches are for [Atollic TrueStudio](https://atollic.com/truestudio/), others for Eclipse. See .project folder for this information.
