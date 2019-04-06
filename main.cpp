@@ -50,7 +50,7 @@ static int32_t TimeS;
 
 int main(void) {
     // ==== Init Vcore & clock system ====
-    SetupVCore(vcore1V2);
+    SetupVCore(vcore1V5);
 //    Clk.SetMSI4MHz();
     Clk.UpdateFreqValues();
 

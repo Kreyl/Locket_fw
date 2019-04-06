@@ -109,10 +109,18 @@
 							</tool>
 							<tool id="com.atollic.truestudio.ar.base.1883842081" name="Archiver" superClass="com.atollic.truestudio.ar.base"/>
 							<tool id="com.atollic.truestudio.exe.debug.toolchain.secoutput.276412124" name="Other" superClass="com.atollic.truestudio.exe.debug.toolchain.secoutput">
-								<option id="com.atollic.truestudio.secoutput.general.convert.1288906870" superClass="com.atollic.truestudio.secoutput.general.convert" value="true" valueType="boolean"/>
+								<option id="com.atollic.truestudio.secoutput.general.convert.1288906870" name="Convert build output" superClass="com.atollic.truestudio.secoutput.general.convert" value="true" valueType="boolean"/>
 							</tool>
 						</toolChain>
 					</folderInfo>
+					<fileInfo id="com.atollic.truestudio.exe.debug.598462751.279210360" name="main.cpp" rcbsApplicability="disable" resourcePath="main.cpp" toolsToInvoke="com.atollic.truestudio.exe.debug.toolchain.gpp.1401859912.39804012">
+						<tool id="com.atollic.truestudio.exe.debug.toolchain.gpp.1401859912.39804012" name="C++ Compiler" superClass="com.atollic.truestudio.exe.debug.toolchain.gpp.1401859912">
+							<option id="com.atollic.truestudio.gpp.symbols.defined.1137891594" superClass="com.atollic.truestudio.gpp.symbols.defined" valueType="definedSymbols">
+								<listOptionValue builtIn="false" value="&quot;BUILD_TIME=${current_date}&quot;"/>
+							</option>
+							<inputType id="com.atollic.truestudio.gpp.input.832346805" superClass="com.atollic.truestudio.gpp.input"/>
+						</tool>
+					</fileInfo>
 					<sourceEntries>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
@@ -224,10 +232,18 @@
 							</tool>
 							<tool id="com.atollic.truestudio.ar.base.1753111981" name="Archiver" superClass="com.atollic.truestudio.ar.base"/>
 							<tool id="com.atollic.truestudio.exe.release.toolchain.secoutput.1108085081" name="Other" superClass="com.atollic.truestudio.exe.release.toolchain.secoutput">
-								<option id="com.atollic.truestudio.secoutput.general.convert.690755973" superClass="com.atollic.truestudio.secoutput.general.convert" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+								<option id="com.atollic.truestudio.secoutput.general.convert.690755973" name="Convert build output" superClass="com.atollic.truestudio.secoutput.general.convert" useByScannerDiscovery="false" value="true" valueType="boolean"/>
 							</tool>
 						</toolChain>
 					</folderInfo>
+					<fileInfo id="com.atollic.truestudio.configuration.release.907978959.1445097196" name="main.cpp" rcbsApplicability="disable" resourcePath="main.cpp" toolsToInvoke="com.atollic.truestudio.exe.release.toolchain.gpp.1712040696.1484100184">
+						<tool id="com.atollic.truestudio.exe.release.toolchain.gpp.1712040696.1484100184" name="C++ Compiler" superClass="com.atollic.truestudio.exe.release.toolchain.gpp.1712040696">
+							<option id="com.atollic.truestudio.gpp.symbols.defined.601239113" superClass="com.atollic.truestudio.gpp.symbols.defined" valueType="definedSymbols">
+								<listOptionValue builtIn="false" value="&quot;BUILD_TIME=${current_date}&quot;"/>
+							</option>
+							<inputType id="com.atollic.truestudio.gpp.input.1010719027" superClass="com.atollic.truestudio.gpp.input"/>
+						</tool>
+					</fileInfo>
 					<sourceEntries>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
