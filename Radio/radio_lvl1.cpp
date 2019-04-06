@@ -71,7 +71,7 @@ void rLevel1_t::TaskTransmitter() {
 //    PktTx.B = 0;
     DBG1_SET();
     CC.Recalibrate();
-    CC.Transmit(&PktTx);
+    CC.Transmit(&PktTx, RPKT_LEN);
     DBG1_CLR();
     chThdSleepMilliseconds(45);
 }
@@ -97,7 +97,7 @@ void rLevel1_t::TaskReceiverManyByID() {
             CC.SetChannel(ID2RCHNL(i));
 //            Printf("%u\r", i);
             CC.Recalibrate();
-            uint8_t RxRslt = CC.Receive(18, &PktRx, &Rssi);   // Double pkt duration + TX sleep time
+            uint8_t RxRslt = CC.Receive(18, &PktRx, RPKT_LEN, &Rssi);   // Double pkt duration + TX sleep time
             if(RxRslt == retvOk) {
                 Printf("Ch=%u; Rssi=%d\r", ID2RCHNL(i), Rssi);
                 if(PktRx.DWord32 == THE_WORD and Rssi > RSSI_MIN) RxTable.AddId(i);

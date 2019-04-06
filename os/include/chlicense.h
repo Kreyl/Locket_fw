@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
@@ -21,12 +21,14 @@
  * @file    chlicense.h
  * @brief   License Module macros and structures.
  *
- * @addtogroup license
+ * @addtogroup chibios_license
+ * @details This module contains all the definitions required for defining
+ *          a licensing scheme for customers or public releases.
  * @{
  */
 
-#ifndef _CHLICENSE_H_
-#define _CHLICENSE_H_
+#ifndef CHLICENSE_H
+#define CHLICENSE_H
 
 /*===========================================================================*/
 /* Module constants.                                                         */
@@ -55,23 +57,24 @@
 #define CH_LICENSE_GPL                      0
 #define CH_LICENSE_GPL_EXCEPTION            1
 #define CH_LICENSE_COMMERCIAL_FREE          2
-#define CH_LICENSE_COMMERCIAL_DEVELOPER     3
-#define CH_LICENSE_COMMERCIAL_FULL          4
-#define CH_LICENSE_PARTNER                  5
+#define CH_LICENSE_COMMERCIAL_DEV_1000      3
+#define CH_LICENSE_COMMERCIAL_DEV_5000      4
+#define CH_LICENSE_COMMERCIAL_FULL          5
+#define CH_LICENSE_COMMERCIAL_RUNTIME       6
+#define CH_LICENSE_PARTNER                  7
 /** @} */
+
+#include "chcustomer.h"
+#if CH_LICENSE == CH_LICENSE_PARTNER
+#include "chpartner.h"
+#endif
+#if CH_LICENSE == CH_LICENSE_COMMERCIAL_RUNTIME
+#include "chruntime.h"
+#endif
 
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
-
-/**
- * @brief   Current license.
- * @note    This setting is reserved to the copyright owner.
- * @note    Changing this setting invalidates the license.
- * @note    The license statement in the source headers is valid, applicable
- *          and binding regardless this setting.
- */
-#define CH_LICENSE                          CH_LICENSE_GPL
 
 /*===========================================================================*/
 /* Derived constants and error checks.                                       */
@@ -105,26 +108,6 @@
 
 /**
  * @brief   Code functionality restrictions.
- * @details This setting defines which features are available under the
- *          current licensing scheme. The possible settings are:
- *          - @p CH_FEATURES_FULL if all features are available.
- *          - @p CH_FEATURES_INTERMEDIATE means that the following
- *            functionalities are disabled:
- *            - High Resolution mode.
- *            - Time Measurement.
- *            - Statistics.
- *            .
- *          - @p CH_FEATURES_BASIC means that the following functionalities
- *            are disabled:
- *            - High Resolution mode.
- *            - Time Measurement.
- *            - Statistics.
- *            - Tickless mode.
- *            - Recursive Mutexes.
- *            - Condition Variables.
- *            - Dynamic threading.
- *            .
- *          .
  */
 #define CH_LICENSE_FEATURES                 CH_FEATURES_FULL
 
@@ -144,16 +127,23 @@
 #define CH_LICENSE_MAX_DEPLOY               CH_DEPLOY_UNLIMITED
 
 #elif CH_LICENSE == CH_LICENSE_COMMERCIAL_FREE
-#define CH_LICENSE_TYPE_STRING              "Zero Cost Registered License"
+#define CH_LICENSE_TYPE_STRING              "Zero Cost Registered License for 500 Cores"
 #define CH_LICENSE_ID_STRING                "N/A"
-#define CH_LICENSE_ID_CODE                  "2015-0000"
+#define CH_LICENSE_ID_CODE                  "2017-0000"
 #define CH_LICENSE_MODIFIABLE_CODE          FALSE
 #define CH_LICENSE_FEATURES                 CH_FEATURES_INTERMEDIATE
 #define CH_LICENSE_MAX_DEPLOY               500
 
-#elif CH_LICENSE == CH_LICENSE_COMMERCIAL_DEVELOPER
-#include "chcustomer.h"
-#define CH_LICENSE_TYPE_STRING              "Developer-Only Commercial License"
+#elif CH_LICENSE == CH_LICENSE_COMMERCIAL_DEV_1000
+#define CH_LICENSE_TYPE_STRING              "Developer Commercial License for 1000 Cores"
+#define CH_LICENSE_ID_STRING                CH_CUSTOMER_ID_STRING
+#define CH_LICENSE_ID_CODE                  CH_CUSTOMER_ID_CODE
+#define CH_LICENSE_MODIFIABLE_CODE          TRUE
+#define CH_LICENSE_FEATURES                 CH_FEATURES_FULL
+#define CH_LICENSE_DEPLOY_LIMIT             1000
+
+#elif CH_LICENSE == CH_LICENSE_COMMERCIAL_DEV_5000
+#define CH_LICENSE_TYPE_STRING              "Developer Commercial License for 5000 Cores"
 #define CH_LICENSE_ID_STRING                CH_CUSTOMER_ID_STRING
 #define CH_LICENSE_ID_CODE                  CH_CUSTOMER_ID_CODE
 #define CH_LICENSE_MODIFIABLE_CODE          TRUE
@@ -161,67 +151,31 @@
 #define CH_LICENSE_DEPLOY_LIMIT             5000
 
 #elif CH_LICENSE == CH_LICENSE_COMMERCIAL_FULL
-#include "chcustomer.h"
-#define CH_LICENSE_TYPE_STRING              "Full Commercial License"
+#define CH_LICENSE_TYPE_STRING              "Full Commercial License for Unlimited Deployment"
 #define CH_LICENSE_ID_STRING                CH_CUSTOMER_ID_STRING
 #define CH_LICENSE_ID_CODE                  CH_CUSTOMER_ID_CODE
 #define CH_LICENSE_MODIFIABLE_CODE          TRUE
 #define CH_LICENSE_FEATURES                 CH_FEATURES_FULL
 #define CH_LICENSE_MAX_DEPLOY               CH_DEPLOY_UNLIMITED
 
+#elif CH_LICENSE == CH_LICENSE_COMMERCIAL_RUNTIME
+#define CH_LICENSE_TYPE_STRING              "Runtime Commercial License"
+#define CH_LICENSE_ID_STRING                CH_CUSTOMER_ID_STRING
+#define CH_LICENSE_ID_CODE                  CH_CUSTOMER_ID_CODE
+#define CH_LICENSE_MODIFIABLE_CODE          TRUE
+#define CH_LICENSE_FEATURES                 CH_FEATURES_FULL
+#define CH_LICENSE_MAX_DEPLOY               CH_RUNTIME_MAX_DEPLOY
+
 #elif CH_LICENSE == CH_LICENSE_PARTNER
-#include "chpartner.h"
 #define CH_LICENSE_TYPE_STRING              "Partners Special Commercial License"
-#define CH_LICENSE_ID_STRING                CH_PARTNER_ID_STRING
-#define CH_LICENSE_ID_CODE                  CH_PARTNER_ID_CODE
+#define CH_LICENSE_ID_STRING                CH_CUSTOMER_ID_STRING
+#define CH_LICENSE_ID_CODE                  CH_CUSTOMER_ID_CODE
 #define CH_LICENSE_MODIFIABLE_CODE          CH_PARTNER_MODIFIABLE_CODE
-#define CH_LICENSE_FEATURES                 CH_PARTNER_FEATURES_FULL
+#define CH_LICENSE_FEATURES                 CH_PARTNER_FEATURES
 #define CH_LICENSE_MAX_DEPLOY               CH_PARTNER_MAX_DEPLOY
 
 #else
 #error "invalid licensing option"
-#endif
-
-/* Checks on the enabled features.*/
-#if CH_LICENSE_FEATURES == CH_FEATURES_FULL
-  /* No restrictions in full mode.*/
-
-#elif (CH_LICENSE_FEATURES == CH_FEATURES_INTERMEDIATE) ||                  \
-      (CH_LICENSE_FEATURES == CH_FEATURES_BASIC)
-  /* Restrictions in basic and intermediate modes.*/
-  #if CH_CFG_ST_TIMEDELTA > 2
-    #error "CH_CFG_ST_TIMEDELTA > 2, High Resolution Time functionality restricted"
-  #endif
-
-  #if CH_DBG_STATISTICS == TRUE
-    #error "CH_DBG_STATISTICS == TRUE, Statistics functionality restricted"
-  #endif
-
-  #if CH_LICENSE_FEATURES == CH_FEATURES_BASIC
-    /* Restrictions in basic mode.*/
-    #if CH_CFG_ST_TIMEDELTA > 0
-      #error "CH_CFG_ST_TIMEDELTA > 0, Tick-Less functionality restricted"
-    #endif
-
-    #if CH_CFG_USE_TM == TRUE
-      #error "CH_CFG_USE_TM == TRUE, Time Measurement functionality restricted"
-    #endif
-
-    #if CH_CFG_USE_MUTEXES_RECURSIVE == TRUE
-      #error "CH_CFG_USE_MUTEXES_RECURSIVE == TRUE, Recursive Mutexes functionality restricted"
-    #endif
-
-    #if CH_CFG_USE_CONDVARS == TRUE
-      #error "CH_CFG_USE_CONDVARS == TRUE, Condition Variables functionality restricted"
-    #endif
-
-    #if CH_CFG_USE_DYNAMIC == TRUE
-      #error "CH_CFG_USE_DYNAMIC == TRUE, Dynamic Threads functionality restricted"
-    #endif
-  #endif /* CH_LICENSE_FEATURES == CH_FEATURES_BASIC */
-
-#else
-  #error "invalid feature settings"
 #endif
 
 /*===========================================================================*/
@@ -240,6 +194,6 @@
 /* Module inline functions.                                                  */
 /*===========================================================================*/
 
-#endif /* _CHLICENSE_H_ */
+#endif /* CHLICENSE_H */
 
 /** @} */

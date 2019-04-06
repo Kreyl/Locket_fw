@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 */
 
 /**
- * @file    st.h
+ * @file    hal_st.h
  * @brief   ST Driver macros and structures.
  * @details This header is designed to be include-able without having to
  *          include other files from the HAL.
@@ -24,8 +24,8 @@
  * @{
  */
 
-#ifndef _ST_H_
-#define _ST_H_
+#ifndef HAL_ST_H
+#define HAL_ST_H
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -43,7 +43,7 @@
 /* Driver data structures and types.                                         */
 /*===========================================================================*/
 
-#include "st_lld.h"
+#include "hal_st_lld.h"
 
 /*===========================================================================*/
 /* Driver macros.                                                            */
@@ -92,6 +92,6 @@ extern "C" {
 }
 #endif
 
-#endif /* _ST_H_ */
+#endif /* HAL_ST_H */
 
 /** @} */
