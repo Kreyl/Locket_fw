@@ -1,14 +1,12 @@
 #pragma once
 
 // ==== General ====
-#define BOARD_NAME          "Locket5"
-#define APP_NAME            "Master"
+#define BOARD_NAME          "BigBtn"
+#define APP_NAME            "BigBtn"
 
 // ==== High-level peripery control ====
-#define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      TRUE
 #define BUTTONS_ENABLED     TRUE
-
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
 // MCU type as defined in the ST header.
@@ -36,12 +34,7 @@
 #define LED_R_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
 
 // Buttons
-#define BTN1_PIN        GPIOA, 0, pudPullDown
-#define BTN2_PIN        GPIOA, 1, pudPullDown
-#define BTN3_PIN        GPIOB, 8, pudPullDown
-
-// Vibro
-#define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, 99 }
+#define BTN_PIN         GPIOA, 0, pudPullDown
 
 // Beeper
 #define BEEPER_TOP      22
@@ -64,9 +57,6 @@
 #define I2C1_SCL        6
 #define I2C1_SDA        7
 #endif
-
-// Pill power
-#define PILL_PWR_PIN    { GPIOB, 3, omPushPull }
 
 // Radio: SPI, PGpio, Sck, Miso, Mosi, Cs, Gdo0
 #define CC_Setup0       SPI1, GPIOA, 5,6,7, GPIOA,4, GPIOA,3
