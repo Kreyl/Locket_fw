@@ -14,6 +14,8 @@
 #include "Sequences.h"
 
 extern LedRGBwPower_t Led;
+extern LedRGBwPower_t Led2;
+extern Presser_t Presser;
 
 cc1101_t CC(CC_Setup0);
 
@@ -50,13 +52,15 @@ static void rLvl1Thread(void *arg) {
             if(Pkt.Cmd == CMD_SET) {
                 Pkt.Cmd = CMD_OK;
                 CC.Transmit(&Pkt, RPKT_LEN);
-                // TODO: reset timer
+                Presser.Reset();
                 Led.SetColor(Pkt.Clr);
+                Led2.SetColor(Pkt.Clr);
             }
             else if(Pkt.Cmd == CMD_GET) {
-                Pkt.TimeAfterPress = -1; // TODO
+                Pkt.TimeAfterPress = Presser.GetTimeAfterPress();
                 CC.Transmit(&Pkt, RPKT_LEN);
-            }
+                if(Pkt.TimeAfterPress != -1) Printf("TAP: %d\r", Pkt.TimeAfterPress);
+           }
         }
     } // while true
 }
