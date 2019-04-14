@@ -19,4 +19,6 @@ enum EvtMsgId_t {
     evtIdButtons,
     evtIdRadioCmd,
     evtIdCheckRxTable,
+    evtIdHostCmd,
+    evtIdNoHost,
 };

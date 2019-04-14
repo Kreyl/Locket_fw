@@ -233,11 +233,16 @@ const LedRGBChunk_t lsqFailure[] = {
         {csEnd}
 };
 
-const LedRGBChunk_t lsqTx[] = {
-        {csSetup, 603, clRed},
-        {csWait, 207},
-        {csSetup, 603, clBlack},
-//        {csSetup, 0, {7,0,0}},
+const LedRGBChunk_t lsqNoHost[] = {
+        {csSetup, 0, clYellow},
+        {csWait, 720},
+        {csSetup, 0, clBlack},
+        {csWait, 720},
+        {csGoto, 0},
+};
+
+const LedRGBChunk_t lsqHostNear[] = {
+        {csSetup, 0, clYellow},
         {csEnd},
 };
 

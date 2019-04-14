@@ -29,12 +29,25 @@ Beeper_t Beeper {BEEPER_PIN};
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 LedRGBwPower_t Led2 { LED2_R_PIN, LED2_G_PIN, LED2_B_PIN, LED_EN_PIN };
 
+static LedRGBChunk_t lsqSteady[] = {
+        {csSetup, 0, clYellow},
+        {csEnd},
+};
+
+static LedRGBChunk_t lsqFlash[] = {
+        {csSetup, 0, clYellow},
+        {csWait, 99},
+        {csSetup, 0, clYellow},
+        {csEnd},
+};
+
 Presser_t Presser;
 void BtnIrqHandlerI() { Presser.IrqHandler(); }
 const PinIrq_t BtnPin {BTN_PIN, BtnIrqHandlerI};
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
+static TmrKL_t TmrNoHostTimeout {TIME_MS2I(2000), evtIdNoHost, tktOneShot};
 #endif
 
 int main(void) {
@@ -66,6 +79,7 @@ int main(void) {
 
     // ==== Time and timers ====
     TmrEverySecond.StartOrRestart();
+    TmrNoHostTimeout.StartOrRestart();
 
     // ==== Radio ====
     if(Radio.Init() == retvOk) {
@@ -90,6 +104,34 @@ void ITask() {
             case evtIdEverySecond:
 //                Printf("S\r");
 //                BtnPin.GenerateIrq();
+                break;
+
+            case evtIdHostCmd: {
+                chSysLock();
+                rPkt_t Pkt = Radio.PktRx;
+                chSysUnlock();
+                TmrNoHostTimeout.StartOrRestart();
+                if(Pkt.Cmd == CMD_SET) {
+                    lsqSteady[0].Color.FromRGB(Pkt.R1, Pkt.G1, Pkt.B1);
+                    Led.StartOrRestart(lsqSteady);
+                    Led2.StartOrRestart(lsqSteady);
+                }
+                else if(Pkt.Cmd == CMD_FLASH) {
+                    lsqFlash[0].Color.FromRGB(Pkt.R1, Pkt.G1, Pkt.B1);
+                    lsqFlash[1].Time_ms = Pkt.Wait_ms;
+                    lsqFlash[2].Color.FromRGB(Pkt.R2, Pkt.G2, Pkt.B2);
+                    Led.StartOrRestart(lsqFlash);
+                    Led2.StartOrRestart(lsqFlash);
+                }
+                else if(Led.GetCurrentSequence() == lsqNoHost) {
+                    Led.StartOrRestart(lsqHostNear);
+                    Led2.StartOrRestart(lsqHostNear);
+                }
+            } break;
+
+            case evtIdNoHost:
+                Led.StartOrRestart(lsqNoHost);
+                Led2.StartOrRestart(lsqNoHost);
                 break;
 
             case evtIdShellCmd:

@@ -13,8 +13,6 @@
 #include "led.h"
 #include "Sequences.h"
 
-extern LedRGBwPower_t Led;
-extern LedRGBwPower_t Led2;
 extern Presser_t Presser;
 
 cc1101_t CC(CC_Setup0);
@@ -49,18 +47,17 @@ static void rLvl1Thread(void *arg) {
         uint8_t RxRslt = CC.Receive(RX_T_MS, &Pkt, RPKT_LEN, &Rssi);
         if(RxRslt == retvOk and Pkt.ID == ID) {
 //            Printf("%u: %d; %u; %X\r", Pkt.ID, Rssi, Pkt.Cmd, Pkt.Clr.DWord32);
-            if(Pkt.Cmd == CMD_SET) {
-                Pkt.Cmd = CMD_OK;
-                CC.Transmit(&Pkt, RPKT_LEN);
-                Presser.Reset();
-                Led.SetColor(Pkt.Clr);
-                Led2.SetColor(Pkt.Clr);
-            }
-            else if(Pkt.Cmd == CMD_GET) {
+            Radio.PktRx = Pkt;
+            if(Pkt.Cmd == CMD_GET) {
                 Pkt.TimeAfterPress = Presser.GetTimeAfterPress();
-                CC.Transmit(&Pkt, RPKT_LEN);
-                if(Pkt.TimeAfterPress != -1) Printf("TAP: %d\r", Pkt.TimeAfterPress);
-           }
+//                if(Pkt.TimeAfterPress != -1) Printf("TAP: %d\r", Pkt.TimeAfterPress);
+            }
+            else {
+                Pkt.Cmd = CMD_OK;
+                Presser.Reset();
+            }
+            CC.Transmit(&Pkt, RPKT_LEN);
+            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdHostCmd));
         }
     } // while true
 }

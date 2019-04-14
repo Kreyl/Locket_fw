@@ -17,13 +17,25 @@
 #if 1 // =========================== Pkt_t =====================================
 struct rPkt_t {
     union {
+        uint32_t DWord[2];
         int32_t TimeAfterPress;
-        Color_t Clr;
+        struct {
+            uint8_t R1, G1, B1, R2, G2, B2;
+            uint16_t Wait_ms;
+        } __attribute__ ((__packed__));
     } __attribute__ ((__packed__));
     uint8_t Cmd;
     uint8_t ID;
 //    bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }
-//    rPkt_t& operator = (const rPkt_t &Right) { DWord32 = Right.DWord32; return *this; }
+    rPkt_t& operator = (const rPkt_t &Right) {
+        chSysLock();
+        DWord[0] = Right.DWord[0];
+        DWord[1] = Right.DWord[1];
+        Cmd = Right.Cmd;
+        ID = Right.ID;
+        chSysUnlock();
+        return *this;
+    }
     rPkt_t() : TimeAfterPress(0), Cmd(0) {}
 } __attribute__ ((__packed__));
 #endif
@@ -36,6 +48,7 @@ struct rPkt_t {
 
 #define CMD_GET                 18
 #define CMD_SET                 27
+#define CMD_FLASH               36
 #define CMD_OK                  0
 
 #define RX_T_MS                 99
@@ -46,6 +59,7 @@ struct rPkt_t {
 class rLevel1_t {
 public:
     uint8_t Init();
+    rPkt_t PktRx;
     // Inner use
     void TryToSleep(uint32_t SleepDuration);
     void TryToReceive(uint32_t RxDuration);
