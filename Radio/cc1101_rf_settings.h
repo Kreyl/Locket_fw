@@ -10,11 +10,11 @@
 // All this is for 27.0 MHz crystal, and for 868 MHz carrier
 
 // Bitrate
-//#define CC_BITRATE_10K
+#define CC_BITRATE_10K
 //#define CC_BITRATE_38K4
 //#define  CC_BITRATE_100K
 //#define CC_BITRATE_250K
-#define CC_BITRATE_500K
+//#define CC_BITRATE_500K
 
 // ============================ Common use values ==============================
 #define CC_TX_FIFO_SIZE     33
@@ -26,9 +26,15 @@
 #define CC_FREQ0_VALUE      0xED        // Frequency control word, low byte.
 
 // ===================== Channel spacing =======================================
-#define CC_CHANNEL_SPACING  421     // 200, 400, 421(top)
+#define CC_CHANNEL_SPACING  50     // 30, 50, 200, 400, 421(top)
 
-#if CC_CHANNEL_SPACING == 200
+#if CC_CHANNEL_SPACING == 30
+#define CC_MDMCFG0_VALUE    36
+#define CC_CHANSPC_E        0
+#elif CC_CHANNEL_SPACING == 50
+#define CC_MDMCFG0_VALUE    230
+#define CC_CHANSPC_E        0
+#elif CC_CHANNEL_SPACING == 200
 #define CC_MDMCFG0_VALUE    229     // Channel spacing mantissa. See exponent at MDMCFG1. RF studio.
 #define CC_CHANSPC_E        2       // Exponent of Channel Spacing, RF Studio
 #elif CC_CHANNEL_SPACING == 421

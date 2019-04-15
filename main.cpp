@@ -51,7 +51,7 @@ static int32_t TimeS;
 int main(void) {
     // ==== Init Vcore & clock system ====
     SetupVCore(vcore1V5);
-//    Clk.SetMSI4MHz();
+    Clk.SetMSI4MHz();
     Clk.UpdateFreqValues();
 
     // === Init OS ===
@@ -73,8 +73,8 @@ int main(void) {
 
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-//    Vibro.Init();
-//    Vibro.StartOrRestart(vsqBrrBrr);
+    Vibro.Init();
+    Vibro.StartOrRestart(vsqBrrBrr);
 #if BEEPER_ENABLED // === Beeper ===
 //    Beeper.Init();
 //    Beeper.StartOrRestart(bsqBeepBeep);
@@ -127,20 +127,14 @@ void ITask() {
                 break;
 #endif
 
-//        if(Evt & EVT_RX) {
-//            int32_t TimeRx = Radio.PktRx.Time;
-//            Uart.Printf("RX %u\r", TimeRx);
-//            Cataclysm.ProcessSignal(TimeRx);
-//        }
-
             case evtIdCheckRxTable: {
                 uint32_t Cnt = Radio.RxTable.GetCount();
-                switch(Cnt) {
-                    case 0: Vibro.Stop(); break;
-                    case 1: Vibro.StartOrContinue(vsqBrr); break;
-                    case 2: Vibro.StartOrContinue(vsqBrrBrr); break;
-                    default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
-                }
+                if(Cnt) Led.StartOrRestart(lsqBlink1);
+//                switch(Cnt) {
+//                    case 1:  break;
+//                    case 2: break;
+//                    default:  break;
+//                }
                 Radio.RxTable.Clear();
             } break;
 
@@ -179,13 +173,6 @@ void ITask() {
         if(Evt & EVT_LED_SEQ_END) {
         }
 #endif
-        //        if(Evt & EVT_OFF) {
-        ////            Uart.Printf("Off\r");
-        //            chSysLock();
-        //            Sleep::EnableWakeup1Pin();
-        //            Sleep::EnterStandby();
-        //            chSysUnlock();
-        //        }
 
             case evtIdShellCmd:
                 OnCmd((Shell_t*)Msg.Ptr);

@@ -6,8 +6,8 @@
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
-#define BEEPER_ENABLED      TRUE
-#define BUTTONS_ENABLED     TRUE
+#define BEEPER_ENABLED      FALSE
+#define BUTTONS_ENABLED     FALSE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 

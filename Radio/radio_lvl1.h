@@ -56,18 +56,27 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #endif
 
 #if 1 // =========================== Pkt_t =====================================
-union rPkt_t {
-    uint32_t DWord32;
-    struct {
-        uint8_t R, G, B;
-    };
-    bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }
-    rPkt_t& operator = (const rPkt_t &Right) { DWord32 = Right.DWord32; return *this; }
+struct rPkt_t {
+    uint8_t ID = 0;
+    uint8_t LvlMin = 0;
+    uint8_t LvlMax = 0;
+    uint8_t DmgMin = 0;
+    uint8_t DmgMax = 0;
+//    bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }
+    rPkt_t& operator = (const rPkt_t &Right) {
+        chSysLock();
+        ID = Right.ID;
+        LvlMin = Right.LvlMin;
+        LvlMax = Right.LvlMax;
+        DmgMin = Right.DmgMin;
+        DmgMax = Right.DmgMax;
+        chSysUnlock();
+        return *this;
+    }
 } __attribute__ ((__packed__));
-#define RPKT_LEN    sizeof(rPkt_t)
-
-#define THE_WORD        0xCA115EA1
 #endif
+
+#define RPKT_LEN                sizeof(rPkt_t)
 
 // Message queue
 #define R_MSGQ_LEN      4
