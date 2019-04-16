@@ -58,6 +58,13 @@ static void rLvl1Thread(void *arg) {
         		Led.StartOrRestart(lsqBlink1);
         		Vibro.StartOrRestart(vsqBrr);
         		Hitpoints--;
+        		if (Hitpoints == 0) {	// Die and rise again
+        			Vibro.StartOrRestart(vsqDeath);
+        			Led.StartOrRestart(lsqShineDead);
+        			for (uint8_t tcount = 0; tcount <= 20; tcount++)
+        				chThdSleepMilliseconds(1000);
+        			Hitpoints = 20;
+        		}
         	}
         }
     } // while true

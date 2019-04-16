@@ -240,6 +240,13 @@ const LedRGBChunk_t lsqBlink1[] = {
         {csEnd},
 };
 
+const LedRGBChunk_t lsqShineDead[] = {
+        {csSetup, 0, clRed},
+        {csWait, 20000},
+        //{csSetup, 0, {0,4,0}},
+        {csEnd}
+};
+
 const LedRGBChunk_t lsqRx[] = {
         {csSetup, 0, clBlue},
         {csWait, 207},
@@ -435,12 +442,9 @@ const BaseChunk_t vsqIll[] = {
 
 const BaseChunk_t vsqDeath[] = {
         {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
-        {csSetup, 0},
-        {csWait, 4005},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
+        {csWait, 10000},
+		{csSetup, 0},
+        {csEnd}
 };
 
 // Cataclysm

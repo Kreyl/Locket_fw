@@ -10,11 +10,11 @@
 // All this is for 27.0 MHz crystal, and for 868 MHz carrier
 
 // Bitrate
-//#define CC_BITRATE_10K
+#define CC_BITRATE_10K
 //#define CC_BITRATE_38K4
 //#define  CC_BITRATE_100K
 //#define CC_BITRATE_250K
-#define CC_BITRATE_500K
+//#define CC_BITRATE_500K
 
 // ============================ Common use values ==============================
 #define CC_TX_FIFO_SIZE     33
