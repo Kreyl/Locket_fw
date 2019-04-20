@@ -11,8 +11,11 @@
 #include "main.h"
 
 #include "led.h"
+#include "vibro.h"
 #include "Sequences.h"
+
 extern LedRGBwPower_t Led;
+extern Vibro_t Vibro;
 
 cc1101_t CC(CC_Setup0);
 
@@ -34,6 +37,9 @@ cc1101_t CC(CC_Setup0);
 #endif
 
 rLevel1_t Radio;
+uint32_t  EveryOther = 0;
+uint32_t Hitpoints = 20;
+
 
 #if 1 // ================================ Task =================================
 static THD_WORKING_AREA(warLvl1Thread, 256);
@@ -46,8 +52,20 @@ static void rLvl1Thread(void *arg) {
         CC.Recalibrate();
         uint8_t RxRslt = CC.Receive(720, &PktRx, RPKT_LEN, &Rssi);
         if(RxRslt == retvOk) {
-            Printf("Rssi=%d\r", Rssi);
-            Led.StartOrRestart(lsqBlink1);
+        	EveryOther++;
+        	if (EveryOther & 1) { // React only at every other signal, since we need 1s delays
+        		Printf("Rssi=%d\r", Rssi);
+        		Led.StartOrRestart(lsqBlink1);
+        		Vibro.StartOrRestart(vsqBrr);
+        		Hitpoints--;
+        		if (Hitpoints == 0) {	// Die and rise again
+        			Vibro.StartOrRestart(vsqDeath);
+        			Led.StartOrRestart(lsqShineDead);
+        			for (uint8_t tcount = 0; tcount <= 20; tcount++)
+        				chThdSleepMilliseconds(1000);
+        			Hitpoints = 20;
+        		}
+        	}
         }
     } // while true
 }
