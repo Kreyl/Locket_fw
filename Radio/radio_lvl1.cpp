@@ -64,6 +64,8 @@ static void rLvl1Thread(void *arg) {
         			for (uint8_t tcount = 0; tcount <= 20; tcount++)
         				chThdSleepMilliseconds(1000);
         			Hitpoints = 20;
+        			Vibro.StartOrRestart(vsqBrrBrr);
+        			Led.StartOrRestart(lsqStart);
         		}
         	}
         }
