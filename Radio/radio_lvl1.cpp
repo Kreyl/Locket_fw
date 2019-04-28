@@ -54,19 +54,21 @@ static void rLvl1Thread(void *arg) {
         if(RxRslt == retvOk) {
         	EveryOther++;
         	if (EveryOther & 1) { // React only at every other signal, since we need 1s delays
-        		Printf("Rssi=%d\r", Rssi);
-        		Led.StartOrRestart(lsqBlink1);
-//        		Vibro.StartOrRestart(vsqBrr);
-//        		Hitpoints--;
-//        		if (Hitpoints == 0) {	// Die and rise again
-//        			Vibro.StartOrRestart(vsqDeath);
-//        			Led.StartOrRestart(lsqShineDead);
-//        			for (uint8_t tcount = 0; tcount <= 20; tcount++)
-//        				chThdSleepMilliseconds(1000);
-//        			Hitpoints = 20;
-//        			Vibro.StartOrRestart(vsqBrrBrr);
-//        			Led.StartOrRestart(lsqStart);
+        		if (Rssi >= -70) {
+					Printf("Rssi=%d\r\n", Rssi);
+					Led.StartOrRestart(lsqBlink1);
+					Vibro.StartOrRestart(vsqBrrBrr);
+					//        		Hitpoints--;
+	//        		if (Hitpoints == 0) {	// Die and rise again
+	//        			Vibro.StartOrRestart(vsqDeath);
+	//        			Led.StartOrRestart(lsqShineDead);
+	//        			for (uint8_t tcount = 0; tcount <= 20; tcount++)
+	//        				chThdSleepMilliseconds(1000);
+	//        			Hitpoints = 20;
+	//        			Vibro.StartOrRestart(vsqBrrBrr);
+	//        			Led.StartOrRestart(lsqStart);
 //        		}
+        		}
         	}
         }
     } // while true
