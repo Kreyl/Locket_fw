@@ -20,22 +20,35 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "qpc.h"    /* include own framework */
-#DEFINE SIMPLE 0
-#DEFINE MUTANT 1
-#DEFINE IMMUNE 2
-#DEFINE DEAD 3
-#DEFINE DEFAULT_HP 20
-#DEFINE DOUBLE_HP 40
-#DEFINE FLASH_MS 500
-#DEFINE HP_OK 15
-#DEFINE HP_BAD 5
+#include "qhsm.h"    /* include own framework */
+#define SIMPLE 0
+#define MUTANT 1
+#define IMMUNE 2
+#define DEAD 3
+#define DEFAULT_HP 20
+#define DOUBLE_HP 40
+#define FLASH_MS 500
+#define HP_OK 15
+#define HP_BAD 5
 
 typedef struct heartOfStormQEvt {
     QEvt super;
     unsigned int id;
     unsigned int damage;
 } heartOfStormQEvt;
+
+/*${SMs::HeartOfStorm} .....................................................*/
+typedef struct {
+/* protected: */
+    QHsm super;
+
+/* public: */
+    unsigned int CharHP;
+    unsigned int MaxHP;
+    QStateHandler StartState;
+    unsigned int LastState;
+} HeartOfStorm;
+
 
 enum PlayerSignals {
 TICK_SEC_SIG = Q_USER_SIG,

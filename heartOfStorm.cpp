@@ -15,36 +15,14 @@
 * for more details.
 *****************************************************************************/
 /*${.::heartOfStorm.cpp} ...................................................*/
-#include "qpc.h"
+#include "qhsm.h"
 #include "bsp.h"                   // Change this file for different platforms
 #include "service.h"
 #include "heartOfStorm.h"
+#include "eventHandlers.h"
 
+#include <stdint.h>
 
-#include "stdio.h"
-#include "stdlib.h"
-#include "string.h"
-#include "stdint.h"
-
-//Q_DEFINE_THIS_FILE
-
-
-
-#if ((QP_VERSION < 591) || (QP_VERSION != ((QP_RELEASE^4294967295U) % 0x3E8)))
-#error qpc version 5.9.1 or higher required
-#endif
-
-/*${SMs::HeartOfStorm} .....................................................*/
-typedef struct {
-/* protected: */
-    QHsm super;
-
-/* public: */
-    unsigned int CharHP;
-    unsigned int MaxHP;
-    QStateHandler* StartState;
-    unsigned int LastState;
-} HeartOfStorm;
 
 /* protected: */
 static QState HeartOfStorm_initial(HeartOfStorm * const me, QEvt const * const e);
@@ -72,23 +50,24 @@ QHsm * const the_heartOfStorm = (QHsm *) &heartOfStorm; /* the opaque pointer */
 /*${SMs::HeartOfStorm_ctor} ................................................*/
 void HeartOfStorm_ctor(
     unsigned int HP,
-    unsigned int MAxHP,
+    unsigned int MaxHP,
     unsigned int State)
 {
-        me->CharHP = HP;
+        HeartOfStorm *me = &heartOfStorm;
+		me->CharHP = HP;
         me->MaxHP = MaxHP;
         switch (State) {
-            case SIMPLE {
+            case SIMPLE: {
                 me->StartState =
-                (QStateHandler)&HeartOfStorm_idle;
+                (QStateHandler)&HeartOfStorm_simple;
                 break;
             }
-            case MUTANT {
+            case MUTANT: {
                 me->StartState =
                 (QStateHandler)&HeartOfStorm_mutant;
                 break;
             }
-            case DEAD {
+            case DEAD: {
                 me->StartState =
                 (QStateHandler)&HeartOfStorm_dead;
                 break;
@@ -96,9 +75,9 @@ void HeartOfStorm_ctor(
             }
             default:
                 me->StartState =
-                (QStateHandler)&HeartOfStorm_idle;
-        }HeartOfStorm *me = &heartOfStorm;
-     QHsm_ctor(&me->super, Q_STATE_CAST(&HeartOfStorm_initial));
+                (QStateHandler)&HeartOfStorm_simple;
+        }
+	 QHsm_ctor(&me->super, Q_STATE_CAST(&HeartOfStorm_initial));
 }
 /*${SMs::HeartOfStorm} .....................................................*/
 /*${SMs::HeartOfStorm::SM} .................................................*/
@@ -139,19 +118,19 @@ static QState HeartOfStorm_alive(HeartOfStorm * const me, QEvt const * const e) 
         }
         /* ${SMs::HeartOfStorm::SM::global::alive::BUTTON_PRESSED} */
         case BUTTON_PRESSED_SIG: {
-            ShowHitState();
+            ShowHitState((QHsm*)me);
             status_ = Q_HANDLED();
             break;
         }
         /* ${SMs::HeartOfStorm::SM::global::alive::PILL_HIT_DOUBLE} */
         case PILL_HIT_DOUBLE_SIG: {
-            UpdateMaxHP(me, DOUBLED_HITS);
+            UpdateMaxHP((QHsm*)me, DOUBLE_HP);
             status_ = Q_HANDLED();
             break;
         }
         /* ${SMs::HeartOfStorm::SM::global::alive::PILL_HEAL} */
         case PILL_HEAL_SIG: {
-            UpdateHP(me->MaxHP);
+            UpdateHP((QHsm*)me, me->MaxHP);
             status_ = Q_HANDLED();
             break;
         }
@@ -174,13 +153,13 @@ static QState HeartOfStorm_NOT_IMMUNE(HeartOfStorm * const me, QEvt const * cons
         /* ${SMs::HeartOfStorm::SM::global::alive::NOT_IMMUNE::DAMAGE_RECEIVED} */
         case DAMAGE_RECEIVED_SIG: {
             /* ${SMs::HeartOfStorm::SM::global::alive::NOT_IMMUNE::DAMAGE_RECEIVED::[me->CharHP<=e->damage]} */
-            if (me->CharHP <= e->damage) {
+            if (me->CharHP <= ((heartOfStormQEvt*)e)->damage) {
                 status_ = Q_TRAN(&HeartOfStorm_dead);
             }
             /* ${SMs::HeartOfStorm::SM::global::alive::NOT_IMMUNE::DAMAGE_RECEIVED::[else]} */
             else {
-                me->CharHP -= e->damage;
-                    IndicateDamage(e->damage);
+                me->CharHP -= ((heartOfStormQEvt*)e)->damage;
+                IndicateDamage(((heartOfStormQEvt*)e)->damage);
                 status_ = Q_HANDLED();
             }
             break;
@@ -204,8 +183,8 @@ static QState HeartOfStorm_simple(HeartOfStorm * const me, QEvt const * const e)
         }
         /* ${SMs::HeartOfStorm::SM::global::alive::NOT_IMMUNE::simple::PILL_RESET} */
         case PILL_RESET_SIG: {
-            UpdateMaxXP(me, SIMPLE_HP);
-                UpdateHP(me, SIMPLE_HP);
+            UpdateMaxHP((QHsm*)me, DEFAULT_HP);
+            UpdateHP((QHsm*)me, DEFAULT_HP);
             status_ = Q_HANDLED();
             break;
         }
@@ -240,20 +219,20 @@ static QState HeartOfStorm_mutant(HeartOfStorm * const me, QEvt const * const e)
         /* ${SMs::HeartOfStorm::SM::global::alive::NOT_IMMUNE::mutant::BUTTON_LONG_PRESSED} */
         case BUTTON_LONG_PRESSED_SIG: {
             SendKillingSignal();
-               SomeIndication();
+            KillingIndication();
             status_ = Q_HANDLED();
             break;
         }
         /* ${SMs::HeartOfStorm::SM::global::alive::NOT_IMMUNE::mutant::PILL_RESET} */
         case PILL_RESET_SIG: {
-            UpdateMaxHP(me, SIMPLE_HP);
-                UpdateHP(me, SIMPLE_HP);
+            UpdateMaxHP((QHsm*)me, DEFAULT_HP);
+            UpdateHP((QHsm*)me, DEFAULT_HP);
             status_ = Q_TRAN(&HeartOfStorm_simple);
             break;
         }
         /* ${SMs::HeartOfStorm::SM::global::alive::NOT_IMMUNE::mutant::PILL_IMMUNE} */
         case PILL_IMMUNE_SIG: {
-            me->LastState = MUTANT
+            me->LastState = MUTANT;
             status_ = Q_TRAN(&HeartOfStorm_immune);
             break;
         }
@@ -306,28 +285,28 @@ static QState HeartOfStorm_dead(HeartOfStorm * const me, QEvt const * const e) {
         /* ${SMs::HeartOfStorm::SM::global::dead} */
         case Q_ENTRY_SIG: {
             SaveState(DEAD);
-                UpdateHP(me, 0);
-                IndicateDeath();
+            UpdateHP((QHsm*)me, 0);
+            IndicateDeath();
             status_ = Q_HANDLED();
             break;
         }
         /* ${SMs::HeartOfStorm::SM::global::dead::PILL_RESET} */
         case PILL_RESET_SIG: {
-            UpdateMaxHP(DEFAULT_HP);
-                 UpdateHP(DEFAULT_HP);
+            UpdateMaxHP((QHsm*)me, DEFAULT_HP);
+            UpdateHP((QHsm*)me, DEFAULT_HP);
             status_ = Q_TRAN(&HeartOfStorm_simple);
             break;
         }
         /* ${SMs::HeartOfStorm::SM::global::dead::PILL_MUTANT} */
         case PILL_MUTANT_SIG: {
-            UpdateHP(DEFAULT_HP)
+            UpdateHP((QHsm*)me, DEFAULT_HP);
             status_ = Q_TRAN(&HeartOfStorm_mutant);
             break;
         }
         /* ${SMs::HeartOfStorm::SM::global::dead::PILL_HP_DOUBLE} */
         case PILL_HP_DOUBLE_SIG: {
-            UpdateMaxHP(DOUBLE_HP);
-                UpdateHP(DOUBLE_HP);
+            UpdateMaxHP((QHsm*)me, DOUBLE_HP);
+            UpdateHP((QHsm*)me, DOUBLE_HP);
             status_ = Q_TRAN(&HeartOfStorm_simple);
             break;
         }
@@ -346,9 +325,8 @@ static QState HeartOfStorm_final(HeartOfStorm * const me, QEvt const * const e) 
     switch (e->sig) {
         /* ${SMs::HeartOfStorm::SM::final} */
         case Q_ENTRY_SIG: {
-            printf("
-            Bye! Bye!
-            "); exit(0);
+            printf("Bye! Bye!");
+			exit(0);
             status_ = Q_HANDLED();
             break;
         }

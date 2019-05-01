@@ -31,13 +31,13 @@ PILL/
    PillIndicate();
 
 BUTTON_PRESSED/
-    ShowHitState();
+    ShowHitState((QHsm*)me);
 
 PILL_HIT_DOUBLE/
-    UpdateMaxHP(me, DOUBLED_HITS);
+    UpdateMaxHP((QHsm*)me, DOUBLE_HP);
 
 PILL_HEAL/
-    UpdateHP(me-&gt;MaxHP);
+    UpdateHP((QHsm*)me, me-&gt;MaxHP);
 
    </y:NodeLabel>
               <y:Shape type="roundrectangle"/>
@@ -102,8 +102,8 @@ DAMAGE_RECEIVED/
 entry/ 
 
 DAMAGE_RECEIVED[else]/
-    me-&gt;CharHP -= e-&gt;damage;
-    IndicateDamage(e-&gt;damage);</y:NodeLabel>
+    me-&gt;CharHP -= ((heartOfStormQEvt*)e)-&gt;damage;
+    IndicateDamage(((heartOfStormQEvt*)e)-&gt;damage);</y:NodeLabel>
                   <y:Shape type="roundrectangle"/>
                   <y:State closed="false" closedHeight="50.0" closedWidth="50.0" innerGraphDisplayEnabled="false"/>
                   <y:NodeBounds considerNodeLabelSize="true"/>
@@ -128,18 +128,18 @@ DAMAGE_RECEIVED[else]/
               <data key="d4" xml:space="preserve"/>
               <data key="d6">
                 <y:GenericNode configuration="com.yworks.entityRelationship.big_entity">
-                  <y:Geometry height="121.3321262523749" width="220.18771714828551" x="2.0" y="370.0"/>
+                  <y:Geometry height="121.3321262523749" width="253.0" x="2.0" y="370.0"/>
                   <y:Fill color="#E8EEF7" color2="#B7C9E3" transparent="false"/>
                   <y:BorderStyle color="#000000" type="line" width="1.0"/>
-                  <y:NodeLabel alignment="center" autoSizePolicy="node_width" backgroundColor="#B7C9E3" configuration="com.yworks.entityRelationship.label.name" fontFamily="Dialog" fontSize="12" fontStyle="bold" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="t" textColor="#000000" verticalTextPosition="bottom" visible="true" width="220.18771714828551" x="0.0" xml:space="preserve" y="4.0">simple</y:NodeLabel>
-                  <y:NodeLabel alignment="left" autoSizePolicy="content" configuration="com.yworks.entityRelationship.label.attributes" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="124.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="208.52734375" x="4.0" xml:space="preserve" y="4.0">
+                  <y:NodeLabel alignment="center" autoSizePolicy="node_width" backgroundColor="#B7C9E3" configuration="com.yworks.entityRelationship.label.name" fontFamily="Dialog" fontSize="12" fontStyle="bold" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="t" textColor="#000000" verticalTextPosition="bottom" visible="true" width="253.0" x="0.0" xml:space="preserve" y="4.0">simple</y:NodeLabel>
+                  <y:NodeLabel alignment="left" autoSizePolicy="content" configuration="com.yworks.entityRelationship.label.attributes" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="124.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="261.30859375" x="4.0" xml:space="preserve" y="4.0">
 
 entry/
     SaveState(SIMPLE);
 
 PILL_RESET/
-    UpdateMaxXP(me, SIMPLE_HP);
-    UpdateHP(me, SIMPLE_HP);
+    UpdateMaxHP((QHsm*)me, DEFAULT_HP);
+    UpdateHP((QHsm*)me, DEFAULT_HP);
 
     </y:NodeLabel>
                   <y:StyleProperties>
@@ -209,11 +209,11 @@ BUTTON_LONG_PRESSED/
           <y:Fill color="#E8EEF7" color2="#B7C9E3" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="node_width" backgroundColor="#B7C9E3" configuration="com.yworks.entityRelationship.label.name" fontFamily="Dialog" fontSize="12" fontStyle="bold" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="t" textColor="#000000" verticalTextPosition="bottom" visible="true" width="200.0" x="0.0" xml:space="preserve" y="4.0">dead</y:NodeLabel>
-          <y:NodeLabel alignment="left" autoSizePolicy="content" configuration="com.yworks.entityRelationship.label.attributes" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="76.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tr" textColor="#000000" verticalTextPosition="bottom" visible="true" width="135.953125" x="60.046875" xml:space="preserve" y="4.0">
+          <y:NodeLabel alignment="left" autoSizePolicy="content" configuration="com.yworks.entityRelationship.label.attributes" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="76.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tr" textColor="#000000" verticalTextPosition="bottom" visible="true" width="182.13671875" x="13.86328125" xml:space="preserve" y="4.0">
 
 entry/
     SaveState(DEAD);
-    UpdateHP(me, 0);
+    UpdateHP((QHsm*)me, 0);
     IndicateDeath();</y:NodeLabel>
           <y:StyleProperties>
             <y:Property class="java.lang.Boolean" name="y.view.ShadowNodePainter.SHADOW_PAINTING" value="true"/>
@@ -256,7 +256,7 @@ entry/
           <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="64.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="281.1015625" x="4.0" xml:space="preserve" y="4.0">State fields (do not delete this caption):
 unsigned int CharHP;
 unsigned int MaxHP;
-QStateHandler* StartState;
+QStateHandler StartState;
 unsigned int LastState;</y:NodeLabel>
         </y:UMLNoteNode>
       </data>
@@ -283,15 +283,15 @@ unsigned int LastState;</y:NodeLabel>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="136.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="307.4921875" x="4.0" xml:space="preserve" y="4.0">Code for h-file: (do not delete this caption):
 
-#DEFINE SIMPLE 0
-#DEFINE MUTANT 1
-#DEFINE IMMUNE 2
-#DEFINE DEAD 3
-#DEFINE DEFAULT_HP 20
-#DEFINE DOUBLE_HP 40
-#DEFINE FLASH_MS 500
-#DEFINE HP_OK 15
-#DEFINE HP_BAD 5</y:NodeLabel>
+#define SIMPLE 0
+#define MUTANT 1
+#define IMMUNE 2
+#define DEAD 3
+#define DEFAULT_HP 20
+#define DOUBLE_HP 40
+#define FLASH_MS 500
+#define HP_OK 15
+#define HP_BAD 5</y:NodeLabel>
         </y:UMLNoteNode>
       </data>
     </node>
@@ -302,23 +302,23 @@ unsigned int LastState;</y:NodeLabel>
           <y:Geometry height="682.7526047391962" width="253.0" x="784.0" y="-44.39778559550723"/>
           <y:Fill color="#FFCC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="680.25390625" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="244.099609375" x="4.0" xml:space="preserve" y="4.0">Comments:
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="680.25390625" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="366.396484375" x="4.0" xml:space="preserve" y="4.0">Comments:
 
 void PillIndicate() {
     Vibro(SHORT, 100);
 }
 
-void ShowHitState(QState* me) {
-    if (me-&gt;CharHP &gt;= HP_OK) {
+void ShowHitState(QHSm* me) {
+    if  ((HeartOfStorm*)me)-&gt;CharHP &gt;= HP_OK) {
         Flash(Green, FLASH_MS);
-    } else if (me-&gt;CharHP &gt;= HP_BAD) {
+    } else if ((HeartOfStorm*)me-&gt;CharHP &gt;= HP_BAD) {
         Flash(Yellow, FLASH_MS);
     } else {
         Flash(Red, FLASH_MS) ;
     }
 }    
 
-void IndicateDamage(Damage) {
+void IndicateDamage(unsigned int Damage) {
     Flash(Red, FLASH_MS);
     if (Damage &gt;= DAMAGE_HIGH) {
         Vibro(HARD, 300, 3);
@@ -327,21 +327,21 @@ void IndicateDamage(Damage) {
     } else {
         Vibro(LOW, 300, 1);
    }
-   Beep();
+   //Beep();
 }
  
-void UpdateHP(QState* me, int HP) {
-    if  (HP &lt;= me-&gt;MaxHP) {
-         me-&gt;CharHP = HP;
+void UpdateHP(QHsm* me, int HP) {
+    if  (HP &lt;= ((HeartOfStorm*)me)-&gt;MaxHP) {
+         ((HeartOfStorm*)me)-&gt;CharHP = HP;
     } else {
-        me-&gt;CharHP = me-&gt;MaxHP;
+        ((HeartOfStorm*)me)-&gt;CharHP = (HeartOfStorm*)me-&gt;MaxHP;
     }
-    SaveHP();   
+    SaveHP(HP);   
 }
 
-void UpdateMaxHp(QState* me, int MaxHp) {
-    me-&gt;MaxHP = MaxHP;
-    SaveMaxHp();
+void UpdateMaxHp(QHsm* me, int MaxHp) {
+    ((HeartOfStorm*)me)-&gt;MaxHP = MaxHP;
+    SaveMaxHp(MaxHP);
 }
 
 void PillIndicate() {
@@ -362,17 +362,17 @@ void PillIndicate() {
     me-&gt;CharHP = HP;
     me-&gt;MaxHP = MaxHP;
     switch (State) {
-        case SIMPLE {
+        case SIMPLE: {
             me-&gt;StartState = 
             (QStateHandler)&amp;HeartOfStorm_idle;
             break;
         }
-        case MUTANT {
+        case MUTANT: {
             me-&gt;StartState = 
             (QStateHandler)&amp;HeartOfStorm_mutant;
             break;
         }        
-        case DEAD {
+        case DEAD: {
             me-&gt;StartState = 
             (QStateHandler)&amp;HeartOfStorm_dead;
             break;
@@ -380,7 +380,7 @@ void PillIndicate() {
         }
         default:
             me-&gt;StartState = 
-            (QStateHandler)&amp;HeartOfStorm_idle;
+            (QStateHandler)&amp;HeartOfStorm_simple;
     }  
 </y:NodeLabel>
         </y:UMLNoteNode>
@@ -395,7 +395,7 @@ void PillIndicate() {
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="52.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="320.6875" x="4.0" xml:space="preserve" y="4.0">Constructor fields (do not delete this caption):
 unsigned int HP;
-unsigned int MAxHP;
+unsigned int MaxHP;
 unsigned int State;</y:NodeLabel>
         </y:UMLNoteNode>
       </data>
@@ -404,10 +404,10 @@ unsigned int State;</y:NodeLabel>
       <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
-          <y:Path sx="0.0" sy="3.177686570654657" tx="-12.329290362189523" ty="57.53861985978681"/>
+          <y:Path sx="0.0" sy="3.177686570654657" tx="-14.16659613003412" ty="57.53861985978681"/>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="left" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="179.716796875" x="-50.240919346853616" xml:space="preserve" y="4.350016542759363">return Q_TRAN(me-&gt;StartState);<y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
+          <y:EdgeLabel alignment="left" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="179.716796875" x="-50.27511529974376" xml:space="preserve" y="4.35488128896543">return Q_TRAN(me-&gt;StartState);<y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
         </y:PolyLineEdge>
       </data>
@@ -428,14 +428,14 @@ unsigned int State;</y:NodeLabel>
       <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
-          <y:Path sx="0.0" sy="0.0" tx="-9.357977978802136" ty="58.239420601139955">
-            <y:Point x="102.73588059534062" y="723.034668404195"/>
+          <y:Path sx="0.0" sy="0.0" tx="-10.752500000000005" ty="58.239420601139955">
+            <y:Point x="117.7475" y="723.034668404195"/>
           </y:Path>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="62.8046875" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="188.048828125" x="-225.16921978858772" xml:space="preserve" y="-82.14403803370658">PILL_RESET/
-     UpdateMaxHP(DEFAULT_HP);
-     UpdateHP(DEFAULT_HP); 
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="62.8046875" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="258.044921875" x="-260.1616514292127" xml:space="preserve" y="-82.14403803370658">PILL_RESET/
+     UpdateMaxHP((QHsm*)me, DEFAULT_HP);
+     UpdateHP((QHsm*)me, DEFAULT_HP); 
     <y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
         </y:PolyLineEdge>
@@ -450,8 +450,8 @@ unsigned int State;</y:NodeLabel>
           </y:Path>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="33.40234375" horizontalTextPosition="center" iconTextGap="4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="162.044921875" x="52.473474324693825" xml:space="preserve" y="-92.51931371393914">PILL_MUTANT/
-     UpdateHP(DEFAULT_HP)<y:LabelModel><y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/></y:LabelModel><y:ModelParameter><y:SmartEdgeLabelModelParameter angle="0.0" distance="31.34443459100536" distanceToCenter="true" position="right" ratio="0.37121943925269685" segment="-1"/></y:ModelParameter><y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="33.40234375" horizontalTextPosition="center" iconTextGap="4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="235.375" x="15.808435262193825" xml:space="preserve" y="-49.62041477383252">PILL_MUTANT/
+     UpdateHP((QHsm*)me, DEFAULT_HP);<y:LabelModel><y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/></y:LabelModel><y:ModelParameter><y:SmartEdgeLabelModelParameter angle="0.0" distance="31.34443459100536" distanceToCenter="true" position="right" ratio="0.16117858916262054" segment="-1"/></y:ModelParameter><y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
         </y:PolyLineEdge>
       </data>
@@ -460,17 +460,17 @@ unsigned int State;</y:NodeLabel>
       <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
-          <y:Path sx="-47.42719190747607" sy="2.7182039721105866" tx="105.80622542409564" ty="-60.63487741222167">
+          <y:Path sx="-47.42719190747607" sy="2.7182039721105866" tx="121.5734255252241" ty="-60.63487741222167">
             <y:Point x="332.3333333333333" y="335.5"/>
             <y:Point x="332.3333333333333" y="241.75"/>
-            <y:Point x="217.90008399823842" y="241.75"/>
+            <y:Point x="250.07342552522408" y="241.75"/>
           </y:Path>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="left" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="62.8046875" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="197.39453125" x="-198.10064018052327" xml:space="preserve" y="-175.90516751219695">
+          <y:EdgeLabel alignment="left" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="62.8046875" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="254.7109375" x="-195.3262726148131" xml:space="preserve" y="-168.59375140849232">
 PILL_RESET/
-    UpdateMaxHP(me, SIMPLE_HP);
-    UpdateHP(me, SIMPLE_HP);    <y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
+    UpdateMaxHP((QHsm*)me, DEFAULT_HP);
+    UpdateHP((QHsm*)me, DEFAULT_HP);    <y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
         </y:PolyLineEdge>
       </data>
@@ -485,8 +485,8 @@ PILL_RESET/
           </y:Path>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="48.103515625" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="159.37890625" x="27.05353058143396" xml:space="preserve" y="-141.091672687941">PILL_IMMUNE/
-    me-&gt;LastState = MUTANT
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="48.103515625" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="162.712890625" x="25.38653839393396" xml:space="preserve" y="-141.091672687941">PILL_IMMUNE/
+    me-&gt;LastState = MUTANT;
    <y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
         </y:PolyLineEdge>
@@ -499,7 +499,7 @@ PILL_RESET/
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="85.3515625" x="-47.38522099339633" xml:space="preserve" y="-26.18924648675977">PILL_MUTANT<y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="85.3515625" x="-63.82572873746096" xml:space="preserve" y="-26.18924648675977">PILL_MUTANT<y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
         </y:PolyLineEdge>
       </data>
@@ -508,14 +508,14 @@ PILL_RESET/
       <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
-          <y:Path sx="-80.82724116984983" sy="0.5392538944549996" tx="68.75" ty="0.5392538944549995">
+          <y:Path sx="-92.87208333333334" sy="0.5392538944549996" tx="68.75" ty="0.5392538944549995">
             <y:Point x="-17.666666666666686" y="431.20531702064244"/>
             <y:Point x="-17.666666666666686" y="165.5"/>
             <y:Point x="706.0833333333333" y="165.5"/>
           </y:Path>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="33.40234375" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="156.736328125" x="374.5639081161821" xml:space="preserve" y="-294.42383191849933">PILL_IMMUNE/
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="33.40234375" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="156.736328125" x="378.91824889390614" xml:space="preserve" y="-294.42383191849933">PILL_IMMUNE/
     me-&gt;LastState = SIMPLE;<y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
         </y:PolyLineEdge>
@@ -528,7 +528,7 @@ PILL_RESET/
           <y:Path sx="0.0" sy="0.0" tx="-2.7539014439774974" ty="-11.9812777944436"/>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="282.77734375" x="-111.81252943133336" xml:space="preserve" y="26.18222131843504">DAMAGE_RECEIVED[me-&gt;CharHP &lt;= e-&gt;damage]<y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="402.126953125" x="-171.48733411883336" xml:space="preserve" y="26.18222131843504">DAMAGE_RECEIVED[me-&gt;CharHP &lt;= ((heartOfStormQEvt*)e)-&gt;damage]<y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
         </y:PolyLineEdge>
       </data>
@@ -565,11 +565,11 @@ PILL_RESET/
         <y:PolyLineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0">
             <y:Point x="636.0818684895833" y="181.7314469817058"/>
-            <y:Point x="112.09385857414276" y="181.7314469817058"/>
+            <y:Point x="128.5" y="181.7314469817058"/>
           </y:Path>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="32.681640625" x="-367.1864437470537" xml:space="preserve" y="-25.4471418854817">[else]<y:LabelModel><y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/></y:LabelModel><y:ModelParameter><y:SmartEdgeLabelModelParameter angle="0.0" distance="30.0" distanceToCenter="true" position="center" ratio="0.6695680762546915" segment="1"/></y:ModelParameter><y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
+          <y:EdgeLabel alignment="center" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="custom" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="32.681640625" x="-356.20141519378006" xml:space="preserve" y="-25.4471418854817">[else]<y:LabelModel><y:SmartEdgeLabelModel autoRotationEnabled="false" defaultAngle="0.0" defaultDistance="10.0"/></y:LabelModel><y:ModelParameter><y:SmartEdgeLabelModelParameter angle="0.0" distance="30.0" distanceToCenter="true" position="center" ratio="0.6695680762546915" segment="1"/></y:ModelParameter><y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
         </y:PolyLineEdge>
       </data>
@@ -578,14 +578,14 @@ PILL_RESET/
       <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
-          <y:Path sx="-3.4440056751544716" sy="31.624191245853012" tx="-99.83025564366886" ty="36.74685658614957">
+          <y:Path sx="-3.4440056751544716" sy="31.624191245853012" tx="-114.7069191913137" ty="36.74685658614957">
             <y:Point x="11.3225935246532" y="754.658859650048"/>
           </y:Path>
           <y:LineStyle color="#000000" type="line" width="1.0"/>
           <y:Arrows source="none" target="standard"/>
-          <y:EdgeLabel alignment="left" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="48.103515625" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="179.388671875" x="-369.57444315370964" xml:space="preserve" y="-44.64324416542206">PILL_HP_DOUBLE/
-    UpdateMaxHP(DOUBLE_HP);
-    UpdateHP(DOUBLE_HP);<y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
+          <y:EdgeLabel alignment="left" backgroundColor="#FFFFFF" configuration="AutoFlippingLabel" distance="2.0" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasLineColor="false" height="48.103515625" horizontalTextPosition="center" iconTextGap="4" modelName="free" modelPosition="anywhere" preferredPlacement="anywhere" ratio="0.5" textColor="#000000" verticalTextPosition="bottom" visible="true" width="249.384765625" x="-404.57249002870964" xml:space="preserve" y="-44.64324416542206">PILL_HP_DOUBLE/
+    UpdateMaxHP((QHsm*)me, DOUBLE_HP);
+    UpdateHP((QHsm*)me, DOUBLE_HP);<y:PreferredPlacementDescriptor angle="0.0" angleOffsetOnRightSide="0" angleReference="absolute" angleRotationOnRightSide="co" distance="-1.0" frozen="true" placement="anywhere" side="anywhere" sideReference="relative_to_edge_flow"/></y:EdgeLabel>
           <y:BendStyle smoothed="false"/>
         </y:PolyLineEdge>
       </data>
