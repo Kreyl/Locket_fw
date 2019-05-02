@@ -42,12 +42,14 @@ static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
         int8_t Rssi;
-        rPkt_t PktRx;
+        rPkt_t RxPkt;
         CC.Recalibrate();
-        uint8_t RxRslt = CC.Receive(720, &PktRx, RPKT_LEN, &Rssi);
+        uint8_t RxRslt = CC.Receive(360, &RxPkt, RPKT_LEN, &Rssi);
         if(RxRslt == retvOk) {
-            Printf("Rssi=%d\r", Rssi);
-            Led.StartOrRestart(lsqBlink1);
+//            Printf("Rssi=%d\r", Rssi);
+            Printf("%u: Thr: %d; Pwr: %u; Rssi: %d\r", RxPkt.From, RxPkt.RssiThr, RxPkt.PowerLvlId, Rssi);
+            if(Rssi >= RxPkt.RssiThr) Led.StartOrRestart(lsqBlinkR);
+            else Led.StartOrRestart(lsqBlinkB);
         }
     } // while true
 }

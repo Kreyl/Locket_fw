@@ -74,7 +74,6 @@ int main(void) {
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
     Vibro.Init();
-    Vibro.StartOrRestart(vsqBrrBrr);
 #if BEEPER_ENABLED // === Beeper ===
 //    Beeper.Init();
 //    Beeper.StartOrRestart(bsqBeepBeep);
@@ -97,6 +96,7 @@ int main(void) {
     // ==== Radio ====
     if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
     else Led.StartOrRestart(lsqFailure);
+    Vibro.StartOrRestart(vsqBrrBrr);
     chThdSleepMilliseconds(1008);
 
     // Main cycle
@@ -128,14 +128,14 @@ void ITask() {
 #endif
 
             case evtIdCheckRxTable: {
-                uint32_t Cnt = Radio.RxTable.GetCount();
-                if(Cnt) Led.StartOrRestart(lsqBlink1);
+//                uint32_t Cnt = Radio.RxTable.GetCount();
+//                if(Cnt) Led.StartOrRestart(lsqBlink1);
 //                switch(Cnt) {
 //                    case 1:  break;
 //                    case 2: break;
 //                    default:  break;
 //                }
-                Radio.RxTable.Clear();
+//                Radio.RxTable.Clear();
             } break;
 
 #if PILL_ENABLED // ==== Pill ====

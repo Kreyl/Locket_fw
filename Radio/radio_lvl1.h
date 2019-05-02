@@ -57,22 +57,21 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 
 #if 1 // =========================== Pkt_t =====================================
 struct rPkt_t {
-    uint8_t ID = 0;
-    uint8_t LvlMin = 0;
-    uint8_t LvlMax = 0;
-    uint8_t DmgMin = 0;
-    uint8_t DmgMax = 0;
+    uint16_t From;
+    uint16_t To;
+    int8_t RssiThr;
+    uint8_t PowerLvlId;
 //    bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }
-    rPkt_t& operator = (const rPkt_t &Right) {
-        chSysLock();
-        ID = Right.ID;
-        LvlMin = Right.LvlMin;
-        LvlMax = Right.LvlMax;
-        DmgMin = Right.DmgMin;
-        DmgMax = Right.DmgMax;
-        chSysUnlock();
-        return *this;
-    }
+//    rPkt_t& operator = (const rPkt_t &Right) {
+//        chSysLock();
+//        ID = Right.ID;
+//        LvlMin = Right.LvlMin;
+//        LvlMax = Right.LvlMax;
+//        DmgMin = Right.DmgMin;
+//        DmgMax = Right.DmgMax;
+//        chSysUnlock();
+//        return *this;
+//    }
 } __attribute__ ((__packed__));
 #endif
 
