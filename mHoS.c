@@ -132,6 +132,7 @@ static QState MHoS_dead(MHoS * const me, QEvt const * const e) {
         /* ${SMs::MHoS::SM::global::dead::PILL_HP_DOUBLE} */
         case PILL_HP_DOUBLE_SIG: {
             Double(me);
+			Flash(255, 0, 0, FLASH_MS);
             status_ = Q_TRAN(&MHoS_simple);
             break;
         }
