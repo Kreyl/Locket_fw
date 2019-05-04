@@ -25,8 +25,6 @@ CmdUart_t Uart{&CmdUartParams};
 static void ITask();
 static void OnCmd(Shell_t *PShell);
 
-static void ReadAndSetupMode();
-
 // EEAddresses
 #define EE_ADDR_DEVICE_ID   0
 // StateMachines
@@ -40,7 +38,6 @@ static mHoSQEvt e;
 
 int32_t ID;
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
-static uint8_t GetDipSwitch();
 static uint8_t ISetID(int32_t NewID);
 void ReadIDfromEE();
 
@@ -87,7 +84,6 @@ int main(void) {
 #if BEEPER_ENABLED // === Beeper ===
     Beeper.Init();
     Beeper.StartOrRestart(bsqBeepBeep);
-//    chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
 #if BUTTONS_ENABLED
     SimpleSensors::Init();
@@ -100,8 +96,7 @@ int main(void) {
 #endif
 
     // ==== Time and timers ====
-//    TmrEverySecond.StartOrRestart();
-//    TmrRxTableCheck.StartOrRestart();
+    TmrEverySecond.StartOrRestart();
 
     // ==== Radio ====
     if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
@@ -185,6 +180,7 @@ void InitSM() {
         DefaultHP = 20;
         State = SIMPLE;
     }
+    Printf("Saved: HP=%d MaxHP=%d DefaultHP=%d State=%d\r", HP, MaxHP, DefaultHP, State);
     // Init
     MHoS_ctor(HP, MaxHP, DefaultHP, State);
     QMSM_INIT(the_mHoS, (QEvt *)0);
@@ -194,7 +190,8 @@ void SendEventSM(int QSig, unsigned int SrcID, unsigned int Value) {
     e.super.sig = QSig;
     e.id = SrcID;
     e.value = Value;
-    QMSM_DISPATCH(the_mHoS,  &(e.super));
+    Printf("e Sig: %d; id: %d; value: %d\r", e.super.sig, e.id, e.value);
+    QMSM_DISPATCH(the_mHoS, &(e.super));
 }
 
 extern "C" {
@@ -258,45 +255,6 @@ void SaveDefaultHP(uint32_t HP) {
 } // extern C
 #endif
 
-__unused
-static const uint8_t PwrTable[12] = {
-        CC_PwrMinus30dBm, // 0
-        CC_PwrMinus27dBm, // 1
-        CC_PwrMinus25dBm, // 2
-        CC_PwrMinus20dBm, // 3
-        CC_PwrMinus15dBm, // 4
-        CC_PwrMinus10dBm, // 5
-        CC_PwrMinus6dBm,  // 6
-        CC_Pwr0dBm,       // 7
-        CC_PwrPlus5dBm,   // 8
-        CC_PwrPlus7dBm,   // 9
-        CC_PwrPlus10dBm,  // 10
-        CC_PwrPlus12dBm   // 11
-};
-
-__unused
-void ReadAndSetupMode() {
-    static uint32_t OldDipSettings = 0xFFFF;
-    uint8_t b = GetDipSwitch();
-    if(b == OldDipSettings) return;
-    // ==== Something has changed ====
-    Printf("Dip: 0x%02X\r", b);
-    OldDipSettings = b;
-    // Reset everything
-    VibroMotor.Stop();
-    Led.Stop();
-    // Select mode
-//    if(b & 0b100000) {
-//        Led.StartOrRestart(lsqTx);
-    // Select power
-    b &= 0b11111; // Remove high bits
-    RMsg_t msg;
-    msg.Cmd = R_MSG_SET_PWR;
-    msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
-    Radio.RMsgQ.SendNowOrExit(msg);
-}
-
-
 #if 1 // ================= Command processing ====================
 void OnCmd(Shell_t *PShell) {
 	Cmd_t *PCmd = &PShell->Cmd;
@@ -320,6 +278,12 @@ void OnCmd(Shell_t *PShell) {
         PShell->Ack(r);
     }
 
+    else if(PCmd->NameIs("Rst")) {
+        SaveHP(20);
+        SaveMaxHP(20);
+        SaveDefaultHP(20);
+        PShell->Ack(retvOk);
+    }
 
 #if 1 // === Pill ===
     else if(PCmd->NameIs("ReadPill")) {
@@ -340,12 +304,6 @@ void OnCmd(Shell_t *PShell) {
         else PShell->Ack(retvCmdError);
     }
 #endif
-
-//    else if(PCmd->NameIs("Pill")) {
-//        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-//        PillType = (PillType_t)dw32;
-//        App.SignalEvt(EVT_PILL_CHECK);
-//    }
 
     else PShell->Ack(retvCmdUnknown);
 }
@@ -375,14 +333,3 @@ uint8_t ISetID(int32_t NewID) {
     }
 }
 #endif
-
-// ====== DIP switch ======
-uint8_t GetDipSwitch() {
-    uint8_t Rslt = 0;
-    for(int i=0; i<DIP_SW_CNT; i++) PinSetupInput(DipSwPin[i].PGpio, DipSwPin[i].Pin, DipSwPin[i].PullUpDown);
-    for(int i=0; i<DIP_SW_CNT; i++) {
-        if(!PinIsHi(DipSwPin[i].PGpio, DipSwPin[i].Pin)) Rslt |= (1 << i);
-        PinSetupAnalog(DipSwPin[i].PGpio, DipSwPin[i].Pin);
-    }
-    return Rslt;
-}
