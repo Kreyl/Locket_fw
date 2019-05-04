@@ -117,7 +117,7 @@ void ITask() {
         switch(Msg.ID) {
             case evtIdEverySecond:
                 TimeS++;
-                SendEventSM(TICK_SEC_SIG, 0, 0);
+                SendEventSM(TIME_TICK_1S_SIG, 0, 0);
                 break;
 
             case evtIdDamagePkt: SendEventSM(DAMAGE_RECEIVED_SIG, Msg.Value, 1); break;

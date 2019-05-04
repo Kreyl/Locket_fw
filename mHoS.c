@@ -335,12 +335,14 @@ static QState MHoS_mutant(MHoS * const me, QEvt const * const e) {
         /* ${SMs::MHoS::SM::global::alive::NOT_IMMUNE::mutant::BUTTON_LONG_PRESSED} */
         case BUTTON_LONG_PRESSED_SIG: {
             SendKillingSignal();
+			Vibro(1000);
             status_ = Q_HANDLED();
             break;
         }
         /* ${SMs::MHoS::SM::global::alive::NOT_IMMUNE::mutant::PILL_SURGE} */
         case PILL_SURGE_SIG: {
             SendKillingSignal();
+			Vibro(1000);
             status_ = Q_HANDLED();
             break;
         }
