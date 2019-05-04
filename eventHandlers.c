@@ -1,96 +1,48 @@
 #include "eventHandlers.h"
-#include "heartOfStorm.h"
+#include "mHoS.h"
 #include <stdio.h>
+#include <stdbool.h>
 
-//stub function, delete before release
-void Vibro(unsigned int force, unsigned int timeout, unsigned int repeat) {
-	printf("Vibro with %i strenth with %i pause for %i times", force, timeout, repeat);
-	return;
+
+void ShowHP(MHoS* me) {
+   Flash((Color_t){255 - me->CharHP*me->ScaleStep, me->CharHP*me->ScaleStep, 0}, FLASH_MS);
+   return;
+   
 }
 
-//stub function, delete before release
-void Flash(unsigned int color, unsigned int timeout) {
-	printf("%i flash for %i ms", color, timeout);
-}
-
-//stub function, delete before release
-//void Beep() {
-//	printf("Beep");
-//}
-
-//stub function, delete before release
-void SaveHP(unsigned int HP) {
-	printf("%i HP Saved\n", HP);
-}
-
-//stub function, delete before release
-void SaveState(unsigned int State) {
-	printf("%i State Saved\n", State);
-}
-
-//stub function, delete before release
-void SaveMaxHP(unsigned int MaxHP) {
-	printf("%i MaxHP Saved\n", MaxHP);
-}
-
-//stub function, delete before release
-void SendKillingSignal() {
-	printf("Killing signal send\n");
-}
-
-//stub function, delete before release
-void KillingIndication() {
-	printf("Indicate send killing signal\n");
-}
-
-void ClearPill() {
-	printf("Pill cleared");
-}
-
-void ShowHitState(QHsm* me) {
-    if (((HeartOfStorm*)me)->CharHP >= HP_OK) {
-        Flash(Green, FLASH_MS);
-    } else if (((HeartOfStorm*)me)->CharHP >= HP_BAD) {
-        Flash(Yellow, FLASH_MS);
-    } else {
-        Flash(Red, FLASH_MS) ;
-    }
-}    
-
-//stub used change before release
-void IndicateDamage(unsigned int Damage) {
-    //Flash(Red, FLASH_MS);
-    //if (Damage >= DAMAGE_HIGH) {
-    //    Vibro(HARD, 300, 3);
-    //} else if (Damage > DAMAGE_LOW) {
-    //    Vibro(MEDIUM, 300, 2);
-    //} else {
-    //    Vibro(LOW, 300, 1);
-    // }
-	Vibro(HARD, 300, 3);
-	printf("Damage %i", Damage);
-   //Beep();
+void IndicateDamage(MHoS* me) {
+    ShowHP(me);
+    Vibro(VIBRO_MS);
 }
  
-void UpdateHP(QHsm* me, unsigned int HP) {
-    if  (HP <= ((HeartOfStorm*)me)->MaxHP) {
-         ((HeartOfStorm*)me)->CharHP = HP;
+void UpdateHP(MHoS* me, unsigned int HP) {
+    if  (HP <= me->MaxHP) {
+         me->CharHP = HP;
     } else {
-        ((HeartOfStorm*)me)->CharHP = ((HeartOfStorm*)me)->MaxHP;
+        me->CharHP = me->MaxHP;
     }
-    SaveHP(((HeartOfStorm*)me)->CharHP);   
+    SaveHP(me->CharHP);   
 }
 
-void UpdateMaxHP(QHsm* me, unsigned int MaxHP) {
-    ((HeartOfStorm*)me)->MaxHP = MaxHP;
-    SaveMaxHP(((HeartOfStorm*)me)->MaxHP);
+void UpdateMaxHP(MHoS* me, unsigned int MaxHP) {
+    me->MaxHP = MaxHP;
+    SaveMaxHP(me->MaxHP);
 }
 
-void PillIndicate() {
-    Flash(Blue, FLASH_MS);
-    Vibro(LOW, 300, 1);
+void UpdateDefaultHP(MHoS* me, unsigned int DefaultHP) {
+	me->DefaultHP = DefaultHP;
+	SaveDefaultHP(me->DefaultHP);
 }
 
-void IndicateDeath() {
-	printf("Dead!!!");
+void Reset(MHoS* me) {
+     UpdateMaxHP(me, me->DefaultHP);
+     UpdateHP(me, me->DefaultHP);
+     me->ScaleStep = 255/me->MaxHP;
+	 me->DeathTime = 0;
+}
+
+void Double(MHoS* me)  {
+     UpdateMaxHP(me, me->DefaultHP*2);
+     UpdateHP(me, me->MaxHP);
+	 me->DeathTime = 0;
 }
