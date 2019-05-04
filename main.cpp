@@ -12,6 +12,10 @@
 #include "main.h"
 #include "SimpleSensors.h"
 #include "buttons.h"
+// SM
+#include "qhsm.h"
+#include "eventHandlers.h"
+#include "mHoS.h"
 
 #if 1 // ======================== Variables and defines ========================
 // Forever
@@ -24,7 +28,15 @@ static void OnCmd(Shell_t *PShell);
 static void ReadAndSetupMode();
 
 // EEAddresses
-#define EE_ADDR_DEVICE_ID       0
+#define EE_ADDR_DEVICE_ID   0
+// StateMachines
+#define EE_ADDR_STATE       2048
+#define EE_ADDR_HP          2052
+#define EE_ADDR_MAX_HP      2056
+#define EE_ADDR_DEFAULT_HP  2060
+void InitSM();
+void SendEventSM(int QSig, unsigned int SrcID, unsigned int Value);
+static mHoSQEvt e;
 
 int32_t ID;
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
@@ -97,6 +109,8 @@ int main(void) {
     VibroMotor.StartOrRestart(vsqBrrBrr);
     chThdSleepMilliseconds(1008);
 
+    InitSM();
+
     // Main cycle
     ITask();
 }
@@ -108,46 +122,44 @@ void ITask() {
         switch(Msg.ID) {
             case evtIdEverySecond:
                 TimeS++;
-                ReadAndSetupMode();
+                SendEventSM(TICK_SEC_SIG, 0, 0);
                 break;
+
+            case evtIdDamagePkt: SendEventSM(DAMAGE_RECEIVED_SIG, Msg.Value, 1); break;
+            case evtIdDeathPkt:  SendEventSM(KILL_SIGNAL_RECEIVED_SIG, 0, 0);    break;
+            case evtIdUpdateHP:  SendEventSM(UPDATE_HP_SIG, 0, Msg.Value);       break;
 
 #if BUTTONS_ENABLED
             case evtIdButtons:
-                Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
+//                Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
+                if(Msg.BtnEvtInfo.Type == beShortPress) {
+                    SendEventSM(BUTTON_PRESSED_SIG, 0, 0);
+                }
+                else if(Msg.BtnEvtInfo.Type == beLongCombo and Msg.BtnEvtInfo.BtnCnt == 3) {
+                    Printf("Combo\r");
+                    SendEventSM(BUTTON_LONG_PRESSED_SIG, 0, 0);
+                }
                 break;
 #endif
 
-            case evtIdCheckRxTable: {
-//                uint32_t Cnt = Radio.RxTable.GetCount();
-//                if(Cnt) Led.StartOrRestart(lsqBlink1);
-//                switch(Cnt) {
-//                    case 1:  break;
-//                    case 2: break;
-//                    default:  break;
-//                }
-//                Radio.RxTable.Clear();
-            } break;
-
 #if PILL_ENABLED // ==== Pill ====
             case evtIdPillConnected:
-                Printf("Pill: %u\r", PillMgr.Pill.TypeInt32);
+                Printf("Pill: %u\r", PillMgr.Pill.DWord32);
+                switch(PillMgr.Pill.DWord32) {
+                    case 1: SendEventSM(PILL_MUTANT_SIG, 0, 0); break;
+                    case 2: SendEventSM(PILL_IMMUNE_SIG, 0, 0); break;
+                    case 3: SendEventSM(PILL_HP_DOUBLE_SIG, 0, 0); break;
+                    case 4: SendEventSM(PILL_HEAL_SIG, 0, 0); break;
+                    case 5: SendEventSM(PILL_SURGE_SIG , 0, 0); break;
+                    default: SendEventSM(PILL_RESET_SIG, 0, 0); break;
+                }
                 break;
 
             case evtIdPillDisconnected:
                 Printf("Pill disconn\r");
+                SendEventSM(PILL_REMOVED_SIG, 0, 0);
 //                Led.StartOrRestart(lsqNoPill);
                 break;
-#endif
-
-#if 0 // ==== Vibro seq end ====
-        if(Evt & EVT_VIBRO_END) {
-            // Restart vibration (or start new one) if needed
-            if(pVibroSeqToPerform != nullptr) Vibro.StartSequence(pVibroSeqToPerform);
-        }
-#endif
-#if 0 // ==== Led sequence end ====
-        if(Evt & EVT_LED_SEQ_END) {
-        }
 #endif
 
             case evtIdShellCmd:
@@ -160,14 +172,90 @@ void ITask() {
 } // ITask()
 
 #if 1 // ==== State Machines ====
-void SaveState(uint32_t AState) {
-
+void InitSM() {
+    // Load saved data
+    uint32_t HP = EE::Read32(EE_ADDR_HP);
+    uint32_t MaxHP = EE::Read32(EE_ADDR_MAX_HP);
+    uint32_t DefaultHP = EE::Read32(EE_ADDR_DEFAULT_HP);
+    uint32_t State = EE::Read32(EE_ADDR_STATE);
+    // Check if params are bad
+    if(!(HP <= MaxHP and DefaultHP <= MaxHP and State <= 3)) {
+        HP = 20;
+        MaxHP = 20;
+        DefaultHP = 20;
+        State = SIMPLE;
+    }
+    // Init
+    MHoS_ctor(HP, MaxHP, DefaultHP, State);
+    QMSM_INIT(the_mHoS, (QEvt *)0);
 }
+
+void SendEventSM(int QSig, unsigned int SrcID, unsigned int Value) {
+    e.super.sig = QSig;
+    e.id = SrcID;
+    e.value = Value;
+    QMSM_DISPATCH(the_mHoS,  &(e.super));
+}
+
+extern "C" {
+void SaveState(uint32_t AState) {
+    if(EE::Write32(EE_ADDR_STATE, AState) != retvOk) Printf("Saving State fail\r");
+}
+
+BaseChunk_t vsqSMBrr[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, 99},
+        {csSetup, 0},
+        {csEnd}
+};
 
 void Vibro(uint32_t Duration_ms) {
-
+    vsqSMBrr[1].Time_ms = Duration_ms;
+    VibroMotor.StartOrRestart(vsqSMBrr);
 }
 
+
+LedRGBChunk_t lsqSM[] = {
+        {csSetup, 0, clRed},
+        {csWait, 207},
+        {csSetup, 0, {0,4,0}},
+        {csEnd},
+};
+
+void Flash(uint8_t R, uint8_t G, uint8_t B, uint32_t Duration_ms) {
+    lsqSM[0].Color.FromRGB(R, G, B);
+    lsqSM[1].Time_ms = Duration_ms;
+    Led.StartOrRestart(lsqSM);
+}
+
+void SendKillingSignal() {
+    Radio.RMsgQ.SendWaitingAbility(RMsg_t(R_MSG_SEND_KILL), 999);
+}
+
+#define THE_WORD    0xCA115EA1
+void ClearPill() {
+    uint32_t DWord32 = THE_WORD;
+    if(PillMgr.Write(0, &DWord32, 4) != retvOk) Printf("ClearPill fail\r");
+}
+
+bool PillWasImmune() {
+    uint32_t DWord32;
+    if(PillMgr.Read(0, &DWord32, 4) == retvOk) return (DWord32 == THE_WORD);
+    else return false;
+}
+
+void SaveHP(uint32_t HP) {
+    if(EE::Write32(EE_ADDR_HP, HP) != retvOk) Printf("Saving HP fail\r");
+}
+
+void SaveMaxHP(uint32_t HP) {
+    if(EE::Write32(EE_ADDR_MAX_HP, HP) != retvOk) Printf("Saving MaxHP fail\r");
+}
+
+void SaveDefaultHP(uint32_t HP) {
+    if(EE::Write32(EE_ADDR_DEFAULT_HP, HP) != retvOk) Printf("Saving DefHP fail\r");
+}
+} // extern C
 #endif
 
 __unused
@@ -262,6 +350,7 @@ void OnCmd(Shell_t *PShell) {
     else PShell->Ack(retvCmdUnknown);
 }
 #endif
+
 
 #if 1 // =========================== ID management =============================
 void ReadIDfromEE() {

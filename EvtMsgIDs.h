@@ -22,4 +22,9 @@ enum EvtMsgId_t {
     evtIdButtons,
     evtIdRadioCmd,
     evtIdCheckRxTable,
+
+    // SM
+    evtIdDeathPkt,
+    evtIdDamagePkt,
+    evtIdUpdateHP,
 };

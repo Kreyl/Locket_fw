@@ -41,15 +41,39 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
+        RMsg_t Msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
+        if(Msg.Cmd == R_MSG_SEND_KILL) {
+            systime_t Start = chVTGetSystemTimeX();
+            rPkt_t TxPkt;
+            TxPkt.From = 4;
+            TxPkt.RssiThr = RSSI_FOR_MUTANT;
+            while(chVTTimeElapsedSinceX(Start) < TIME_MS2I(2007)) {
+                CC.Recalibrate();
+                CC.Transmit(&TxPkt, RPKT_LEN);
+                chThdSleepMilliseconds(54);
+            }
+        }
         int8_t Rssi;
         rPkt_t RxPkt;
         CC.Recalibrate();
         uint8_t RxRslt = CC.Receive(360, &RxPkt, RPKT_LEN, &Rssi);
         if(RxRslt == retvOk) {
 //            Printf("Rssi=%d\r", Rssi);
-            Printf("%u: Thr: %d; Pwr: %u; Rssi: %d\r", RxPkt.From, RxPkt.RssiThr, RxPkt.PowerLvlId, Rssi);
-            if(Rssi >= RxPkt.RssiThr) Led.StartOrRestart(lsqBlinkR);
-            else Led.StartOrRestart(lsqBlinkB);
+            Printf("%u: Thr: %d; Pwr: %u; Rssi: %d\r", RxPkt.From, RxPkt.RssiThr, RxPkt.Value, Rssi);
+            // Command from UsbHost to all lockets, no RSSI check
+            if(RxPkt.From == 1 and RxPkt.To == 0) {
+                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUpdateHP, (int32_t)RxPkt.Value));
+            }
+            else if(Rssi >= RxPkt.RssiThr) {
+                // Killing pkt from other locket
+                if(RxPkt.From == 4) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdDeathPkt));
+                // Damage pkt from lustra
+                else if(RxPkt.From >= 1000 and RxPkt.From <= 1200) {
+                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdDamagePkt, (int32_t)RxPkt.From));
+                }
+//                Led.StartOrRestart(lsqBlinkR);
+            }
+//            else Led.StartOrRestart(lsqBlinkB);
         }
     } // while true
 }

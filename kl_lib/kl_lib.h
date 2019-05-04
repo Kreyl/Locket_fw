@@ -1397,7 +1397,7 @@ public:
 #endif
 
 // =========================== Flash and Option bytes ==========================
-namespace Flash {
+namespace FlashMem {
 
 void UnlockFlash();
 void LockFlash();

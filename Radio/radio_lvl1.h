@@ -60,30 +60,23 @@ struct rPkt_t {
     uint16_t From;
     uint16_t To;
     int8_t RssiThr;
-    uint8_t PowerLvlId;
-//    bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }
-//    rPkt_t& operator = (const rPkt_t &Right) {
-//        chSysLock();
-//        ID = Right.ID;
-//        LvlMin = Right.LvlMin;
-//        LvlMax = Right.LvlMax;
-//        DmgMin = Right.DmgMin;
-//        DmgMax = Right.DmgMax;
-//        chSysUnlock();
-//        return *this;
-//    }
+    uint8_t Value;
 } __attribute__ ((__packed__));
 #endif
 
 #define RPKT_LEN                sizeof(rPkt_t)
 
 // Message queue
-#define R_MSGQ_LEN      4
+#define R_MSGQ_LEN      4 // Length of q
 #define R_MSG_SET_PWR   1
 #define R_MSG_SET_CHNL  2
+#define R_MSG_SEND_KILL 4
 struct RMsg_t {
     uint8_t Cmd;
     uint8_t Value;
+    RMsg_t() : Cmd(0), Value(0) {}
+    RMsg_t(uint8_t ACmd) : Cmd(ACmd), Value(0) {}
+    RMsg_t(uint8_t ACmd, uint8_t AValue) : Cmd(ACmd), Value(AValue) {}
 } __attribute__((packed));
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
@@ -95,6 +88,8 @@ struct RMsg_t {
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
 
 #define RSSI_MIN        -75
+
+#define RSSI_FOR_MUTANT -120
 
 // Feel-Each-Other related
 #define CYCLE_CNT           4
