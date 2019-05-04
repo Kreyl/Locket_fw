@@ -18,6 +18,7 @@
 #include "qhsm.h"
 #include "mHoS.h"
 #include "eventHandlers.h"
+#include "glue.h"
 
 
 #include <stdint.h>
@@ -123,6 +124,7 @@ static QState MHoS_dead(MHoS * const me, QEvt const * const e) {
             break;
         }
         case UPDATE_HP_SIG: {
+			Flash(clRed, FLASH_MS);
             UpdateDefaultHP(me, ((mHoSQEvt*)e)->value);
             status_ = Q_HANDLED();
             break;
@@ -234,6 +236,7 @@ static QState MHoS_alive(MHoS * const me, QEvt const * const e) {
         }
         /* ${SMs::MHoS::SM::global::alive::UPDATE_HP_SIG} */
         case UPDATE_HP_SIG: {
+			Flash(clRed, FLASH_MS);
             UpdateDefaultHP(me, ((mHoSQEvt*)e)->value);
             status_ = Q_HANDLED();
             break;
@@ -294,6 +297,7 @@ static QState MHoS_simple(MHoS * const me, QEvt const * const e) {
         /* ${SMs::MHoS::SM::global::alive::NOT_IMMUNE::simple::PILL_RESET} */
         case PILL_RESET_SIG: {
             Reset(me);
+			Flash(clRed, FLASH_MS);
             status_ = Q_HANDLED();
             break;
         }
