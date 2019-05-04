@@ -33,6 +33,8 @@ void UpdateMaxHP(MHoS* me, unsigned int MaxHP) {
 void UpdateDefaultHP(MHoS* me, unsigned int DefaultHP) {
 	me->DefaultHP = DefaultHP;
 	SaveDefaultHP(me->DefaultHP);
+	UpdateMaxHP(me, DefaultHP);
+	UpdateHP(me, DefaultHP);
 }
 
 void Reset(MHoS* me) {
