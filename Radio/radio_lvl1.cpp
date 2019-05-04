@@ -11,11 +11,8 @@
 #include "main.h"
 
 #include "led.h"
-#include "vibro.h"
 #include "Sequences.h"
-
 extern LedRGBwPower_t Led;
-extern Vibro_t Vibro;
 
 cc1101_t CC(CC_Setup0);
 
@@ -37,9 +34,6 @@ cc1101_t CC(CC_Setup0);
 #endif
 
 rLevel1_t Radio;
-uint32_t  EveryOther = 0;
-uint32_t Hitpoints = 20;
-
 
 #if 1 // ================================ Task =================================
 static THD_WORKING_AREA(warLvl1Thread, 256);
@@ -48,26 +42,14 @@ static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
         int8_t Rssi;
-        rPkt_t PktRx;
+        rPkt_t RxPkt;
         CC.Recalibrate();
-        uint8_t RxRslt = CC.Receive(720, &PktRx, RPKT_LEN, &Rssi);
+        uint8_t RxRslt = CC.Receive(360, &RxPkt, RPKT_LEN, &Rssi);
         if(RxRslt == retvOk) {
-        	EveryOther++;
-        	if (EveryOther & 1) { // React only at every other signal, since we need 1s delays
-        		Printf("Rssi=%d\r", Rssi);
-        		Led.StartOrRestart(lsqBlink1);
-        		Vibro.StartOrRestart(vsqBrr);
-        		Hitpoints--;
-        		if (Hitpoints == 0) {	// Die and rise again
-        			Vibro.StartOrRestart(vsqDeath);
-        			Led.StartOrRestart(lsqShineDead);
-        			for (uint8_t tcount = 0; tcount <= 20; tcount++)
-        				chThdSleepMilliseconds(1000);
-        			Hitpoints = 20;
-        			Vibro.StartOrRestart(vsqBrrBrr);
-        			Led.StartOrRestart(lsqStart);
-        		}
-        	}
+//            Printf("Rssi=%d\r", Rssi);
+            Printf("%u: Thr: %d; Pwr: %u; Rssi: %d\r", RxPkt.From, RxPkt.RssiThr, RxPkt.PowerLvlId, Rssi);
+            if(Rssi >= RxPkt.RssiThr) Led.StartOrRestart(lsqBlinkR);
+            else Led.StartOrRestart(lsqBlinkB);
         }
     } // while true
 }
