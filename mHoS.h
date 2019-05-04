@@ -26,6 +26,7 @@ extern "C" {
 #define IMMUNE 2
 #define DEAD 3
 #define FLASH_MS 500
+#define SHORT_FLASH_MS 200
 #define VIBRO_MS 300
 #define DEATH_TO_S 30
 
