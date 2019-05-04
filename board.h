@@ -5,9 +5,9 @@
 #define APP_NAME            "Master"
 
 // ==== High-level peripery control ====
-#define PILL_ENABLED        FALSE
-#define BEEPER_ENABLED      FALSE
-#define BUTTONS_ENABLED     FALSE
+#define PILL_ENABLED        TRUE
+#define BEEPER_ENABLED      TRUE
+#define BUTTONS_ENABLED     TRUE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
@@ -108,8 +108,8 @@
 #define UART_DMA_CHNL   0   // Dummy
 
 #if I2C1_ENABLED // ==== I2C ====
-#define I2C1_DMA_TX     STM32_DMA1_STREAM6
-#define I2C1_DMA_RX     STM32_DMA1_STREAM7
+#define I2C1_DMA_TX     STM32_DMA_STREAM_ID(1, 6)
+#define I2C1_DMA_RX     STM32_DMA_STREAM_ID(1, 7)
 #define I2C1_DMA_CHNL   0   // Dummy
 #endif
 
