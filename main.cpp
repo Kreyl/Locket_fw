@@ -33,7 +33,7 @@ static uint8_t ISetID(int32_t NewID);
 void ReadIDfromEE();
 
 // ==== Periphery ====
-Vibro_t Vibro {VIBRO_SETUP};
+Vibro_t VibroMotor {VIBRO_SETUP};
 #if BEEPER_ENABLED
 Beeper_t Beeper {BEEPER_PIN};
 #endif
@@ -71,7 +71,7 @@ int main(void) {
 
     Led.Init();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-    Vibro.Init();
+    VibroMotor.Init();
 #if BEEPER_ENABLED // === Beeper ===
     Beeper.Init();
     Beeper.StartOrRestart(bsqBeepBeep);
@@ -94,7 +94,7 @@ int main(void) {
     // ==== Radio ====
     if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
     else Led.StartOrRestart(lsqFailure);
-    Vibro.StartOrRestart(vsqBrrBrr);
+    VibroMotor.StartOrRestart(vsqBrrBrr);
     chThdSleepMilliseconds(1008);
 
     // Main cycle
@@ -159,6 +159,17 @@ void ITask() {
     } // while true
 } // ITask()
 
+#if 1 // ==== State Machines ====
+void SaveState(uint32_t AState) {
+
+}
+
+void Vibro(uint32_t Duration_ms) {
+
+}
+
+#endif
+
 __unused
 static const uint8_t PwrTable[12] = {
         CC_PwrMinus30dBm, // 0
@@ -184,7 +195,7 @@ void ReadAndSetupMode() {
     Printf("Dip: 0x%02X\r", b);
     OldDipSettings = b;
     // Reset everything
-    Vibro.Stop();
+    VibroMotor.Stop();
     Led.Stop();
     // Select mode
 //    if(b & 0b100000) {
