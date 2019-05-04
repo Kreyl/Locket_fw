@@ -394,7 +394,7 @@ static QState MHoS_immune(MHoS * const me, QEvt const * const e) {
         }
         /* ${SMs::MHoS::SM::global::alive::immune::TIME_TICK_1S} */
         case TIME_TICK_1S_SIG: {
-			if (!(PillWasMutant())) {
+			if (!(PillWasImmune())) {
                 /* ${SMs::MHoS::SM::global::alive::immune::TIME_TICK_1S::[me->LastState==MUTANT]} */
                 if (me->LastState == MUTANT) {
                     status_ = Q_TRAN(&MHoS_mutant);
