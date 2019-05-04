@@ -290,14 +290,14 @@ static QState MHoS_simple(MHoS * const me, QEvt const * const e) {
         case Q_ENTRY_SIG: {
             printf("Entered simple\n");
 			SaveState(SIMPLE);
-            Flash(255, 0, 0, FLASH_MS);
+            Flash(0, 255, 0, FLASH_MS);
             status_ = Q_HANDLED();
             break;
         }
         /* ${SMs::MHoS::SM::global::alive::NOT_IMMUNE::simple::PILL_RESET} */
         case PILL_RESET_SIG: {
             Reset(me);
-			Flash(255, 0, 0, FLASH_MS);
+			Flash(0, 255, 0, FLASH_MS);
             status_ = Q_HANDLED();
             break;
         }
