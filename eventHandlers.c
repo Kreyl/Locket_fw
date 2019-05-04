@@ -1,11 +1,12 @@
 #include "eventHandlers.h"
 #include "mHoS.h"
+#include "glue.h"
 #include <stdio.h>
 #include <stdbool.h>
 
 
 void ShowHP(MHoS* me) {
-   Flash((Color_t){255 - me->CharHP*me->ScaleStep, me->CharHP*me->ScaleStep, 0}, FLASH_MS);
+   Flash((Color_t){255 - me->CharHP*me->ScaleStep, me->CharHP*me->ScaleStep, 0}, SHORT_FLASH_MS);
    return;
    
 }
