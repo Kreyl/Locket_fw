@@ -6,7 +6,7 @@
 
 
 void ShowHP(MHoS* me) {
-   Flash((Color_t){255 - me->CharHP*me->ScaleStep, me->CharHP*me->ScaleStep, 0}, SHORT_FLASH_MS);
+   Flash(255 - me->CharHP*me->ScaleStep, me->CharHP*me->ScaleStep, 0, SHORT_FLASH_MS);
    return;
    
 }

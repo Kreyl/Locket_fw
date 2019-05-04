@@ -137,7 +137,7 @@ DAMAGE_RECEIVED[else]/
                   <y:Fill color="#E8EEF7" color2="#B7C9E3" transparent="false"/>
                   <y:BorderStyle color="#000000" type="line" width="1.0"/>
                   <y:NodeLabel alignment="center" autoSizePolicy="node_width" backgroundColor="#B7C9E3" configuration="com.yworks.entityRelationship.label.name" fontFamily="Dialog" fontSize="12" fontStyle="bold" hasLineColor="false" height="18.701171875" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="t" textColor="#000000" verticalTextPosition="bottom" visible="true" width="187.38991926807216" x="0.0" xml:space="preserve" y="4.0">simple</y:NodeLabel>
-                  <y:NodeLabel alignment="left" autoSizePolicy="content" configuration="com.yworks.entityRelationship.label.attributes" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="112.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="182.13671875" x="4.0" xml:space="preserve" y="4.0">
+                  <y:NodeLabel alignment="left" autoSizePolicy="content" configuration="com.yworks.entityRelationship.label.attributes" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="124.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="182.13671875" x="4.0" xml:space="preserve" y="4.0">
 
 entry/
     SaveState(SIMPLE);
@@ -145,6 +145,7 @@ entry/
 
 PILL_RESET/
    Reset(me);
+   Flash(clRed, FLASH_MS);
     </y:NodeLabel>
                   <y:StyleProperties>
                     <y:Property class="java.lang.Boolean" name="y.view.ShadowNodePainter.SHADOW_PAINTING" value="true"/>
@@ -269,7 +270,7 @@ unsigned int DeathTime;</y:NodeLabel>
           <y:Geometry height="149.09023733126747" width="332.8439937092118" x="-372.54191037587856" y="-14.116209873079015"/>
           <y:Fill color="#FFCC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="124.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="307.4921875" x="4.0" xml:space="preserve" y="4.0">Code for h-file: (do not delete this caption):
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="136.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="307.4921875" x="4.0" xml:space="preserve" y="4.0">Code for h-file: (do not delete this caption):
 
 
 #define SIMPLE 0
@@ -277,6 +278,7 @@ unsigned int DeathTime;</y:NodeLabel>
 #define IMMUNE 2
 #define DEAD 3
 #define FLASH_MS 500
+#define SHORT_VIBRO_MS 200
 #define VIBRO_MS 300
 #define DEATH_TO_S 30
 </y:NodeLabel>
@@ -290,10 +292,10 @@ unsigned int DeathTime;</y:NodeLabel>
           <y:Geometry height="720.369139560579" width="655.4926106439423" x="784.0000000000001" y="-14.116209873079015"/>
           <y:Fill color="#FFCC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="739.05859375" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="548.875" x="4.0" xml:space="preserve" y="4.0">Comments:
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Dialog" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="739.05859375" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="597.548828125" x="4.0" xml:space="preserve" y="4.0">Comments:
 
 void ShowHP(MHoS* me) {
-   Flash(((Color_t){255 - me-&gt;CharHP*me-&gt;ScaleStep, me&gt;CharHP*me-&gt;ScaleStep, 0}), FLASH_MS);
+   Flash(((Color_t){255 - me-&gt;CharHP*me-&gt;ScaleStep, me&gt;CharHP*me-&gt;ScaleStep, 0}), SHORT_FLASH_MS);
    
 }    
 
@@ -498,10 +500,11 @@ TIME_TICK_1S[else]/
           <y:Geometry height="100.0" width="303.0" x="784.0" y="755.4148273572769"/>
           <y:Fill color="#FFCC00" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
-          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="52.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="195.33203125" x="4.0" xml:space="preserve" y="4.0">Code for cpp-file:
+          <y:NodeLabel alignment="left" autoSizePolicy="content" fontFamily="Consolas" fontSize="12" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" height="64.0" horizontalTextPosition="center" iconTextGap="4" modelName="internal" modelPosition="tl" textColor="#000000" verticalTextPosition="bottom" visible="true" width="195.33203125" x="4.0" xml:space="preserve" y="4.0">Code for cpp-file:
 (do not delete this caption):
 
-#include "eventHandlers.h"</y:NodeLabel>
+#include "eventHandlers.h"
+#include "glue.h"</y:NodeLabel>
         </y:UMLNoteNode>
       </data>
     </node>

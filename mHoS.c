@@ -124,7 +124,7 @@ static QState MHoS_dead(MHoS * const me, QEvt const * const e) {
             break;
         }
         case UPDATE_HP_SIG: {
-			Flash(clRed, FLASH_MS);
+			Flash(255, 0, 0, FLASH_MS);
             UpdateDefaultHP(me, ((mHoSQEvt*)e)->value);
             status_ = Q_HANDLED();
             break;
@@ -158,7 +158,7 @@ static QState MHoS_just_died(MHoS * const me, QEvt const * const e) {
             SaveState(DEAD);
             UpdateHP(me, 0);
             Vibro(DEATH_TO_S*1000/3);
-            Flash(clRed, DEATH_TO_S*1000);
+            Flash(255, 0, 0, DEATH_TO_S*1000);
             status_ = Q_HANDLED();
             break;
         }
@@ -195,7 +195,7 @@ static QState MHoS_wait_reset(MHoS * const me, QEvt const * const e) {
         }
         /* ${SMs::MHoS::SM::global::dead::wait_reset::TIME_TICK_1S} */
         case TIME_TICK_1S_SIG: {
-            Flash(clRed, FLASH_MS/5);
+            Flash(255, 0, 0, FLASH_MS/5);
             status_ = Q_HANDLED();
             break;
         }
@@ -222,21 +222,21 @@ static QState MHoS_alive(MHoS * const me, QEvt const * const e) {
         }
         /* ${SMs::MHoS::SM::global::alive::PILL_HP_DOUBLE} */
         case PILL_HP_DOUBLE_SIG: {
-            Flash(clRed, FLASH_MS);
+            Flash(255, 0, 0, FLASH_MS);
             Double(me);
             status_ = Q_HANDLED();
             break;
         }
         /* ${SMs::MHoS::SM::global::alive::PILL_HEAL} */
         case PILL_HEAL_SIG: {
-            Flash((Color_t){255, 165, 0}, FLASH_MS);
+            Flash(255, 165, 0, FLASH_MS);
             UpdateHP(me, me->MaxHP);
             status_ = Q_HANDLED();
             break;
         }
         /* ${SMs::MHoS::SM::global::alive::UPDATE_HP_SIG} */
         case UPDATE_HP_SIG: {
-			Flash(clRed, FLASH_MS);
+			Flash(255, 0, 0, FLASH_MS);
             UpdateDefaultHP(me, ((mHoSQEvt*)e)->value);
             status_ = Q_HANDLED();
             break;
@@ -290,14 +290,14 @@ static QState MHoS_simple(MHoS * const me, QEvt const * const e) {
         case Q_ENTRY_SIG: {
             printf("Entered simple\n");
 			SaveState(SIMPLE);
-            Flash(clRed, FLASH_MS);
+            Flash(255, 0, 0, FLASH_MS);
             status_ = Q_HANDLED();
             break;
         }
         /* ${SMs::MHoS::SM::global::alive::NOT_IMMUNE::simple::PILL_RESET} */
         case PILL_RESET_SIG: {
             Reset(me);
-			Flash(clRed, FLASH_MS);
+			Flash(255, 0, 0, FLASH_MS);
             status_ = Q_HANDLED();
             break;
         }
@@ -327,7 +327,7 @@ static QState MHoS_mutant(MHoS * const me, QEvt const * const e) {
         case Q_ENTRY_SIG: {
 			printf("Entered mutant\n");
             SaveState(MUTANT);
-            Flash(clBlue, FLASH_MS);
+            Flash(0, 0, 255, FLASH_MS);
             status_ = Q_HANDLED();
             break;
         }
@@ -370,13 +370,13 @@ static QState MHoS_immune(MHoS * const me, QEvt const * const e) {
         case Q_ENTRY_SIG: {
             printf("entered immune\n");
 			ClearPill();
-            Flash(clMagenta, FLASH_MS);
+            Flash(255, 0, 255, FLASH_MS);
             status_ = Q_HANDLED();
             break;
         }
         /* ${SMs::MHoS::SM::global::alive::immune::DAMAGE_RECEIVED} */
         case DAMAGE_RECEIVED_SIG: {
-            Flash(clGreen, FLASH_MS);
+            Flash(0, 255, 0, FLASH_MS);
             status_ = Q_HANDLED();
             break;
         }
