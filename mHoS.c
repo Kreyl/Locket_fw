@@ -270,7 +270,7 @@ static QState MHoS_NOT_IMMUNE(MHoS * const me, QEvt const * const e) {
             }
             /* ${SMs::MHoS::SM::global::alive::NOT_IMMUNE::DAMAGE_RECEIVED::[else]} */
             else {
-                me->CharHP -= ((mHoSQEvt*)e)->value;
+                UpdateHP(me, me->CharHP -((mHoSQEvt*)e)->value);
                 IndicateDamage(me);
                 status_ = Q_HANDLED();
             }
