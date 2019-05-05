@@ -89,7 +89,7 @@ struct RMsg_t {
 
 #define RSSI_MIN        -75
 
-#define RSSI_FOR_MUTANT -120
+#define RSSI_FOR_MUTANT -91
 
 // Feel-Each-Other related
 #define CYCLE_CNT           4
