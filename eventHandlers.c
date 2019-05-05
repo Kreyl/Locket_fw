@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+void PrintfC(const char *format, ...);
 
 void ShowHP(MHoS* me) {
    Flash(255 - me->CharHP*me->ScaleStep, me->CharHP*me->ScaleStep, 0, SHORT_FLASH_MS);
@@ -22,6 +23,7 @@ void UpdateHP(MHoS* me, unsigned int HP) {
     } else {
         me->CharHP = me->MaxHP;
     }
+	PrintfC("HP saved %u", me->HP);
     SaveHP(me->CharHP);   
 }
 
