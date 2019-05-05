@@ -23,7 +23,7 @@ void UpdateHP(MHoS* me, unsigned int HP) {
     } else {
         me->CharHP = me->MaxHP;
     }
-	PrintfC("HP saved %u", me->HP);
+	PrintfC("HP saved %u\r\n", me->CharHP);
     SaveHP(me->CharHP);   
 }
 
