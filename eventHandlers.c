@@ -28,6 +28,7 @@ void UpdateHP(MHoS* me, unsigned int HP) {
 void UpdateMaxHP(MHoS* me, unsigned int MaxHP) {
     me->MaxHP = MaxHP;
     SaveMaxHP(me->MaxHP);
+    me->ScaleStep = 255/me->MaxHP;
 }
 
 void UpdateDefaultHP(MHoS* me, unsigned int DefaultHP) {
