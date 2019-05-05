@@ -388,6 +388,7 @@ static QState MHoS_immune(MHoS * const me, QEvt const * const e) {
         }
         /* ${SMs::MHoS::SM::global::alive::immune::PILL_REMOVED} */
         case PILL_REMOVED_SIG: {
+			PrintfC("Pill removed\r\n");
             /* ${SMs::MHoS::SM::global::alive::immune::PILL_REMOVED::[me->LastState==MUTANT]} */
             if (me->LastState == MUTANT) {
                 status_ = Q_TRAN(&MHoS_mutant);
@@ -401,6 +402,7 @@ static QState MHoS_immune(MHoS * const me, QEvt const * const e) {
         /* ${SMs::MHoS::SM::global::alive::immune::TIME_TICK_1S} */
         case TIME_TICK_1S_SIG: {
 			if (!(PillWasImmune())) {
+				PrintfC("Wrong pill, going out\r\n");
                 /* ${SMs::MHoS::SM::global::alive::immune::TIME_TICK_1S::[me->LastState==MUTANT]} */
                 if (me->LastState == MUTANT) {
                     status_ = Q_TRAN(&MHoS_mutant);
