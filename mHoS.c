@@ -120,7 +120,7 @@ static QState MHoS_dead(MHoS * const me, QEvt const * const e) {
     switch (e->sig) {
         /* ${SMs::MHoS::SM::global::dead::UPDATE_HP_SIG} */
 		 case Q_ENTRY_SIG: {
-			PrintfC("entered dead\n");
+			PrintfC("entered dead\r\n");
 			status_ = Q_HANDLED();
             break;
         }
@@ -190,7 +190,7 @@ static QState MHoS_wait_reset(MHoS * const me, QEvt const * const e) {
     switch (e->sig) {
         /* ${SMs::MHoS::SM::global::dead::wait_reset} */
         case Q_ENTRY_SIG: {
-            PrintfC("Entered Wait Reset\n");
+            PrintfC("Entered Wait Reset\r\n");
 			me->DeathTime = 0;
             status_ = Q_HANDLED();
             break;
@@ -214,7 +214,7 @@ static QState MHoS_alive(MHoS * const me, QEvt const * const e) {
     switch (e->sig) {
         /* ${SMs::MHoS::SM::global::alive::BUTTON_PRESSED} */
 		case Q_ENTRY_SIG: {
-			PrintfC("entered alive\n");
+			PrintfC("entered alive\r\n");
 			status_ = Q_HANDLED();
             break;
         }
@@ -262,7 +262,7 @@ static QState MHoS_NOT_IMMUNE(MHoS * const me, QEvt const * const e) {
     switch (e->sig) {
         /* ${SMs::MHoS::SM::global::alive::NOT_IMMUNE::DAMAGE_RECEIVED} */
         case Q_ENTRY_SIG: {
-			PrintfC("entered not immune\n");
+			PrintfC("entered not immune\r\n");
 			status_ = Q_HANDLED();
             break;
         }
@@ -292,7 +292,7 @@ static QState MHoS_simple(MHoS * const me, QEvt const * const e) {
     switch (e->sig) {
         /* ${SMs::MHoS::SM::global::alive::NOT_IMMUNE::simple} */
         case Q_ENTRY_SIG: {
-            PrintfC("Entered simple\n");
+            PrintfC("Entered simple\r\n");
 			SaveState(SIMPLE);
             Flash(0, 255, 0, FLASH_MS);
             status_ = Q_HANDLED();
@@ -329,7 +329,7 @@ static QState MHoS_mutant(MHoS * const me, QEvt const * const e) {
     switch (e->sig) {
         /* ${SMs::MHoS::SM::global::alive::NOT_IMMUNE::mutant} */
         case Q_ENTRY_SIG: {
-			PrintfC("Entered mutant\n");
+			PrintfC("Entered mutant\r\n");
             SaveState(MUTANT);
             Flash(0, 0, 255, FLASH_MS);
             status_ = Q_HANDLED();
@@ -374,7 +374,7 @@ static QState MHoS_immune(MHoS * const me, QEvt const * const e) {
     switch (e->sig) {
         /* ${SMs::MHoS::SM::global::alive::immune} */
         case Q_ENTRY_SIG: {
-            PrintfC("entered immune\n");
+            PrintfC("entered immune\r\n");
 			ClearPill();
             Flash(255, 0, 255, FLASH_MS);
             status_ = Q_HANDLED();
@@ -409,6 +409,8 @@ static QState MHoS_immune(MHoS * const me, QEvt const * const e) {
                 else {
                    status_ = Q_TRAN(&MHoS_simple);
                 }
+			} else {
+				status_ = Q_HANDLED();
 			}
             break;
         }
