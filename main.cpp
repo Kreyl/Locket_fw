@@ -141,12 +141,13 @@ void ITask() {
             case evtIdPillConnected:
                 Printf("Pill: %u\r", PillMgr.Pill.DWord32);
                 switch(PillMgr.Pill.DWord32) {
+                    case 0: SendEventSM(PILL_RESET_SIG, 0, 0); break;
                     case 1: SendEventSM(PILL_MUTANT_SIG, 0, 0); break;
                     case 2: SendEventSM(PILL_IMMUNE_SIG, 0, 0); break;
                     case 3: SendEventSM(PILL_HP_DOUBLE_SIG, 0, 0); break;
                     case 4: SendEventSM(PILL_HEAL_SIG, 0, 0); break;
                     case 5: SendEventSM(PILL_SURGE_SIG , 0, 0); break;
-                    default: SendEventSM(PILL_RESET_SIG, 0, 0); break;
+                    default: break;
                 }
                 break;
 
@@ -166,21 +167,42 @@ void ITask() {
     } // while true
 } // ITask()
 
-#if 1 // ==== State Machines ====
+#if 1 // ======================== State Machines ===============================
+extern "C" {
+void SaveHP(uint32_t HP) {
+    if(EE::Write32(EE_ADDR_HP, HP) != retvOk) Printf("Saving HP fail\r");
+}
+
+void SaveMaxHP(uint32_t HP) {
+    if(EE::Write32(EE_ADDR_MAX_HP, HP) != retvOk) Printf("Saving MaxHP fail\r");
+}
+
+void SaveDefaultHP(uint32_t HP) {
+    if(EE::Write32(EE_ADDR_DEFAULT_HP, HP) != retvOk) Printf("Saving DefHP fail\r");
+}
+
+void SaveState(uint32_t AState) {
+    if(EE::Write32(EE_ADDR_STATE, AState) != retvOk) Printf("Saving State fail\r");
+}
+} // extern C
+
 void InitSM() {
     // Load saved data
     uint32_t HP = EE::Read32(EE_ADDR_HP);
     uint32_t MaxHP = EE::Read32(EE_ADDR_MAX_HP);
     uint32_t DefaultHP = EE::Read32(EE_ADDR_DEFAULT_HP);
     uint32_t State = EE::Read32(EE_ADDR_STATE);
+    Printf("Saved: HP=%d MaxHP=%d DefaultHP=%d State=%d\r", HP, MaxHP, DefaultHP, State);
     // Check if params are bad
-    if(!(HP <= MaxHP and DefaultHP <= MaxHP and State <= 3)) {
+    if(HP == 0 and DefaultHP == 0 and MaxHP == 0) { // Empty EE
         HP = 20;
         MaxHP = 20;
         DefaultHP = 20;
         State = SIMPLE;
+        SaveHP(HP);
+        SaveMaxHP(MaxHP);
+        SaveDefaultHP(DefaultHP);
     }
-    Printf("Saved: HP=%d MaxHP=%d DefaultHP=%d State=%d\r", HP, MaxHP, DefaultHP, State);
     // Init
     MHoS_ctor(HP, MaxHP, DefaultHP, State);
     QMSM_INIT(the_mHoS, (QEvt *)0);
@@ -195,10 +217,6 @@ void SendEventSM(int QSig, unsigned int SrcID, unsigned int Value) {
 }
 
 extern "C" {
-void SaveState(uint32_t AState) {
-    if(EE::Write32(EE_ADDR_STATE, AState) != retvOk) Printf("Saving State fail\r");
-}
-
 BaseChunk_t vsqSMBrr[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, 99},
@@ -239,18 +257,6 @@ bool PillWasImmune() {
     uint32_t DWord32;
     if(PillMgr.Read(0, &DWord32, 4) == retvOk) return (DWord32 == THE_WORD);
     else return false;
-}
-
-void SaveHP(uint32_t HP) {
-    if(EE::Write32(EE_ADDR_HP, HP) != retvOk) Printf("Saving HP fail\r");
-}
-
-void SaveMaxHP(uint32_t HP) {
-    if(EE::Write32(EE_ADDR_MAX_HP, HP) != retvOk) Printf("Saving MaxHP fail\r");
-}
-
-void SaveDefaultHP(uint32_t HP) {
-    if(EE::Write32(EE_ADDR_DEFAULT_HP, HP) != retvOk) Printf("Saving DefHP fail\r");
 }
 } // extern C
 #endif
