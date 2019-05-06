@@ -6,31 +6,8 @@
 #if PILL_ENABLED
 PillMgr_t PillMgr { &I2C_PILL, PILL_PWR_PIN };
 
-static THD_WORKING_AREA(waPillThread, 256);
-__noreturn
-static void PillThread(void *arg) {
-    chRegSetThreadName("Pill");
-    while(true) {
-        chThdSleepMilliseconds(PILL_CHECK_PERIOD_MS);
-        PillMgr.Check();
-        switch(PillMgr.State) {
-            case pillJustConnected:
-//                Uart.Printf("Pill: %d; %X\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.AbilityMsk);
-                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPillConnected));
-                break;
-            case pillJustDisconnected:
-                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPillDisconnected));
-//                Uart.Printf("Pill Discon\r");
-                break;
-            case pillNoChange:
-                break;
-        }
-    } // while true
-}
-
 void PillMgr_t::Init() {
     PillPwr.Init();   // Power
-    chThdCreateStatic(waPillThread, sizeof(waPillThread), NORMALPRIO, (tfunc_t)PillThread, NULL);
 }
 
 void PillMgr_t::Standby() {
@@ -66,6 +43,16 @@ void PillMgr_t::Check() {
         else State = pillNoChange;
     }
     Standby();
+    switch(State) {
+        case pillJustConnected:
+            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPillConnected));
+            break;
+        case pillJustDisconnected:
+            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPillDisconnected));
+            break;
+        case pillNoChange:
+            break;
+    }
 }
 
 uint8_t PillMgr_t::WritePill() {

@@ -102,7 +102,7 @@ struct RMsg_t {
 #define MIN_SLEEP_DURATION_MS   18
 #endif
 
-#if 1 // ============================= RX Table ================================
+#if 0 // ============================= RX Table ================================
 #define RXTABLE_SZ              4
 #define RXT_PKT_REQUIRED        FALSE
 class RxTable_t {
@@ -170,13 +170,34 @@ public:
 };
 #endif
 
+class RxData_t {
+public:
+    int32_t Cnt;
+    int32_t Summ;
+    int32_t Threshold;
+    bool ProcessAndCheck() {
+        bool Rslt = false;
+        if(Cnt >= 3L) {
+            Summ /= Cnt;
+            if(Summ >= Threshold) Rslt = true;
+        }
+        Cnt = 0;
+        Summ = 0;
+        return Rslt;
+    }
+};
+
+#define LUSTRA_CNT      50
+#define LUSTRA_MIN_ID   1000
+#define LUSTRA_MAX_ID   (LUSTRA_MIN_ID + LUSTRA_CNT - 1)
+
 class rLevel1_t {
 public:
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
     rPkt_t PktRx, PktTx;
 //    bool MustTx = false;
     int8_t Rssi;
-    RxTable_t RxTable;
+    RxData_t RxData[LUSTRA_CNT];
     uint8_t Init();
     // Inner use
     void TryToSleep(uint32_t SleepDuration);

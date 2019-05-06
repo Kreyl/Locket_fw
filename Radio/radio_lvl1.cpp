@@ -41,18 +41,19 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
+        // ==== TX if needed ====
         RMsg_t Msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
         if(Msg.Cmd == R_MSG_SEND_KILL) {
-            systime_t Start = chVTGetSystemTimeX();
             rPkt_t TxPkt;
             TxPkt.From = 4;
             TxPkt.RssiThr = RSSI_FOR_MUTANT;
-            while(chVTTimeElapsedSinceX(Start) < TIME_MS2I(2007)) {
+            for(int i=0; i<4; i++) {
                 CC.Recalibrate();
                 CC.Transmit(&TxPkt, RPKT_LEN);
-                chThdSleepMilliseconds(54);
+                chThdSleepMilliseconds(99);
             }
         }
+        // ==== Rx ====
         int8_t Rssi;
         rPkt_t RxPkt;
         CC.Recalibrate();
@@ -64,16 +65,16 @@ static void rLvl1Thread(void *arg) {
             if(RxPkt.From == 1 and RxPkt.To == 0) {
                 EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUpdateHP, (int32_t)RxPkt.Value));
             }
-            else if(Rssi >= RxPkt.RssiThr) {
-                // Killing pkt from other locket
-                if(RxPkt.From == 4) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdDeathPkt));
-                // Damage pkt from lustra
-                else if(RxPkt.From >= 1000 and RxPkt.From <= 1200) {
-                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdDamagePkt, (int32_t)RxPkt.From));
-                }
-//                Led.StartOrRestart(lsqBlinkR);
+            // Killing pkt from other locket
+            else if(RxPkt.From == 4) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdDeathPkt));
+            // Damage pkt from lustra
+            else if(RxPkt.From >= LUSTRA_MIN_ID and RxPkt.From <= LUSTRA_MAX_ID) {
+                // Add to accumulator. Averaging is done in main thd
+                int32_t Indx = RxPkt.From - LUSTRA_MIN_ID;
+                Radio.RxData[Indx].Cnt++;
+                Radio.RxData[Indx].Summ += Rssi;
+                Radio.RxData[Indx].Threshold = RxPkt.RssiThr;
             }
-//            else Led.StartOrRestart(lsqBlinkB);
         }
     } // while true
 }
@@ -91,9 +92,14 @@ uint8_t rLevel1_t::Init() {
     PinSetupOut(DBG_GPIO2, DBG_PIN2, omPushPull);
 #endif
 
+    for(int i=0; i<LUSTRA_CNT; i++) {
+        RxData[i].Cnt = 0;
+        RxData[i].Summ = 0;
+    }
+
     RMsgQ.Init();
     if(CC.Init() == retvOk) {
-        CC.SetTxPower(CC_PwrMinus25dBm);
+        CC.SetTxPower(CC_PwrMinus20dBm);
         CC.SetPktSize(RPKT_LEN);
         CC.SetChannel(1);
 //        CC.EnterPwrDown();
