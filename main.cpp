@@ -233,7 +233,7 @@ void Vibro(uint32_t Duration_ms) {
 LedRGBChunk_t lsqSM[] = {
         {csSetup, 0, clRed},
         {csWait, 207},
-        {csSetup, 0, {0,4,0}},
+        {csSetup, 0, {0,1,0}},
         {csEnd},
 };
 
@@ -241,6 +241,11 @@ void Flash(uint8_t R, uint8_t G, uint8_t B, uint32_t Duration_ms) {
     lsqSM[0].Color.FromRGB(R, G, B);
     lsqSM[1].Time_ms = Duration_ms;
     Led.StartOrRestart(lsqSM);
+}
+
+void SetDefaultColor(uint8_t R, uint8_t G, uint8_t B) {
+	lsqSM[2].Color.FromRGB(R, G, B);
+	Led.StartOrRestart(lsqSM);
 }
 
 void SendKillingSignal() {

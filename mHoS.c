@@ -191,9 +191,15 @@ static QState MHoS_wait_reset(MHoS * const me, QEvt const * const e) {
         /* ${SMs::MHoS::SM::global::dead::wait_reset} */
         case Q_ENTRY_SIG: {
 //            PrintfC("Entered Wait Reset\r\n");
-			me->DeathTime = 0;
+        	SetDefaultColor(0, 0, 0);
+        	me->DeathTime = 0;
             status_ = Q_HANDLED();
             break;
+        }
+        case Q_EXIT_SIG: {
+        	SetDefaultColor(0, 1, 0);
+        	status_ = Q_HANDLED();
+        	break;
         }
         /* ${SMs::MHoS::SM::global::dead::wait_reset::TIME_TICK_1S} */
         case TIME_TICK_1S_SIG: {

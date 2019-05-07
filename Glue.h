@@ -11,6 +11,7 @@
 void SaveState(uint32_t AState);
 void Vibro(uint32_t Duration_ms);
 void Flash(uint8_t R, uint8_t G, uint8_t B, uint32_t Duration_ms);
+void SetDefaultColor(uint8_t R, uint8_t G, uint8_t B);
 void SendKillingSignal();
 void ClearPill();
 bool PillWasImmune();
