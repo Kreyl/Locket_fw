@@ -160,7 +160,7 @@ static QState MHoS_just_died(MHoS * const me, QEvt const * const e) {
             SaveState(DEAD);
             UpdateHP(me, 0);
             Vibro(DEATH_TO_S*1000/3);
-            Flash(255, 0, 0, DEATH_TO_S*1000);
+            Flash(255, 0, 0, (DEATH_TO_S+3)*1000);
             status_ = Q_HANDLED();
             break;
         }
@@ -191,6 +191,7 @@ static QState MHoS_wait_reset(MHoS * const me, QEvt const * const e) {
         /* ${SMs::MHoS::SM::global::dead::wait_reset} */
         case Q_ENTRY_SIG: {
 //            PrintfC("Entered Wait Reset\r\n");
+        	Flash(0, 0, 0, 0);
         	SetDefaultColor(0, 0, 0);
         	me->DeathTime = 0;
             status_ = Q_HANDLED();
@@ -203,7 +204,7 @@ static QState MHoS_wait_reset(MHoS * const me, QEvt const * const e) {
         }
         /* ${SMs::MHoS::SM::global::dead::wait_reset::TIME_TICK_1S} */
         case TIME_TICK_1S_SIG: {
-            Flash(255, 0, 0, FLASH_MS/5);
+            Flash(64, 0, 0, FLASH_MS/5);
             status_ = Q_HANDLED();
             break;
         }
@@ -345,7 +346,7 @@ static QState MHoS_mutant(MHoS * const me, QEvt const * const e) {
         case BUTTON_LONG_PRESSED_SIG: {
             SendKillingSignal();
 			Vibro(1000);
-            status_ = Q_HANDLED();
+            status_ = Q_TRAN(&MHoS_just_died);
             break;
         }
         /* ${SMs::MHoS::SM::global::alive::NOT_IMMUNE::mutant::PILL_SURGE} */
