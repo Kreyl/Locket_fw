@@ -353,7 +353,7 @@ static QState MHoS_mutant(MHoS * const me, QEvt const * const e) {
         case PILL_SURGE_SIG: {
             SendKillingSignal();
 			Vibro(1000);
-            status_ = Q_HANDLED();
+            status_ = Q_TRAN(&MHoS_just_died);
             break;
         }
         /* ${SMs::MHoS::SM::global::alive::NOT_IMMUNE::mutant::PILL_RESET} */
