@@ -40,8 +40,6 @@ Beeper_t Beeper {BEEPER_PIN};
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
-AppMode_t AppMode = appmTx;
-
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
 //static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
@@ -81,7 +79,7 @@ int main(void) {
 //    chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
 #if BUTTONS_ENABLED
-//    SimpleSensors::Init();
+    SimpleSensors::Init();
 #endif
 //    Adc.Init();
 
@@ -91,7 +89,7 @@ int main(void) {
 #endif
 
     // ==== Time and timers ====
-//    TmrEverySecond.StartOrRestart();
+    TmrEverySecond.StartOrRestart();
 //    TmrRxTableCheck.StartOrRestart();
 
     // ==== Radio ====
@@ -116,76 +114,13 @@ void ITask() {
 #if BUTTONS_ENABLED
             case evtIdButtons:
                 Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
-                if(AppMode == appmTx) {
-                    AppMode = appmRx;
-                    Led.SetColor(clGreen);
-                }
-                else {
-                    AppMode = appmTx;
-                    Led.SetColor(clRed);
-                }
+                Radio.MustTx = true;
+                Led.StartOrRestart(lsqTx);
                 break;
 #endif
-
-//        if(Evt & EVT_RX) {
-//            int32_t TimeRx = Radio.PktRx.Time;
-//            Uart.Printf("RX %u\r", TimeRx);
-//            Cataclysm.ProcessSignal(TimeRx);
-//        }
-
-            case evtIdCheckRxTable: {
-                uint32_t Cnt = Radio.RxTable.GetCount();
-                switch(Cnt) {
-                    case 0: Vibro.Stop(); break;
-                    case 1: Vibro.StartOrContinue(vsqBrr); break;
-                    case 2: Vibro.StartOrContinue(vsqBrrBrr); break;
-                    default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
-                }
-                Radio.RxTable.Clear();
-            } break;
-
-#if PILL_ENABLED // ==== Pill ====
-        if(Evt & EVT_PILL_CONNECTED) {
-            Uart.Printf("Pill: %d\r", PillMgr.Pill.TypeInt32);
-            if(PillMgr.Pill.Type == ptCure) {
-                Led.StartOrRestart(lsqPillCure);
-                chThdSleepMilliseconds(999);
-                Health.ProcessPill(PillMgr.Pill.Type);
-            }
-            else if(PillMgr.Pill.Type == ptPanacea) {
-                Led.StartOrRestart(lsqPillPanacea);
-                chThdSleepMilliseconds(999);
-                Health.ProcessPill(PillMgr.Pill.Type);
-            }
-            else {
-                Led.StartOrRestart(lsqPillBad);
-                chThdSleepMilliseconds(999);
-            }
-            App.SignalEvt(EVT_INDICATION);  // Restart indication after pill show
-        }
-
-        if(Evt & EVT_PILL_DISCONNECTED) {
-            Uart.Printf("Pill Discon\r");
-        }
-#endif
-
-#if 0 // ==== Vibro seq end ====
-        if(Evt & EVT_VIBRO_END) {
-            // Restart vibration (or start new one) if needed
-            if(pVibroSeqToPerform != nullptr) Vibro.StartSequence(pVibroSeqToPerform);
-        }
-#endif
-#if 0 // ==== Led sequence end ====
-        if(Evt & EVT_LED_SEQ_END) {
-        }
-#endif
-        //        if(Evt & EVT_OFF) {
-        ////            Uart.Printf("Off\r");
-        //            chSysLock();
-        //            Sleep::EnableWakeup1Pin();
-        //            Sleep::EnterStandby();
-        //            chSysUnlock();
-        //        }
+            case evtIdRadioReply:
+                Led.StartOrRestart(lsqRx);
+                break;
 
             case evtIdShellCmd:
                 OnCmd((Shell_t*)Msg.Ptr);
@@ -221,8 +156,8 @@ void ReadAndSetupMode() {
     Printf("Dip: 0x%02X\r", b);
     OldDipSettings = b;
     // Reset everything
-    Vibro.Stop();
-    Led.Stop();
+//    Vibro.Stop();
+//    Led.Stop();
     // Select mode
 //    if(b & 0b100000) {
 //        Led.StartOrRestart(lsqTx);
