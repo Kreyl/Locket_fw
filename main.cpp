@@ -88,6 +88,7 @@ int main(void) {
     PillMgr.Init();
 #endif
 
+    ReadAndSetupMode();
     // ==== Time and timers ====
     TmrEverySecond.StartOrRestart();
 //    TmrRxTableCheck.StartOrRestart();
@@ -161,6 +162,9 @@ void ReadAndSetupMode() {
     // Select mode
 //    if(b & 0b100000) {
 //        Led.StartOrRestart(lsqTx);
+    // Select mode
+    if(b & 0x80) Radio.PktTx.ID = 2; // White
+    else Radio.PktTx.ID = 1; // Green
     // Select power
     b &= 0b11111; // Remove high bits
     RMsg_t msg;
@@ -168,7 +172,6 @@ void ReadAndSetupMode() {
     msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
     Radio.RMsgQ.SendNowOrExit(msg);
 }
-
 
 #if 1 // ================= Command processing ====================
 void OnCmd(Shell_t *PShell) {

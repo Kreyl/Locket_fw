@@ -45,30 +45,11 @@ static void rLvl1Thread(void *arg) {
         RMsg_t msg = Radio.RMsgQ.Fetch(TIME_IMMEDIATE);
         if(msg.Cmd == R_MSG_SET_PWR) CC.SetTxPower(msg.Value);
 //        if(msg.Cmd == R_MSG_SET_CHNL) CC.SetChannel(msg.Value);
-        // Process task
-        if(Radio.MustTx) {
-            for(int i=0; i<9; i++) {
-                // TX
-                rPkt_t Pkt;
-                Pkt.TheWord = 0xCA115EA1;
-                CC.Recalibrate();
-                CC.Transmit(&Pkt, RPKT_LEN);
-//                Printf("t");
-                // RX
-                int8_t Rssi;
-                uint8_t RxRslt = CC.Receive(27, &Pkt, RPKT_LEN, &Rssi);
-                if(RxRslt == retvOk) {
-                    Printf("Rssi=%d\r", Rssi);
-                    if(Pkt.TheWord == 0x7A1E7A11) {
-                        EvtQMain.SendNowOrExit(EvtMsg_t(evtIdRadioReply));
-                        break;
-                    }
-                }
-                chThdSleepMilliseconds(36);
-            } // for
-            Radio.MustTx = false;
-        } // if tx
-        chThdSleepMilliseconds(90);
+        // TX
+        CC.Recalibrate();
+        CC.Transmit(&Radio.PktTx, RPKT_LEN);
+//        Printf("tx %u\r", Radio.PktTx.ID);
+        chThdSleepMilliseconds(36);
     } // while true
 }
 #endif // task
@@ -89,7 +70,7 @@ uint8_t rLevel1_t::Init() {
     if(CC.Init() == retvOk) {
         CC.SetTxPower(CC_Pwr0dBm);
         CC.SetPktSize(RPKT_LEN);
-        CC.SetChannel(1);
+        CC.SetChannel(ID);
 //        CC.EnterPwrDown();
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);

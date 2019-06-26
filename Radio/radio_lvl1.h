@@ -57,7 +57,11 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 
 #if 1 // =========================== Pkt_t =====================================
 struct rPkt_t {
-    uint32_t TheWord;
+    uint32_t ID;
+    rPkt_t& operator = (const rPkt_t &Right) {
+        ID = Right.ID;
+        return *this;
+    }
 } __attribute__ ((__packed__));
 #endif
 
@@ -164,8 +168,8 @@ public:
 class rLevel1_t {
 public:
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
-//    rPkt_t PktRx, PktTx;
-    bool MustTx = false;
+    rPkt_t PktRx, PktTx;
+//    bool MustTx = false;
 //    RxTable_t RxTable;
     uint8_t Init();
     // Inner use
