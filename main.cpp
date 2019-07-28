@@ -40,6 +40,15 @@ Beeper_t Beeper {BEEPER_PIN};
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
+static LedRGBChunk_t lsqCurrent[] = {
+        {csSetup, 207, clRed},
+        {csEnd},
+};
+
+static const Color_t ClrTable[7] = {
+        clWhite, clGreen, clRed, clBlue, clYellow, clMagenta, clCyan
+};
+
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
 //static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
@@ -88,7 +97,6 @@ int main(void) {
     PillMgr.Init();
 #endif
 
-    ReadAndSetupMode();
     // ==== Time and timers ====
     TmrEverySecond.StartOrRestart();
 //    TmrRxTableCheck.StartOrRestart();
@@ -156,17 +164,13 @@ void ReadAndSetupMode() {
     // ==== Something has changed ====
     Printf("Dip: 0x%02X\r", b);
     OldDipSettings = b;
-    // Reset everything
-//    Vibro.Stop();
-//    Led.Stop();
-    // Select mode
-//    if(b & 0b100000) {
-//        Led.StartOrRestart(lsqTx);
-    // Select mode
-    if(b & 0x80) Radio.PktTx.ID = 2; // White
-    else Radio.PktTx.ID = 1; // Green
+    // Select Color ID
+    Radio.PktTx.ID = ((b >> 4) > 6)? 0 : (b >> 4);
+    lsqCurrent[0].Color = ClrTable[Radio.PktTx.ID];
+    Led.StartOrRestart(lsqCurrent);
+
     // Select power
-    b &= 0b11111; // Remove high bits
+    b &= 0b1111; // Remove high bits
     RMsg_t msg;
     msg.Cmd = R_MSG_SET_PWR;
     msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
