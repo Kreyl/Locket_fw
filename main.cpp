@@ -118,6 +118,7 @@ void ITask() {
         switch(Msg.ID) {
             case evtIdEverySecond:
                 PillMgr.Check();
+                CheckRxData();
 #if SM_EN
                 SendEvent_Health(TIME_TICK_1S_SIG, 0);
                 SendEvent_Ability(TIME_TICK_1S_SIG, 0);
@@ -129,7 +130,6 @@ void ITask() {
                     SendEvent_PlayerType(TIME_TICK_1M_SIG, 0);
                 }
 #endif
-                CheckRxData();
                 break;
 
             // ==== Radio ====
@@ -197,14 +197,11 @@ void ITask() {
 } // ITask()
 
 void CheckRxData() {
-    // TODO:
-    // * evtIdLustraDamagePkt, evtIdShineOrderHost, evtIdShinePktMutant
-    // Change params
-//    for(int i=0; i<LUSTRA_CNT; i++) {
-//        if(Radio.RxData[i].ProcessAndCheck()) {
-//            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdDamagePkt, i+LUSTRA_MIN_ID));
-//        }
-//    }
+    for(int i=0; i<LUSTRA_CNT; i++) {
+        if(Radio.RxData[i].ProcessAndCheck()) {
+            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdLustraDamagePkt, Radio.RxData[i].Damage));
+        }
+    }
 }
 
 #if SM_EN // ======================== State Machines ===========================

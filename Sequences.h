@@ -256,6 +256,13 @@ const LedRGBChunk_t lsqRx[] = {
         {csEnd},
 };
 
+const LedRGBChunk_t lsqSearch[] = {
+        {csSetup, 0, clRed},
+        {csWait, 99},
+        {csSetup, 0, clBlack},
+        {csEnd},
+};
+
 // ==== Pill ====
 //const LedRGBChunk_t lsqPillCure[] = {
 //        {csSetup, 0, clGreen},
@@ -359,6 +366,13 @@ const BeepChunk_t bsqBeepBeep[] = {
         {csWait, 54},
         {csSetup, BEEP_VOLUME, 1975},
         {csWait, 54},
+        {csSetup, 0},
+        {csEnd}
+};
+
+const BeepChunk_t bsqSearch[] = {
+        {csSetup, BEEP_VOLUME, 1975},
+        {csWait, 99},
         {csSetup, 0},
         {csEnd}
 };
