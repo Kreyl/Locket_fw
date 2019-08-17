@@ -1,23 +1,11 @@
-#ifndef EVENTSHANDLERS_H_
-#define EVENTSHANDLERS_H_
+#include "health.h"
+#include "ability.h"
 
-#include "stdio.h"
-#include "qhsm.h"
-#include "mHoS.h"
-#include <stdbool.h>
-
-
-//logic functions
-void ShowHP(MHoS *me);
-void UpdateHP(MHoS* me, unsigned int HP);
-void UpdateMaxHP(MHoS* me, unsigned int HP);
-void UpdateDefaultHP(MHoS* me, unsigned int HP);
-void Reset(MHoS* me); 
-void Double(MHoS* me); 
-void IndicateDamage(MHoS* me);
-void IndicateDeath();
-void KillingIndication();
-void IndicateDeath();
-
-
-#endif /* EVENTSHANDLERS_H_ */
+void DangerTime_Update(Health* me, unsigned int Time);
+void HP_Update(Health* me, unsigned int HP);
+void MaxHP_Update(Health* me, unsigned int MaxHP);
+void Player_Died(Health* me);
+void ShowHP(Health* me);
+void ChargeTime_Update(Ability *me, unsigned int Time);
+void Reset(Health* me);
+void IndicateDamage(Health* me);

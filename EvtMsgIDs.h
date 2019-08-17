@@ -24,7 +24,7 @@ enum EvtMsgId_t {
     evtIdCheckRxTable,
 
     // SM
-    evtIdDeathPkt,
-    evtIdDamagePkt,
-    evtIdUpdateHP,
+    evtIdLustraDamagePkt,
+    evtIdShineOrderHost,
+    evtIdShinePktMutant,
 };

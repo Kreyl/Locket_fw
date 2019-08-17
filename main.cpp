@@ -12,10 +12,16 @@
 #include "main.h"
 #include "SimpleSensors.h"
 #include "buttons.h"
-// SM
+
+#define SM_EN   TRUE
+
+#if SM_EN
+#include "health.h"
+#include "ability.h"
+#include "player_type.h"
 #include "qhsm.h"
-#include "eventHandlers.h"
-#include "mHoS.h"
+#include "Glue.h"
+#endif
 
 #if 1 // ======================== Variables and defines ========================
 // Forever
@@ -27,14 +33,14 @@ static void OnCmd(Shell_t *PShell);
 
 // EEAddresses
 #define EE_ADDR_DEVICE_ID   0
-// StateMachines
-#define EE_ADDR_STATE       2048
-#define EE_ADDR_HP          2052
-#define EE_ADDR_MAX_HP      2056
-#define EE_ADDR_DEFAULT_HP  2060
+
+#if SM_EN
 void InitSM();
-void SendEventSM(int QSig, unsigned int SrcID, unsigned int Value);
-static mHoSQEvt e;
+void SendEvent_Health(int QSig, unsigned int Value);
+void SendEvent_Ability(int QSig, unsigned int Value);
+void SendEvent_PlayerType(int QSig, unsigned int Value);
+static healthQEvt e;
+#endif
 
 int32_t ID;
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
@@ -51,6 +57,7 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
+uint32_t TimeS = 0;
 //static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
 static void CheckRxData();
 #endif
@@ -96,7 +103,9 @@ int main(void) {
     VibroMotor.StartOrRestart(vsqBrrBrr);
     chThdSleepMilliseconds(1008);
 
+#if SM_EN
     InitSM();
+#endif
 
     // Main cycle
     ITask();
@@ -109,23 +118,52 @@ void ITask() {
         switch(Msg.ID) {
             case evtIdEverySecond:
                 PillMgr.Check();
-                SendEventSM(TIME_TICK_1S_SIG, 0, 0);
+#if SM_EN
+                SendEvent_Health(TIME_TICK_1S_SIG, 0);
+                SendEvent_Ability(TIME_TICK_1S_SIG, 0);
+                SendEvent_PlayerType(TIME_TICK_1S_SIG, 0);
+                TimeS++;
+                if((TimeS % 60) == 0) {
+                    SendEvent_Health(TIME_TICK_1M_SIG, 0);
+                    SendEvent_Ability(TIME_TICK_1M_SIG, 0);
+                    SendEvent_PlayerType(TIME_TICK_1M_SIG, 0);
+                }
+#endif
                 CheckRxData();
                 break;
 
-            case evtIdDamagePkt: SendEventSM(DAMAGE_RECEIVED_SIG, Msg.Value, 1); break;
-            case evtIdDeathPkt:  SendEventSM(KILL_SIGNAL_RECEIVED_SIG, 0, 0);    break;
-            case evtIdUpdateHP:  SendEventSM(UPDATE_HP_SIG, 0, Msg.Value);       break;
+            // ==== Radio ====
+            case evtIdLustraDamagePkt:
+                SendEvent_Health(DMG_RCVD_SIG , Msg.Value);
+                SendEvent_PlayerType(DMG_RCVD_SIG , Msg.Value);
+                break;
+
+            case evtIdShineOrderHost:
+                SendEvent_Ability(SHINE_ORDER_SIG, 0);
+                break;
+
+            case evtIdShinePktMutant:
+                SendEvent_Health(SHINE_RCVD_SIG, 0);
+                break;
 
 #if BUTTONS_ENABLED
             case evtIdButtons:
 //                Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
                 if(Msg.BtnEvtInfo.Type == beShortPress) {
-                    SendEventSM(BUTTON_PRESSED_SIG, 0, 0);
+#if SM_EN
+                    if(Msg.BtnEvtInfo.BtnID[0] == 1) { // Central, check mutant
+                        SendEvent_Ability(CENTRAL_BUTTON_PRESSED_SIG, 0);
+                    }
+                    else {
+                        SendEvent_Health(FIRST_BUTTON_PRESSED_SIG, 0);
+                    }
+#endif
                 }
                 else if(Msg.BtnEvtInfo.Type == beLongCombo and Msg.BtnEvtInfo.BtnCnt == 3) {
                     Printf("Combo\r");
-                    SendEventSM(BUTTON_LONG_PRESSED_SIG, 0, 0);
+#if SM_EN
+                    SendEvent_Ability(SHINE_SIG, 0);
+#endif
                 }
                 break;
 #endif
@@ -134,19 +172,18 @@ void ITask() {
             case evtIdPillConnected:
                 Printf("Pill: %u\r", PillMgr.Pill.DWord32);
                 switch(PillMgr.Pill.DWord32) {
-                    case 0: SendEventSM(PILL_RESET_SIG, 0, 0); break;
-                    case 1: SendEventSM(PILL_MUTANT_SIG, 0, 0); break;
-                    case 2: SendEventSM(PILL_IMMUNE_SIG, 0, 0); break;
-                    case 3: SendEventSM(PILL_HP_DOUBLE_SIG, 0, 0); break;
-                    case 4: SendEventSM(PILL_HEAL_SIG, 0, 0); break;
-                    case 5: SendEventSM(PILL_SURGE_SIG , 0, 0); break;
+                    case 0: SendEvent_PlayerType(PILL_RESET_SIG, 0); break;
+                    case 1: SendEvent_Health(PILL_HEAL_SIG, 0); break;
+                    case 2: SendEvent_PlayerType(PILL_TAILOR_SIG, 0); break;
+                    case 3: SendEvent_PlayerType(PILL_STALKER_SIG, 0); break;
+                    case 4: SendEvent_PlayerType(PILL_LOCAL_SIG, 0); break;
+                    case 5: SendEvent_Ability(PILL_MUTANT_SIG, 0); break;
                     default: break;
                 }
                 break;
 
             case evtIdPillDisconnected:
                 Printf("Pill disconn\r");
-                SendEventSM(PILL_REMOVED_SIG, 0, 0);
                 break;
 #endif
 
@@ -160,75 +197,23 @@ void ITask() {
 } // ITask()
 
 void CheckRxData() {
-    for(int i=0; i<LUSTRA_CNT; i++) {
-        if(Radio.RxData[i].ProcessAndCheck()) {
-            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdDamagePkt, i+LUSTRA_MIN_ID));
-        }
-    }
+    // TODO:
+    // * evtIdLustraDamagePkt, evtIdShineOrderHost, evtIdShinePktMutant
+    // Change params
+//    for(int i=0; i<LUSTRA_CNT; i++) {
+//        if(Radio.RxData[i].ProcessAndCheck()) {
+//            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdDamagePkt, i+LUSTRA_MIN_ID));
+//        }
+//    }
 }
 
-#if 1 // ======================== State Machines ===============================
-extern "C" {
-void SaveHP(uint32_t HP) {
-    if(EE::Write32(EE_ADDR_HP, HP) != retvOk) Printf("Saving HP fail\r");
-}
-
-void SaveMaxHP(uint32_t HP) {
-    if(EE::Write32(EE_ADDR_MAX_HP, HP) != retvOk) Printf("Saving MaxHP fail\r");
-}
-
-void SaveDefaultHP(uint32_t HP) {
-    if(EE::Write32(EE_ADDR_DEFAULT_HP, HP) != retvOk) Printf("Saving DefHP fail\r");
-}
-
-void SaveState(uint32_t AState) {
-    if(EE::Write32(EE_ADDR_STATE, AState) != retvOk) Printf("Saving State fail\r");
-}
-} // extern C
-
-void InitSM() {
-    // Load saved data
-    uint32_t HP = EE::Read32(EE_ADDR_HP);
-    uint32_t MaxHP = EE::Read32(EE_ADDR_MAX_HP);
-    uint32_t DefaultHP = EE::Read32(EE_ADDR_DEFAULT_HP);
-    uint32_t State = EE::Read32(EE_ADDR_STATE);
-    Printf("Saved: HP=%d MaxHP=%d DefaultHP=%d State=%d\r", HP, MaxHP, DefaultHP, State);
-    // Check if params are bad
-    if(HP == 0 and DefaultHP == 0 and MaxHP == 0) { // Empty EE
-        HP = 20;
-        MaxHP = 20;
-        DefaultHP = 20;
-        State = SIMPLE;
-        SaveHP(HP);
-        SaveMaxHP(MaxHP);
-        SaveDefaultHP(DefaultHP);
-    }
-    // Init
-    MHoS_ctor(HP, MaxHP, DefaultHP, State);
-    QMSM_INIT(the_mHoS, (QEvt *)0);
-}
-
-void SendEventSM(int QSig, unsigned int SrcID, unsigned int Value) {
-    e.super.sig = QSig;
-    e.id = SrcID;
-    e.value = Value;
-    Printf("e Sig: %d; id: %d; value: %d\r", e.super.sig, e.id, e.value);
-    QMSM_DISPATCH(the_mHoS, &(e.super));
-}
-
-extern "C" {
+#if SM_EN // ======================== State Machines ===========================
 BaseChunk_t vsqSMBrr[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, 99},
         {csSetup, 0},
         {csEnd}
 };
-
-void Vibro(uint32_t Duration_ms) {
-    vsqSMBrr[1].Time_ms = Duration_ms;
-    VibroMotor.StartOrRestart(vsqSMBrr);
-}
-
 
 LedRGBChunk_t lsqSM[] = {
         {csSetup, 0, clRed},
@@ -237,19 +222,24 @@ LedRGBChunk_t lsqSM[] = {
         {csEnd},
 };
 
-void Flash(uint8_t R, uint8_t G, uint8_t B, uint32_t Duration_ms) {
+void Flash(unsigned int R, unsigned int G, unsigned int B, unsigned int Timeout) {
     lsqSM[0].Color.FromRGB(R, G, B);
-    lsqSM[1].Time_ms = Duration_ms;
+    lsqSM[1].Time_ms = Timeout;
     Led.StartOrRestart(lsqSM);
 }
 
-void SetDefaultColor(uint8_t R, uint8_t G, uint8_t B) {
-	lsqSM[2].Color.FromRGB(R, G, B);
-	Led.StartOrRestart(lsqSM);
+void Vibro(unsigned int Timeout) {
+    vsqSMBrr[1].Time_ms = Timeout;
+    VibroMotor.StartOrRestart(vsqSMBrr);
 }
 
-void SendKillingSignal() {
+void SendShining() {
     Radio.RMsgQ.SendWaitingAbility(RMsg_t(R_MSG_SEND_KILL), 999);
+}
+
+void SetDefaultColor(uint8_t R, uint8_t G, uint8_t B) {
+    lsqSM[2].Color.FromRGB(R, G, B);
+    Led.StartOrRestart(lsqSM);
 }
 
 #define THE_WORD    0xCA115EA1
@@ -258,12 +248,84 @@ void ClearPill() {
     if(PillMgr.Write(0, &DWord32, 4) != retvOk) Printf("ClearPill fail\r");
 }
 
-bool PillWasImmune() {
-    uint32_t DWord32;
-    if(PillMgr.Read(0, &DWord32, 4) == retvOk) return (DWord32 == THE_WORD);
-    else return false;
+// ==== Saving ====
+#define EE_ADDR_STATE       2048
+#define EE_ADDR_ABILITY     2052
+#define EE_ADDR_TYPE        2056
+#define EE_ADDR_HP          2060
+#define EE_ADDR_MAX_HP      2064
+#define EE_ADDR_DANGERTIME  2068
+#define EE_ADDR_CHARGETIME  2072
+
+void State_Save(unsigned int State) {
+    if(EE::Write32(EE_ADDR_STATE, State) != retvOk) Printf("Saving State fail\r");
 }
-} // extern C
+
+void Ability_Save(unsigned int Ability) {
+    if(EE::Write32(EE_ADDR_ABILITY, Ability) != retvOk) Printf("Saving Ability fail\r");
+}
+
+void PlayerType_Save(unsigned int Type) {
+    if(EE::Write32(EE_ADDR_TYPE, Type) != retvOk) Printf("Saving Type fail\r");
+}
+
+void HP_Save(unsigned int HP) {
+    if(EE::Write32(EE_ADDR_HP, HP) != retvOk) Printf("Saving HP fail\r");
+}
+
+void MaxHP_Save(unsigned int MaxHP) {
+    if(EE::Write32(EE_ADDR_MAX_HP, MaxHP) != retvOk) Printf("Saving MaxHP fail\r");
+}
+
+void DangerTime_Save(unsigned int Time) {
+    if(EE::Write32(EE_ADDR_DANGERTIME, Time) != retvOk) Printf("Saving Time fail\r");
+}
+
+void ChargeTime_Save(unsigned int Time) {
+    if(EE::Write32(EE_ADDR_CHARGETIME, Time) != retvOk) Printf("Saving Time fail\r");
+}
+
+
+void InitSM() {
+    // Load saved data
+    uint32_t State = EE::Read32(EE_ADDR_STATE);
+    uint32_t Ability = EE::Read32(EE_ADDR_ABILITY);
+    uint32_t Type = EE::Read32(EE_ADDR_TYPE);
+    uint32_t HP = EE::Read32(EE_ADDR_HP);
+    uint32_t MaxHP = EE::Read32(EE_ADDR_MAX_HP);
+    uint32_t DangerTime = EE::Read32(EE_ADDR_DANGERTIME);
+    uint32_t ChargeTime = EE::Read32(EE_ADDR_CHARGETIME);
+    Printf("Saved: State=%d Ability=%d Type=%d HP=%d MaxHP=%d DangerTime=%d ChargeTime=%d\r",
+            State, Ability, Type, HP, MaxHP, DangerTime, ChargeTime);
+    // Init
+    Health_ctor(State, HP, MaxHP, DangerTime);
+    Ability_ctor(Ability, ChargeTime);
+    Player_type_ctor(Type, (Health*)the_health);
+    QMSM_INIT(the_health, (QEvt *)0);
+    QMSM_INIT(the_ability, (QEvt *)0);
+    QMSM_INIT(the_player_type, (QEvt *)0);
+}
+
+void SendEvent_Health(int QSig, unsigned int Value) {
+    e.super.sig = QSig;
+    e.value = Value;
+    Printf("evtHealth: %d; %d\r", e.super.sig, e.value);
+    QMSM_DISPATCH(the_health, &(e.super));
+}
+
+void SendEvent_Ability(int QSig, unsigned int Value) {
+    e.super.sig = QSig;
+    e.value = Value;
+    Printf("evtAbility: %d; %d\r", e.super.sig, e.value);
+    QMSM_DISPATCH(the_ability, &(e.super));
+}
+
+void SendEvent_PlayerType(int QSig, unsigned int Value) {
+    e.super.sig = QSig;
+    e.value = Value;
+    Printf("evtPlayerType: %d; %d\r", e.super.sig, e.value);
+    QMSM_DISPATCH(the_player_type, &(e.super));
+}
 #endif
 
 #if 1 // ================= Command processing ====================
@@ -290,9 +352,13 @@ void OnCmd(Shell_t *PShell) {
     }
 
     else if(PCmd->NameIs("Rst")) {
-        SaveHP(20);
-        SaveMaxHP(20);
-        SaveDefaultHP(20);
+        State_Save(DEAD);
+        Ability_Save(DISABLED);
+        PlayerType_Save(DEAD);
+        HP_Save(DefaultHP);
+        MaxHP_Save(DefaultHP);
+        DangerTime_Save(0);
+        ChargeTime_Save(0);
         PShell->Ack(retvOk);
     }
 

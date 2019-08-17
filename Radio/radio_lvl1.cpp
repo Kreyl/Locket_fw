@@ -12,6 +12,8 @@
 
 #include "led.h"
 #include "Sequences.h"
+
+
 extern LedRGBwPower_t Led;
 
 cc1101_t CC(CC_Setup0);
@@ -57,25 +59,25 @@ static void rLvl1Thread(void *arg) {
         int8_t Rssi;
         rPkt_t RxPkt;
         CC.Recalibrate();
-        uint8_t RxRslt = CC.Receive(360, &RxPkt, RPKT_LEN, &Rssi);
-        if(RxRslt == retvOk) {
-//            Printf("Rssi=%d\r", Rssi);
-            Printf("%u: Thr: %d; Pwr: %u; Rssi: %d\r", RxPkt.From, RxPkt.RssiThr, RxPkt.Value, Rssi);
-            // Command from UsbHost to all lockets, no RSSI check
-            if(RxPkt.From == 1 and RxPkt.To == 0) {
-                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUpdateHP, (int32_t)RxPkt.Value));
-            }
-            // Killing pkt from other locket
-            else if(RxPkt.From == 4) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdDeathPkt));
-            // Damage pkt from lustra
-            else if(RxPkt.From >= LUSTRA_MIN_ID and RxPkt.From <= LUSTRA_MAX_ID) {
-                // Add to accumulator. Averaging is done in main thd
-                int32_t Indx = RxPkt.From - LUSTRA_MIN_ID;
-                Radio.RxData[Indx].Cnt++;
-                Radio.RxData[Indx].Summ += Rssi;
-                Radio.RxData[Indx].Threshold = RxPkt.RssiThr;
-            }
-        }
+//        uint8_t RxRslt = CC.Receive(360, &RxPkt, RPKT_LEN, &Rssi);
+//        if(RxRslt == retvOk) {
+////            Printf("Rssi=%d\r", Rssi);
+//            Printf("%u: Thr: %d; Pwr: %u; Rssi: %d\r", RxPkt.From, RxPkt.RssiThr, RxPkt.Value, Rssi);
+//            // Command from UsbHost to all lockets, no RSSI check
+//            if(RxPkt.From == 1 and RxPkt.To == 0) {
+//                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdUpdateHP, (int32_t)RxPkt.Value));
+//            }
+//            // Killing pkt from other locket
+//            else if(RxPkt.From == 4) EvtQMain.SendNowOrExit(EvtMsg_t(evtIdDeathPkt));
+//            // Damage pkt from lustra
+//            else if(RxPkt.From >= LUSTRA_MIN_ID and RxPkt.From <= LUSTRA_MAX_ID) {
+//                // Add to accumulator. Averaging is done in main thd
+//                int32_t Indx = RxPkt.From - LUSTRA_MIN_ID;
+//                Radio.RxData[Indx].Cnt++;
+//                Radio.RxData[Indx].Summ += Rssi;
+//                Radio.RxData[Indx].Threshold = RxPkt.RssiThr;
+//            }
+//        }
     } // while true
 }
 #endif // task
