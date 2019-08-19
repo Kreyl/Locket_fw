@@ -222,11 +222,15 @@ QState Ability_ready(Ability * const me, QEvt const * const e) {
         }
         /*${SMs::Ability::SM::global::ability::mutant::ready::SHINE} */
         case SHINE_SIG: {
+        	ChargeTime_Update(me, 0);
+            SendShining();
             status_ = Q_TRAN(&Ability_charging);
             break;
         }
         /*${SMs::Ability::SM::global::ability::mutant::ready::SHINE_ORDER} */
         case SHINE_ORDER_SIG: {
+        	ChargeTime_Update(me, 0);
+        	SendShining();
             status_ = Q_TRAN(&Ability_charging);
             break;
         }
@@ -247,8 +251,6 @@ QState Ability_charging(Ability * const me, QEvt const * const e) {
                 printf("Entered state charging\n");
             #endif /* def DESKTOP */
 			Ability_Save(MUTANT_CHARGING);
-            ChargeTime_Update(me, 0);
-            SendShining();
             status_ = Q_HANDLED();
             break;
         }
