@@ -58,6 +58,7 @@ static void rLvl1Thread(void *arg) {
             PktTx.Cmd = rcmdLocketDieAll;
             PktTx.PktID = PKTID_DO_NOT_RETRANSMIT;
             PktTx.Die.RssiThr = RSSI_FOR_MUTANT;
+            CC.SetTxPower(CC_PwrMinus20dBm);
             for(int i=0; i<4; i++) {
                 CC.Recalibrate();
                 CC.Transmit(&PktTx, RPKT_LEN);
@@ -66,11 +67,10 @@ static void rLvl1Thread(void *arg) {
         }
         // ==== Rx ====
         CC.Recalibrate();
-        uint8_t RxRslt = CC.Receive(180, &PktRx, RPKT_LEN, &Rssi);
-        if(RxRslt == retvOk) {
-//            Printf("Rssi=%d\r", Rssi);
-//            Printf("%u: Thr: %d; Pwr: %u; Rssi: %d\r", RxPkt.From, RxPkt.RssiThr, RxPkt.Value, Rssi);
-            ProcessRCmd();
+        if(CC.Receive(207, &PktRx, RPKT_LEN, &Rssi) == retvOk) {
+            Printf("From: %u; To: %u; TrrID: %u; PktID: %u; Cmd: %u; Rssi: %d\r\n", PktRx.From, PktRx.To, PktRx.TransmitterID, PktRx.PktID, PktRx.Cmd, Rssi);
+            Led.StartOrRestart(lsqBlinkB);
+//            ProcessRCmd();
         }
     } // while true
 }
@@ -110,6 +110,7 @@ void ProcessRCmd() {
 
             case rcmdLocketGetParam:
                 PktTx.Cmd = rcmdLocketGetParam;
+                PktTx.LocketParam.ParamID = PktRx.LocketParam.ParamID;
                 switch(PktRx.LocketParam.ParamID) {
                     case 1: PktTx.LocketParam.Value = ChargeTO; break;
                     case 2: PktTx.LocketParam.Value = DangerTO; break;
@@ -129,7 +130,6 @@ void ProcessRCmd() {
             case rcmdScream:
                 Beeper.StartOrRestart(bsqSearch);
                 Led.StartOrRestart(lsqSearch);
-                chThdSleepMilliseconds(108);
                 break;
 
             case rcmdLocketExplode:
@@ -142,6 +142,14 @@ void ProcessRCmd() {
 
             default: PktTx.Pong.Reply = retvCmdError; break;
         } // switch
+        // Transmit pkt
+        CC.SetTxPower(CC_PwrPlus5dBm);
+        for(int i=0; i<4; i++) {
+            uint32_t Delay_ms = Random::Generate(MESH_DELAY_BETWEEN_RETRANSMIT_MS_MIN, MESH_DELAY_BETWEEN_RETRANSMIT_MS_MAX);
+            CC.Recalibrate();
+            CC.Transmit(&PktTx, RPKT_LEN);
+            chThdSleepMilliseconds(Delay_ms);
+        }
     }
     else { // for everyone!
         switch(PktRx.Cmd) {

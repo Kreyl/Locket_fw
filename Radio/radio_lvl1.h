@@ -156,6 +156,10 @@ struct RMsg_t {
 #define RX_T_MS                 180      // pkt duration at 10k is around 12 ms
 #define RX_SLEEP_T_MS           810
 #define MIN_SLEEP_DURATION_MS   18
+
+#define MESH_DELAY_BETWEEN_RETRANSMIT_MS_MIN    11
+#define MESH_DELAY_BETWEEN_RETRANSMIT_MS_MAX    36
+#define MESH_RETRANSMIT_COUNT                   9
 #endif
 
 #if 0 // ============================= RX Table ================================

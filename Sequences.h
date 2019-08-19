@@ -235,7 +235,7 @@ const LedRGBChunk_t lsqFailure[] = {
 
 const LedRGBChunk_t lsqBlinkB[] = {
         {csSetup, 0, clBlue},
-        {csWait, 99},
+        {csWait, 36},
 //        {csSetup, 0, clBlack},
         {csSetup, 0, {0,4,0}},
         {csEnd},

@@ -13,7 +13,7 @@
 #include "SimpleSensors.h"
 #include "buttons.h"
 
-#define SM_EN   TRUE
+//#define SM_EN   TRUE
 
 #if SM_EN
 #include "health.h"
@@ -133,6 +133,7 @@ void ITask() {
                 break;
 
             // ==== Radio ====
+#if SM_EN
             case evtIdLustraDamagePkt:
                 SendEvent_Health(DMG_RCVD_SIG , Msg.Value);
                 SendEvent_PlayerType(DMG_RCVD_SIG , Msg.Value);
@@ -145,10 +146,11 @@ void ITask() {
             case evtIdShinePktMutant:
                 SendEvent_Health(SHINE_RCVD_SIG, 0);
                 break;
+#endif
 
 #if BUTTONS_ENABLED
             case evtIdButtons:
-//                Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
+                Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID[0]);
                 if(Msg.BtnEvtInfo.Type == beShortPress) {
 #if SM_EN
                     if(Msg.BtnEvtInfo.BtnID[0] == 1) { // Central, check mutant
@@ -171,6 +173,7 @@ void ITask() {
 #if PILL_ENABLED // ==== Pill ====
             case evtIdPillConnected:
                 Printf("Pill: %u\r", PillMgr.Pill.DWord32);
+#if SM_EN
                 switch(PillMgr.Pill.DWord32) {
                     case 0: SendEvent_PlayerType(PILL_RESET_SIG, 0); break;
                     case 1: SendEvent_Health(PILL_HEAL_SIG, 0); break;
@@ -180,6 +183,7 @@ void ITask() {
                     case 5: SendEvent_Ability(PILL_MUTANT_SIG, 0); break;
                     default: break;
                 }
+#endif
                 break;
 
             case evtIdPillDisconnected:
@@ -348,6 +352,7 @@ void OnCmd(Shell_t *PShell) {
         PShell->Ack(r);
     }
 
+#if SM_EN
     else if(PCmd->NameIs("Rst")) {
         State_Save(DEAD);
         Ability_Save(DISABLED);
@@ -358,6 +363,7 @@ void OnCmd(Shell_t *PShell) {
         ChargeTime_Save(0);
         PShell->Ack(retvOk);
     }
+#endif
 
 #if 1 // === Pill ===
     else if(PCmd->NameIs("ReadPill")) {
