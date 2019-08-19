@@ -3,10 +3,10 @@
 #include <stddef.h>
 
 const QEvt standard_events[] = {
-    { (QSignal)(QEP_EMPTY_SIG_) },
-    { (QSignal)(Q_ENTRY_SIG) },
-    { (QSignal)(Q_EXIT_SIG) },
-    { (QSignal)(Q_INIT_SIG) },
+    {(QSignal)(QEP_EMPTY_SIG_)},
+    {(QSignal)(Q_ENTRY_SIG)},
+    {(QSignal)(Q_EXIT_SIG)},
+    {(QSignal)(Q_INIT_SIG)},
 };
 
 QState QHsm_top(void *const me, const QEvt *const event)
@@ -109,6 +109,8 @@ QState QMsm_dispatch(QHsm *me, const QEvt *const event)
         do_transition(me);
         break;
     case (QState)(Q_RET_HANDLED):
+    case (QState)(Q_RET_UNHANDLED):
+    case (QState)(Q_RET_IGNORED):
         me->effective_ = me->current_;
         break;
     default:
@@ -116,4 +118,10 @@ QState QMsm_dispatch(QHsm *me, const QEvt *const event)
     }
 
     return result;
+}
+
+QState QMsm_simple_dispatch(QHsm *me, QSignal signal)
+{
+    const QEvt event = {signal};
+    return QMsm_dispatch(me, &event);
 }
