@@ -261,8 +261,8 @@ QState Ability_charging(Ability * const me, QEvt const * const e) {
             break;
         }
         /*${SMs::Ability::SM::global::ability::mutant::charging::FIRST_BUTTON_PRESSED} */
-        case FIRST_BUTTON_PRESSED_SIG: {
-            Flash(255, 0, 0, FLASH_MS);
+        case CENTRAL_BUTTON_PRESSED_SIG: {
+            Flash(0, 0, 0, FLASH_MS);
             status_ = Q_HANDLED();
             break;
         }
