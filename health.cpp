@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "Glue.h"
 
+
 //#include "stdio.h"
 //#define DESKTOP
 //Q_DEFINE_THIS_FILE
@@ -308,6 +309,7 @@ QState Health_danger(Health * const me, QEvt const * const e) {
         }
 		 case TIME_TICK_1M_SIG: {
 			 DangerTime_Save(me->DangerTime);
+			 status_ = Q_HANDLED();
 			 break;
 		 }
         /*${SMs::Health::SM::global::health::alive::danger::DMG_RCVD} */

@@ -280,6 +280,7 @@ QState Ability_charging(Ability * const me, QEvt const * const e) {
         }
 		case TIME_TICK_1M_SIG: {
 			ChargeTime_Save(me->ChargeTime);
+			status_ = Q_HANDLED();
 			break;
 		}
         default: {
