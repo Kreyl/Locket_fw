@@ -235,7 +235,8 @@ void Vibro(unsigned int Timeout) {
 }
 
 void SendShining() {
-    Radio.RMsgQ.SendWaitingAbility(RMsg_t(R_MSG_SEND_KILL), 999);
+	Radio.RMsgQ.SendWaitingAbility(RMsg_t(R_MSG_SEND_KILL), 999);
+    Flash(255, 255, 255, 0);
 }
 
 void SetDefaultColor(uint8_t R, uint8_t G, uint8_t B) {

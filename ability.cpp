@@ -173,6 +173,7 @@ QState Ability_mutant(Ability * const me, QEvt const * const e) {
             #ifdef DESKTOP
                 printf("Entered state mutant\n");
             #endif /* def DESKTOP */
+            Flash(255, 255, 255, FLASH_MS);
             status_ = Q_HANDLED();
             break;
         }
@@ -261,7 +262,7 @@ QState Ability_charging(Ability * const me, QEvt const * const e) {
         }
         /*${SMs::Ability::SM::global::ability::mutant::charging::FIRST_BUTTON_PRESSED} */
         case FIRST_BUTTON_PRESSED_SIG: {
-            Flash(0, 0, 0, FLASH_MS);
+            Flash(255, 0, 0, FLASH_MS);
             status_ = Q_HANDLED();
             break;
         }
