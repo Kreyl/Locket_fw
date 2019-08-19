@@ -12,7 +12,7 @@ extern "C" {
 #define FLASH_MS 500
 #define SHORT_VIBRO_MS 200
 #define VIBRO_MS 300
-#define DANGER_TO_S 90
+#define DANGER_TO_S 120
 #define HP_THRESH 10
 #define DEATH_TO_S 30
 #define SHINE_FLASH_S 15
