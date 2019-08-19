@@ -13,7 +13,7 @@
 #include "SimpleSensors.h"
 #include "buttons.h"
 
-//#define SM_EN   TRUE
+#define SM_EN   TRUE
 
 #if SM_EN
 #include "health.h"
