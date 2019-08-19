@@ -112,8 +112,8 @@ QState Ability_none(Ability * const me, QEvt const * const e) {
             #ifdef DESKTOP
                 printf("Entered state none\n");
             #endif /* def DESKTOP */
+    		Ability_Save(NONE);
             status_ = Q_HANDLED();
-			Ability_Save(NONE);
             break;
         }
         /*${SMs::Ability::SM::global::ability::none} */

@@ -259,7 +259,6 @@ QState Health_danger(Health * const me, QEvt const * const e) {
                 printf("Entered state danger\n");
             #endif /* def DESKTOP */
 			State_Save(DANGER);
-            DangerTime_Update(me, 0);
             Vibro(VIBRO_MS);
             status_ = Q_HANDLED();
             break;
@@ -370,6 +369,7 @@ QState Health_normal(Health * const me, QEvt const * const e) {
             /*${SMs::Health::SM::global::health::alive::normal::DMG_RCVD::[me->CharHP-((HealthQEvt*)e)->va~} */
             if (me->CharHP - ((healthQEvt*)e)->value <= HPThresh) {
                 HP_Update(me, me->CharHP - ((healthQEvt*)e)->value);
+                DangerTime_Update(me, 0);
                 status_ = Q_TRAN(&Health_danger);
             }
             /*${SMs::Health::SM::global::health::alive::normal::DMG_RCVD::[else]} */
