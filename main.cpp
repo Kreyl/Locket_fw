@@ -15,6 +15,8 @@
 
 #define SM_EN   TRUE
 
+//#define DBG_VERBOSE_SAVING  TRUE
+
 #if SM_EN
 #include "health.h"
 #include "ability.h"
@@ -261,49 +263,63 @@ void ClearPill() {
 
 void State_Save(unsigned int State) {
     if(EE::Write32(EE_ADDR_STATE, State) == retvOk) {
+#if DBG_VERBOSE_SAVING
         Printf("Saved State: %u\r", State);
+#endif
     }
     else Printf("Saving State fail\r");
 }
 
 void Ability_Save(unsigned int Ability) {
     if(EE::Write32(EE_ADDR_ABILITY, Ability) == retvOk) {
+#if DBG_VERBOSE_SAVING
         Printf("Saved Ability %u\r", Ability);
+#endif
     }
     else Printf("Saving Ability fail\r");
 }
 
 void PlayerType_Save(unsigned int Type) {
     if(EE::Write32(EE_ADDR_TYPE, Type) == retvOk) {
+#if DBG_VERBOSE_SAVING
         Printf("Saved Type %u\r", Type);
+#endif
     }
     else Printf("Saving Type fail\r");
 }
 
 void HP_Save(unsigned int HP) {
     if(EE::Write32(EE_ADDR_HP, HP) == retvOk) {
+#if DBG_VERBOSE_SAVING
         Printf("Saved HP %u\r", HP);
+#endif
     }
     else Printf("Saving HP fail\r");
 }
 
 void MaxHP_Save(unsigned int MaxHP) {
     if(EE::Write32(EE_ADDR_MAX_HP, MaxHP) == retvOk) {
+#if DBG_VERBOSE_SAVING
         Printf("Saved MaxHP %u\r", MaxHP);
+#endif
     }
     else Printf("Saving MaxHP fail\r");
 }
 
 void DangerTime_Save(unsigned int Time) {
     if(EE::Write32(EE_ADDR_DANGERTIME, Time) == retvOk) {
+#if DBG_VERBOSE_SAVING
         Printf("Saved DangerTime %u\r", Time);
+#endif
     }
     else Printf("Saving DangerTime fail\r");
 }
 
 void ChargeTime_Save(unsigned int Time) {
     if(EE::Write32(EE_ADDR_CHARGETIME, Time) == retvOk) {
+#if DBG_VERBOSE_SAVING
         Printf("Saved ChargeTime %u\r", Time);
+#endif
     }
     else Printf("Saving ChargeTime fail\r");
 }
