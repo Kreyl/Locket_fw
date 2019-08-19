@@ -251,40 +251,61 @@ void ClearPill() {
 }
 
 // ==== Saving ====
-#define EE_ADDR_STATE       2048
-#define EE_ADDR_ABILITY     2052
-#define EE_ADDR_TYPE        2056
-#define EE_ADDR_HP          2060
-#define EE_ADDR_MAX_HP      2064
-#define EE_ADDR_DANGERTIME  2068
-#define EE_ADDR_CHARGETIME  2072
+#define EE_ADDR_STATE       256
+#define EE_ADDR_ABILITY     260
+#define EE_ADDR_TYPE        264
+#define EE_ADDR_HP          268
+#define EE_ADDR_MAX_HP      272
+#define EE_ADDR_DANGERTIME  276
+#define EE_ADDR_CHARGETIME  280
 
 void State_Save(unsigned int State) {
-    if(EE::Write32(EE_ADDR_STATE, State) != retvOk) Printf("Saving State fail\r");
+    if(EE::Write32(EE_ADDR_STATE, State) == retvOk) {
+        Printf("Saved State: %u\r", State);
+    }
+    else Printf("Saving State fail\r");
 }
 
 void Ability_Save(unsigned int Ability) {
-    if(EE::Write32(EE_ADDR_ABILITY, Ability) != retvOk) Printf("Saving Ability fail\r");
+    if(EE::Write32(EE_ADDR_ABILITY, Ability) == retvOk) {
+        Printf("Saved Ability %u\r", Ability);
+    }
+    else Printf("Saving Ability fail\r");
 }
 
 void PlayerType_Save(unsigned int Type) {
-    if(EE::Write32(EE_ADDR_TYPE, Type) != retvOk) Printf("Saving Type fail\r");
+    if(EE::Write32(EE_ADDR_TYPE, Type) == retvOk) {
+        Printf("Saved Type %u\r", Type);
+    }
+    else Printf("Saving Type fail\r");
 }
 
 void HP_Save(unsigned int HP) {
-    if(EE::Write32(EE_ADDR_HP, HP) != retvOk) Printf("Saving HP fail\r");
+    if(EE::Write32(EE_ADDR_HP, HP) == retvOk) {
+        Printf("Saved HP %u\r", HP);
+    }
+    else Printf("Saving HP fail\r");
 }
 
 void MaxHP_Save(unsigned int MaxHP) {
-    if(EE::Write32(EE_ADDR_MAX_HP, MaxHP) != retvOk) Printf("Saving MaxHP fail\r");
+    if(EE::Write32(EE_ADDR_MAX_HP, MaxHP) == retvOk) {
+        Printf("Saved MaxHP %u\r", MaxHP);
+    }
+    else Printf("Saving MaxHP fail\r");
 }
 
 void DangerTime_Save(unsigned int Time) {
-    if(EE::Write32(EE_ADDR_DANGERTIME, Time) != retvOk) Printf("Saving Time fail\r");
+    if(EE::Write32(EE_ADDR_DANGERTIME, Time) == retvOk) {
+        Printf("Saved DangerTime %u\r", Time);
+    }
+    else Printf("Saving DangerTime fail\r");
 }
 
 void ChargeTime_Save(unsigned int Time) {
-    if(EE::Write32(EE_ADDR_CHARGETIME, Time) != retvOk) Printf("Saving Time fail\r");
+    if(EE::Write32(EE_ADDR_CHARGETIME, Time) == retvOk) {
+        Printf("Saved ChargeTime %u\r", Time);
+    }
+    else Printf("Saving ChargeTime fail\r");
 }
 
 
@@ -297,7 +318,7 @@ void InitSM() {
     uint32_t MaxHP = EE::Read32(EE_ADDR_MAX_HP);
     uint32_t DangerTime = EE::Read32(EE_ADDR_DANGERTIME);
     uint32_t ChargeTime = EE::Read32(EE_ADDR_CHARGETIME);
-    Printf("Saved: State=%d Ability=%d Type=%d HP=%d MaxHP=%d DangerTime=%d ChargeTime=%d\r",
+    Printf("Loaded: State=%d Ability=%d Type=%d HP=%d MaxHP=%d DangerTime=%d ChargeTime=%d\r",
             State, Ability, Type, HP, MaxHP, DangerTime, ChargeTime);
     // Init
     Health_ctor(State, HP, MaxHP, DangerTime);
@@ -311,21 +332,21 @@ void InitSM() {
 void SendEvent_Health(int QSig, unsigned int Value) {
     e.super.sig = QSig;
     e.value = Value;
-    Printf("evtHealth: %d; %d\r", e.super.sig, e.value);
+//    Printf("evtHealth: %d; %d\r", e.super.sig, e.value);
     QMSM_DISPATCH(the_health, &(e.super));
 }
 
 void SendEvent_Ability(int QSig, unsigned int Value) {
     e.super.sig = QSig;
     e.value = Value;
-    Printf("evtAbility: %d; %d\r", e.super.sig, e.value);
+//    Printf("evtAbility: %d; %d\r", e.super.sig, e.value);
     QMSM_DISPATCH(the_ability, &(e.super));
 }
 
 void SendEvent_PlayerType(int QSig, unsigned int Value) {
     e.super.sig = QSig;
     e.value = Value;
-    Printf("evtPlayerType: %d; %d\r", e.super.sig, e.value);
+//    Printf("evtPlayerType: %d; %d\r", e.super.sig, e.value);
     QMSM_DISPATCH(the_player_type, &(e.super));
 }
 #endif
@@ -340,6 +361,13 @@ void OnCmd(Shell_t *PShell) {
         PShell->Ack(retvOk);
     }
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
+
+
+    else if(PCmd->NameIs("evt1min")) {
+        SendEvent_Health(TIME_TICK_1M_SIG, 0);
+        SendEvent_Ability(TIME_TICK_1M_SIG, 0);
+        SendEvent_PlayerType(TIME_TICK_1M_SIG, 0);
+    }
 
     else if(PCmd->NameIs("GetID")) PShell->Reply("ID", ID);
 
