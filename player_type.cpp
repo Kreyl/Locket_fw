@@ -98,6 +98,7 @@ QState Player_type_player_type(Player_type * const me, QEvt const * const e) {
         }
         /*${SMs::Player_type::SM::global::player_type::PILL_TAILOR} */
         case PILL_TAILOR_SIG: {
+        	MaxHP_Update(me->CharHealth, TailorHP);
         	SIMPLE_DISPATCH(the_health, RESET);
         	SIMPLE_DISPATCH(the_ability, RESET);
             status_ = Q_TRAN(&Player_type_tailor);
@@ -295,8 +296,7 @@ QState Player_type_tailor(Player_type * const me, QEvt const * const e) {
             #ifdef DESKTOP
                 printf("Entered state tailor\n");
             #endif /* def DESKTOP */
-			MaxHP_Update(me->CharHealth, TailorHP);
-            Flash(255, 255, 0, FLASH_MS);
+			Flash(255, 255, 0, FLASH_MS);
             PlayerType_Save(TAILOR);
             status_ = Q_HANDLED();
             break;

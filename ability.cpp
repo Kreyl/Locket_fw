@@ -112,8 +112,8 @@ QState Ability_none(Ability * const me, QEvt const * const e) {
             #ifdef DESKTOP
                 printf("Entered state none\n");
             #endif /* def DESKTOP */
+    		Ability_Save(NONE);
             status_ = Q_HANDLED();
-			Ability_Save(NONE);
             break;
         }
         /*${SMs::Ability::SM::global::ability::none} */
@@ -222,11 +222,15 @@ QState Ability_ready(Ability * const me, QEvt const * const e) {
         }
         /*${SMs::Ability::SM::global::ability::mutant::ready::SHINE} */
         case SHINE_SIG: {
+        	ChargeTime_Update(me, 0);
+            SendShining();
             status_ = Q_TRAN(&Ability_charging);
             break;
         }
         /*${SMs::Ability::SM::global::ability::mutant::ready::SHINE_ORDER} */
         case SHINE_ORDER_SIG: {
+        	ChargeTime_Update(me, 0);
+        	SendShining();
             status_ = Q_TRAN(&Ability_charging);
             break;
         }
@@ -247,8 +251,6 @@ QState Ability_charging(Ability * const me, QEvt const * const e) {
                 printf("Entered state charging\n");
             #endif /* def DESKTOP */
 			Ability_Save(MUTANT_CHARGING);
-            ChargeTime_Update(me, 0);
-            SendShining();
             status_ = Q_HANDLED();
             break;
         }
@@ -262,7 +264,7 @@ QState Ability_charging(Ability * const me, QEvt const * const e) {
         }
         /*${SMs::Ability::SM::global::ability::mutant::charging::FIRST_BUTTON_PRESSED} */
         case CENTRAL_BUTTON_PRESSED_SIG: {
-            Flash(255, 0, 0, FLASH_MS);
+            Flash(0, 0, 0, FLASH_MS);
             status_ = Q_HANDLED();
             break;
         }
