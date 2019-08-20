@@ -17,6 +17,7 @@ QHsm * const the_health = (QHsm *) &health; /* the opaque pointer */
 unsigned int DangerTO = DANGER_TO_S;
 unsigned int DefaultHP = DEFAULT_HP;
 unsigned int HPThresh = HP_THRESH;
+unsigned int DangerDelay = DANGER_DELAY_S
 //End of c code from diagramH
 
 void Health_ctor(unsigned int State,
@@ -30,6 +31,7 @@ void Health_ctor(unsigned int State,
         me->DefaultHP = DefaultHP;
         me->DangerTime = 0;
         me->DeathTimer = 0;
+        me->DangerDelay = 0;
         switch (State) {
             case NORMAL: {
                 me->StartState =
@@ -260,6 +262,7 @@ QState Health_danger(Health * const me, QEvt const * const e) {
             #endif /* def DESKTOP */
 			State_Save(DANGER);
             Vibro(VIBRO_MS);
+            me->DangerDelay = 0;
             status_ = Q_HANDLED();
             break;
         }
@@ -301,6 +304,7 @@ QState Health_danger(Health * const me, QEvt const * const e) {
             /*${SMs::Health::SM::global::health::alive::danger::TIME_TICK_1S::[else]} */
             else {
                 me->DangerTime++;
+                me->DangerDelay++;
                 Flash(255, 0, 0, FLASH_MS);
                 status_ = Q_HANDLED();
             }
@@ -314,13 +318,17 @@ QState Health_danger(Health * const me, QEvt const * const e) {
         /*${SMs::Health::SM::global::health::alive::danger::DMG_RCVD} */
         case DMG_RCVD_SIG: {
             /*${SMs::Health::SM::global::health::alive::danger::DMG_RCVD::[me->CharHP-((HealthQEvt*)e)->va~} */
-            if ((me->CharHP <= ((healthQEvt*)e)->value)) {
-                status_ = Q_TRAN(&Health_just_dead);
-            }
-            /*${SMs::Health::SM::global::health::alive::danger::DMG_RCVD::[else]} */
-            else {
-                HP_Update(me, me->CharHP - ((healthQEvt*)e)->value);
-                status_ = Q_HANDLED();
+            if (me->DangerDelay > DangerDelay) {
+        	    if ((me->CharHP <= ((healthQEvt*)e)->value)) {
+                    status_ = Q_TRAN(&Health_just_dead);
+                }
+                /*${SMs::Health::SM::global::health::alive::danger::DMG_RCVD::[else]} */
+               else {
+                    HP_Update(me, me->CharHP - ((healthQEvt*)e)->value);
+                    status_ = Q_HANDLED();
+               }
+            } else {
+            	status_ = Q_HANDLED();
             }
             break;
         }

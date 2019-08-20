@@ -17,6 +17,7 @@ extern "C" {
 #define DEATH_TO_S 30
 #define SHINE_FLASH_S 15
 #define DEFAULT_HP  50
+#define DANGER_DELAY_S 10
 //End of h code from diagram
 
 
@@ -30,6 +31,7 @@ typedef struct {
     unsigned int DefaultHP;
     unsigned int DangerTime;
     unsigned int DeathTimer;
+    unsigned int DangerDelay;
     QStateHandler StartState;
 } Health;
 
