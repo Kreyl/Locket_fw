@@ -30,9 +30,9 @@ extern "C" {
 #define STALKER 3
 #define DEAD 0
 #define REGEN_THRESH_S 60
-#define LOCAL_HP 40
-#define TAILOR_HP 60
-#define STALKER_HP 100
+#define LOCAL_HP 200
+#define TAILOR_HP 100
+#define STALKER_HP 300
 //End of h code from diagram
 
 

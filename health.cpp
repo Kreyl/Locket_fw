@@ -17,7 +17,7 @@ QHsm * const the_health = (QHsm *) &health; /* the opaque pointer */
 unsigned int DangerTO = DANGER_TO_S;
 unsigned int DefaultHP = DEFAULT_HP;
 unsigned int HPThresh = HP_THRESH;
-unsigned int DangerDelay = DANGER_DELAY_S
+unsigned int DangerDelay = DANGER_DELAY_S;
 //End of c code from diagramH
 
 void Health_ctor(unsigned int State,
@@ -375,7 +375,7 @@ QState Health_normal(Health * const me, QEvt const * const e) {
         /*${SMs::Health::SM::global::health::alive::normal::DMG_RCVD} */
         case DMG_RCVD_SIG: {
             /*${SMs::Health::SM::global::health::alive::normal::DMG_RCVD::[me->CharHP-((HealthQEvt*)e)->va~} */
-            if (me->CharHP - ((healthQEvt*)e)->value <= HPThresh) {
+            if (me->CharHP - ((healthQEvt*)e)->value <= me->MaxHP/3) {
                 HP_Update(me, me->CharHP - ((healthQEvt*)e)->value);
                 DangerTime_Update(me, 0);
                 status_ = Q_TRAN(&Health_danger);
