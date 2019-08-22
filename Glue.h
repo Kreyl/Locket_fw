@@ -11,6 +11,8 @@
 void Flash(unsigned int R, unsigned int G, unsigned int B, unsigned int Timeout);
 void Vibro(unsigned int Timeout);
 void SendShining();
+void FlashAgony();
+void FlashDeath();
 
 void State_Save(unsigned int State);
 void Ability_Save(unsigned int Ability);

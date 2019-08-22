@@ -225,6 +225,31 @@ LedRGBChunk_t lsqSM[] = {
         {csEnd},
 };
 
+LedRGBChunk_t lsqSMSmooth[] = {
+        {csSetup, 150, clRed},
+        {csWait, 200},
+        {csSetup, 150, {0,1,0}},
+		{csWait, 400},
+		{csEnd},
+};
+
+LedRGBChunk_t lsqSMDeath[] = {
+        {csSetup, 0, clRed},
+        {csWait, 200},
+        {csSetup, 0, {0,0,0}},
+		{csWait, 600},
+        {csEnd},
+};
+
+
+void FlashAgony() {
+    Led.StartOrRestart(lsqSMSmooth);
+}
+
+void FlashDeath() {
+    Led.StartOrRestart(lsqSMDeath);
+}
+
 void Flash(unsigned int R, unsigned int G, unsigned int B, unsigned int Timeout) {
     lsqSM[0].Color.FromRGB(R, G, B);
     lsqSM[1].Time_ms = Timeout;
