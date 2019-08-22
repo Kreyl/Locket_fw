@@ -28,7 +28,7 @@ extern "C" {
 #define MUTANT_READY 1
 #define MUTANT_CHARGING 2
 #define DISABLED 3
-#define CHARGE_TO_S 30
+#define CHARGE_TO_S 3600
 //End of h code from diagram
 
 

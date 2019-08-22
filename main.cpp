@@ -373,21 +373,21 @@ void InitSM() {
 void SendEvent_Health(int QSig, unsigned int Value) {
     e.super.sig = QSig;
     e.value = Value;
-//    Printf("evtHealth: %d; %d\r", e.super.sig, e.value);
+    // Printf("evtHealth: %d; %d\r", e.super.sig, e.value);
     QMSM_DISPATCH(the_health, &(e.super));
 }
 
 void SendEvent_Ability(int QSig, unsigned int Value) {
     e.super.sig = QSig;
     e.value = Value;
-//    Printf("evtAbility: %d; %d\r", e.super.sig, e.value);
+    // Printf("evtAbility: %d; %d\r", e.super.sig, e.value);
     QMSM_DISPATCH(the_ability, &(e.super));
 }
 
 void SendEvent_PlayerType(int QSig, unsigned int Value) {
     e.super.sig = QSig;
     e.value = Value;
-//    Printf("evtPlayerType: %d; %d\r", e.super.sig, e.value);
+    // Printf("evtPlayerType: %d; %d\r", e.super.sig, e.value);
     QMSM_DISPATCH(the_player_type, &(e.super));
 }
 #endif

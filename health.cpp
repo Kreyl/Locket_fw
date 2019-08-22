@@ -3,6 +3,7 @@
 #include "eventHandlers.h"
 #include <stdint.h>
 #include "Glue.h"
+#include "Shell.h"
 
 
 //#include "stdio.h"
@@ -155,6 +156,7 @@ QState Health_just_dead(Health * const me, QEvt const * const e) {
             #ifdef DESKTOP
                 printf("Exited state just_dead\n");
             #endif /* def DESKTOP */
+            SetDefaultColor(0, 0, 0);
             status_ = Q_HANDLED();
             break;
         }
@@ -234,13 +236,12 @@ QState Health_alive(Health * const me, QEvt const * const e) {
         }
         /*${SMs::Health::SM::global::health::alive::SHINE_RCVD} */
         case SHINE_RCVD_SIG: {
-             Flash(255, 0, 255, 1000*SHINE_FLASH_S);
              Vibro(VIBRO_MS);
              status_ = Q_TRAN(&Health_shining);
              break;
         }
         /*${SMs::Health::SM::global::health::alive::CENTRAL_BUTTON_PRESSED} */
-        case CENTRAL_BUTTON_PRESSED_SIG: {
+        case FIRST_BUTTON_PRESSED_SIG: {
              ShowHP(me);
              status_ = Q_HANDLED();
              break;
@@ -261,7 +262,9 @@ QState Health_shining(Health * const me, QEvt const * const e) {
             #ifdef DESKTOP
                 printf("Entered state shining\n");
             #endif /* def DESKTOP */
+//            Printf("Shine enter\n");
             me->ShineTimer = 0;
+            Vibro(10*VIBRO_MS);
             status_ = Q_HANDLED();
             break;
         }
@@ -270,14 +273,15 @@ QState Health_shining(Health * const me, QEvt const * const e) {
             #ifdef DESKTOP
                 printf("Exited state shining\n");
             #endif /* def DESKTOP */
+//            Printf("Shine exit\n");
             status_ = Q_HANDLED();
+            Vibro(10*VIBRO_MS);
             break;
         }
         /*${SMs::Health::SM::global::health::shining::TIME_TICK_1S} */
         case TIME_TICK_1S_SIG: {
         	if (me->ShineTimer <= SHINE_FLASH_S) {
                 Flash(255, 0, 255, 1001);
-                Vibro(VIBRO_MS);
                 me->ShineTimer++;
                 status_ = Q_HANDLED();
             } else {
@@ -308,7 +312,7 @@ QState Health_danger(Health * const me, QEvt const * const e) {
                 printf("Entered state danger\n");
             #endif /* def DESKTOP */
 			State_Save(DANGER);
-            Vibro(VIBRO_MS);
+            Vibro(10*VIBRO_MS);
             me->DangerDelay = 0;
             status_ = Q_HANDLED();
             break;
@@ -366,6 +370,7 @@ QState Health_danger(Health * const me, QEvt const * const e) {
         case DMG_RCVD_SIG: {
             /*${SMs::Health::SM::global::health::alive::danger::DMG_RCVD::[me->CharHP-((HealthQEvt*)e)->va~} */
             if (me->DangerDelay > DangerDelay) {
+            	Vibro(VIBRO_MS);
         	    if ((me->CharHP <= ((healthQEvt*)e)->value)) {
                     status_ = Q_TRAN(&Health_just_dead);
                 }
@@ -422,7 +427,8 @@ QState Health_normal(Health * const me, QEvt const * const e) {
         /*${SMs::Health::SM::global::health::alive::normal::DMG_RCVD} */
         case DMG_RCVD_SIG: {
             /*${SMs::Health::SM::global::health::alive::normal::DMG_RCVD::[me->CharHP-((HealthQEvt*)e)->va~} */
-            if (me->CharHP - ((healthQEvt*)e)->value <= me->MaxHP/3) {
+        	IndicateDamage(me);
+        	if (me->CharHP - ((healthQEvt*)e)->value <= me->MaxHP/3) {
                 HP_Update(me, me->CharHP - ((healthQEvt*)e)->value);
                 DangerTime_Update(me, 0);
                 status_ = Q_TRAN(&Health_danger);

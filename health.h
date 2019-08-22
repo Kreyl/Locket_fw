@@ -12,10 +12,10 @@ extern "C" {
 #define FLASH_MS 500
 #define SHORT_VIBRO_MS 200
 #define VIBRO_MS 300
-#define DANGER_TO_S 120
+#define DANGER_TO_S 1200
 #define HP_THRESH 10
 #define DEATH_TO_S 30
-#define SHINE_FLASH_S 15
+#define SHINE_FLASH_S 300
 #define DEFAULT_HP  50
 #define DANGER_DELAY_S 10
 //End of h code from diagram

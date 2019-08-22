@@ -26,9 +26,6 @@ void DangerTime_Update(Health* me, unsigned int Time) {
 
 void HP_Update(Health* me, unsigned int HP) {
 	printf("Try to set %iHP\n", HP);
-    if (HP < me->CharHP) {
-        IndicateDamage(me);
-    }
     if  (HP <= me->MaxHP) {
         if(HP > 0) {
              me->CharHP = HP;
