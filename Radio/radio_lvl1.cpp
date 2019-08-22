@@ -69,7 +69,7 @@ static void rLvl1Thread(void *arg) {
         // ==== Rx ====
         CC.Recalibrate();
         if(CC.Receive(360, &PktRx, RPKT_LEN, &Rssi) == retvOk) {
-//            Printf("From: %u; To: %u; TrrID: %u; PktID: %u; Cmd: %u; Rssi: %d\r\n", PktRx.From, PktRx.To, PktRx.TransmitterID, PktRx.PktID, PktRx.Cmd, Rssi);
+            Printf("From: %u; To: %u; TrrID: %u; PktID: %u; Cmd: %u; Rssi: %d\r\n", PktRx.From, PktRx.To, PktRx.TransmitterID, PktRx.PktID, PktRx.Cmd, Rssi);
 //            Led.StartOrRestart(lsqBlinkB);
             ProcessRCmd();
         }

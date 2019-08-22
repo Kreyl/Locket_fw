@@ -32,6 +32,7 @@ void Health_ctor(unsigned int State,
         me->DangerTime = 0;
         me->DeathTimer = 0;
         me->DangerDelay = 0;
+        me->ShineTimer = 0;
         switch (State) {
             case NORMAL: {
                 me->StartState =
@@ -233,16 +234,16 @@ QState Health_alive(Health * const me, QEvt const * const e) {
         }
         /*${SMs::Health::SM::global::health::alive::SHINE_RCVD} */
         case SHINE_RCVD_SIG: {
-            Flash(255, 0, 255, 1000*SHINE_FLASH_S);
-            Vibro(VIBRO_MS);
-            status_ = Q_HANDLED();
-            break;
+             Flash(255, 0, 255, 1000*SHINE_FLASH_S);
+             Vibro(VIBRO_MS);
+             status_ = Q_TRAN(&Health_shining);
+             break;
         }
         /*${SMs::Health::SM::global::health::alive::CENTRAL_BUTTON_PRESSED} */
-        case FIRST_BUTTON_PRESSED_SIG: {
-            ShowHP(me);
-            status_ = Q_HANDLED();
-            break;
+        case CENTRAL_BUTTON_PRESSED_SIG: {
+             ShowHP(me);
+             status_ = Q_HANDLED();
+             break;
         }
         default: {
             status_ = Q_SUPER(&Health_health);
@@ -251,6 +252,52 @@ QState Health_alive(Health * const me, QEvt const * const e) {
     }
     return status_;
 }
+/*${SMs::Health::SM::global::health::shining} ................................*/
+QState Health_shining(Health * const me, QEvt const * const e) {
+    QState status_;
+    switch (e->sig) {
+        /*${SMs::Health::SM::global::health::shining} */
+        case Q_ENTRY_SIG: {
+            #ifdef DESKTOP
+                printf("Entered state shining\n");
+            #endif /* def DESKTOP */
+            me->ShineTimer = 0;
+            status_ = Q_HANDLED();
+            break;
+        }
+        /*${SMs::Health::SM::global::health::shining} */
+        case Q_EXIT_SIG: {
+            #ifdef DESKTOP
+                printf("Exited state shining\n");
+            #endif /* def DESKTOP */
+            status_ = Q_HANDLED();
+            break;
+        }
+        /*${SMs::Health::SM::global::health::shining::TIME_TICK_1S} */
+        case TIME_TICK_1S_SIG: {
+        	if (me->ShineTimer <= SHINE_FLASH_S) {
+                Flash(255, 0, 255, 1001);
+                Vibro(VIBRO_MS);
+                me->ShineTimer++;
+                status_ = Q_HANDLED();
+            } else {
+            	if (me->CharHP <= me->MaxHP/3) {
+            		status_ = Q_TRAN(&Health_danger);
+            	} else {
+            		status_ = Q_TRAN(&Health_normal);
+            	}
+            }
+            break;
+            }
+        /*${SMs::Health::SM::global::health::alive::CENTRAL_BUTTON_PRESSED} */
+        default: {
+            status_ = Q_SUPER(&Health_health);
+            break;
+        }
+    }
+    return status_;
+}
+
 /*${SMs::Health::SM::global::health::alive::danger} ........................*/
 QState Health_danger(Health * const me, QEvt const * const e) {
     QState status_;

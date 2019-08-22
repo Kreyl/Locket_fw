@@ -225,6 +225,14 @@ LedRGBChunk_t lsqSM[] = {
         {csEnd},
 };
 
+LedRGBChunk_t lsqSMSmooth[] = {
+        {csSetup, 300, clRed},
+        {csWait, 207},
+        {csSetup, 0, {0,1,0}},
+        {csEnd},
+};
+
+
 void Flash(unsigned int R, unsigned int G, unsigned int B, unsigned int Timeout) {
     lsqSM[0].Color.FromRGB(R, G, B);
     lsqSM[1].Time_ms = Timeout;

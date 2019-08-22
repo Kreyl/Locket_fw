@@ -31,6 +31,7 @@ typedef struct {
     unsigned int DefaultHP;
     unsigned int DangerTime;
     unsigned int DeathTimer;
+    unsigned int ShineTimer;
     unsigned int DangerDelay;
     QStateHandler StartState;
 } Health;
@@ -43,6 +44,7 @@ QState Health_dead(Health * const me, QEvt const * const e);
 QState Health_just_dead(Health * const me, QEvt const * const e);
 QState Health_wait_reset(Health * const me, QEvt const * const e);
 QState Health_alive(Health * const me, QEvt const * const e);
+QState Health_shining(Health * const me, QEvt const * const e);
 QState Health_danger(Health * const me, QEvt const * const e);
 QState Health_normal(Health * const me, QEvt const * const e);
 
