@@ -201,7 +201,7 @@ QState Health_wait_reset(Health * const me, QEvt const * const e) {
         }
         /*${SMs::Health::SM::global::health::dead::wait_reset::TIME_TICK_1S} */
         case TIME_TICK_1S_SIG: {
-            Flash(255, 0, 0, FLASH_MS/5);
+            FlashDeath();
             status_ = Q_HANDLED();
             break;
         }
@@ -288,7 +288,7 @@ QState Health_shining(Health * const me, QEvt const * const e) {
             	}
             }
             break;
-            }
+        }
         /*${SMs::Health::SM::global::health::alive::CENTRAL_BUTTON_PRESSED} */
         default: {
             status_ = Q_SUPER(&Health_health);
@@ -352,7 +352,7 @@ QState Health_danger(Health * const me, QEvt const * const e) {
             else {
                 me->DangerTime++;
                 me->DangerDelay++;
-                Flash(255, 0, 0, FLASH_MS);
+                FlashAgony();
                 status_ = Q_HANDLED();
             }
             break;
