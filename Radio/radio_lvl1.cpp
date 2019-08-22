@@ -41,6 +41,9 @@ rLevel1_t Radio;
 extern int32_t ID;
 void ProcessRCmd();
 
+int32_t RssiOffset = 0;
+void GetRssiOffset();
+
 static rPkt_t PktTx, PktRx;
 static int8_t Rssi;
 
@@ -144,12 +147,15 @@ void ProcessRCmd() {
             default: PktTx.Pong.Reply = retvCmdError; break;
         } // switch
         // Transmit pkt
+        if(PktRx.PktID != PKTID_DO_NOT_RETRANSMIT) chThdSleepMilliseconds(999); // Let network to calm down
         CC.SetTxPower(CC_PwrPlus5dBm);
-        for(int i=0; i<4; i++) {
-            uint32_t Delay_ms = Random::Generate(MESH_DELAY_BETWEEN_RETRANSMIT_MS_MIN, MESH_DELAY_BETWEEN_RETRANSMIT_MS_MAX);
+        systime_t Start = chVTGetSystemTimeX();
+        while(true) {
+            int32_t TxTime_ms = (int32_t)324 - (int32_t)(TIME_I2MS(chVTTimeElapsedSinceX(Start)));
+            if(TxTime_ms <= 0) break;
             CC.Recalibrate();
             CC.Transmit(&PktTx, RPKT_LEN);
-            chThdSleepMilliseconds(Delay_ms);
+            //chThdSleepMilliseconds(6);
         }
     }
     else { // for everyone!
@@ -160,7 +166,7 @@ void ProcessRCmd() {
                     int32_t Indx = PktRx.From - LUSTRA_MIN_ID;
                     if(Indx >= 0 and Indx < LUSTRA_CNT) {
                         Radio.RxData[Indx].Cnt++;
-                        Radio.RxData[Indx].Summ += Rssi;
+                        Radio.RxData[Indx].Summ += Rssi + RssiOffset;
                         Radio.RxData[Indx].RssiThr = PktRx.Beacon.RssiThr;
                         Radio.RxData[Indx].Damage = PktRx.Beacon.Damage;
                     }
@@ -200,10 +206,27 @@ uint8_t rLevel1_t::Init() {
         CC.SetPktSize(RPKT_LEN);
         CC.SetChannel(1);
 //        CC.EnterPwrDown();
+        GetRssiOffset();
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return retvOk;
     }
     else return retvFail;
+}
+
+#define OFFSET_TABLE_CNT    3
+static const int32_t IdOffsetTable[OFFSET_TABLE_CNT][2] = {
+        {1,0},
+        {2,0},
+        {3,0},
+};
+
+void GetRssiOffset() {
+    for(int i=0; i<OFFSET_TABLE_CNT; i++) {
+        if(IdOffsetTable[i][0] == ID) {
+            RssiOffset = IdOffsetTable[i][1];
+            break;
+        }
+    }
 }
 #endif
