@@ -29,12 +29,12 @@
 #define LED_EN_PIN      { GPIOB, 2, omPushPull }
 
 #define LED_R_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
-#define LED_G_PIN       { GPIOB, 0, TIM3, 3, invInverted, omOpenDrain, 255 }
-#define LED_B_PIN       { GPIOB, 1, TIM3, 4, invInverted, omOpenDrain, 255 }
+#define LED_B_PIN       { GPIOB, 0, TIM3, 3, invInverted, omOpenDrain, 255 }
+#define LED_G_PIN       { GPIOB, 1, TIM3, 4, invInverted, omOpenDrain, 255 }
 
 #define LED2_R_PIN      { GPIOB, 6, TIM4, 1, invInverted, omOpenDrain, 255 }
-#define LED2_G_PIN      { GPIOB, 8, TIM4, 3, invInverted, omOpenDrain, 255 }
-#define LED2_B_PIN      { GPIOB, 7, TIM4, 2, invInverted, omOpenDrain, 255 }
+#define LED2_B_PIN      { GPIOB, 8, TIM4, 3, invInverted, omOpenDrain, 255 }
+#define LED2_G_PIN      { GPIOB, 7, TIM4, 2, invInverted, omOpenDrain, 255 }
 
 // Buttons
 #define BTN_PIN         GPIOA, 0, pudPullDown
