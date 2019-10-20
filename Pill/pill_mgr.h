@@ -29,8 +29,8 @@ private:
     const PinOutput_t PillPwr;
     void Standby();
     void Resume();
-    bool IsConnectedNow;
 public:
+    bool IsConnectedNow;
     PillState_t State;
     Pill_t Pill;
     PillMgr_t(i2c_t *pi2c, const PinOutput_t APwrPin) :

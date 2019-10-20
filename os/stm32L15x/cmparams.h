@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@
  * @{
  */
 
-#ifndef _CMPARAMS_H_
-#define _CMPARAMS_H_
+#ifndef CMPARAMS_H
+#define CMPARAMS_H
 
 /**
  * @brief   Cortex core model.
@@ -42,17 +42,6 @@
  * @brief   Number of bits in priority masks.
  */
 #define CORTEX_PRIORITY_BITS    4
-
-/**
- * @brief   Number of interrupt vectors.
- * @note    This number does not include the 16 system vectors and must be
- *          rounded to a multiple of 8.
- */
-#define CORTEX_NUM_VECTORS      64
-
-/* The following code is not processed when the file is included from an
-   asm module.*/
-#if !defined(_FROM_ASM_)
 
 /* If the device type is not externally defined, for example from the Makefile,
    then a file named board.h is included. This file must contain a device
@@ -71,11 +60,24 @@
 #include "board.h"
 #endif
 
+/**
+ * @brief   Number of interrupt vectors.
+ * @note    This number does not include the 16 system vectors and must be
+ *          rounded to a multiple of 8.
+ */
+#define CORTEX_NUM_VECTORS      64
+
+/* The following code is not processed when the file is included from an
+   asm module.*/
+#if !defined(_FROM_ASM_)
+
 /* Including the device CMSIS header. Note, we are not using the definitions
    from this header because we need this file to be usable also from
    assembler source files. We verify that the info matches instead.*/
 #include "stm32l1xx.h"
 
+/*lint -save -e9029 [10.4] Signedness comes from external files, it is
+  unpredictable but gives no problems.*/
 #if CORTEX_MODEL != __CORTEX_M
 #error "CMSIS __CORTEX_M mismatch"
 #endif
@@ -83,12 +85,13 @@
 #if CORTEX_PRIORITY_BITS != __NVIC_PRIO_BITS
 #error "CMSIS __NVIC_PRIO_BITS mismatch"
 #endif
+/*lint -restore*/
 
 /* Fix for yet another consistency error in ST headers.*/
 #define SVCall_IRQn SVC_IRQn
 
 #endif /* !defined(_FROM_ASM_) */
 
-#endif /* _CMPARAMS_H_ */
+#endif /* CMPARAMS_H */
 
 /** @} */

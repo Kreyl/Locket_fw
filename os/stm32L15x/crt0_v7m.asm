@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 */
 
 /**
- * @file    crt0_v7m.s
+ * @file    crt0_v7m.S
  * @brief   Generic ARMv7-M (Cortex-M3/M4/M7) startup file for ChibiOS.
  *
  * @addtogroup ARMCMx_GCC_STARTUP_V7M
@@ -43,6 +43,7 @@
 #define FPCCR_ASPEN                         (1 << 31)
 #define FPCCR_LSPEN                         (1 << 30)
 
+#define SCB_VTOR                            0xE000ED08
 #define SCB_CPACR                           0xE000ED88
 #define SCB_FPCCR                           0xE000EF34
 #define SCB_FPDSCR                          0xE000EF3C
@@ -50,6 +51,23 @@
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
+
+/**
+ * @brief   Enforces initialization of MSP.
+ * @note    This is required if the boot process is not reliable for whatever
+ *          reason (bad ROMs, bad bootloaders, bad debuggers=.
+ */
+#if !defined(CRT0_FORCE_MSP_INIT) || defined(__DOXYGEN__)
+#define CRT0_FORCE_MSP_INIT                 TRUE
+#endif
+
+/**
+ * @brief   VTOR special register initialization.
+ * @details VTOR is initialized to point to the vectors table.
+ */
+#if !defined(CRT0_VTOR_INIT) || defined(__DOXYGEN__)
+#define CRT0_VTOR_INIT                      TRUE
+#endif
 
 /**
  * @brief   FPU initialization switch.
@@ -162,18 +180,31 @@
                 .text
 
 /*
- * Reset handler.
+ * CRT0 entry point.
  */
                 .align  2
                 .thumb_func
-                .global Reset_Handler
-Reset_Handler:
+                .global _crt0_entry
+_crt0_entry:
                 /* Interrupts are globally masked initially.*/
                 cpsid   i
+
+#if CRT0_FORCE_MSP_INIT == TRUE
+                /* MSP stack pointers initialization.*/
+                ldr     r0, =__main_stack_end__
+                msr     MSP, r0
+#endif
 
                 /* PSP stack pointers initialization.*/
                 ldr     r0, =__process_stack_end__
                 msr     PSP, r0
+
+#if CRT0_VTOR_INIT == TRUE
+                ldr     r0, =_vectors
+                movw    r1, #SCB_VTOR & 0xFFFF
+                movt    r1, #SCB_VTOR >> 16
+                str     r0, [r1]
+#endif
 
 #if CRT0_INIT_FPU == TRUE
                 /* FPU FPCCR initialization.*/

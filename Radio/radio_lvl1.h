@@ -13,8 +13,6 @@
 #include "kl_buf.h"
 #include "uart.h"
 #include "MsgQ.h"
-#include "color.h"
-#include "main.h"
 
 #if 0 // ========================= Signal levels ===============================
 // Python translation for db
@@ -58,25 +56,84 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #endif
 
 #if 1 // =========================== Pkt_t =====================================
-struct rPkt_t  {
-    int32_t ID;
+
+enum RCmd_t : uint8_t {
+    rcmdNone = 0,
+    rcmdPing = 1,
+    rcmdPong = 2,
+    rcmdBeacon = 3,
+    rcmdScream = 4,
+    rcmdLustraParams = 5,
+    rcmdLocketSetParam = 6,
+    rcmdLocketGetParam = 7,
+    rcmdLocketExplode = 8,
+    rcmdLocketDieAll = 9,
+    rcmdLocketDieChoosen = 10,
+};
+
+struct rPkt_t {
+    uint16_t From;  // 2
+    uint16_t To;    // 2
+    uint16_t TransmitterID; // 2
+    RCmd_t Cmd; // 1
+    uint8_t PktID; // 1
+    union {
+        struct {
+            uint16_t MaxLvlID;
+            uint8_t Reply;
+        } __attribute__ ((__packed__)) Pong; // 3
+
+        struct {
+            int8_t RssiThr;
+            uint8_t Damage;
+            uint8_t Power;
+        } __attribute__ ((__packed__)) Beacon; // 3
+
+        struct {
+            uint8_t Power;
+            int8_t RssiThr;
+            uint8_t Damage;
+        } __attribute__ ((__packed__)) LustraParams; // 3
+
+        struct {
+            uint8_t ParamID;
+            uint16_t Value;
+        } __attribute__ ((__packed__)) LocketParam; // 3
+
+        struct {
+            int8_t RssiThr;
+        } __attribute__ ((__packed__)) Die; // 1
+    } __attribute__ ((__packed__)); // union
     rPkt_t& operator = (const rPkt_t &Right) {
-        ID = Right.ID;
+        From = Right.From;
+        To = Right.To;
+        TransmitterID = Right.TransmitterID;
+        Cmd = Right.Cmd;
+        PktID = Right.PktID;
+        // Payload
+        Pong.MaxLvlID = Right.Pong.MaxLvlID;
+        Pong.Reply = Right.Pong.Reply;
         return *this;
     }
-} __packed;
-#define RPKT_LEN    sizeof(rPkt_t)
+} __attribute__ ((__packed__));
 
-#define THE_WORD        0xCA115EA1
+#define PKTID_DO_NOT_RETRANSMIT 0
+#define PKTID_TOP_VALUE         254
 #endif
 
+#define RPKT_LEN                sizeof(rPkt_t)
+
 // Message queue
-#define R_MSGQ_LEN      4
+#define R_MSGQ_LEN      4 // Length of q
 #define R_MSG_SET_PWR   1
 #define R_MSG_SET_CHNL  2
+#define R_MSG_SEND_KILL 4
 struct RMsg_t {
     uint8_t Cmd;
     uint8_t Value;
+    RMsg_t() : Cmd(0), Value(0) {}
+    RMsg_t(uint8_t ACmd) : Cmd(ACmd), Value(0) {}
+    RMsg_t(uint8_t ACmd, uint8_t AValue) : Cmd(ACmd), Value(AValue) {}
 } __attribute__((packed));
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
@@ -89,30 +146,35 @@ struct RMsg_t {
 
 #define RSSI_MIN        -75
 
+#define RSSI_FOR_MUTANT -91
+
 // Feel-Each-Other related
 #define CYCLE_CNT           4
-#define SLOT_CNT            36
-#define SLOT_DURATION_MS    2
+#define SLOT_CNT            30
+#define SLOT_DURATION_MS    5
 
 // Timings
 #define RX_T_MS                 180      // pkt duration at 10k is around 12 ms
 #define RX_SLEEP_T_MS           810
 #define MIN_SLEEP_DURATION_MS   18
+
+//#define MESH_DELAY_BETWEEN_RETRANSMIT_MS_MIN    11
+//#define MESH_DELAY_BETWEEN_RETRANSMIT_MS_MAX    36
+//#define MESH_RETRANSMIT_COUNT                   9
 #endif
 
-#if 1 // ============================= RX Table ================================
-#define RXTABLE_SZ              ID_MAX
+#if 0 // ============================= RX Table ================================
+#define RXTABLE_SZ              4
 #define RXT_PKT_REQUIRED        FALSE
 class RxTable_t {
 private:
-    uint32_t Cnt = 0;
-public:
 #if RXT_PKT_REQUIRED
     rPkt_t IBuf[RXTABLE_SZ];
 #else
     uint8_t IdBuf[RXTABLE_SZ];
 #endif
-
+    uint32_t Cnt = 0;
+public:
 #if RXT_PKT_REQUIRED
     void AddOrReplaceExistingPkt(rPkt_t &APkt) {
         if(Cnt >= RXTABLE_SZ) return;   // Buffer is full, nothing to do here
@@ -151,14 +213,9 @@ public:
         IdBuf[Cnt] = ID;
         Cnt++;
     }
+
 #endif
     uint32_t GetCount() { return Cnt; }
-    bool IDPresents(uint8_t ID) {
-        for(uint32_t i=0; i<Cnt; i++) {
-            if(IdBuf[i] == ID) return true;
-        }
-        return false;
-    }
     void Clear() { Cnt = 0; }
 
     void Print() {
@@ -174,13 +231,35 @@ public:
 };
 #endif
 
+class RxData_t {
+public:
+    int32_t Cnt;
+    int32_t Summ;
+    int8_t RssiThr;
+    uint8_t Damage;
+    bool ProcessAndCheck() {
+        bool Rslt = false;
+        if(Cnt >= 3L) {
+            Summ /= Cnt;
+            if(Summ >= RssiThr) Rslt = true;
+        }
+        Cnt = 0;
+        Summ = 0;
+        return Rslt;
+    }
+};
+
+#define LUSTRA_CNT      100
+#define LUSTRA_MIN_ID   1000
+#define LUSTRA_MAX_ID   (LUSTRA_MIN_ID + LUSTRA_CNT - 1)
+
 class rLevel1_t {
 public:
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
     rPkt_t PktRx, PktTx;
 //    bool MustTx = false;
     int8_t Rssi;
-    RxTable_t RxTable;
+    RxData_t RxData[LUSTRA_CNT];
     uint8_t Init();
     // Inner use
     void TryToSleep(uint32_t SleepDuration);

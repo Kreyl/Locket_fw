@@ -1,41 +1,13 @@
-/*
- * pill.cpp
- *
- *  Created on: Apr 17, 2013
- *      Author: g.kruglov
- */
-
 #include "pill_mgr.h"
 #include "board.h"
+#include "MsgQ.h"
+#include "kl_lib.h"
 
 #if PILL_ENABLED
 PillMgr_t PillMgr { &I2C_PILL, PILL_PWR_PIN };
 
-static THD_WORKING_AREA(waPillThread, 128);
-__noreturn
-static void PillThread(void *arg) {
-    chRegSetThreadName("Pill");
-    while(true) {
-        chThdSleepMilliseconds(PILL_CHECK_PERIOD_MS);
-        PillMgr.Check();
-        switch(PillMgr.State) {
-            case pillJustConnected:
-//                Uart.Printf("Pill: %d; %X\r", PillMgr.Pill.TypeInt32, PillMgr.Pill.AbilityMsk);
-                App.SignalEvt(EVT_PILL_CONNECTED);
-                break;
-            case pillJustDisconnected:
-                App.SignalEvt(EVT_PILL_DISCONNECTED);
-//                Uart.Printf("Pill Discon\r");
-                break;
-            case pillNoChange:
-                break;
-        }
-    } // while true
-}
-
 void PillMgr_t::Init() {
     PillPwr.Init();   // Power
-    chThdCreateStatic(waPillThread, sizeof(waPillThread), NORMALPRIO, (tfunc_t)PillThread, NULL);
 }
 
 void PillMgr_t::Standby() {
@@ -56,7 +28,7 @@ void PillMgr_t::Check() {
 //    Uart.Printf("PillChk\r");
     Resume();
     if(IsConnectedNow) {    // Check if disconnected
-        if(i2c->CheckAddress(PILL_I2C_ADDR) == OK) State = pillNoChange;
+        if(i2c->CheckAddress(PILL_I2C_ADDR) == retvOk) State = pillNoChange;
         else {
             IsConnectedNow = false;
             State = pillJustDisconnected;
@@ -64,13 +36,23 @@ void PillMgr_t::Check() {
     }
     else {  // Was not connected
         uint8_t Rslt = Read(PILL_DATA_ADDR, &Pill, PILL_SZ);
-        if(Rslt == OK) {
+        if(Rslt == retvOk) {
             IsConnectedNow = true;
             State = pillJustConnected;
         }
         else State = pillNoChange;
     }
     Standby();
+    switch(State) {
+        case pillJustConnected:
+            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPillConnected));
+            break;
+        case pillJustDisconnected:
+            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdPillDisconnected));
+            break;
+        case pillNoChange:
+            break;
+    }
 }
 
 uint8_t PillMgr_t::WritePill() {
@@ -94,7 +76,7 @@ uint8_t PillMgr_t::Write(uint8_t MemAddr, void *Ptr, uint32_t Length) {
         uint32_t Retries = 0;
         while(true) {
 //            Uart.Printf("Wr: try %u\r", Retries);
-            if(i2c->WriteWrite(PILL_I2C_ADDR, &MemAddr, 1, p8, ToWriteCnt) == OK) {
+            if(i2c->WriteWrite(PILL_I2C_ADDR, &MemAddr, 1, p8, ToWriteCnt) == retvOk) {
                 Length -= ToWriteCnt;
                 p8 += ToWriteCnt;
                 MemAddr += ToWriteCnt;
@@ -103,9 +85,9 @@ uint8_t PillMgr_t::Write(uint8_t MemAddr, void *Ptr, uint32_t Length) {
             else {
                 Retries++;
                 if(Retries > 4) {
-                    Uart.Printf("Timeout1\r");
+                    Printf("Timeout1\r");
                     Standby();
-                    return TIMEOUT;
+                    return retvTimeout;
                 }
                 chThdSleepMilliseconds(4);   // Allow memory to complete writing
             }
@@ -120,10 +102,10 @@ uint8_t PillMgr_t::Write(uint8_t MemAddr, void *Ptr, uint32_t Length) {
         if(Retries > 5) {
 //            Uart.Printf("Timeout2\r");
             Standby();
-            return TIMEOUT;
+            return retvTimeout;
         }
-    } while(i2c->CheckAddress(PILL_I2C_ADDR) != OK);
+    } while(i2c->CheckAddress(PILL_I2C_ADDR) != retvOk);
     Standby();
-    return OK;
+    return retvOk;
 }
 #endif // PILL_ENABLED
