@@ -6,7 +6,7 @@ Locket is the device for LARPs. It has stm32 microcontroller, 868 MHz radio, but
 Locket has several hardware (and firmware) versions (we call them new lockets, old lockets and ancient lockets). Master branch is for old lockets, for new lockets use master v.5
 Some branches are for [Atollic TrueStudio](https://atollic.com/truestudio/), others for Eclipse. See .project folder for this information.
 
-this branch is for LARP Hobbits Games in 2018. Locket vibrates and shines when it feels other locket or Silmarili. Model described [here](https://docs.google.com/document/d/1hhRPc9q9QcJdu3SiwUZ7G7G5YYQdM-kJmDzYsCzb4ik/). 
+this branch is for LARP Hobbits Games in 2018. Locket vibrates and shines when it feels other locket or Silmarili. Model described [here](https://docs.google.com/document/d/1hhRPc9q9QcJdu3SiwUZ7G7G5YYQdM-kJmDzYsCzb4ik/). For old lockets.
 
 Corresponding hardware project is here https://github.com/Kreyl/Locket_hw/.
 
