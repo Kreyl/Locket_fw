@@ -7,7 +7,9 @@ Locket has several hardware (and firmware) versions (we call them new lockets, o
 Some branches are for [Atollic TrueStudio](https://atollic.com/truestudio/), others for Eclipse. See .project folder for this information.
 Archived branches https://github.com/Kreyl/Locket_fw/tags
 
-Most popular branch: FeelEachOther - all lockets vibrate when feel other lockets near them
+Most popular branch: 
+* FeelEachOther - all lockets vibrate when feel other lockets near themж
+* 7colors — activated magic path (special leds with radio, corresponding branch here https://github.com/Kreyl/chibi-armlet/tree/7Colors
 
 Corresponding hardware project is here https://github.com/Kreyl/Locket_hw/.
 
