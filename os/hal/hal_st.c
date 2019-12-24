@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 */
 
 /**
- * @file    st.c
+ * @file    hal_st.c
  * @brief   ST Driver code.
  *
  * @addtogroup ST
@@ -62,7 +62,7 @@ void stInit(void) {
   st_lld_init();
 }
 
-
+#if (OSAL_ST_MODE == OSAL_ST_MODE_FREERUNNING) || defined(__DOXYGEN__)
 /**
  * @brief   Starts the alarm.
  * @note    Makes sure that no spurious alarms are triggered after
@@ -124,6 +124,7 @@ systime_t stGetAlarm(void) {
 
   return st_lld_get_alarm();
 }
+#endif /* OSAL_ST_MODE == OSAL_ST_MODE_FREERUNNING */
 
 #endif /* OSAL_ST_MODE != OSAL_ST_MODE_NONE */
 

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
@@ -18,17 +18,16 @@
 */
 
 /**
- * @file    chheap.h
- * @brief   Heaps macros and structures.
+ * @file    chalign.h
+ * @brief   Memory alignment macros and structures.
  *
- * @addtogroup heaps
+ * @addtogroup mem
+ * @details Memory Alignment services.
  * @{
  */
 
-#ifndef _CHHEAP_H_
-#define _CHHEAP_H_
-
-#if (CH_CFG_USE_HEAP == TRUE) || defined(__DOXYGEN__)
+#ifndef CHALIGN_H
+#define CHALIGN_H
 
 /*===========================================================================*/
 /* Module constants.                                                         */
@@ -42,54 +41,63 @@
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
-#if CH_CFG_USE_MEMCORE == FALSE
-#error "CH_CFG_USE_HEAP requires CH_CFG_USE_MEMCORE"
-#endif
-
-#if (CH_CFG_USE_MUTEXES == FALSE) && (CH_CFG_USE_SEMAPHORES == FALSE)
-#error "CH_CFG_USE_HEAP requires CH_CFG_USE_MUTEXES and/or CH_CFG_USE_SEMAPHORES"
-#endif
-
 /*===========================================================================*/
 /* Module data structures and types.                                         */
 /*===========================================================================*/
 
-/**
- * @brief   Type of a memory heap.
- */
-typedef struct memory_heap memory_heap_t;
-
-/**
- * @brief   Memory heap block header.
- */
-union heap_header {
-  stkalign_t align;
-  struct {
-    union {
-      union heap_header *next;      /**< @brief Next block in free list.    */
-      memory_heap_t     *heap;      /**< @brief Block owner heap.           */
-    } u;                            /**< @brief Overlapped fields.          */
-    size_t              size;       /**< @brief Size of the memory block.   */
-  } h;
-};
-
-/**
- * @brief   Structure describing a memory heap.
- */
-struct memory_heap {
-  memgetfunc_t          h_provider; /**< @brief Memory blocks provider for
-                                                this heap.                  */
-  union heap_header     h_free;     /**< @brief Free blocks list header.    */
-#if CH_CFG_USE_MUTEXES == TRUE
-  mutex_t               h_mtx;      /**< @brief Heap access mutex.          */
-#else
-  semaphore_t           h_sem;      /**< @brief Heap access semaphore.      */
-#endif
-};
-
 /*===========================================================================*/
 /* Module macros.                                                            */
 /*===========================================================================*/
+
+/**
+ * @name    Memory alignment support macros
+ */
+/**
+ * @brief   Alignment mask constant.
+ *
+ * @param[in] a         alignment, must be a power of two
+ */
+#define MEM_ALIGN_MASK(a)       ((size_t)(a) - 1U)
+
+/**
+ * @brief   Aligns to the previous aligned memory address.
+ *
+ * @param[in] p         variable to be aligned
+ * @param[in] a         alignment, must be a power of two
+ */
+#define MEM_ALIGN_PREV(p, a)                                                \
+  /*lint -save -e9033 [10.8] The cast is safe.*/                            \
+  ((size_t)(p) & ~MEM_ALIGN_MASK(a))                                        \
+  /*lint -restore*/
+
+/**
+ * @brief   Aligns to the next aligned memory address.
+ *
+ * @param[in] p         variable to be aligned
+ * @param[in] a         alignment, must be a power of two
+ */
+#define MEM_ALIGN_NEXT(p, a)                                                \
+  /*lint -save -e9033 [10.8] The cast is safe.*/                            \
+  MEM_ALIGN_PREV((size_t)(p) + MEM_ALIGN_MASK(a), (a))                      \
+  /*lint -restore*/
+
+/**
+ * @brief   Returns whatever a pointer or memory size is aligned.
+ *
+ * @param[in] p         variable to be aligned
+ * @param[in] a         alignment, must be a power of two
+ */
+#define MEM_IS_ALIGNED(p, a)    (((size_t)(p) & MEM_ALIGN_MASK(a)) == 0U)
+
+/**
+ * @brief   Returns whatever a constant is a valid alignment.
+ * @details Valid alignments are powers of two.
+ *
+ * @param[in] a         alignment to be checked, must be a constant
+ */
+#define MEM_IS_VALID_ALIGNMENT(a)                                           \
+  (((size_t)(a) != 0U) && (((size_t)(a) & ((size_t)(a) - 1U)) == 0U))
+/** @} */
 
 /*===========================================================================*/
 /* External declarations.                                                    */
@@ -98,11 +106,7 @@ struct memory_heap {
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void _heap_init(void);
-  void chHeapObjectInit(memory_heap_t *heapp, void *buf, size_t size);
-  void *chHeapAlloc(memory_heap_t *heapp, size_t size);
-  void chHeapFree(void *p);
-  size_t chHeapStatus(memory_heap_t *heapp, size_t *sizep);
+
 #ifdef __cplusplus
 }
 #endif
@@ -111,8 +115,6 @@ extern "C" {
 /* Module inline functions.                                                  */
 /*===========================================================================*/
 
-#endif /* CH_CFG_USE_HEAP == TRUE */
-
-#endif /* _CHHEAP_H_ */
+#endif /* CHALIGN_H */
 
 /** @} */

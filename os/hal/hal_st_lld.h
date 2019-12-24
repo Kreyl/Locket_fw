@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 */
 
 /**
- * @file    STM32/st_lld.h
+ * @file    TIMv1/hal_st_lld.h
  * @brief   ST Driver subsystem low level driver header.
  * @details This header is designed to be include-able without having to
  *          include other files from the HAL.
@@ -24,8 +24,8 @@
  * @{
  */
 
-#ifndef _ST_LLD_H_
-#define _ST_LLD_H_
+#ifndef HAL_ST_LLD_H
+#define HAL_ST_LLD_H
 
 #include "mcuconf.h"
 #include "stm32_registry.h"
@@ -65,47 +65,47 @@
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
-#if STM32_ST_USE_TIMER == 2
-#if !STM32_HAS_TIM2
-#error "TIM2 not present"
+#if !defined(STM32_HAS_TIM2)
+#define STM32_HAS_TIM2                      FALSE
 #endif
-#define STM32_ST_TIM                              STM32_TIM2
+
+#if !defined(STM32_HAS_TIM3)
+#define STM32_HAS_TIM3                      FALSE
+#endif
+
+#if !defined(STM32_HAS_TIM4)
+#define STM32_HAS_TIM4                      FALSE
+#endif
+
+#if !defined(STM32_HAS_TIM5)
+#define STM32_HAS_TIM5                      FALSE
+#endif
+
+#if !defined(STM32_HAS_TIM21)
+#define STM32_HAS_TIM21                     FALSE
+#endif
+
+#if !defined(STM32_HAS_TIM22)
+#define STM32_HAS_TIM22                     FALSE
+#endif
+
+#if STM32_ST_USE_TIMER == 2
+#define STM32_ST_TIM                        STM32_TIM2
 
 #elif STM32_ST_USE_TIMER == 3
-#if !STM32_HAS_TIM3
-#error "TIM3 not present"
-#endif
-#define STM32_ST_TIM                              STM32_TIM3
+#define STM32_ST_TIM                        STM32_TIM3
 
 #elif STM32_ST_USE_TIMER == 4
-#if !STM32_HAS_TIM4
-#error "TIM4 not present"
-#endif
-#define STM32_ST_TIM                              STM32_TIM4
+#define STM32_ST_TIM                        STM32_TIM4
 
 #elif STM32_ST_USE_TIMER == 5
-#if !STM32_HAS_TIM5
-#error "TIM5 not present"
-#endif
-#define STM32_ST_TIM                              STM32_TIM5
-
-#elif STM32_ST_USE_TIMER == 14
-#if !STM32_HAS_TIM14
-#error "TIM14 not present"
-#endif
-#define STM32_ST_TIM                              STM32_TIM14
+#define STM32_ST_TIM                        STM32_TIM5
 
 #elif STM32_ST_USE_TIMER == 21
-#if !STM32_HAS_TIM21
-#error "TIM21 not present"
-#endif
-#define STM32_ST_TIM                              STM32_TIM21
+#define STM32_ST_TIM                        STM32_TIM21
 
 #elif STM32_ST_USE_TIMER == 22
-#if !STM32_HAS_TIM22
-#error "TIM22 not present"
-#endif
-#define STM32_ST_TIM                              STM32_TIM22
+#define STM32_ST_TIM                        STM32_TIM22
 
 #else
 #error "STM32_ST_USE_TIMER specifies an unsupported timer"
@@ -211,6 +211,6 @@ static inline bool st_lld_is_alarm_active(void) {
   return (bool)((STM32_ST_TIM->DIER & STM32_TIM_DIER_CC1IE) != 0);
 }
 
-#endif /* _ST_LLD_H_ */
+#endif /* HAL_ST_LLD_H */
 
 /** @} */

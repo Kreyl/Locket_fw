@@ -1,48 +1,4 @@
-/*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-*/
-
-/**
- * @file    hal.c
- * @brief   HAL subsystem code.
- *
- * @addtogroup HAL
- * @{
- */
-
 #include "hal.h"
-
-/*===========================================================================*/
-/* Driver local definitions.                                                 */
-/*===========================================================================*/
-
-/*===========================================================================*/
-/* Driver exported variables.                                                */
-/*===========================================================================*/
-
-/*===========================================================================*/
-/* Driver local variables and types.                                         */
-/*===========================================================================*/
-
-/*===========================================================================*/
-/* Driver local functions.                                                   */
-/*===========================================================================*/
-
-/*===========================================================================*/
-/* Driver exported functions.                                                */
-/*===========================================================================*/
 
 /**
  * @brief   HAL initialization.
@@ -56,13 +12,17 @@
 void halInit(void) {
 
   /* Initializes the OS Abstraction Layer.*/
-  osalInit();   // @KL: nothing here
 
+  osalInit(); // nothing here
   /* Platform low level initializations.*/
   hal_lld_init();
 
 #if (HAL_USE_PAL == TRUE) || defined(__DOXYGEN__)
+#if defined(PAL_NEW_INIT)
+  palInit();
+#else
   palInit(&pal_default_config);
+#endif
 #endif
 #if (HAL_USE_ADC == TRUE) || defined(__DOXYGEN__)
   adcInit();
@@ -70,11 +30,11 @@ void halInit(void) {
 #if (HAL_USE_CAN == TRUE) || defined(__DOXYGEN__)
   canInit();
 #endif
+#if (HAL_USE_CRY == TRUE) || defined(__DOXYGEN__)
+  cryInit();
+#endif
 #if (HAL_USE_DAC == TRUE) || defined(__DOXYGEN__)
   dacInit();
-#endif
-#if (HAL_USE_EXT == TRUE) || defined(__DOXYGEN__)
-  extInit();
 #endif
 #if (HAL_USE_GPT == TRUE) || defined(__DOXYGEN__)
   gptInit();
@@ -103,6 +63,9 @@ void halInit(void) {
 #if (HAL_USE_SPI == TRUE) || defined(__DOXYGEN__)
   spiInit();
 #endif
+#if (HAL_USE_TRNG == TRUE) || defined(__DOXYGEN__)
+  trngInit();
+#endif
 #if (HAL_USE_UART == TRUE) || defined(__DOXYGEN__)
   uartInit();
 #endif
@@ -121,6 +84,9 @@ void halInit(void) {
 #if (HAL_USE_WDG == TRUE) || defined(__DOXYGEN__)
   wdgInit();
 #endif
+#if (HAL_USE_WSPI == TRUE) || defined(__DOXYGEN__)
+  wspiInit();
+#endif
 
   /* Community driver overlay initialization.*/
 #if defined(HAL_USE_COMMUNITY) || defined(__DOXYGEN__)
@@ -128,7 +94,6 @@ void halInit(void) {
   halCommunityInit();
 #endif
 #endif
-
 
 /*
  *  The ST driver is a special case, it is only initialized if the OSAL is

@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
@@ -25,30 +25,12 @@
  * @{
  */
 
-#ifndef _CHTYPES_H_
-#define _CHTYPES_H_
+#ifndef CHTYPES_H
+#define CHTYPES_H
 
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-
-/**
- * @name    Common constants
- */
-/**
- * @brief   Generic 'false' boolean constant.
- */
-#if !defined(FALSE) || defined(__DOXYGEN__)
-#define FALSE               0
-#endif
-
-/**
- * @brief   Generic 'true' boolean constant.
- */
-#if !defined(TRUE) || defined(__DOXYGEN__)
-#define TRUE                1
-#endif
-/** @} */
 
 /**
  * @name    Kernel types
@@ -74,14 +56,14 @@ typedef uint32_t            ucnt_t;         /**< Generic unsigned counter.  */
  * @brief   ROM constant modifier.
  * @note    It is set to use the "const" keyword in this port.
  */
-#define ROMCONST const
+#define ROMCONST            const
 
 /**
  * @brief   Makes functions not inlineable.
- * @note    If the compiler does not support such attribute then the
- *          realtime counter precision could be degraded.
+ * @note    If the compiler does not support such attribute then some
+ *          time-dependent services could be degraded.
  */
-#define NOINLINE __attribute__((noinline))
+#define NOINLINE           __attribute__((noinline))
 
 /**
  * @brief   Optimized thread function declaration macro.
@@ -91,8 +73,25 @@ typedef uint32_t            ucnt_t;         /**< Generic unsigned counter.  */
 /**
  * @brief   Packed variable specifier.
  */
-#define PACKED_VAR __attribute__((packed))
+#define PACKED_VAR         __attribute__((packed))
 
-#endif /* _CHTYPES_H_ */
+/**
+ * @brief   Memory alignment enforcement for variables.
+ */
+#define ALIGNED_VAR(n)      __attribute__((aligned(n)))
+
+/**
+ * @brief   Size of a pointer.
+ * @note    To be used where the sizeof operator cannot be used, preprocessor
+ *          expressions for example.
+ */
+#define SIZEOF_PTR          4
+
+/**
+ * @brief   True if alignment is low-high in current architecture.
+ */
+#define REVERSE_ORDER       1
+
+#endif /* CHTYPES_H */
 
 /** @} */

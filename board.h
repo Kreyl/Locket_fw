@@ -1,10 +1,8 @@
 #pragma once
 
-#include <inttypes.h>
-
 // ==== General ====
-#define BOARD_NAME          "Locket4_1"
-#define APP_NAME            "SomeTxSomeRx"
+#define BOARD_NAME          "Locket5"
+#define APP_NAME            "MagicPathTX"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
@@ -33,12 +31,14 @@
 
 // LED
 #define LED_EN_PIN      { GPIOB, 2, omPushPull }
-#define LED_R_PIN       { GPIOB, 1, TIM3, 4, invInverted, omOpenDrain, 255 }
-#define LED_G_PIN       { GPIOB, 0, TIM3, 3, invInverted, omOpenDrain, 255 }
-#define LED_B_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
+#define LED_G_PIN       { GPIOB, 1, TIM3, 4, invInverted, omOpenDrain, 255 }
+#define LED_B_PIN       { GPIOB, 0, TIM3, 3, invInverted, omOpenDrain, 255 }
+#define LED_R_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
 
-// Button
-#define BTN_PIN         GPIOA, 0, pudPullDown
+// Buttons
+#define BTN1_PIN        GPIOA, 0, pudPullDown
+#define BTN2_PIN        GPIOA, 1, pudPullDown
+#define BTN3_PIN        GPIOB, 8, pudPullDown
 
 // Vibro
 #define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, 99 }
@@ -48,13 +48,15 @@
 #define BEEPER_PIN      { GPIOB, 15, TIM11, 1, invNotInverted, omPushPull, BEEPER_TOP }
 
 // DIP switch
-#define DIP_SW_CNT      6
-#define DIP_SW1         { GPIOA, 15, pudPullUp }
-#define DIP_SW2         { GPIOC, 13, pudPullUp }
-#define DIP_SW3         { GPIOC, 14, pudPullUp }
-#define DIP_SW4         { GPIOA, 12, pudPullUp }
-#define DIP_SW5         { GPIOA, 11, pudPullUp }
-#define DIP_SW6         { GPIOA, 8,  pudPullUp }
+#define DIP_SW_CNT      8
+#define DIP_SW1         { GPIOB, 13, pudPullUp }
+#define DIP_SW2         { GPIOB, 14, pudPullUp }
+#define DIP_SW3         { GPIOA,  8, pudPullUp }
+#define DIP_SW4         { GPIOA, 11, pudPullUp }
+#define DIP_SW5         { GPIOA, 15, pudPullUp }
+#define DIP_SW6         { GPIOA, 12, pudPullUp }
+#define DIP_SW7         { GPIOC, 13, pudPullUp }
+#define DIP_SW8         { GPIOC, 14, pudPullUp }
 
 // I2C
 #if I2C1_ENABLED
@@ -67,7 +69,7 @@
 #define PILL_PWR_PIN    { GPIOB, 3, omPushPull }
 
 // Radio: SPI, PGpio, Sck, Miso, Mosi, Cs, Gdo0
-#define CC_Setup0       SPI1, GPIOA, 5,6,7, 4, 3
+#define CC_Setup0       SPI1, GPIOA, 5,6,7, GPIOA,4, GPIOA,3
 
 #endif // GPIO
 
@@ -77,11 +79,6 @@
 #if I2C1_ENABLED // ====================== I2C ================================
 #define I2C1_BAUDRATE   400000
 #define I2C_PILL        i2c1
-#endif
-
-#if 1 // ========================== USART ======================================
-#define CMD_UART        USART1
-#define UART_TXBUF_SZ   256
 #endif
 
 #if ADC_REQUIRED // ======================= Inner ADC ==========================
@@ -104,8 +101,10 @@
 #if 1 // =========================== DMA =======================================
 #define STM32_DMA_REQUIRED  TRUE
 // ==== Uart ====
-#define UART_DMA_TX     STM32_DMA1_STREAM4
-#define UART_DMA_RX     STM32_DMA1_STREAM5
+#define UART_DMA_TX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_LOW | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_M2P | STM32_DMA_CR_TCIE)
+#define UART_DMA_RX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_MEDIUM | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_P2M | STM32_DMA_CR_CIRC)
+#define UART_DMA_TX     STM32_DMA_STREAM_ID(1, 4)
+#define UART_DMA_RX     STM32_DMA_STREAM_ID(1, 5)
 #define UART_DMA_CHNL   0   // Dummy
 
 #if I2C1_ENABLED // ==== I2C ====
@@ -126,3 +125,16 @@
 #endif // ADC
 
 #endif // DMA
+
+#if 1 // ========================== USART ======================================
+#define PRINTF_FLOAT_EN FALSE
+#define UART_TXBUF_SZ   256
+#define UART_RXBUF_SZ   99
+
+#define UARTS_CNT       1
+
+#define CMD_UART_PARAMS \
+    USART1, UART_GPIO, UART_TX_PIN, UART_GPIO, UART_RX_PIN, \
+    UART_DMA_TX, UART_DMA_RX, UART_DMA_TX_MODE(UART_DMA_CHNL), UART_DMA_RX_MODE(UART_DMA_CHNL)
+
+#endif

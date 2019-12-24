@@ -1,10 +1,3 @@
-/*
- * SnsPins.h
- *
- *  Created on: 17 џэт. 2015 у.
- *      Author: Kreyl
- */
-
 /* ================ Documentation =================
  * There are several (may be 1) groups of sensors (say, buttons and USB connection).
  *
@@ -26,7 +19,9 @@ extern void ProcessButtons(PinSnsState_t *PState, uint32_t Len);
 
 const PinSns_t PinSns[] = {
         // Buttons
-        {BTN_PIN, ProcessButtons},
+        {BTN1_PIN, ProcessButtons},
+        {BTN2_PIN, ProcessButtons},
+        {BTN3_PIN, ProcessButtons},
 };
 #define PIN_SNS_CNT     countof(PinSns)
 

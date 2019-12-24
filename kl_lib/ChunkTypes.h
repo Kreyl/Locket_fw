@@ -35,6 +35,12 @@ struct LedRGBChunk_t {
     Color_t Color;
 } __attribute__((packed));
 
+// HSV LED chunk
+struct LedHSVChunk_t {
+    BaseChunk_Vars;
+    ColorHSV_t Color;
+} __attribute__((packed));
+
 // LED Smooth
 struct LedSmoothChunk_t {
     BaseChunk_Vars;
@@ -60,7 +66,7 @@ protected:
     EvtMsg_t IEvtMsg;
     virtual void ISwitchOff() = 0;
     virtual SequencerLoopTask_t ISetup() = 0;
-    void SetupDelay(uint32_t ms) { chVTSetI(&ITmr, MS2ST(ms), TmrKLCallback, this); }
+    void SetupDelay(uint32_t ms) { chVTSetI(&ITmr, TIME_MS2I(ms), TmrKLCallback, this); }
 
     // Process sequence
     void IIrqHandler() {
@@ -83,6 +89,7 @@ protected:
 
                 case csGoto:
                     IPCurrentChunk = IPStartChunk + IPCurrentChunk->ChunkToJumpTo;
+                    if(IEvtMsg.ID != evtIdNone) EvtQMain.SendNowOrExitI(IEvtMsg);
                     SetupDelay(1);
                     return;
                     break;
