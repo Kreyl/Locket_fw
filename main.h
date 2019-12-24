@@ -12,3 +12,6 @@
 #define ID_DEFAULT              ID_MIN
 extern int32_t ID;
 
+enum AppMode_t {appmNone, appmTx, appmRx};
+
+extern AppMode_t AppMode;

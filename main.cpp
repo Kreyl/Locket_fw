@@ -46,6 +46,8 @@ static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
 static int32_t TimeS;
 #endif
 
+AppMode_t AppMode = appmNone;
+
 int main(void) {
     // ==== Init Vcore & clock system ====
     SetupVCore(vcore1V5);
@@ -88,15 +90,17 @@ int main(void) {
     PillMgr.Init();
 #endif
 
-    ReadAndSetupMode();
     // ==== Time and timers ====
     TmrEverySecond.StartOrRestart();
 //    TmrRxTableCheck.StartOrRestart();
 
     // ==== Radio ====
-    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
-    else Led.StartOrRestart(lsqFailure);
-    chThdSleepMilliseconds(1008);
+    if(Radio.Init() != retvOk) {
+        Led.StartOrRestart(lsqFailure);
+        chThdSleepMilliseconds(1008);
+    }
+
+    ReadAndSetupMode();
 
     // Main cycle
     ITask();
@@ -119,9 +123,19 @@ void ITask() {
                 Led.StartOrRestart(lsqTx);
                 break;
 #endif
-            case evtIdRadioReply:
-                Led.StartOrRestart(lsqRx);
-                break;
+
+            case evtIdCheckRxTable: {
+                uint32_t Cnt = Radio.RxTable.GetCount();
+                Radio.RxTable.Clear();
+                if(Cnt) Led.StartOrRestart(lsqAppear);
+                else Led.StartOrRestart(lsqDisappear);
+//                switch(Cnt) {
+//                    case 0: Vibro.Stop(); break;
+//                    case 1: Vibro.StartOrContinue(vsqBrr); break;
+//                    case 2: Vibro.StartOrContinue(vsqBrrBrr); break;
+//                    default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
+//                }
+            } break;
 
             case evtIdShellCmd:
                 OnCmd((Shell_t*)Msg.Ptr);
@@ -158,13 +172,18 @@ void ReadAndSetupMode() {
     OldDipSettings = b;
     // Reset everything
 //    Vibro.Stop();
-//    Led.Stop();
+    Led.Stop();
+
     // Select mode
-//    if(b & 0b100000) {
-//        Led.StartOrRestart(lsqTx);
-    // Select mode
-    if(b & 0x80) Radio.PktTx.ID = 2; // White
-    else Radio.PktTx.ID = 1; // Green
+    if(b & 0b10000000) {
+        Led.StartOrRestart(lsqTx);
+        AppMode = appmTx;
+    }
+    else {
+        Led.StartOrRestart(lsqStart);
+        AppMode = appmRx;
+    }
+
     // Select power
     b &= 0b11111; // Remove high bits
     RMsg_t msg;

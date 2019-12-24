@@ -2,7 +2,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "MagicPathTX"
+#define APP_NAME            "SomeTxSomeRx"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
