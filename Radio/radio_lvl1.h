@@ -56,16 +56,16 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #endif
 
 #if 1 // =========================== Pkt_t =====================================
-struct rPkt_t {
-    uint32_t ID;
-    rPkt_t& operator = (const rPkt_t &Right) {
-        ID = Right.ID;
-        return *this;
-    }
+union rPkt_t {
+    uint32_t DWord32;
+    struct {
+        uint8_t R, G, B;
+    } __attribute__ ((__packed__));
+    bool operator == (const rPkt_t &APkt) { return (DWord32 == APkt.DWord32); }
+    rPkt_t& operator = (const rPkt_t &Right) { DWord32 = Right.DWord32; return *this; }
 } __attribute__ ((__packed__));
-#endif
-
 #define RPKT_LEN    sizeof(rPkt_t)
+#endif
 
 // Message queue
 #define R_MSGQ_LEN      4
@@ -169,7 +169,7 @@ class rLevel1_t {
 public:
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
     rPkt_t PktRx, PktTx;
-//    bool MustTx = false;
+    bool MustTx = false;
 //    RxTable_t RxTable;
     uint8_t Init();
     // Inner use

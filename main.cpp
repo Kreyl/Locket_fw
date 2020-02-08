@@ -25,12 +25,16 @@ static void ReadAndSetupMode();
 
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
+#define EE_ADDR_CLR             4
 
 int32_t ID;
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
 static uint8_t ISetID(int32_t NewID);
 void ReadIDfromEE();
+
+void WriteClrToEE();
+void ReadClrFromEE();
 
 // ==== Periphery ====
 Vibro_t Vibro {VIBRO_SETUP};
@@ -45,13 +49,12 @@ static LedRGBChunk_t lsqCurrent[] = {
         {csEnd},
 };
 
-static const Color_t ClrTable[7] = {
-        clWhite, clGreen, clRed, clBlue, clYellow, clMagenta, clCyan
-};
+static ColorHSV_t IClr{120, 100, 100};
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
 //static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
+static TmrKL_t TmrSave {TIME_MS2I(2007), evtIdTimeToSave, tktOneShot};
 static int32_t TimeS;
 #endif
 
@@ -79,6 +82,7 @@ int main(void) {
 //    RandomSeed(GetUniqID3());   // Init random algorythm with uniq ID
 
     Led.Init();
+    ReadClrFromEE();
 //    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
 //    Vibro.Init();
 //    Vibro.StartOrRestart(vsqBrrBrr);
@@ -102,9 +106,11 @@ int main(void) {
 //    TmrRxTableCheck.StartOrRestart();
 
     // ==== Radio ====
-    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
-    else Led.StartOrRestart(lsqFailure);
-    chThdSleepMilliseconds(1008);
+    if(Radio.Init() != retvOk) {
+        Led.StartOrRestart(lsqFailure);
+        chThdSleepMilliseconds(1008);
+    }
+    Led.SetColor(IClr.ToRGB());
 
     // Main cycle
     ITask();
@@ -112,6 +118,7 @@ int main(void) {
 
 __noreturn
 void ITask() {
+    bool BlinkFlag = true;
     while(true) {
         EvtMsg_t Msg = EvtQMain.Fetch(TIME_INFINITE);
         switch(Msg.ID) {
@@ -122,13 +129,45 @@ void ITask() {
 
 #if BUTTONS_ENABLED
             case evtIdButtons:
-                Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
-                Radio.MustTx = true;
-                Led.StartOrRestart(lsqTx);
+//                Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
+                IClr.ToRGB(&Radio.PktTx.R, &Radio.PktTx.G, &Radio.PktTx.B);
+                switch(Msg.BtnEvtInfo.BtnID) {
+                    case 0:
+                        if(Msg.BtnEvtInfo.Type == beShortPress or Msg.BtnEvtInfo.Type == beRepeat) {
+                            if(IClr.H == 0) IClr.H = 360;
+                            else IClr.H--;
+                            Led.SetColor(IClr.ToRGB());
+                        }
+                        else TmrSave.StartOrRestart();
+                        break;
+                    case 1:
+                        if(Msg.BtnEvtInfo.Type == beShortPress or Msg.BtnEvtInfo.Type == beRepeat) {
+                            Radio.MustTx = true;
+                            if(BlinkFlag) Led.SetColor(IClr.ToRGB());
+                            else Led.SetColor(clBlack);
+                            BlinkFlag = !BlinkFlag;
+                        }
+                        else {
+                            Radio.MustTx = false;
+                            Led.SetColor(IClr.ToRGB());
+                        }
+                        break;
+                    case 2:
+                        if(Msg.BtnEvtInfo.Type == beShortPress or Msg.BtnEvtInfo.Type == beRepeat) {
+                            if(IClr.H == 360) IClr.H = 0;
+                            else IClr.H++;
+                            Led.SetColor(IClr.ToRGB());
+                        }
+                        else TmrSave.StartOrRestart();
+                        break;
+                } // switch
                 break;
 #endif
-            case evtIdRadioReply:
-                Led.StartOrRestart(lsqRx);
+            case evtIdTimeToSave:
+                WriteClrToEE();
+                Led.SetColor(clBlack);
+                chThdSleepMilliseconds(81);
+                Led.SetColor(IClr.ToRGB());
                 break;
 
             case evtIdShellCmd:
@@ -164,10 +203,6 @@ void ReadAndSetupMode() {
     // ==== Something has changed ====
     Printf("Dip: 0x%02X\r", b);
     OldDipSettings = b;
-    // Select Color ID
-    Radio.PktTx.ID = ((b >> 4) > 6)? 0 : (b >> 4);
-    lsqCurrent[0].Color = ClrTable[Radio.PktTx.ID];
-    Led.StartOrRestart(lsqCurrent);
 
     // Select power
     b &= 0b1111; // Remove high bits
@@ -265,6 +300,20 @@ uint8_t ISetID(int32_t NewID) {
     }
 }
 #endif
+
+void ReadClrFromEE() {
+    IClr.DWord32 = EE::Read32(EE_ADDR_CLR);
+    IClr.S = 100;
+    IClr.V = 100;
+    if(IClr.H > 360) IClr.H = 0;
+}
+
+void WriteClrToEE() {
+    uint8_t rslt = EE::Write32(EE_ADDR_CLR, IClr.DWord32);
+    if(rslt != retvOk) {
+        Printf("EE error: %u\r", rslt);
+    }
+}
 
 // ====== DIP switch ======
 uint8_t GetDipSwitch() {

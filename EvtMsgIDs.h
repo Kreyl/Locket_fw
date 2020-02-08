@@ -20,5 +20,7 @@ enum EvtMsgId_t {
     evtIdRadioCmd,
     evtIdCheckRxTable,
 
+    evtIdTimeToSave,
+
     evtIdRadioReply,
 };
