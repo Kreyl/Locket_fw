@@ -56,10 +56,15 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #endif
 
 #if 1 // =========================== Pkt_t =====================================
-struct rPkt_t {
-    uint32_t ID;
+union rPkt_t {
+    uint32_t DW32;
+    struct {
+        uint16_t ID;
+        uint8_t Type;
+        int8_t Rssi; // Will be set after RX. Trnasmitting is useless, but who cares.
+    } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {
-        ID = Right.ID;
+        DW32 = Right.DW32;
         return *this;
     }
 } __attribute__ ((__packed__));
@@ -84,7 +89,7 @@ struct RMsg_t {
 #define RCHNL_MAX       30
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
 
-#define RSSI_MIN        -75
+#define RSSI_MIN        -111
 
 // Feel-Each-Other related
 #define CYCLE_CNT           4
@@ -98,8 +103,8 @@ struct RMsg_t {
 #endif
 
 #if 1 // ============================= RX Table ================================
-#define RXTABLE_SZ              4
-#define RXT_PKT_REQUIRED        FALSE
+#define RXTABLE_SZ              16
+#define RXT_PKT_REQUIRED        TRUE
 class RxTable_t {
 private:
 #if RXT_PKT_REQUIRED
@@ -107,29 +112,31 @@ private:
 #else
     uint8_t IdBuf[RXTABLE_SZ];
 #endif
-    uint32_t Cnt = 0;
 public:
+    uint32_t Cnt = 0;
 #if RXT_PKT_REQUIRED
     void AddOrReplaceExistingPkt(rPkt_t &APkt) {
-        if(Cnt >= RXTABLE_SZ) return;   // Buffer is full, nothing to do here
         for(uint32_t i=0; i<Cnt; i++) {
             if(IBuf[i].ID == APkt.ID) {
                 IBuf[i] = APkt; // Replace with newer pkt
                 return;
             }
         }
-        IBuf[Cnt] = APkt;
-        Cnt++;
+        // Same ID not found
+        if(Cnt < RXTABLE_SZ) {
+            IBuf[Cnt] = APkt;
+            Cnt++;
+        }
     }
 
-    uint8_t GetPktByID(uint8_t ID, rPkt_t **ptr) {
+    uint8_t GetPktByID(uint8_t ID, rPkt_t *ptr) {
         for(uint32_t i=0; i<Cnt; i++) {
             if(IBuf[i].ID == ID) {
-                *ptr = &IBuf[i];
-                return OK;
+                *ptr = IBuf[i];
+                return retvOk;
             }
         }
-        return FAILURE;
+        return retvFail;
     }
 
     bool IDPresents(uint8_t ID) {
@@ -137,6 +144,10 @@ public:
             if(IBuf[i].ID == ID) return true;
         }
         return false;
+    }
+
+    rPkt_t& operator[](const int32_t Indx) {
+        return IBuf[Indx];
     }
 #else
     void AddId(uint8_t ID) {
@@ -149,14 +160,12 @@ public:
     }
 
 #endif
-    uint32_t GetCount() { return Cnt; }
-    void Clear() { Cnt = 0; }
 
     void Print() {
         Printf("RxTable Cnt: %u\r", Cnt);
         for(uint32_t i=0; i<Cnt; i++) {
 #if RXT_PKT_REQUIRED
-            Printf("ID: %u; State: %u\r", IBuf[i].ID, IBuf[i].State);
+//            Printf("ID: %u; State: %u\r", IBuf[i].ID, IBuf[i].State);
 #else
             Printf("ID: %u\r", IdBuf[i]);
 #endif
@@ -166,11 +175,28 @@ public:
 #endif
 
 class rLevel1_t {
+private:
+    RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
+    rPkt_t PktRx, PktTx;
 public:
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
-    rPkt_t PktRx, PktTx;
-//    bool MustTx = false;
-//    RxTable_t RxTable;
+    bool MustTx = true;
+    RxTable_t& GetRxTable() {
+        chSysLock();
+        RxTable_t* RxTableR;
+        // Switch tables
+        if(RxTableW == &RxTable1) {
+            RxTableW = &RxTable2;
+            RxTableR = &RxTable1;
+        }
+        else {
+            RxTableW = &RxTable1;
+            RxTableR = &RxTable2;
+        }
+        RxTableW->Cnt = 0; // Clear it
+        chSysUnlock();
+        return *RxTableR;
+    }
     uint8_t Init();
     // Inner use
     void TryToSleep(uint32_t SleepDuration);

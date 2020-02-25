@@ -15,10 +15,11 @@ enum EvtMsgId_t {
     evtIdEverySecond,
     evtIdAdcRslt,
 
+    evtIdLedSeqDone,
+    evtIdVibroSeqDone,
+
     // Not eternal
     evtIdButtons,
     evtIdRadioCmd,
     evtIdCheckRxTable,
-
-    evtIdRadioReply,
 };

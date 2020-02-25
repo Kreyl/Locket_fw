@@ -6,12 +6,15 @@
 #include "radio_lvl1.h"
 #include "kl_i2c.h"
 #include "kl_lib.h"
+#include "kl_buf.h"
 #include "pill.h"
 #include "pill_mgr.h"
 #include "MsgQ.h"
 #include "main.h"
 #include "SimpleSensors.h"
 #include "buttons.h"
+
+#include <vector>
 
 #if 1 // ======================== Variables and defines ========================
 // Forever
@@ -44,12 +47,295 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
 //static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
 static int32_t TimeS;
+void CheckRxTable();
+#endif
+
+#if 1 // ========================== Logic ======================================
+#define DISTANCE_dBm        -99  // Replace with pseudo-distance
+
+enum VibroType_t { vbrNone, vbrOneTwoMany };
+
+// How to react
+struct Reaction_t {
+    std::vector<LedRGBChunk_t> Seq;
+    VibroType_t VibroType = vbrNone;
+    bool MustStopTx = false;
+};
+
+// Locket settings
+struct ReactItem_t {
+    int32_t Source;     // Type to react to
+    Reaction_t *PReact; // What to do
+    int32_t Distance;   // Min dist when react
+};
+
+struct LocketType_t {
+    std::vector<ReactItem_t> React;
+};
+
+// Indication command with all required data
+struct IndicationCmd_t {
+    Reaction_t *PReact; // What to do
+    int32_t CountOfNeighbors;
+
+    IndicationCmd_t& operator = (const IndicationCmd_t &Right) {
+        PReact = Right.PReact;
+        CountOfNeighbors = Right.CountOfNeighbors;
+        return *this;
+    }
+    IndicationCmd_t() : PReact(nullptr), CountOfNeighbors(0) {}
+    IndicationCmd_t(Reaction_t* AReact, int32_t ACnt) : PReact(AReact), CountOfNeighbors(ACnt) {}
+};
+
+std::vector<Reaction_t> Rctns;
+std::vector<LocketType_t> LcktType;
+std::vector<int32_t> CountOfTypes;
+
+uint32_t SelfType = 0; // set by dip
+
+CircBuf_t<IndicationCmd_t, 18> IndicationQ;
+
+void DoIndication() {
+    bool MustTx = true;
+    IndicationCmd_t Cmd;
+    if(IndicationQ.Get(&Cmd) == retvOk) {
+        // LED
+        std::vector<LedRGBChunk_t> *Seq = &Cmd.PReact->Seq;
+        if(!Seq->empty()) {
+            Led.StartOrRestart(Seq->data());
+        }
+        // Vibro
+        if(Cmd.PReact->VibroType == vbrOneTwoMany) {
+            if     (Cmd.CountOfNeighbors == 1) Vibro.StartOrRestart(vsqBrr);
+            else if(Cmd.CountOfNeighbors == 2) Vibro.StartOrRestart(vsqBrrBrr);
+            else if(Cmd.CountOfNeighbors >  2) Vibro.StartOrRestart(vsqBrrBrrBrr);
+        }
+        // Disable Radio TX if needed
+        if(Cmd.PReact->MustStopTx == false) MustTx = false;
+    } // if get cmd
+    Radio.MustTx = MustTx; // start or stop transmitting
+}
+
+void ReadConfig() {
+    CountOfTypes.resize(6); // Locket types
+#if 1 // Setup reactions
+    Rctns.resize(6);
+    std::vector<LedRGBChunk_t> *Seq;
+    // Indx 0, Yellow
+    Seq = &Rctns[0].Seq;
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 255, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 255, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csGoto, 0));
+    Rctns[0].VibroType = vbrOneTwoMany;
+
+    // Indx 1, White
+    Seq = &Rctns[1].Seq;
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 255, 255}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 255, 255}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csGoto, 0));
+    Rctns[1].VibroType = vbrOneTwoMany;
+
+    // Indx 2, Isalamiri
+    Rctns[2].MustStopTx = true;
+
+    // Indx 3, Red
+    Seq = &Rctns[3].Seq;
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csGoto, 0));
+    Rctns[3].VibroType = vbrOneTwoMany;
+
+    // Indx 4, Blue
+    Seq = &Rctns[4].Seq;
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 255}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 255}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csGoto, 0));
+    Rctns[4].VibroType = vbrOneTwoMany;
+
+    // Indx 5, TwoColors
+    Seq = &Rctns[5].Seq;
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 255}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csGoto, 0));
+    Rctns[5].VibroType = vbrOneTwoMany;
+#endif
+
+    // Setup locket types
+    LcktType.resize(6);
+    LocketType_t *Lct;
+    ReactItem_t *ReactItem;
+    // Setup locket types
+    LcktType[0].React.resize(0); // YellowTransmit
+    LcktType[1].React.resize(0); // WhiteTransmit
+    LcktType[2].React.resize(0); // IsalamiriTransmit
+
+    // === BlueTransmit ===
+    Lct = &LcktType[3];
+    Lct->React.resize(6);
+    ReactItem = &Lct->React[0];
+    ReactItem->Source = 0;         // YellowTransmit
+    ReactItem->PReact = &Rctns[0]; // Yellow
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[1];
+    ReactItem->Source = 1;         // WhiteTransmit
+    ReactItem->PReact = &Rctns[1]; // White
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[2];
+    ReactItem->Source = 2;         // IsalamiriTransmit
+    ReactItem->PReact = &Rctns[2]; // Isalamiri
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[3];
+    ReactItem->Source = 3;         // BlueTransmit
+    ReactItem->PReact = &Rctns[4]; // Blue
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[4];
+    ReactItem->Source = 4;         // RedTransmit
+    ReactItem->PReact = &Rctns[3]; // Red
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[5];
+    ReactItem->Source = 5;         // TwoColorsTransmit
+    ReactItem->PReact = &Rctns[5]; // TwoColors
+    ReactItem->Distance = 1;
+
+    // === RedTransmit ===
+    Lct = &LcktType[4];
+    Lct->React.resize(6);
+    ReactItem = &Lct->React[0];
+    ReactItem->Source = 0;         // YellowTransmit
+    ReactItem->PReact = &Rctns[0]; // Yellow
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[1];
+    ReactItem->Source = 1;         // WhiteTransmit
+    ReactItem->PReact = &Rctns[1]; // White
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[2];
+    ReactItem->Source = 2;         // IsalamiriTransmit
+    ReactItem->PReact = &Rctns[2]; // Isalamiri
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[3];
+    ReactItem->Source = 3;         // BlueTransmit
+    ReactItem->PReact = &Rctns[4]; // Blue
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[4];
+    ReactItem->Source = 4;         // RedTransmit
+    ReactItem->PReact = &Rctns[3]; // Red
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[5];
+    ReactItem->Source = 5;         // TwoColorsTransmit
+    ReactItem->PReact = &Rctns[5]; // TwoColors
+    ReactItem->Distance = 1;
+
+    // === TwoColorsTransmit ===
+    Lct = &LcktType[5];
+    Lct->React.resize(6);
+    ReactItem = &Lct->React[0];
+    ReactItem->Source = 0;         // YellowTransmit
+    ReactItem->PReact = &Rctns[0]; // Yellow
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[1];
+    ReactItem->Source = 1;         // WhiteTransmit
+    ReactItem->PReact = &Rctns[1]; // White
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[2];
+    ReactItem->Source = 2;         // IsalamiriTransmit
+    ReactItem->PReact = &Rctns[2]; // Isalamiri
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[3];
+    ReactItem->Source = 3;         // BlueTransmit
+    ReactItem->PReact = &Rctns[4]; // Blue
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[4];
+    ReactItem->Source = 4;         // RedTransmit
+    ReactItem->PReact = &Rctns[3]; // Red
+    ReactItem->Distance = 1;
+
+    ReactItem = &Lct->React[5];
+    ReactItem->Source = 5;         // TwoColorsTransmit
+    ReactItem->PReact = &Rctns[5]; // TwoColors
+    ReactItem->Distance = 1;
+}
+
+void CheckRxTable() {
+    std::vector<ReactItem_t>& SelfReact = LcktType[SelfType].React;
+    // Is it needed? Do we have reaction?
+    if(SelfReact.empty()) return;
+    // Analyze table: get count of every type near
+    for(int32_t &Cnt : CountOfTypes) Cnt = 0;   // Reset count
+    int32_t MaxTypeID = CountOfTypes.size() - 1;
+    RxTable_t Tbl = Radio.GetRxTable();
+    for(uint32_t i=0; i<Tbl.Cnt; i++) {
+        rPkt_t Pkt = Tbl[i];
+        if(Pkt.Type <= MaxTypeID) { // Type is ok
+            if(Pkt.Rssi > DISTANCE_dBm) {
+                CountOfTypes[Pkt.Type]++;
+            }
+        }
+    }
+    // Put reactions to queue
+    IndicationQ.Flush();
+    for(int32_t TypeRcvd=0; TypeRcvd<MaxTypeID; TypeRcvd++) {
+        int32_t N = CountOfTypes[TypeRcvd];
+        if(N) { // Here they are! Do we need to react?
+            for(ReactItem_t& ritem : SelfReact) {
+                if(ritem.Source == TypeRcvd) { // Yes, we must react
+                    IndicationQ.PutIfNotOverflow(IndicationCmd_t(ritem.PReact, N));
+                    break;
+                }
+            } // for reactitem
+        } // if N
+    } // for
+    DoIndication();
+}
 #endif
 
 int main(void) {
     // ==== Init Vcore & clock system ====
     SetupVCore(vcore1V5);
-//    Clk.SetMSI4MHz();
+    Clk.SetMSI4MHz();
     Clk.UpdateFreqValues();
 
     // === Init OS ===
@@ -70,8 +356,9 @@ int main(void) {
 //    RandomSeed(GetUniqID3());   // Init random algorythm with uniq ID
 
     Led.Init();
-//    Led.SetupSeqEndEvt(chThdGetSelfX(), EVT_LED_SEQ_END);
-//    Vibro.Init();
+    Led.SetupSeqEndEvt(evtIdLedSeqDone);
+    Vibro.Init();
+    Vibro.SetupSeqEndEvt(evtIdVibroSeqDone);
 //    Vibro.StartOrRestart(vsqBrrBrr);
 #if BEEPER_ENABLED // === Beeper ===
 //    Beeper.Init();
@@ -89,6 +376,8 @@ int main(void) {
 #endif
 
     ReadAndSetupMode();
+    ReadConfig();
+
     // ==== Time and timers ====
     TmrEverySecond.StartOrRestart();
 //    TmrRxTableCheck.StartOrRestart();
@@ -110,6 +399,7 @@ void ITask() {
             case evtIdEverySecond:
                 TimeS++;
                 ReadAndSetupMode();
+                if(TimeS % 4 == 0 and IndicationQ.IsEmpty()) CheckRxTable();
                 break;
 
 #if BUTTONS_ENABLED
@@ -119,8 +409,12 @@ void ITask() {
                 Led.StartOrRestart(lsqTx);
                 break;
 #endif
-            case evtIdRadioReply:
-                Led.StartOrRestart(lsqRx);
+
+            case evtIdLedSeqDone:
+                if(Vibro.IsIdle()) DoIndication(); // proceed with indication if current completed
+                break;
+            case evtIdVibroSeqDone:
+                if(Led.IsIdle()) DoIndication(); // proceed with indication if current completed
                 break;
 
             case evtIdShellCmd:
@@ -162,9 +456,8 @@ void ReadAndSetupMode() {
     // Select mode
 //    if(b & 0b100000) {
 //        Led.StartOrRestart(lsqTx);
-    // Select mode
-    if(b & 0x80) Radio.PktTx.ID = 2; // White
-    else Radio.PktTx.ID = 1; // Green
+    // Select self type
+
     // Select power
     b &= 0b11111; // Remove high bits
     RMsg_t msg;
