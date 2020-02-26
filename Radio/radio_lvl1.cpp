@@ -89,9 +89,7 @@ void rLevel1_t::TryToReceive(uint32_t RxDuration) {
         uint8_t RxRslt = CC.Receive_st(RxDur_st, &PktRx, RPKT_LEN, &PktRx.Rssi);
         if(RxRslt == retvOk) {
             Printf("Rssi=%d\r", PktRx.Rssi);
-            if(PktRx.Rssi > RSSI_MIN) {
-                RxTableW->AddOrReplaceExistingPkt(PktRx);
-            }
+            RxTableW->AddOrReplaceExistingPkt(PktRx);
         }
         // Check if repeat or get out
         systime_t Elapsed_st = chVTTimeElapsedSinceX(TimeStart_st);

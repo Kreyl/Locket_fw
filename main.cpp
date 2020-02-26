@@ -70,6 +70,7 @@ struct ReactItem_t {
 };
 
 struct LocketType_t {
+    Reaction_t *ReactOnPwrOn;
     std::vector<ReactItem_t> React;
 };
 
@@ -95,6 +96,13 @@ uint32_t SelfType = 0; // set by dip
 
 CircBuf_t<IndicationCmd_t, 18> IndicationQ;
 
+void ShowSelfType() {
+    std::vector<LedRGBChunk_t> *Seq = &LcktType[SelfType].ReactOnPwrOn->Seq;
+    if(!Seq->empty()) {
+        Led.StartOrRestart(Seq->data());
+    }
+}
+
 void DoIndication() {
     bool MustTx = true;
     IndicationCmd_t Cmd;
@@ -116,35 +124,39 @@ void DoIndication() {
     Radio.MustTx = MustTx; // start or stop transmitting
 }
 
+#define LED_DELAY   504
+
 void ReadConfig() {
     CountOfTypes.resize(6); // Locket types
 #if 1 // Setup reactions
-    Rctns.resize(6);
+    Rctns.resize(7);
     std::vector<LedRGBChunk_t> *Seq;
     // Indx 0, Yellow
     Seq = &Rctns[0].Seq;
+    Seq->clear();
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 255, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 255, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
-    Seq->push_back(LedRGBChunk_t(csGoto, 0));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
+    Seq->push_back(LedRGBChunk_t(csEnd));
     Rctns[0].VibroType = vbrOneTwoMany;
 
     // Indx 1, White
     Seq = &Rctns[1].Seq;
+    Seq->clear();
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 255, 255}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 255, 255}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
-    Seq->push_back(LedRGBChunk_t(csGoto, 0));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
+    Seq->push_back(LedRGBChunk_t(csEnd));
     Rctns[1].VibroType = vbrOneTwoMany;
 
     // Indx 2, Isalamiri
@@ -152,55 +164,80 @@ void ReadConfig() {
 
     // Indx 3, Red
     Seq = &Rctns[3].Seq;
+    Seq->clear();
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
-    Seq->push_back(LedRGBChunk_t(csGoto, 0));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
+    Seq->push_back(LedRGBChunk_t(csEnd));
     Rctns[3].VibroType = vbrOneTwoMany;
 
     // Indx 4, Blue
     Seq = &Rctns[4].Seq;
+    Seq->clear();
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 255}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 255}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
-    Seq->push_back(LedRGBChunk_t(csGoto, 0));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
+    Seq->push_back(LedRGBChunk_t(csEnd));
     Rctns[4].VibroType = vbrOneTwoMany;
 
     // Indx 5, TwoColors
     Seq = &Rctns[5].Seq;
+    Seq->clear();
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 255}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {255, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
     Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
-    Seq->push_back(LedRGBChunk_t(csWait, 1000));
-    Seq->push_back(LedRGBChunk_t(csGoto, 0));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
+    Seq->push_back(LedRGBChunk_t(csEnd));
     Rctns[5].VibroType = vbrOneTwoMany;
+
+    // Indx 6, IsalamiriOn
+    Seq = &Rctns[6].Seq;
+    Seq->clear();
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 255, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 255, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
+    Seq->push_back(LedRGBChunk_t(csSetup, 0, {0, 0, 0}));
+    Seq->push_back(LedRGBChunk_t(csWait, LED_DELAY));
+    Seq->push_back(LedRGBChunk_t(csEnd));
 #endif
 
     // Setup locket types
     LcktType.resize(6);
     LocketType_t *Lct;
     ReactItem_t *ReactItem;
-    // Setup locket types
-    LcktType[0].React.resize(0); // YellowTransmit
-    LcktType[1].React.resize(0); // WhiteTransmit
-    LcktType[2].React.resize(0); // IsalamiriTransmit
+    // ==== Setup locket types ====
+    // YellowTransmit
+    LcktType[0].ReactOnPwrOn = &Rctns[0]; // Yellow
+    LcktType[0].React.resize(0);
+
+    // WhiteTransmit
+    LcktType[1].ReactOnPwrOn = &Rctns[1]; // White
+    LcktType[1].React.resize(0);
+
+    // IsalamiriTransmit
+    LcktType[2].ReactOnPwrOn = &Rctns[6]; // IsalamiriOn
+    LcktType[2].React.resize(0);
 
     // === BlueTransmit ===
     Lct = &LcktType[3];
+    Lct->ReactOnPwrOn = &Rctns[4]; // Blue
     Lct->React.resize(6);
     ReactItem = &Lct->React[0];
     ReactItem->Source = 0;         // YellowTransmit
@@ -234,6 +271,7 @@ void ReadConfig() {
 
     // === RedTransmit ===
     Lct = &LcktType[4];
+    Lct->ReactOnPwrOn = &Rctns[3]; // Red
     Lct->React.resize(6);
     ReactItem = &Lct->React[0];
     ReactItem->Source = 0;         // YellowTransmit
@@ -267,6 +305,7 @@ void ReadConfig() {
 
     // === TwoColorsTransmit ===
     Lct = &LcktType[5];
+    Lct->ReactOnPwrOn = &Rctns[5]; // TwoColors
     Lct->React.resize(6);
     ReactItem = &Lct->React[0];
     ReactItem->Source = 0;         // YellowTransmit
@@ -307,16 +346,17 @@ void CheckRxTable() {
     for(int32_t &Cnt : CountOfTypes) Cnt = 0;   // Reset count
     int32_t MaxTypeID = CountOfTypes.size() - 1;
     RxTable_t Tbl = Radio.GetRxTable();
-    for(uint32_t i=0; i<Tbl.Cnt; i++) {
+    for(uint32_t i=0; i<Tbl.Cnt; i++) { // i is just number of pkt in table, no relation with type
         rPkt_t Pkt = Tbl[i];
         if(Pkt.Type <= MaxTypeID) { // Type is ok
-            if(Pkt.Rssi > DISTANCE_dBm) {
+            // Check if Distance is ok
+//            if(Pkt.Rssi > SelfReact[Pkt.Type].Distance) { // TODO
+            if(Pkt.Rssi > -75) {
                 CountOfTypes[Pkt.Type]++;
             }
         }
     }
     // Put reactions to queue
-    IndicationQ.Flush();
     for(int32_t TypeRcvd=0; TypeRcvd<MaxTypeID; TypeRcvd++) {
         int32_t N = CountOfTypes[TypeRcvd];
         if(N) { // Here they are! Do we need to react?
@@ -328,7 +368,6 @@ void CheckRxTable() {
             } // for reactitem
         } // if N
     } // for
-    DoIndication();
 }
 #endif
 
@@ -375,17 +414,15 @@ int main(void) {
     PillMgr.Init();
 #endif
 
-    ReadAndSetupMode();
-    ReadConfig();
-
-    // ==== Time and timers ====
-    TmrEverySecond.StartOrRestart();
-//    TmrRxTableCheck.StartOrRestart();
-
     // ==== Radio ====
-    if(Radio.Init() == retvOk) Led.StartOrRestart(lsqStart);
-    else Led.StartOrRestart(lsqFailure);
-    chThdSleepMilliseconds(1008);
+    if(Radio.Init() != retvOk) {
+        Led.StartOrRestart(lsqFailure);
+        chThdSleepMilliseconds(1008);
+    }
+
+    ReadConfig();
+    ReadAndSetupMode();
+    TmrEverySecond.StartOrRestart();
 
     // Main cycle
     ITask();
@@ -400,6 +437,8 @@ void ITask() {
                 TimeS++;
                 ReadAndSetupMode();
                 if(TimeS % 4 == 0 and IndicationQ.IsEmpty()) CheckRxTable();
+                // Proceed with indication if not busy
+                if(Led.IsIdle() and Vibro.IsIdle()) DoIndication();
                 break;
 
 #if BUTTONS_ENABLED
@@ -451,16 +490,18 @@ void ReadAndSetupMode() {
     Printf("Dip: 0x%02X; ", b);
     OldDipSettings = b;
     // Reset everything
-//    Vibro.Stop();
-//    Led.Stop();
-    // Select mode
-//    if(b & 0b100000) {
-//        Led.StartOrRestart(lsqTx);
+    IndicationQ.Flush();
+    Vibro.Stop();
+    Led.Stop();
     // Select self type
+    chSysLock();
     SelfType = b >> 4;
+    if(SelfType >= LcktType.size()) SelfType = LcktType.size() - 1;
+    chSysUnlock();
     // Select power
     b &= 0b1111; // Remove high bits
     Printf("Type: %u; Pwr: %u\r", SelfType, b);
+    ShowSelfType();
     RMsg_t msg;
     msg.Cmd = R_MSG_SET_PWR;
     msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];

@@ -51,7 +51,6 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 #define RLVL_4M                 700     // 1...20m
 #define RLVL_10M                600
 #define RLVL_50M                1
-#define RLVL_PELENGATOR         RLVL_4M // LED will lit if rlevel is higher
 
 #endif
 
@@ -88,8 +87,6 @@ struct RMsg_t {
 #define RCHNL_MIN       10
 #define RCHNL_MAX       30
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
-
-#define RSSI_MIN        -75
 
 // Feel-Each-Other related
 #define CYCLE_CNT           4
