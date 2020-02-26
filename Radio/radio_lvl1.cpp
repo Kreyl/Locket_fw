@@ -12,7 +12,8 @@
 
 #include "led.h"
 #include "Sequences.h"
-extern LedRGBwPower_t Led;
+
+extern uint32_t SelfType;
 
 cc1101_t CC(CC_Setup0);
 
@@ -51,7 +52,6 @@ static void rLvl1Thread(void *arg) {
 }
 
 void rLevel1_t::TaskFeelEachOtherMany() {
-    PktTx.ID = ID;
     for(uint32_t CycleN=0; CycleN < CYCLE_CNT; CycleN++) {   // Iterate cycles
         uint32_t TxSlot = Random::Generate(0, (SLOT_CNT-1)); // Decide when to transmit
         // If TX slot is not zero: receive in zero cycle, sleep in non-zero cycle
@@ -62,11 +62,14 @@ void rLevel1_t::TaskFeelEachOtherMany() {
         }
         // ==== TX ====
         if(MustTx) {
+            PktTx.ID = ID;
+            PktTx.Type = SelfType;
             DBG1_SET();
             CC.Recalibrate();
             CC.Transmit(&PktTx, RPKT_LEN);
             DBG1_CLR();
         }
+        else chThdSleepMilliseconds(SLOT_DURATION_MS);
 
         // If TX slot is not last: receive in zero cycle, sleep in non-zero cycle
         if(TxSlot != (SLOT_CNT-1)) {
@@ -79,21 +82,19 @@ void rLevel1_t::TaskFeelEachOtherMany() {
 
 void rLevel1_t::TryToReceive(uint32_t RxDuration) {
     sysinterval_t TotalDuration_st = TIME_MS2I(RxDuration);
-    sysinterval_t TimeStart = chVTGetSystemTimeX();
+    sysinterval_t TimeStart_st = chVTGetSystemTimeX();
     sysinterval_t RxDur_st = TotalDuration_st;
     CC.Recalibrate();
     while(true) {
         uint8_t RxRslt = CC.Receive_st(RxDur_st, &PktRx, RPKT_LEN, &PktRx.Rssi);
         if(RxRslt == retvOk) {
-//            Printf("Rssi=%d\r", Rssi);
+            Printf("Rssi=%d\r", PktRx.Rssi);
             if(PktRx.Rssi > RSSI_MIN) {
-                chSysLock();
                 RxTableW->AddOrReplaceExistingPkt(PktRx);
-                chSysUnlock();
             }
         }
         // Check if repeat or get out
-        systime_t Elapsed_st = chVTTimeElapsedSinceX(TimeStart);
+        systime_t Elapsed_st = chVTTimeElapsedSinceX(TimeStart_st);
         if(Elapsed_st >= TotalDuration_st) break;
         else RxDur_st = TotalDuration_st - Elapsed_st;
     }

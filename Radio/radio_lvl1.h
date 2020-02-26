@@ -89,7 +89,7 @@ struct RMsg_t {
 #define RCHNL_MAX       30
 #define ID2RCHNL(ID)    (RCHNL_MIN + ID)
 
-#define RSSI_MIN        -111
+#define RSSI_MIN        -75
 
 // Feel-Each-Other related
 #define CYCLE_CNT           4

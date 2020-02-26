@@ -111,7 +111,7 @@ void DoIndication() {
             else if(Cmd.CountOfNeighbors >  2) Vibro.StartOrRestart(vsqBrrBrrBrr);
         }
         // Disable Radio TX if needed
-        if(Cmd.PReact->MustStopTx == false) MustTx = false;
+        if(Cmd.PReact->MustStopTx == true) MustTx = false;
     } // if get cmd
     Radio.MustTx = MustTx; // start or stop transmitting
 }
@@ -448,7 +448,7 @@ void ReadAndSetupMode() {
     uint8_t b = GetDipSwitch();
     if(b == OldDipSettings) return;
     // ==== Something has changed ====
-    Printf("Dip: 0x%02X\r", b);
+    Printf("Dip: 0x%02X; ", b);
     OldDipSettings = b;
     // Reset everything
 //    Vibro.Stop();
@@ -457,9 +457,10 @@ void ReadAndSetupMode() {
 //    if(b & 0b100000) {
 //        Led.StartOrRestart(lsqTx);
     // Select self type
-
+    SelfType = b >> 4;
     // Select power
-    b &= 0b11111; // Remove high bits
+    b &= 0b1111; // Remove high bits
+    Printf("Type: %u; Pwr: %u\r", SelfType, b);
     RMsg_t msg;
     msg.Cmd = R_MSG_SET_PWR;
     msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
