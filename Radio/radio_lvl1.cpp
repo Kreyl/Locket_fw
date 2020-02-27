@@ -64,12 +64,12 @@ void rLevel1_t::TaskFeelEachOtherMany() {
         if(MustTx) {
             PktTx.ID = ID;
             PktTx.Type = SelfType;
+//            Printf("tx\r");
             DBG1_SET();
             CC.Recalibrate();
             CC.Transmit(&PktTx, RPKT_LEN);
             DBG1_CLR();
         }
-        else chThdSleepMilliseconds(SLOT_DURATION_MS);
 
         // If TX slot is not last: receive in zero cycle, sleep in non-zero cycle
         if(TxSlot != (SLOT_CNT-1)) {
@@ -88,7 +88,7 @@ void rLevel1_t::TryToReceive(uint32_t RxDuration) {
     while(true) {
         uint8_t RxRslt = CC.Receive_st(RxDur_st, &PktRx, RPKT_LEN, &PktRx.Rssi);
         if(RxRslt == retvOk) {
-            Printf("Rssi=%d\r", PktRx.Rssi);
+            Printf("t=%d; Rssi=%d\r", PktRx.Type, PktRx.Rssi);
             RxTableW->AddOrReplaceExistingPkt(PktRx);
         }
         // Check if repeat or get out

@@ -93,6 +93,7 @@ std::vector<LocketType_t> LcktType;
 std::vector<int32_t> CountOfTypes;
 
 uint32_t SelfType = 0; // set by dip
+bool MustTx = true;
 
 CircBuf_t<IndicationCmd_t, 18> IndicationQ;
 
@@ -103,10 +104,9 @@ void ShowSelfType() {
     }
 }
 
-void DoIndication() {
-    bool MustTx = true;
+void ProcessIndicationQ() {
     IndicationCmd_t Cmd;
-    if(IndicationQ.Get(&Cmd) == retvOk) {
+    while(IndicationQ.Get(&Cmd) == retvOk) {
         // LED
         std::vector<LedRGBChunk_t> *Seq = &Cmd.PReact->Seq;
         if(!Seq->empty()) {
@@ -119,9 +119,23 @@ void DoIndication() {
             else if(Cmd.CountOfNeighbors >  2) Vibro.StartOrRestart(vsqBrrBrrBrr);
         }
         // Disable Radio TX if needed
-        if(Cmd.PReact->MustStopTx == true) MustTx = false;
+        if(Cmd.PReact->MustStopTx == true) {
+            MustTx = false;
+            Radio.MustTx = false; // Stop it now
+        }
+        // Get out if LED or Vibro is started. Otherwise noone will call ProcessIndication.
+        if(!Led.IsIdle() or !Vibro.IsIdle()) break;
     } // if get cmd
-    Radio.MustTx = MustTx; // start or stop transmitting
+
+    if(IndicationQ.IsEmpty()) { // Q is empty
+//        Printf("MTX: %u\r", MustTx);
+        Radio.MustTx = MustTx; // start or stop transmitting
+    }
+}
+
+void StartIndication() {
+    MustTx = true;
+    ProcessIndicationQ();
 }
 
 #define LED_DELAY   504
@@ -222,16 +236,26 @@ void ReadConfig() {
     LcktType.resize(6);
     LocketType_t *Lct;
     ReactItem_t *ReactItem;
-    // ==== Setup locket types ====
-    // YellowTransmit
-    LcktType[0].ReactOnPwrOn = &Rctns[0]; // Yellow
-    LcktType[0].React.resize(0);
+    // ======== Setup locket types ========
+    // === YellowTransmit ===
+    Lct = &LcktType[0];
+    Lct->ReactOnPwrOn = &Rctns[0]; // Yellow
+    Lct->React.resize(1);
+    ReactItem = &Lct->React[0];
+    ReactItem->Source = 2;         // IsalamiriTransmit
+    ReactItem->PReact = &Rctns[2]; // Isalamiri
+    ReactItem->Distance = 1;
 
-    // WhiteTransmit
-    LcktType[1].ReactOnPwrOn = &Rctns[1]; // White
-    LcktType[1].React.resize(0);
+    // === WhiteTransmit ===
+    Lct = &LcktType[1];
+    Lct->ReactOnPwrOn = &Rctns[1]; // White
+    Lct->React.resize(1);
+    ReactItem = &Lct->React[0];
+    ReactItem->Source = 2;         // IsalamiriTransmit
+    ReactItem->PReact = &Rctns[2]; // Isalamiri
+    ReactItem->Distance = 1;
 
-    // IsalamiriTransmit
+    // === IsalamiriTransmit ===
     LcktType[2].ReactOnPwrOn = &Rctns[6]; // IsalamiriOn
     LcktType[2].React.resize(0);
 
@@ -357,17 +381,19 @@ void CheckRxTable() {
         }
     }
     // Put reactions to queue
-    for(int32_t TypeRcvd=0; TypeRcvd<MaxTypeID; TypeRcvd++) {
+    for(int32_t TypeRcvd=0; TypeRcvd <= MaxTypeID; TypeRcvd++) {
         int32_t N = CountOfTypes[TypeRcvd];
         if(N) { // Here they are! Do we need to react?
             for(ReactItem_t& ritem : SelfReact) {
                 if(ritem.Source == TypeRcvd) { // Yes, we must react
+//                    Printf("Put\r");
                     IndicationQ.PutIfNotOverflow(IndicationCmd_t(ritem.PReact, N));
                     break;
                 }
             } // for reactitem
         } // if N
     } // for
+    StartIndication();
 }
 #endif
 
@@ -437,8 +463,6 @@ void ITask() {
                 TimeS++;
                 ReadAndSetupMode();
                 if(TimeS % 4 == 0 and IndicationQ.IsEmpty()) CheckRxTable();
-                // Proceed with indication if not busy
-                if(Led.IsIdle() and Vibro.IsIdle()) DoIndication();
                 break;
 
 #if BUTTONS_ENABLED
@@ -450,10 +474,10 @@ void ITask() {
 #endif
 
             case evtIdLedSeqDone:
-                if(Vibro.IsIdle()) DoIndication(); // proceed with indication if current completed
+                if(Vibro.IsIdle()) ProcessIndicationQ(); // proceed with indication if current completed
                 break;
             case evtIdVibroSeqDone:
-                if(Led.IsIdle()) DoIndication(); // proceed with indication if current completed
+                if(Led.IsIdle()) ProcessIndicationQ(); // proceed with indication if current completed
                 break;
 
             case evtIdShellCmd:
