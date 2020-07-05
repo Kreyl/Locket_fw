@@ -14,6 +14,8 @@
 #include "SimpleSensors.h"
 #include "buttons.h"
 
+#include "Config.h"
+
 #include <vector>
 
 #if 1 // ======================== Variables and defines ========================
@@ -53,27 +55,6 @@ void CheckRxTable();
 #if 1 // ========================== Logic ======================================
 #define DISTANCE_dBm        -99  // Replace with pseudo-distance
 
-enum VibroType_t { vbrNone, vbrOneTwoMany };
-
-// How to react
-struct Reaction_t {
-    std::vector<LedRGBChunk_t> Seq;
-    VibroType_t VibroType = vbrNone;
-    bool MustStopTx = false;
-};
-
-// Locket settings
-struct ReactItem_t {
-    int32_t Source;     // Type to react to
-    Reaction_t *PReact; // What to do
-    int32_t Distance;   // Min dist when react
-};
-
-struct LocketType_t {
-    Reaction_t *ReactOnPwrOn;
-    std::vector<ReactItem_t> React;
-};
-
 // Indication command with all required data
 struct IndicationCmd_t {
     Reaction_t *PReact; // What to do
@@ -88,8 +69,6 @@ struct IndicationCmd_t {
     IndicationCmd_t(Reaction_t* AReact, int32_t ACnt) : PReact(AReact), CountOfNeighbors(ACnt) {}
 };
 
-std::vector<Reaction_t> Rctns;
-std::vector<LocketType_t> LcktType;
 std::vector<int32_t> CountOfTypes;
 
 uint32_t SelfType = 0; // set by dip
@@ -105,32 +84,32 @@ void ShowSelfType() {
 }
 
 void ProcessIndicationQ() {
-    IndicationCmd_t Cmd;
-    while(IndicationQ.Get(&Cmd) == retvOk) {
-        // LED
-        std::vector<LedRGBChunk_t> *Seq = &Cmd.PReact->Seq;
-        if(!Seq->empty()) {
-            Led.StartOrRestart(Seq->data());
-        }
-        // Vibro
-        if(Cmd.PReact->VibroType == vbrOneTwoMany) {
-            if     (Cmd.CountOfNeighbors == 1) Vibro.StartOrRestart(vsqBrr);
-            else if(Cmd.CountOfNeighbors == 2) Vibro.StartOrRestart(vsqBrrBrr);
-            else if(Cmd.CountOfNeighbors >  2) Vibro.StartOrRestart(vsqBrrBrrBrr);
-        }
-        // Disable Radio TX if needed
-        if(Cmd.PReact->MustStopTx == true) {
-            MustTx = false;
-            Radio.MustTx = false; // Stop it now
-        }
-        // Get out if LED or Vibro is started. Otherwise noone will call ProcessIndication.
-        if(!Led.IsIdle() or !Vibro.IsIdle()) break;
-    } // if get cmd
-
-    if(IndicationQ.IsEmpty()) { // Q is empty
-//        Printf("MTX: %u\r", MustTx);
-        Radio.MustTx = MustTx; // start or stop transmitting
-    }
+//    IndicationCmd_t Cmd;
+//    while(IndicationQ.Get(&Cmd) == retvOk) {
+//        // LED
+//        std::vector<LedRGBChunk_t> *Seq = &Cmd.PReact->Seq;
+//        if(!Seq->empty()) {
+//            Led.StartOrRestart(Seq->data());
+//        }
+//        // Vibro
+//        if(Cmd.PReact->VibroType == vbrOneTwoMany) {
+//            if     (Cmd.CountOfNeighbors == 1) Vibro.StartOrRestart(vsqBrr);
+//            else if(Cmd.CountOfNeighbors == 2) Vibro.StartOrRestart(vsqBrrBrr);
+//            else if(Cmd.CountOfNeighbors >  2) Vibro.StartOrRestart(vsqBrrBrrBrr);
+//        }
+//        // Disable Radio TX if needed
+//        if(Cmd.PReact->MustStopTx == true) {
+//            MustTx = false;
+//            Radio.MustTx = false; // Stop it now
+//        }
+//        // Get out if LED or Vibro is started. Otherwise noone will call ProcessIndication.
+//        if(!Led.IsIdle() or !Vibro.IsIdle()) break;
+//    } // if get cmd
+//
+//    if(IndicationQ.IsEmpty()) { // Q is empty
+////        Printf("MTX: %u\r", MustTx);
+//        Radio.MustTx = MustTx; // start or stop transmitting
+//    }
 }
 
 void StartIndication() {
@@ -142,7 +121,7 @@ void StartIndication() {
 
 void ReadConfig() {
     CountOfTypes.resize(6); // Locket types
-#if 1 // Setup reactions
+#if 0 // Setup reactions
     Rctns.resize(7);
     std::vector<LedRGBChunk_t> *Seq;
     // Indx 0, Yellow
@@ -232,134 +211,134 @@ void ReadConfig() {
     Seq->push_back(LedRGBChunk_t(csEnd));
 #endif
 
-    // Setup locket types
+//    // Setup locket types
     LcktType.resize(6);
-    LocketType_t *Lct;
-    ReactItem_t *ReactItem;
-    // ======== Setup locket types ========
-    // === YellowTransmit ===
-    Lct = &LcktType[0];
-    Lct->ReactOnPwrOn = &Rctns[0]; // Yellow
-    Lct->React.resize(1);
-    ReactItem = &Lct->React[0];
-    ReactItem->Source = 2;         // IsalamiriTransmit
-    ReactItem->PReact = &Rctns[2]; // Isalamiri
-    ReactItem->Distance = 1;
-
-    // === WhiteTransmit ===
-    Lct = &LcktType[1];
-    Lct->ReactOnPwrOn = &Rctns[1]; // White
-    Lct->React.resize(1);
-    ReactItem = &Lct->React[0];
-    ReactItem->Source = 2;         // IsalamiriTransmit
-    ReactItem->PReact = &Rctns[2]; // Isalamiri
-    ReactItem->Distance = 1;
-
-    // === IsalamiriTransmit ===
-    LcktType[2].ReactOnPwrOn = &Rctns[6]; // IsalamiriOn
-    LcktType[2].React.resize(0);
-
-    // === BlueTransmit ===
-    Lct = &LcktType[3];
-    Lct->ReactOnPwrOn = &Rctns[4]; // Blue
-    Lct->React.resize(6);
-    ReactItem = &Lct->React[0];
-    ReactItem->Source = 0;         // YellowTransmit
-    ReactItem->PReact = &Rctns[0]; // Yellow
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[1];
-    ReactItem->Source = 1;         // WhiteTransmit
-    ReactItem->PReact = &Rctns[1]; // White
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[2];
-    ReactItem->Source = 2;         // IsalamiriTransmit
-    ReactItem->PReact = &Rctns[2]; // Isalamiri
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[3];
-    ReactItem->Source = 3;         // BlueTransmit
-    ReactItem->PReact = &Rctns[4]; // Blue
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[4];
-    ReactItem->Source = 4;         // RedTransmit
-    ReactItem->PReact = &Rctns[3]; // Red
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[5];
-    ReactItem->Source = 5;         // TwoColorsTransmit
-    ReactItem->PReact = &Rctns[5]; // TwoColors
-    ReactItem->Distance = 1;
-
-    // === RedTransmit ===
-    Lct = &LcktType[4];
-    Lct->ReactOnPwrOn = &Rctns[3]; // Red
-    Lct->React.resize(6);
-    ReactItem = &Lct->React[0];
-    ReactItem->Source = 0;         // YellowTransmit
-    ReactItem->PReact = &Rctns[0]; // Yellow
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[1];
-    ReactItem->Source = 1;         // WhiteTransmit
-    ReactItem->PReact = &Rctns[1]; // White
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[2];
-    ReactItem->Source = 2;         // IsalamiriTransmit
-    ReactItem->PReact = &Rctns[2]; // Isalamiri
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[3];
-    ReactItem->Source = 3;         // BlueTransmit
-    ReactItem->PReact = &Rctns[4]; // Blue
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[4];
-    ReactItem->Source = 4;         // RedTransmit
-    ReactItem->PReact = &Rctns[3]; // Red
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[5];
-    ReactItem->Source = 5;         // TwoColorsTransmit
-    ReactItem->PReact = &Rctns[5]; // TwoColors
-    ReactItem->Distance = 1;
-
-    // === TwoColorsTransmit ===
-    Lct = &LcktType[5];
-    Lct->ReactOnPwrOn = &Rctns[5]; // TwoColors
-    Lct->React.resize(6);
-    ReactItem = &Lct->React[0];
-    ReactItem->Source = 0;         // YellowTransmit
-    ReactItem->PReact = &Rctns[0]; // Yellow
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[1];
-    ReactItem->Source = 1;         // WhiteTransmit
-    ReactItem->PReact = &Rctns[1]; // White
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[2];
-    ReactItem->Source = 2;         // IsalamiriTransmit
-    ReactItem->PReact = &Rctns[2]; // Isalamiri
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[3];
-    ReactItem->Source = 3;         // BlueTransmit
-    ReactItem->PReact = &Rctns[4]; // Blue
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[4];
-    ReactItem->Source = 4;         // RedTransmit
-    ReactItem->PReact = &Rctns[3]; // Red
-    ReactItem->Distance = 1;
-
-    ReactItem = &Lct->React[5];
-    ReactItem->Source = 5;         // TwoColorsTransmit
-    ReactItem->PReact = &Rctns[5]; // TwoColors
-    ReactItem->Distance = 1;
+//    LocketType_t *Lct;
+//    ReactItem_t *ReactItem;
+//    // ======== Setup locket types ========
+//    // === YellowTransmit ===
+//    Lct = &LcktType[0];
+//    Lct->ReactOnPwrOn = &Rctns[0]; // Yellow
+//    Lct->React.resize(1);
+//    ReactItem = &Lct->React[0];
+//    ReactItem->Source = 2;         // IsalamiriTransmit
+//    ReactItem->PReact = &Rctns[2]; // Isalamiri
+//    ReactItem->Distance = 1;
+//
+//    // === WhiteTransmit ===
+//    Lct = &LcktType[1];
+//    Lct->ReactOnPwrOn = &Rctns[1]; // White
+//    Lct->React.resize(1);
+//    ReactItem = &Lct->React[0];
+//    ReactItem->Source = 2;         // IsalamiriTransmit
+//    ReactItem->PReact = &Rctns[2]; // Isalamiri
+//    ReactItem->Distance = 1;
+//
+//    // === IsalamiriTransmit ===
+//    LcktType[2].ReactOnPwrOn = &Rctns[6]; // IsalamiriOn
+//    LcktType[2].React.resize(0);
+//
+//    // === BlueTransmit ===
+//    Lct = &LcktType[3];
+//    Lct->ReactOnPwrOn = &Rctns[4]; // Blue
+//    Lct->React.resize(6);
+//    ReactItem = &Lct->React[0];
+//    ReactItem->Source = 0;         // YellowTransmit
+//    ReactItem->PReact = &Rctns[0]; // Yellow
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[1];
+//    ReactItem->Source = 1;         // WhiteTransmit
+//    ReactItem->PReact = &Rctns[1]; // White
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[2];
+//    ReactItem->Source = 2;         // IsalamiriTransmit
+//    ReactItem->PReact = &Rctns[2]; // Isalamiri
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[3];
+//    ReactItem->Source = 3;         // BlueTransmit
+//    ReactItem->PReact = &Rctns[4]; // Blue
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[4];
+//    ReactItem->Source = 4;         // RedTransmit
+//    ReactItem->PReact = &Rctns[3]; // Red
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[5];
+//    ReactItem->Source = 5;         // TwoColorsTransmit
+//    ReactItem->PReact = &Rctns[5]; // TwoColors
+//    ReactItem->Distance = 1;
+//
+//    // === RedTransmit ===
+//    Lct = &LcktType[4];
+//    Lct->ReactOnPwrOn = &Rctns[3]; // Red
+//    Lct->React.resize(6);
+//    ReactItem = &Lct->React[0];
+//    ReactItem->Source = 0;         // YellowTransmit
+//    ReactItem->PReact = &Rctns[0]; // Yellow
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[1];
+//    ReactItem->Source = 1;         // WhiteTransmit
+//    ReactItem->PReact = &Rctns[1]; // White
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[2];
+//    ReactItem->Source = 2;         // IsalamiriTransmit
+//    ReactItem->PReact = &Rctns[2]; // Isalamiri
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[3];
+//    ReactItem->Source = 3;         // BlueTransmit
+//    ReactItem->PReact = &Rctns[4]; // Blue
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[4];
+//    ReactItem->Source = 4;         // RedTransmit
+//    ReactItem->PReact = &Rctns[3]; // Red
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[5];
+//    ReactItem->Source = 5;         // TwoColorsTransmit
+//    ReactItem->PReact = &Rctns[5]; // TwoColors
+//    ReactItem->Distance = 1;
+//
+//    // === TwoColorsTransmit ===
+//    Lct = &LcktType[5];
+//    Lct->ReactOnPwrOn = &Rctns[5]; // TwoColors
+//    Lct->React.resize(6);
+//    ReactItem = &Lct->React[0];
+//    ReactItem->Source = 0;         // YellowTransmit
+//    ReactItem->PReact = &Rctns[0]; // Yellow
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[1];
+//    ReactItem->Source = 1;         // WhiteTransmit
+//    ReactItem->PReact = &Rctns[1]; // White
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[2];
+//    ReactItem->Source = 2;         // IsalamiriTransmit
+//    ReactItem->PReact = &Rctns[2]; // Isalamiri
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[3];
+//    ReactItem->Source = 3;         // BlueTransmit
+//    ReactItem->PReact = &Rctns[4]; // Blue
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[4];
+//    ReactItem->Source = 4;         // RedTransmit
+//    ReactItem->PReact = &Rctns[3]; // Red
+//    ReactItem->Distance = 1;
+//
+//    ReactItem = &Lct->React[5];
+//    ReactItem->Source = 5;         // TwoColorsTransmit
+//    ReactItem->PReact = &Rctns[5]; // TwoColors
+//    ReactItem->Distance = 1;
 }
 
 void CheckRxTable() {
@@ -420,6 +399,8 @@ int main(void) {
     Clk.PrintFreqs();
 //    RandomSeed(GetUniqID3());   // Init random algorythm with uniq ID
 
+    Cfg.Read();
+
     Led.Init();
     Led.SetupSeqEndEvt(evtIdLedSeqDone);
     Vibro.Init();
@@ -446,8 +427,8 @@ int main(void) {
         chThdSleepMilliseconds(1008);
     }
 
-    ReadConfig();
-    ReadAndSetupMode();
+//    ReadConfig();
+//    ReadAndSetupMode();
     TmrEverySecond.StartOrRestart();
 
     // Main cycle
