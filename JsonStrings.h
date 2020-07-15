@@ -64,16 +64,19 @@ const char* JsonCfg =
 Lockets:[{\
         Name: Ari, \
         Type: 1,\
-        FirstButton: Silent\
+        FirstButton: Silent,\
+        ReactOnPwrOn: Ari\
     },\
     {\
         Name: Kaesu,\
         Type: 2,\
-        FirstButton: Silent\
+        FirstButton: Silent,\
+        ReactOnPwrOn: Kaesu\
     }, \
     {\
         Name: North, \
         Type: 3,\
+        ReactOnPwrOn: North,\
         Receive: \
             [{\
                 Source: Ari,\
@@ -89,12 +92,13 @@ Lockets:[{\
                 Source: Silent,\
                 Reaction: Silent,\
                 Distance: 12\
-            },\
+            }\
             ]\
     },\
     {\
         Name: NorthStrong, \
         Type: 4,\
+        ReactOnPwrOn: North,\
         Button: 0,\
         Receive: \
             [{\
@@ -142,6 +146,7 @@ Lockets:[{\
     {\
         Name: South, \
         Type: 5,\
+        ReactOnPwrOn: South,\
         Receive: \
             [{\
                 Source: Ari,\
@@ -162,6 +167,7 @@ Lockets:[{\
     {\
         Name: SouthStrong,\
         Type: 6,\
+        ReactOnPwrOn: South,\
         Button: 0,\
         Receive: \
             [{\
@@ -208,6 +214,7 @@ Lockets:[{\
     {\
         Name: Cursed, \
         Type: 7,\
+        ReactOnPwrOn: Cursed,\
         Receive: \
             [{\
                 Source: Ari,\

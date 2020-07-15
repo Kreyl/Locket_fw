@@ -43,6 +43,7 @@
 #define BTN1_PIN        GPIOA, 0, pudPullDown
 #define BTN2_PIN        GPIOA, 1, pudPullDown
 #define BTN3_PIN        GPIOB, 8, pudPullDown
+#define BTN_CNT         3
 
 // Vibro
 #define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, 99 }

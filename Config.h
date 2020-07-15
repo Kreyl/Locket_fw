@@ -40,24 +40,42 @@ struct Reaction_t {
     }
 };
 
-// Locket settings
-struct ReactItem_t {
-    int32_t Source;     // Type to react to
-    Reaction_t *PReact; // What to do
-    int32_t Distance;   // Min dist when react
+// ==== Locket settings ====
+struct RcvItem_t {
+    uint32_t Src;      // Type to react to
+    Reaction_t* React; // What to do
+    int32_t Distance;  // Min dist to react
+    void Print() {
+        Printf("\r{t=%u; r=%S; d=%u}", Src, (React? React->Name.c_str() : ""), Distance);
+//        Printf("{%S; d=%u}", SrcStr.c_str(), Distance);
+    }
 };
 
-struct LocketType_t {
-    Reaction_t *ReactOnPwrOn;
-    std::vector<ReactItem_t> React;
+struct LocketInfo_t {
+    std::string Name;
+    uint8_t Type;
+    Reaction_t* ReactOnBtns[BTN_CNT] = {nullptr};
+    Reaction_t* ReactOnPwrOn = nullptr;
+    std::vector<RcvItem_t> Receive;
+
+    void Print() {
+        Printf("Name:%S; Type:%u;", Name.c_str(), Type);
+        if(ReactOnPwrOn) Printf("PwrOn: %S; ", ReactOnPwrOn->Name.c_str());
+        for(int i=0; i<BTN_CNT; i++) {
+            if(ReactOnBtns[i]) Printf(" Btn%u:%S;", i+1, ReactOnBtns[i]->Name.c_str());
+        }
+        for(RcvItem_t &Rcv : Receive) Rcv.Print();
+        Printf("\r");
+    }
 };
 
 class Config_t {
 private:
-
+    Reaction_t* GetReactByName(std::string &S);
+    uint32_t GetLktTypeByName(std::string &S);
 public:
     std::vector<Reaction_t> Rctns;
-    std::vector<LocketType_t> LcktType;
+    std::vector<LocketInfo_t> Lockets;
     void Read();
 };
 

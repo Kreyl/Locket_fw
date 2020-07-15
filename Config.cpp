@@ -14,6 +14,22 @@
 
 Config_t Cfg;
 
+Reaction_t* Config_t::GetReactByName(std::string &S) {
+    if(S.empty()) return nullptr;
+    for(Reaction_t& Rea : Rctns) {
+        if(S == Rea.Name) return &Rea;
+    }
+    return nullptr;
+}
+
+uint32_t Config_t::GetLktTypeByName(std::string &S) {
+    if(S.empty()) return 0;
+    for(LocketInfo_t &Lkt : Lockets) {
+        if(S == Lkt.Name) return Lkt.Type;
+    }
+    return 0;
+}
+
 void Config_t::Read() {
 //    Printf("aga\r");
     JsonParser_t JParser;
@@ -70,14 +86,88 @@ void Config_t::Read() {
             }
         } // for seq items
         // Finalize seq if not empty TODO Really required?
-        if(Seq->size()) Seq->push_back(LedRGBChunk_t(csEnd));
+//        if(Seq->size()) Seq->push_back(LedRGBChunk_t(csEnd));
         // Done
         PRea->Print();
     } // For reactions
 #endif
 #if 1 // ==== Locket types ====
+    std::string S;
+    NObjs = JParser.Root["Lockets"];
+    Cnt = NObjs.ArrayCnt();
+    Printf("LocketLen: %u\r", Cnt);
+    Lockets.resize(Cnt);
+    for(int32_t i=0; i<Cnt; i++) {
+        JsonObj_t NLkt = NObjs[i];  // Src
+        LocketInfo_t *PLkt = &Lockets[i]; // Destination
 
+        // ==== Name & Type ====
+        NLkt["Name"].ToString(PLkt->Name);
+        NLkt["Type"].ToByte(&PLkt->Type);
 
+        // ==== Reaction on button ====
+        NLkt["FirstButton"].ToString(S);
+        PLkt->ReactOnBtns[0] = GetReactByName(S);
+        NLkt["SecondButton"].ToString(S);
+        PLkt->ReactOnBtns[1] = GetReactByName(S);
+        NLkt["ThirdButton"].ToString(S);
+        PLkt->ReactOnBtns[2] = GetReactByName(S);
+        // All buttons
+        NLkt["Button"].ToString(S);
+        if(!S.empty()) {
+            PLkt->ReactOnBtns[0] = GetReactByName(S);
+            PLkt->ReactOnBtns[1] = PLkt->ReactOnBtns[0];
+            PLkt->ReactOnBtns[2] = PLkt->ReactOnBtns[0];
+        }
+
+        // ==== Reaction on PwrOn ====
+        NLkt["ReactOnPwrOn"].ToString(S);
+        PLkt->ReactOnPwrOn = GetReactByName(S);
+    } // for
+
+    // ==== Receive ====
+    for(int32_t i=0; i<Cnt; i++) {
+        JsonObj_t NLkt = NObjs[i];  // Src
+        LocketInfo_t *PLkt = &Lockets[i]; // Destination
+        JsonObj_t NRcv = NLkt["Receive"];
+        uint32_t RcvCnt = NRcv.ArrayCnt();
+        PLkt->Receive.resize(RcvCnt);
+        for(uint32_t j=0; j<RcvCnt; j++) {
+            JsonObj_t NRcvItem = NRcv[j];
+            RcvItem_t *PRcv = &PLkt->Receive[j];
+            NRcvItem["Reaction"].ToString(S);
+            PRcv->React = GetReactByName(S);
+            NRcvItem["Distance"].ToInt(&PRcv->Distance);
+            // Get Type
+            NRcvItem["Source"].ToString(S);
+            PRcv->Src = GetLktTypeByName(S);
+        }
+        PLkt->Print();
+        chThdSleepMilliseconds(18);
+    }
+
+//    for(uint32_t j=0; j<RcvCnt; j++) {
+//        JsonObj_t NRcvItem = NRcv[j];
+//        RcvItem_t *PRcv = &PLkt->Receive[j];
+//        NRcvItem["Source"].ToString(PRcv->SrcStr);
+//
+////            NRcvItem["Reaction"].ToString(S);
+////            PRcv->React = GetReactByName(S);
+//    }
+
+    // Find Lkt types
+//    for(LocketInfo_t &Lkt : Lockets) {
+//        for(RcvItem_t &Rcv : Lkt.Receive) {
+//            for(LocketInfo_t &Lkt4Name : Lockets) {
+//                if(Rcv.SrcStr == Lkt4Name.Name) {
+//                    Rcv.Src = Lkt4Name.Type;
+//                    break;
+//                }
+//            }
+//        }
+//        Lkt.Print();
+//    }
 #endif
+
 
 }
