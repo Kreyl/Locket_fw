@@ -1,11 +1,15 @@
 #pragma once
 
 // ==== General ====
-#define BOARD_NAME          "BigBtn"
-#define APP_NAME            "BigBtn"
+#define BOARD_NAME          "Locket5"
+#define APP_NAME            "JSON"
 
 // ==== High-level peripery control ====
-#define BEEPER_ENABLED      TRUE
+#define PILL_ENABLED        FALSE
+#define BEEPER_ENABLED      FALSE
+#define BUTTONS_ENABLED     FALSE
+
+#define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
 // MCU type as defined in the ST header.
 #define STM32L151xB
@@ -13,7 +17,11 @@
 // Freq of external crystal if any. Leave it here even if not used.
 #define CRYSTAL_FREQ_HZ     12000000
 
-#define SYS_TIM_CLK         (Clk.APB1FreqHz)
+// OS timer settings
+#define STM32_ST_IRQ_PRIORITY   2
+#define STM32_ST_USE_TIMER      2
+#define STM32_TIMCLK1           (Clk.APB1FreqHz)
+
 #define I2C1_ENABLED        PILL_ENABLED
 #define I2C_USE_SEMAPHORE   FALSE
 #define ADC_REQUIRED        FALSE
@@ -27,17 +35,18 @@
 
 // LED
 #define LED_EN_PIN      { GPIOB, 2, omPushPull }
-
-#define LED_R_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
-#define LED_B_PIN       { GPIOB, 0, TIM3, 3, invInverted, omOpenDrain, 255 }
 #define LED_G_PIN       { GPIOB, 1, TIM3, 4, invInverted, omOpenDrain, 255 }
-
-#define LED2_R_PIN      { GPIOB, 6, TIM4, 1, invInverted, omOpenDrain, 255 }
-#define LED2_B_PIN      { GPIOB, 8, TIM4, 3, invInverted, omOpenDrain, 255 }
-#define LED2_G_PIN      { GPIOB, 7, TIM4, 2, invInverted, omOpenDrain, 255 }
+#define LED_B_PIN       { GPIOB, 0, TIM3, 3, invInverted, omOpenDrain, 255 }
+#define LED_R_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
 
 // Buttons
-#define BTN_PIN         GPIOA, 0, pudPullDown
+#define BTN1_PIN        GPIOA, 0, pudPullDown
+#define BTN2_PIN        GPIOA, 1, pudPullDown
+#define BTN3_PIN        GPIOB, 8, pudPullDown
+#define BTN_CNT         3
+
+// Vibro
+#define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, 99 }
 
 // Beeper
 #define BEEPER_TOP      22
@@ -60,6 +69,9 @@
 #define I2C1_SCL        6
 #define I2C1_SDA        7
 #endif
+
+// Pill power
+#define PILL_PWR_PIN    { GPIOB, 3, omPushPull }
 
 // Radio: SPI, PGpio, Sck, Miso, Mosi, Cs, Gdo0
 #define CC_Setup0       SPI1, GPIOA, 5,6,7, GPIOA,4, GPIOA,3
@@ -124,10 +136,12 @@
 #define UART_TXBUF_SZ   256
 #define UART_RXBUF_SZ   99
 
+#define CMD_UART        USART1
+
 #define UARTS_CNT       1
 
 #define CMD_UART_PARAMS \
-    USART1, UART_GPIO, UART_TX_PIN, UART_GPIO, UART_RX_PIN, \
+    CMD_UART, UART_GPIO, UART_TX_PIN, UART_GPIO, UART_RX_PIN, \
     UART_DMA_TX, UART_DMA_RX, UART_DMA_TX_MODE(UART_DMA_CHNL), UART_DMA_RX_MODE(UART_DMA_CHNL)
 
 #endif
