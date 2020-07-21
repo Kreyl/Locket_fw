@@ -14,6 +14,7 @@
 
 Config_t Cfg;
 
+
 Reaction_t* Config_t::GetReactByName(std::string &S) {
     if(S.empty()) return nullptr;
     for(Reaction_t& Rea : Rctns) {
@@ -28,6 +29,27 @@ uint32_t Config_t::GetLktTypeByName(std::string &S) {
         if(S == Lkt.Name) return Lkt.Type;
     }
     return 0;
+}
+
+void Config_t::SetSelfType(uint32_t Type) {
+    for(auto &Lkt : Lockets) {
+        if(Lkt.Type == Type) {
+            SelfInfo = &Lkt;
+            if(Lkt.Receive.size() == 0) {
+                MustTxFar = true;
+                MustTxInEachOther = false;
+            }
+            else {
+                MustTxFar = false;
+                MustTxInEachOther = true;
+            }
+            return;
+        }
+    }
+    SelfInfo = nullptr;
+    MustTxFar = false;
+    MustTxInEachOther = false;
+    Printf("BadType: %u\r", Type);
 }
 
 void Config_t::Read() {

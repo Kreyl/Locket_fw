@@ -54,6 +54,22 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 
 #endif
 
+__unused
+static const uint8_t PwrTable[12] = {
+        CC_PwrMinus30dBm, // 0
+        CC_PwrMinus27dBm, // 1
+        CC_PwrMinus25dBm, // 2
+        CC_PwrMinus20dBm, // 3
+        CC_PwrMinus15dBm, // 4
+        CC_PwrMinus10dBm, // 5
+        CC_PwrMinus6dBm,  // 6
+        CC_Pwr0dBm,       // 7
+        CC_PwrPlus5dBm,   // 8
+        CC_PwrPlus7dBm,   // 9
+        CC_PwrPlus10dBm,  // 10
+        CC_PwrPlus12dBm   // 11
+};
+
 #if 1 // =========================== Pkt_t =====================================
 union rPkt_t {
     uint32_t DW32;
@@ -71,36 +87,25 @@ union rPkt_t {
 
 #define RPKT_LEN    sizeof(rPkt_t)
 
-// Message queue
-#define R_MSGQ_LEN      4
-#define R_MSG_SET_PWR   1
-#define R_MSG_SET_CHNL  2
-struct RMsg_t {
-    uint8_t Cmd;
-    uint8_t Value;
-} __attribute__((packed));
-
 #if 1 // =================== Channels, cycles, Rssi  ===========================
-#define RCHNL_SERVICE   0
-#define RCHNL_COMMON    1
 #define RCHNL_EACH_OTH  7
-#define RCHNL_MIN       10
-#define RCHNL_MAX       30
-#define ID2RCHNL(ID)    (RCHNL_MIN + ID)
+#define RCHNL_FAR       0
+
+#define TX_PWR_FAR      CC_PwrPlus10dBm
 
 // Feel-Each-Other related
 #define CYCLE_CNT           4
-#define SLOT_CNT            30
-#define SLOT_DURATION_MS    5
+#define SLOT_CNT            54
+#define SLOT_DURATION_MS    2
+#define CYCLE_DURATION_MS   (SLOT_DURATION_MS * SLOT_CNT)
+//#define SHORT_DURATION_MS
 
 // Timings
-#define RX_T_MS                 180      // pkt duration at 10k is around 12 ms
-#define RX_SLEEP_T_MS           810
 #define MIN_SLEEP_DURATION_MS   18
 #endif
 
 #if 1 // ============================= RX Table ================================
-#define RXTABLE_SZ              16
+#define RXTABLE_SZ              50
 #define RXT_PKT_REQUIRED        TRUE
 class RxTable_t {
 private:
@@ -174,10 +179,8 @@ public:
 class rLevel1_t {
 private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
-    rPkt_t PktRx, PktTx;
 public:
-    EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
-    bool MustTx = true;
+    rPkt_t PktRx, PktTx;
     RxTable_t& GetRxTable() {
         chSysLock();
         RxTable_t* RxTableR;
@@ -195,16 +198,11 @@ public:
         return *RxTableR;
     }
     uint8_t Init();
-    // Inner use
-    void TryToSleep(uint32_t SleepDuration);
-    void TryToReceive(uint32_t RxDuration);
     // Different modes of operation
-    void TaskTransmitter();
-    void TaskReceiverManyByID();
-    void TaskReceiverManyByChannel();
-    void TaskReceiverSingle();
-    void TaskFeelEachOtherSingle();
-    void TaskFeelEachOtherMany();
+    void TaskFeelEachOther();
+    void TaskFeelEachOtherSilently();
+    void TaskFeelFar();
+    void TaskTransmitFar();
 };
 
 extern rLevel1_t Radio;

@@ -34,7 +34,6 @@ private:
     void CsHi() { PinSetHi((GPIO_TypeDef*)CSGpio, Cs); }
     void CsLo() { PinSetLo((GPIO_TypeDef*)CSGpio, Cs); }
     // General
-    void RfConfig();
     int8_t RSSI_dBm(uint8_t ARawRSSI);
     // Registers and buffers
     uint8_t WriteRegister(const uint8_t Addr, const uint8_t AData);
@@ -46,6 +45,8 @@ private:
     uint8_t EnterTX()     { return WriteStrobe(CC_STX);  }
     uint8_t EnterRX()     { return WriteStrobe(CC_SRX);  }
     uint8_t FlushRxFIFO() { return WriteStrobe(CC_SFRX); }
+    uint8_t FlushTxFIFO() { return WriteStrobe(CC_SFTX); }
+    uint8_t GetStatus()   { return WriteStrobe(CC_SNOP); }
 public:
     uint8_t Init();
     uint8_t EnterIdle()    { return WriteStrobe(CC_SIDLE); }
@@ -53,21 +54,35 @@ public:
     void SetChannel(uint8_t AChannel);
     void SetTxPower(uint8_t APwr)  { WriteRegister(CC_PATABLE, APwr); }
     void SetPktSize(uint8_t ASize) { WriteRegister(CC_PKTLEN, ASize); }
+    void SetBitrate(const CCRegValue_t* BRSetup);
     // State change
     void Transmit(void *Ptr, uint8_t Len);
     uint8_t Receive(uint32_t Timeout_ms, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
     uint8_t Receive_st(sysinterval_t Timeout_st, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
+
+    uint8_t RxCcaTx_st(void *PtrTx, uint8_t Len,  int8_t *PRssi=nullptr);
+    uint8_t RxIfNotYet_st(sysinterval_t RxTimeout_st, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
+
     void PowerOff();
     uint8_t Recalibrate() {
         while(IState != CC_STB_IDLE) {
             if(EnterIdle() != retvOk) return retvFail;
         }
         if(WriteStrobe(CC_SCAL) != retvOk) return retvFail;
-        return BusyWait();
+        do {
+            GetStatus();
+        } while(IState != CC_STB_IDLE);
+        return retvOk;
     }
+    // Setup
+//    void DoRxAfterRxAndRxAfterTx()   { WriteRegister(CC_MCSM1, (CC_MCSM1_VALUE | 0x0F)); }
+//    void DoRxAfterRxAndIdleAfterTx() { WriteRegister(CC_MCSM1, ((CC_MCSM1_VALUE | 0x0C) & 0xFC)); }
+    void DoRxAfterTx()   { WriteRegister(CC_MCSM1, (CC_MCSM1_VALUE | 0x03)); }
+    void DoIdleAfterTx() { WriteRegister(CC_MCSM1, CC_MCSM1_VALUE); }
+
     uint8_t ReadFIFO(void *Ptr, int8_t *PRssi, uint8_t Len);
 
-    void IIrqHandler() { chThdResumeI(&ThdRef, MSG_OK); }   // NotNull check perfprmed inside chThdResumeI
+    void IIrqHandler();
 
     cc1101_t(
             SPI_TypeDef *ASpi, GPIO_TypeDef *ASpiGpio,

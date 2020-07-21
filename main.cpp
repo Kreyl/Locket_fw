@@ -10,7 +10,6 @@
 #include "pill.h"
 #include "pill_mgr.h"
 #include "MsgQ.h"
-#include "main.h"
 #include "SimpleSensors.h"
 #include "buttons.h"
 
@@ -31,7 +30,6 @@ static void ReadAndSetupMode();
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
 
-int32_t ID;
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
 static uint8_t ISetID(int32_t NewID);
@@ -70,9 +68,6 @@ struct IndicationCmd_t {
 };
 
 std::vector<int32_t> CountOfTypes;
-
-uint32_t SelfType = 0; // set by dip
-bool MustTx = true;
 
 CircBuf_t<IndicationCmd_t, 18> IndicationQ;
 
@@ -113,7 +108,7 @@ void ProcessIndicationQ() {
 }
 
 void StartIndication() {
-    MustTx = true;
+//    MustTx = true;
     ProcessIndicationQ();
 }
 
@@ -166,14 +161,14 @@ int main(void) {
     // ==== Init hardware ====
     Uart.Init();
     ReadIDfromEE();
-    Printf("\r%S %S; ID=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), ID);
-//    Uart.Printf("ID: %X %X %X\r", GetUniqID1(), GetUniqID2(), GetUniqID3());
+    Printf("\r%S %S; ID=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), Cfg.ID);
+//    Printf("\r%X\t%X\t%X\r", GetUniqID1(), GetUniqID2(), GetUniqID3());
 //    if(Sleep::WasInStandby()) {
 //        Uart.Printf("WasStandby\r");
 //        Sleep::ClearStandbyFlag();
 //    }
     Clk.PrintFreqs();
-//    RandomSeed(GetUniqID3());   // Init random algorythm with uniq ID
+    Random::Seed(GetUniqID3());   // Init random algorythm with uniq ID
 
     Cfg.Read();
 
@@ -197,14 +192,14 @@ int main(void) {
     PillMgr.Init();
 #endif
 
+    ReadAndSetupMode();
+
     // ==== Radio ====
     if(Radio.Init() != retvOk) {
         Led.StartOrRestart(lsqFailure);
         chThdSleepMilliseconds(1008);
     }
 
-//    ReadConfig();
-//    ReadAndSetupMode();
     TmrEverySecond.StartOrRestart();
 
     // Main cycle
@@ -219,7 +214,7 @@ void ITask() {
             case evtIdEverySecond:
                 TimeS++;
                 ReadAndSetupMode();
-                if(TimeS % 4 == 0 and IndicationQ.IsEmpty()) CheckRxTable();
+//                if(TimeS % 4 == 0 and IndicationQ.IsEmpty()) CheckRxTable();
                 break;
 
 #if BUTTONS_ENABLED
@@ -247,22 +242,6 @@ void ITask() {
 } // ITask()
 
 __unused
-static const uint8_t PwrTable[12] = {
-        CC_PwrMinus30dBm, // 0
-        CC_PwrMinus27dBm, // 1
-        CC_PwrMinus25dBm, // 2
-        CC_PwrMinus20dBm, // 3
-        CC_PwrMinus15dBm, // 4
-        CC_PwrMinus10dBm, // 5
-        CC_PwrMinus6dBm,  // 6
-        CC_Pwr0dBm,       // 7
-        CC_PwrPlus5dBm,   // 8
-        CC_PwrPlus7dBm,   // 9
-        CC_PwrPlus10dBm,  // 10
-        CC_PwrPlus12dBm   // 11
-};
-
-__unused
 void ReadAndSetupMode() {
     static uint32_t OldDipSettings = 0xFFFF;
     uint8_t b = GetDipSwitch();
@@ -276,17 +255,16 @@ void ReadAndSetupMode() {
     Led.Stop();
     // Select self type
     chSysLock();
-    SelfType = b >> 4;
+    uint32_t Type = b >> 4;
 //    if(SelfType >= LcktType.size()) SelfType = LcktType.size() - 1;
     chSysUnlock();
     // Select power
     b &= 0b1111; // Remove high bits
-    Printf("Type: %u; Pwr: %u\r", SelfType, b);
+    Printf("Type: %u; Pwr: %u\r", Type, b);
+    Cfg.SetSelfType(Type);
+    Radio.PktTx.Type = Cfg.GetSelfType();
     ShowSelfType();
-    RMsg_t msg;
-    msg.Cmd = R_MSG_SET_PWR;
-    msg.Value = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
-    Radio.RMsgQ.SendNowOrExit(msg);
+    Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
 }
 
 #if 1 // ================= Command processing ====================
@@ -300,15 +278,16 @@ void OnCmd(Shell_t *PShell) {
     }
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
 
-    else if(PCmd->NameIs("GetID")) PShell->Reply("ID", ID);
+    else if(PCmd->NameIs("GetID")) PShell->Reply("ID", Cfg.ID);
 
     else if(PCmd->NameIs("SetID")) {
-        if(PCmd->GetNext<int32_t>(&ID) != retvOk) { PShell->Ack(retvCmdError); return; }
-        uint8_t r = ISetID(ID);
-        RMsg_t msg;
-        msg.Cmd = R_MSG_SET_CHNL;
-        msg.Value = ID2RCHNL(ID);
-        Radio.RMsgQ.SendNowOrExit(msg);
+        int32_t FID = 0;
+        if(PCmd->GetNext<int32_t>(&FID) != retvOk) { PShell->Ack(retvCmdError); return; }
+        uint8_t r = ISetID(FID);
+//        RMsg_t msg;
+//        msg.Cmd = R_MSG_SET_CHNL;
+//        msg.Value = ID2RCHNL(ID);
+//        Radio.RMsgQ.SendNowOrExit(msg);
         PShell->Ack(r);
     }
 
@@ -356,19 +335,21 @@ void OnCmd(Shell_t *PShell) {
 
 #if 1 // =========================== ID management =============================
 void ReadIDfromEE() {
-    ID = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
-    if(ID < ID_MIN or ID > ID_MAX) {
+    Cfg.ID = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
+    if(Cfg.ID < ID_MIN or Cfg.ID > ID_MAX) {
         Printf("\rUsing default ID\r");
-        ID = ID_DEFAULT;
+        Cfg.ID = ID_DEFAULT;
     }
+    Radio.PktTx.ID = Cfg.ID;
 }
 
 uint8_t ISetID(int32_t NewID) {
     if(NewID < ID_MIN or NewID > ID_MAX) return retvFail;
     uint8_t rslt = EE::Write32(EE_ADDR_DEVICE_ID, NewID);
     if(rslt == retvOk) {
-        ID = NewID;
-        Printf("New ID: %u\r", ID);
+        Cfg.ID = NewID;
+        Radio.PktTx.ID = Cfg.ID;
+        Printf("New ID: %u\r", Cfg.ID);
         return retvOk;
     }
     else {

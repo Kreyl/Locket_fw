@@ -12,6 +12,10 @@
 #include <string>
 #include "shell.h"
 
+#define ID_MIN                  1
+#define ID_MAX                  54
+#define ID_DEFAULT              ID_MIN
+
 enum VibroType_t { vbrNone = 0, vbrBrr, vbrBrrBrr, vbrBrrBrrBrr };
 #define VIBRO_TYPE_BRR          "Brr"
 #define VIBRO_TYPE_BRRBRR       "BrrBrr"
@@ -73,10 +77,17 @@ class Config_t {
 private:
     Reaction_t* GetReactByName(std::string &S);
     uint32_t GetLktTypeByName(std::string &S);
+    LocketInfo_t *SelfInfo = nullptr;
 public:
+    int32_t ID = ID_MIN;
     std::vector<Reaction_t> Rctns;
     std::vector<LocketInfo_t> Lockets;
+    void SetSelfType(uint32_t Type);
+    uint32_t GetSelfType() { return (SelfInfo == nullptr)? 0 : SelfInfo->Type; }
     void Read();
+    bool MustTxFar = false;
+    bool MustTxInEachOther = false;
+    uint8_t TxPower = 0;
 };
 
 extern Config_t Cfg;
