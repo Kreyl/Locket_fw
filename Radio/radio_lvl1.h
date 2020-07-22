@@ -182,7 +182,7 @@ public:
 class rLevel1_t {
 private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
-    uint8_t CntTxAttackRetreat = 0;
+    uint8_t CntTxFar = 0;
 public:
     rPkt_t PktRx, PktTx, PktTxFar;
     RxTable_t& GetRxTable() {
@@ -202,7 +202,7 @@ public:
         return *RxTableR;
     }
     uint8_t Init();
-    void TransmitAttackRetreat()  { CntTxAttackRetreat = 27; }
+    void TransmitAttackRetreat()  { CntTxFar = 27; }
     // Different modes of operation
     void GlobalTask();
     void TaskFeelEachOther();

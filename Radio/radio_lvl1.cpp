@@ -45,14 +45,24 @@ static void rLvl1Thread(void *arg) {
 __noreturn
 void rLevel1_t::GlobalTask() {
     while(true) {
-        if(Cfg.MustTxFar) TaskTransmitFar();
+        if(Cfg.IsAriKaesu()) {
+            if(CntTxFar > 0) {
+                Printf("FarAK: %u\r", CntTxFar);
+                CntTxFar--;
+                TaskTransmitFar();
+            }
+            else {
+                CC.EnterIdle();
+                chThdSleepMilliseconds(540);
+            }
+        }
         else {
             if(Cfg.MustTxInEachOther) TaskFeelEachOther();
             else TaskFeelEachOtherSilently(); // To allow be invisible
             // Transmit far if needed
-            if(CntTxAttackRetreat > 0) {
-                Printf("AttR: %u\r", CntTxAttackRetreat);
-                CntTxAttackRetreat--;
+            if(CntTxFar > 0) {
+                Printf("Far: %u\r", CntTxFar);
+                CntTxFar--;
                 TaskTransmitFar();
             }
             else TaskFeelFar();

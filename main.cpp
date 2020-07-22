@@ -139,7 +139,7 @@ private:
     };
 
 public:
-    void ShowSelfType() { Led.StartOrRestart(Lsqs[Cfg.SelfInfo->Type]); }
+    void ShowSelfType() { Led.StartOrRestart(Lsqs[Cfg.Type]); }
 
     void DoAriAppear() {
         AriTime = ARI_KAESU_IND_TIME_S;
@@ -155,8 +155,12 @@ public:
     }
 
     void Tick() {
-        if(AriTime != 0 or KaesuTime != 0) Vibro.StartOrRestart(VIBRO_ARI_KAESU);
-        else if(ChangedTime != 0) Vibro.StartOrRestart(VIBRO_SMTH_CHANGED);
+        if(AriTime != 0 or KaesuTime != 0) {
+            if(Vibro.IsIdle()) Vibro.StartOrRestart(VIBRO_ARI_KAESU);
+        }
+        else if(ChangedTime != 0) {
+            if(Vibro.IsIdle()) Vibro.StartOrRestart(VIBRO_SMTH_CHANGED);
+        }
         if(AriTime != 0) AriTime--;
         if(KaesuTime != 0) KaesuTime--;
         if(ChangedTime != 0) ChangedTime--;
@@ -167,7 +171,7 @@ public:
         if(TypesAround.IsNear(TYPE_ARI)) Que.PutIfNotOverflow(lsqAri);
         if(TypesAround.IsNear(TYPE_KAESU)) Que.PutIfNotOverflow(lsqKaesu);
         // Others
-        if(Cfg.SelfInfo->Type == TYPE_NORTH_STRONG or Cfg.SelfInfo->Type == TYPE_SOUTH_STRONG) {
+        if(Cfg.IsStrong()) {
             for(int i=2; i<TYPE_CNT; i++) {
                 uint32_t Cnt = TypesAround.IsNear(i);
                 switch(Cnt) {
@@ -256,8 +260,6 @@ int main(void) {
 //    }
     Clk.PrintFreqs();
     Random::Seed(GetUniqID3());   // Init random algorythm with uniq ID
-
-    Cfg.Read();
 
     Led.Init();
     Led.SetupSeqEndEvt(evtIdLedSeqDone);
@@ -384,7 +386,7 @@ void ReadAndSetupMode() {
     b &= 0b1111; // Remove high bits
     Printf("Type: %u; Pwr: %u\r", Type, b);
     Cfg.SetSelfType(Type);
-    Radio.PktTx.Type = Cfg.SelfInfo->Type;
+    Radio.PktTx.Type = Cfg.Type;
     Indi.ShowSelfType();
     Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
 }
