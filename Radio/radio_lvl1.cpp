@@ -71,12 +71,13 @@ void rLevel1_t::TaskFeelEachOther() {
     CC.DoRxAfterTx();
     CC.Recalibrate();
     sysinterval_t CycleStart_st = chVTGetSystemTimeX();
+    sysinterval_t CycleDur_st = TIME_MS2I(CYCLE_DURATION_MS + Random::Generate(0, MAX_RANDOM_DURATION_MS));
 
     // First phase: try to TX
 //    Printf("First\r");
     while(true) {
         // Get out of zero cycle if there was no success trying to transmit
-        if(chVTTimeElapsedSinceX(CycleStart_st) >= TIME_MS2I(CYCLE_DURATION_MS)) goto EndOfZeroCycle;
+        if(chVTTimeElapsedSinceX(CycleStart_st) >= CycleDur_st) goto EndOfZeroCycle;
         // Try to Tx
         if(CC.RxCcaTx_st(&PktTx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
 //            Printf("TX: %u\r", chVTTimeElapsedSinceX(CycleStart_st));
@@ -99,9 +100,9 @@ void rLevel1_t::TaskFeelEachOther() {
 //    Printf("Second\r");
     while(true) {
         sysinterval_t Elapsed_st = chVTTimeElapsedSinceX(CycleStart_st);
-        if(Elapsed_st >= TIME_MS2I(CYCLE_DURATION_MS)) break;
+        if(Elapsed_st >= CycleDur_st) break;
         else {
-            sysinterval_t RxDuration_st = TIME_MS2I(CYCLE_DURATION_MS) - Elapsed_st;
+            sysinterval_t RxDuration_st = CycleDur_st - Elapsed_st;
             if(CC.RxIfNotYet_st(RxDuration_st, &PktRx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
                 Printf("2 ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
                 RxTableW->AddOrReplaceExistingPkt(PktRx);
@@ -117,9 +118,10 @@ void rLevel1_t::TaskFeelEachOther() {
     for(uint32_t CycleN=1; CycleN < CYCLE_CNT; CycleN++) {   // Iterate cycles
         CC.Recalibrate(); // After this, CC will be in IDLE state
         CycleStart_st = chVTGetSystemTimeX();
+        CycleDur_st = TIME_MS2I(CYCLE_DURATION_MS + Random::Generate(0, MAX_RANDOM_DURATION_MS));
         while(true) {
             // Get out of cycle if there was no success trying to transmit
-            if(chVTTimeElapsedSinceX(CycleStart_st) >= TIME_MS2I(CYCLE_DURATION_MS)) break;
+            if(chVTTimeElapsedSinceX(CycleStart_st) >= CycleDur_st) break;
             // Try to transmit
             if(CC.RxCcaTx_st(&PktTx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
 //                Printf("TX: %u\r", chVTTimeElapsedSinceX(CycleStart_st));
@@ -134,10 +136,10 @@ void rLevel1_t::TaskFeelEachOther() {
         }
         // Sleep remainder of the cycle
         sysinterval_t Elapsed_st = chVTTimeElapsedSinceX(CycleStart_st);
-        if(Elapsed_st < TIME_MS2I(CYCLE_DURATION_MS)) {
+        if(Elapsed_st < CycleDur_st) {
             CC.EnterIdle();
             CC.EnterPwrDown();
-            sysinterval_t SleepDuration_st = TIME_MS2I(CYCLE_DURATION_MS) - Elapsed_st;
+            sysinterval_t SleepDuration_st = CycleDur_st - Elapsed_st;
 //            Printf("S %u\r", SleepDuration_st);
             chThdSleep(SleepDuration_st);
         }

@@ -11,10 +11,23 @@
 #include "ChunkTypes.h"
 #include <string>
 #include "shell.h"
+#include "Sequences.h"
 
-#define ID_MIN                  1
-#define ID_MAX                  54
+#define ID_BAD                  (-1)
+#define ID_MIN                  0
+#define ID_MAX                  243
 #define ID_DEFAULT              ID_MIN
+
+#define TYPE_ARI                0
+#define TYPE_KAESU              1
+#define TYPE_NORTH              2
+#define TYPE_NORTH_STRONG       3
+#define TYPE_SOUTH              4
+#define TYPE_SOUTH_STRONG       5
+#define TYPE_NORTH_CURSED       6
+#define TYPE_SOUTH_CURSED       7
+
+#define TYPE_CNT                8 // Sitting in the dirt, feeling kinda hurt
 
 enum VibroType_t { vbrNone = 0, vbrBrr, vbrBrrBrr, vbrBrrBrrBrr };
 #define VIBRO_TYPE_BRR          "Brr"
@@ -57,7 +70,7 @@ struct RcvItem_t {
 
 struct LocketInfo_t {
     std::string Name;
-    uint8_t Type;
+    uint8_t Type = 0;
     Reaction_t* ReactOnBtns[BTN_CNT] = {nullptr};
     Reaction_t* ReactOnPwrOn = nullptr;
     std::vector<RcvItem_t> Receive;
@@ -77,13 +90,15 @@ class Config_t {
 private:
     Reaction_t* GetReactByName(std::string &S);
     uint32_t GetLktTypeByName(std::string &S);
-    LocketInfo_t *SelfInfo = nullptr;
+    const LocketInfo_t ZeroInfo;
 public:
+    LocketInfo_t *SelfInfo = (LocketInfo_t*)&ZeroInfo;
+    uint32_t GetCountOfTypes() { return Lockets.size(); }
     int32_t ID = ID_MIN;
     std::vector<Reaction_t> Rctns;
     std::vector<LocketInfo_t> Lockets;
+
     void SetSelfType(uint32_t Type);
-    uint32_t GetSelfType() { return (SelfInfo == nullptr)? 0 : SelfInfo->Type; }
     void Read();
     bool MustTxFar = false;
     bool MustTxInEachOther = false;

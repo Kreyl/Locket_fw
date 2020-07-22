@@ -46,104 +46,174 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
 //static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
-static int32_t TimeS;
+static uint32_t TimeS;
+static uint32_t TimeToBeHidden = 0, TimeToBeSilent = 0;
 void CheckRxTable();
 #endif
 
 #if 1 // ========================== Logic ======================================
-#define DISTANCE_dBm        -99  // Replace with pseudo-distance
+#define GOOD_DISTANCE_dBm       (-111)
+#define ARI_KAESU_IND_TIME_S    4
+#define CHANGED_IND_TIME_S      2
+#define VIBRO_ARI_KAESU         vsqBrrBrr
+#define VIBRO_SMTH_CHANGED      vsqBrr
+#define TIME_TO_BE_HIDDEN_S     3600
+#define TIME_TO_BE_SILENT_S     600
 
 // Indication command with all required data
-struct IndicationCmd_t {
-    Reaction_t *PReact; // What to do
-    int32_t CountOfNeighbors;
-
-    IndicationCmd_t& operator = (const IndicationCmd_t &Right) {
-        PReact = Right.PReact;
-        CountOfNeighbors = Right.CountOfNeighbors;
-        return *this;
-    }
-    IndicationCmd_t() : PReact(nullptr), CountOfNeighbors(0) {}
-    IndicationCmd_t(Reaction_t* AReact, int32_t ACnt) : PReact(AReact), CountOfNeighbors(ACnt) {}
-};
-
-std::vector<int32_t> CountOfTypes;
-
-CircBuf_t<IndicationCmd_t, 18> IndicationQ;
-
-void ShowSelfType() {
-//    std::vector<LedRGBChunk_t> *Seq = &LcktType[SelfType].ReactOnPwrOn->Seq;
-//    if(!Seq->empty()) {
-//        Led.StartOrRestart(Seq->data());
-//    }
-}
-
-void ProcessIndicationQ() {
-//    IndicationCmd_t Cmd;
-//    while(IndicationQ.Get(&Cmd) == retvOk) {
-//        // LED
-//        std::vector<LedRGBChunk_t> *Seq = &Cmd.PReact->Seq;
-//        if(!Seq->empty()) {
-//            Led.StartOrRestart(Seq->data());
-//        }
-//        // Vibro
-//        if(Cmd.PReact->VibroType == vbrOneTwoMany) {
-//            if     (Cmd.CountOfNeighbors == 1) Vibro.StartOrRestart(vsqBrr);
-//            else if(Cmd.CountOfNeighbors == 2) Vibro.StartOrRestart(vsqBrrBrr);
-//            else if(Cmd.CountOfNeighbors >  2) Vibro.StartOrRestart(vsqBrrBrrBrr);
-//        }
-//        // Disable Radio TX if needed
-//        if(Cmd.PReact->MustStopTx == true) {
-//            MustTx = false;
-//            Radio.MustTx = false; // Stop it now
-//        }
-//        // Get out if LED or Vibro is started. Otherwise noone will call ProcessIndication.
-//        if(!Led.IsIdle() or !Vibro.IsIdle()) break;
-//    } // if get cmd
+//struct IndicationCmd_t {
+//    ; // What to do
+//    int32_t CountOfNeighbors;
 //
-//    if(IndicationQ.IsEmpty()) { // Q is empty
-////        Printf("MTX: %u\r", MustTx);
-//        Radio.MustTx = MustTx; // start or stop transmitting
+//    IndicationCmd_t& operator = (const IndicationCmd_t &Right) {
+//        PReact = Right.PReact;
+//        CountOfNeighbors = Right.CountOfNeighbors;
+//        return *this;
 //    }
-}
+//    IndicationCmd_t() : PReact(nullptr), CountOfNeighbors(0) {}
+//    IndicationCmd_t(Reaction_t* AReact, int32_t ACnt) : PReact(AReact), CountOfNeighbors(ACnt) {}
+//};
 
-void StartIndication() {
-//    MustTx = true;
-    ProcessIndicationQ();
-}
+class TypesAround_t {
+private:
+    int32_t ITypes1[TYPE_CNT] = {0}, ITypes2[TYPE_CNT] = {0};
+    int32_t *pNew = ITypes1, *pOld = ITypes2;
+    bool AriIsNear = false, KaesuIsNear = false;
+public:
+    void IncCnt(uint8_t Type) { pNew[Type]++; }
+
+    bool IsAriAppeared() {
+        if(pNew[TYPE_ARI] != 0 and !AriIsNear) {
+            AriIsNear = true;
+            return true;
+        }
+        else if(pNew[TYPE_ARI] == 0) AriIsNear = false;
+        return false;
+    }
+    bool IsKaesuAppeared() {
+        if(pNew[TYPE_KAESU] != 0 and !KaesuIsNear) {
+            KaesuIsNear = true;
+            return true;
+        }
+        else if(pNew[TYPE_KAESU] == 0) KaesuIsNear = false;
+        return false;
+    }
+
+    bool HasChangedOthers() {
+        for(int i=2; i<TYPE_CNT; i++) {
+            if(ITypes1[i] != ITypes2[i]) return true;
+        }
+        return false;
+    }
+    void PrepareNew() {
+        // Switch pointers
+        if(pNew == ITypes1) {
+            pNew = ITypes2;
+            pOld = ITypes1;
+        }
+        else {
+            pNew = ITypes1;
+            pOld = ITypes2;
+        }
+        // Clear new
+        for(int i=0; i<TYPE_CNT; i++) pNew[i] = 0;
+    }
+
+    uint32_t IsNear(uint8_t Type) { return pNew[Type]; }
+} TypesAround;
+
+class Indication_t {
+private:
+    int32_t AriTime = 0, KaesuTime = 0, ChangedTime = 0;
+    CircBuf_t<const LedRGBChunk_t*, 18> Que;
+    const LedRGBChunk_t* Lsqs[TYPE_CNT] = {
+            lsqAri, lsqKaesu, lsqNorth, lsqNorthStrong, lsqSouth, lsqSouthStrong, lsqNorthCursed, lsqSouthCursed
+    };
+
+public:
+    void ShowSelfType() { Led.StartOrRestart(Lsqs[Cfg.SelfInfo->Type]); }
+
+    void DoAriAppear() {
+        AriTime = ARI_KAESU_IND_TIME_S;
+        if(Vibro.IsIdle()) Vibro.StartOrRestart(VIBRO_ARI_KAESU);
+    }
+    void DoKaesuAppear() {
+        KaesuTime = ARI_KAESU_IND_TIME_S;
+        if(Vibro.IsIdle()) Vibro.StartOrRestart(VIBRO_ARI_KAESU);
+    }
+    void DoChanged() {
+        if(ChangedTime == 0) ChangedTime = CHANGED_IND_TIME_S;
+        if(Vibro.IsIdle()) Vibro.StartOrRestart(VIBRO_SMTH_CHANGED);
+    }
+
+    void Tick() {
+        if(AriTime != 0 or KaesuTime != 0) Vibro.StartOrRestart(VIBRO_ARI_KAESU);
+        else if(ChangedTime != 0) Vibro.StartOrRestart(VIBRO_SMTH_CHANGED);
+        if(AriTime != 0) AriTime--;
+        if(KaesuTime != 0) KaesuTime--;
+        if(ChangedTime != 0) ChangedTime--;
+    }
+
+    void ShowWhoIsNear() {
+        // Ari & Kaesu
+        if(TypesAround.IsNear(TYPE_ARI)) Que.PutIfNotOverflow(lsqAri);
+        if(TypesAround.IsNear(TYPE_KAESU)) Que.PutIfNotOverflow(lsqKaesu);
+        // Others
+        if(Cfg.SelfInfo->Type == TYPE_NORTH_STRONG or Cfg.SelfInfo->Type == TYPE_SOUTH_STRONG) {
+            for(int i=2; i<TYPE_CNT; i++) {
+                uint32_t Cnt = TypesAround.IsNear(i);
+                switch(Cnt) {
+                    case 0: break;
+                    case 1: Que.PutIfNotOverflow(Lsqs[i]); break;
+                    case 2:
+                        Que.PutIfNotOverflow(Lsqs[i]);
+                        Que.PutIfNotOverflow(Lsqs[i]);
+                        break;
+                    default:
+                        Que.PutIfNotOverflow(Lsqs[i]);
+                        Que.PutIfNotOverflow(Lsqs[i]);
+                        Que.PutIfNotOverflow(Lsqs[i]);
+                        break;
+                } // switch
+            } // for
+        }
+        ProcessQue();
+    }
+
+    void ProcessQue() {
+        const LedRGBChunk_t* Seq;
+        if(Que.Get(&Seq) == retvOk) Led.StartOrRestart(Seq);
+    }
+
+    void FlushQueue() { Que.Flush(); }
+
+    void AddVisible() { Que.PutIfNotOverflow(lsqVisible); }
+    void AddHidden()  { Que.PutIfNotOverflow(lsqHidden); }
+} Indi;
 
 void CheckRxTable() {
-//    std::vector<ReactItem_t>& SelfReact = LcktType[SelfType].React;
-    // Is it needed? Do we have reaction?
-//    if(SelfReact.empty()) return;
-//    // Analyze table: get count of every type near
-//    for(int32_t &Cnt : CountOfTypes) Cnt = 0;   // Reset count
-//    int32_t MaxTypeID = CountOfTypes.size() - 1;
-//    RxTable_t Tbl = Radio.GetRxTable();
-//    for(uint32_t i=0; i<Tbl.Cnt; i++) { // i is just number of pkt in table, no relation with type
-//        rPkt_t Pkt = Tbl[i];
-//        if(Pkt.Type <= MaxTypeID) { // Type is ok
-//            // Check if Distance is ok
-////            if(Pkt.Rssi > SelfReact[Pkt.Type].Distance) { // TODO
-//            if(Pkt.Rssi > -75) {
-//                CountOfTypes[Pkt.Type]++;
-//            }
-//        }
-//    }
-//    // Put reactions to queue
-//    for(int32_t TypeRcvd=0; TypeRcvd <= MaxTypeID; TypeRcvd++) {
-//        int32_t N = CountOfTypes[TypeRcvd];
-//        if(N) { // Here they are! Do we need to react?
-//            for(ReactItem_t& ritem : SelfReact) {
-//                if(ritem.Source == TypeRcvd) { // Yes, we must react
-////                    Printf("Put\r");
-//                    IndicationQ.PutIfNotOverflow(IndicationCmd_t(ritem.PReact, N));
-//                    break;
-//                }
-//            } // for reactitem
-//        } // if N
-//    } // for
-//    StartIndication();
+    // Analyze table: get count of every type near
+    TypesAround.PrepareNew();
+    RxTable_t& Tbl = Radio.GetRxTable();
+    for(uint32_t i=0; i<Tbl.Cnt; i++) { // i is just number of pkt in table, no relation with type
+        rPkt_t Pkt = Tbl[i];
+        if(Pkt.Type <= (TYPE_CNT-1)) { // Type is ok
+            // Always add Ari or Kaesu. For others, check if Distance is ok
+            if(Pkt.Type == TYPE_ARI or Pkt.Type == TYPE_KAESU or Pkt.Rssi > GOOD_DISTANCE_dBm) {
+                TypesAround.IncCnt(Pkt.Type);
+            }
+        }
+    }
+
+    // Check if Ari appeared
+    if(TypesAround.IsAriAppeared()) Indi.DoAriAppear();
+    if(TypesAround.IsKaesuAppeared()) Indi.DoKaesuAppear();
+
+    // Check if Others changed
+    if(TypesAround.HasChangedOthers()) {
+        Printf("Changed\r");
+        Indi.DoChanged();
+    }
 }
 #endif
 
@@ -175,7 +245,7 @@ int main(void) {
     Led.Init();
     Led.SetupSeqEndEvt(evtIdLedSeqDone);
     Vibro.Init();
-    Vibro.SetupSeqEndEvt(evtIdVibroSeqDone);
+//    Vibro.SetupSeqEndEvt(evtIdVibroSeqDone);
 //    Vibro.StartOrRestart(vsqBrrBrr);
 #if BEEPER_ENABLED // === Beeper ===
 //    Beeper.Init();
@@ -214,22 +284,45 @@ void ITask() {
             case evtIdEverySecond:
                 TimeS++;
                 ReadAndSetupMode();
-//                if(TimeS % 4 == 0 and IndicationQ.IsEmpty()) CheckRxTable();
+                if(TimeS % 4 == 0) CheckRxTable();
+                Indi.Tick();
+                // Hidden & Silent
+                if(TimeToBeHidden != 0) {
+                    TimeToBeHidden--;
+                    if(TimeToBeHidden == 0) Cfg.MustTxInEachOther = true;
+                }
                 break;
 
 #if BUTTONS_ENABLED
             case evtIdButtons:
-                Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
-                Radio.MustTx = true;
-                Led.StartOrRestart(lsqTx);
+                Printf("Btn %u %u\r", Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
+                if(Msg.BtnEvtInfo.BtnID == 0) {
+                    if(Msg.BtnEvtInfo.Type == beShortPress) {
+                        // Show visibility
+                        if(TimeToBeHidden == 0) Indi.AddVisible();
+                        else Indi.AddHidden();
+                        Indi.ShowWhoIsNear();
+                    }
+                    else if(Msg.BtnEvtInfo.Type == beLongPress and (Cfg.SelfInfo->Type == TYPE_NORTH_STRONG or Cfg.SelfInfo->Type == TYPE_SOUTH_STRONG)) {
+                        if(TimeToBeHidden == 0) { // Be hidden
+                            TimeToBeHidden = TIME_TO_BE_HIDDEN_S;
+                            Cfg.MustTxInEachOther = false;
+                            Led.StartOrRestart(lsqHidden);
+                        }
+                        else { // Be visible
+                            TimeToBeHidden = 0;
+                            Cfg.MustTxInEachOther = true;
+                            Led.StartOrRestart(lsqVisible);
+                        }
+                    }
+                }
+
+
                 break;
 #endif
 
             case evtIdLedSeqDone:
-                if(Vibro.IsIdle()) ProcessIndicationQ(); // proceed with indication if current completed
-                break;
-            case evtIdVibroSeqDone:
-                if(Led.IsIdle()) ProcessIndicationQ(); // proceed with indication if current completed
+                Indi.ProcessQue(); // proceed with indication if current completed
                 break;
 
             case evtIdShellCmd:
@@ -250,7 +343,7 @@ void ReadAndSetupMode() {
     Printf("Dip: 0x%02X; ", b);
     OldDipSettings = b;
     // Reset everything
-    IndicationQ.Flush();
+    Indi.FlushQueue();
     Vibro.Stop();
     Led.Stop();
     // Select self type
@@ -262,8 +355,8 @@ void ReadAndSetupMode() {
     b &= 0b1111; // Remove high bits
     Printf("Type: %u; Pwr: %u\r", Type, b);
     Cfg.SetSelfType(Type);
-    Radio.PktTx.Type = Cfg.GetSelfType();
-    ShowSelfType();
+    Radio.PktTx.Type = Cfg.SelfInfo->Type;
+    Indi.ShowSelfType();
     Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
 }
 

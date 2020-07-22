@@ -98,7 +98,7 @@ union rPkt_t {
 #define SLOT_CNT            54
 #define SLOT_DURATION_MS    2
 #define CYCLE_DURATION_MS   (SLOT_DURATION_MS * SLOT_CNT)
-//#define SHORT_DURATION_MS
+#define MAX_RANDOM_DURATION_MS  18
 
 // Timings
 #define MIN_SLEEP_DURATION_MS   18
@@ -118,9 +118,11 @@ public:
     uint32_t Cnt = 0;
 #if RXT_PKT_REQUIRED
     void AddOrReplaceExistingPkt(rPkt_t &APkt) {
+        chSysLock();
         for(uint32_t i=0; i<Cnt; i++) {
             if(IBuf[i].ID == APkt.ID) {
-                IBuf[i] = APkt; // Replace with newer pkt
+                if(IBuf[i].Rssi < APkt.Rssi) IBuf[i] = APkt; // Replace with newer pkt if RSSI is stronger
+                chSysUnlock();
                 return;
             }
         }
@@ -129,6 +131,7 @@ public:
             IBuf[Cnt] = APkt;
             Cnt++;
         }
+        chSysUnlock();
     }
 
     uint8_t GetPktByID(uint8_t ID, rPkt_t *ptr) {

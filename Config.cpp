@@ -107,8 +107,8 @@ void Config_t::Read() {
                 }
             }
         } // for seq items
-        // Finalize seq if not empty TODO Really required?
-//        if(Seq->size()) Seq->push_back(LedRGBChunk_t(csEnd));
+        // Finalize seq if not empty
+        if(Seq->size()) Seq->push_back(LedRGBChunk_t(csEnd));
         // Done
         PRea->Print();
     } // For reactions

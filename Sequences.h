@@ -1,7 +1,7 @@
 /*
  * Sequences.h
  *
- *  Created on: 09 ÿíâ. 2015 ã.
+ *  Created on: 09 ï¿½ï¿½ï¿½. 2015 ï¿½.
  *      Author: Kreyl
  */
 
@@ -190,29 +190,86 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
-//const LedRGBChunk_t lsqModeTxStart[] = {
-//        {csSetup, 0, clYellow},
-//        {csWait, 207},
-//        {csSetup, 0, clBlack},
-//        {csWait, 207},
-//        {csSetup, 0, clYellow},
-//        {csWait, 207},
-//        {csSetup, 0, clBlack},
-//        {csEnd}
-//};
+#define SHOWTIME        270
+#define PAUSETIME       720
+#define SHORTPAUSETIME  72
 
-//const LedRGBChunk_t lsqTx[] {
-//        {csSetup, 0, clYellow},
-//        {csEnd}
-//};
+const LedRGBChunk_t lsqAri[] = {
+        {csSetup, 0, clGreen}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqKaesu[] = {
+        {csSetup, 0, clRed},   {csWait, SHOWTIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqNorth[] = {
+        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csEnd},
+};
+const LedRGBChunk_t lsqNorthStrong[] = {
+        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clWhite},  {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqSouth[] = {
+        {csSetup, 0, {128,0,255}}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},     {csWait, PAUSETIME},
+        {csEnd},
+};
+const LedRGBChunk_t lsqSouthStrong[] = {
+        {csSetup, 0, {128,0,255}}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},     {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clWhite},     {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},     {csWait, PAUSETIME},
+        {csEnd},
+};
+
+
+const LedRGBChunk_t lsqNorthCursed[] = {
+        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
+        {csSetup, 0, clRed},    {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csEnd},
+};
+const LedRGBChunk_t lsqSouthCursed[] = {
+        {csSetup, 0, {128,0,255}}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},     {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clRed},       {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},     {csWait, PAUSETIME},
+        {csEnd},
+};
+
+
+const LedRGBChunk_t lsqHidden[] = {
+        {csSetup, 0, clBlue}, {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
+        {csRepeat, 1},
+        {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqVisible[] = {
+        {csSetup, 0, clGreen}, {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
+        {csRepeat, 1},
+        {csWait, PAUSETIME},
+        {csEnd},
+};
+
 
 const LedRGBChunk_t lsqStart[] = {
-        {csSetup, 0, clRed},
-        {csWait, 207},
-        {csSetup, 0, clGreen},
-        {csWait, 207},
-        {csSetup, 0, clBlue},
-        {csWait, 207},
+        {csSetup, 0, clRed},   {csWait, 207},
+        {csSetup, 0, clGreen}, {csWait, 207},
+        {csSetup, 0, clBlue},  {csWait, 207},
 //        {csSetup, 0, clBlack},
         {csSetup, 0, {0,1,0}},
         {csEnd},
@@ -232,41 +289,6 @@ const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clBlack},
         {csEnd}
 };
-
-const LedRGBChunk_t lsqTx[] = {
-        {csSetup, 306, clYellow},
-        {csSetup, 306, clBlack},
-//        {csSetup, 0, {7,0,0}},
-        {csEnd},
-};
-
-const LedRGBChunk_t lsqRx[] = {
-        {csSetup, 180, clGreen},
-        {csWait, 999},
-//        {csSetup, 0, {0,7,0}},
-        {csSetup, 180, clBlack},
-        {csEnd},
-};
-
-// ==== Pill ====
-//const LedRGBChunk_t lsqPillCure[] = {
-//        {csSetup, 0, clGreen},
-//        {csWait, 999},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
-//const LedRGBChunk_t lsqPillPanacea[] = {
-//        {csSetup, 0, clWhite},
-//        {csWait, 999},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
-//const LedRGBChunk_t lsqPillBad[] = {
-//        {csSetup, 0, clRed},
-//        {csWait, 999},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
 
 #endif
 
