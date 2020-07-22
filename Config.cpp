@@ -11,12 +11,6 @@
 
 Config_t Cfg;
 
-#if 1 // ============================== Types ==================================
-
-
-
-#endif
-
 void Config_t::SetSelfType(uint8_t AType) {
     if(AType > TYPE_SOUTH_CURSED) {
         Printf("BadType: %u\r", Type);

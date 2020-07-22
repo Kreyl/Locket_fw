@@ -48,12 +48,11 @@ static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
 //static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
 static uint32_t TimeS;
 static uint32_t TimeToBeHidden = 0, TimeToBeSilent = 0;
-void CheckRxTable();
 #endif
 
 #if 1 // ========================== Logic ======================================
 #define GOOD_DISTANCE_dBm       (-111)
-#define ARI_KAESU_IND_TIME_S    4
+#define ARI_KAESU_IND_TIME_S    18
 #define CHANGED_IND_TIME_S      2
 #define TIME_TO_BE_HIDDEN_S     3600
 #define TIME_TO_BE_SILENT_S     600
@@ -62,20 +61,9 @@ void CheckRxTable();
 #define VIBRO_SMTH_CHANGED      vsqBrr
 #define VIBRO_ATTACK            vsqBrr
 
-
-// Indication command with all required data
-//struct IndicationCmd_t {
-//    ; // What to do
-//    int32_t CountOfNeighbors;
-//
-//    IndicationCmd_t& operator = (const IndicationCmd_t &Right) {
-//        PReact = Right.PReact;
-//        CountOfNeighbors = Right.CountOfNeighbors;
-//        return *this;
-//    }
-//    IndicationCmd_t() : PReact(nullptr), CountOfNeighbors(0) {}
-//    IndicationCmd_t(Reaction_t* AReact, int32_t ACnt) : PReact(AReact), CountOfNeighbors(ACnt) {}
-//};
+void CheckRxTable();
+void ProcessButtonsAriKaesu(uint8_t BtnID, BtnEvt_t Type);
+void ProcessButtonsOthers(uint8_t BtnID, BtnEvt_t Type);
 
 class TypesAround_t {
 private:
@@ -143,26 +131,29 @@ public:
 
     void DoAriAppear() {
         AriTime = ARI_KAESU_IND_TIME_S;
-        if(Vibro.IsIdle()) Vibro.StartOrRestart(VIBRO_ARI_KAESU);
+        Vibro.StartIfIdle(VIBRO_ARI_KAESU);
     }
     void DoKaesuAppear() {
         KaesuTime = ARI_KAESU_IND_TIME_S;
-        if(Vibro.IsIdle()) Vibro.StartOrRestart(VIBRO_ARI_KAESU);
+        Vibro.StartIfIdle(VIBRO_ARI_KAESU);
     }
     void DoChanged() {
         if(ChangedTime == 0) ChangedTime = CHANGED_IND_TIME_S;
-        if(Vibro.IsIdle()) Vibro.StartOrRestart(VIBRO_SMTH_CHANGED);
+        Vibro.StartIfIdle(VIBRO_SMTH_CHANGED);
     }
 
     void Tick() {
-        if(AriTime != 0 or KaesuTime != 0) {
-            if(Vibro.IsIdle()) Vibro.StartOrRestart(VIBRO_ARI_KAESU);
+        if(AriTime != 0 or KaesuTime != 0) Vibro.StartIfIdle(VIBRO_ARI_KAESU);
+        else if(ChangedTime != 0) Vibro.StartIfIdle(VIBRO_SMTH_CHANGED);
+        // Time
+        if(AriTime != 0) {
+            TypesAround.IncCnt(TYPE_ARI);
+            AriTime--;
         }
-        else if(ChangedTime != 0) {
-            if(Vibro.IsIdle()) Vibro.StartOrRestart(VIBRO_SMTH_CHANGED);
+        if(KaesuTime != 0) {
+            TypesAround.IncCnt(TYPE_KAESU);
+            KaesuTime--;
         }
-        if(AriTime != 0) AriTime--;
-        if(KaesuTime != 0) KaesuTime--;
         if(ChangedTime != 0) ChangedTime--;
     }
 
@@ -203,6 +194,11 @@ public:
     void AddHidden()  { Que.PutIfNotOverflow(lsqHidden); }
 } Indi;
 
+void BeSilent() {
+    TimeToBeSilent = TIME_TO_BE_SILENT_S;
+    Cfg.MustTxInEachOther = false;
+}
+
 void CheckRxTable() {
     // Analyze table: get count of every type near
     TypesAround.PrepareNew();
@@ -210,30 +206,99 @@ void CheckRxTable() {
     for(uint32_t i=0; i<Tbl.Cnt; i++) { // i is just number of pkt in table, no relation with type
         rPkt_t Pkt = Tbl[i];
         if(Pkt.Type <= (TYPE_CNT-1)) { // Type is ok
-            // Always add Ari or Kaesu. For others, check if Distance is ok
-            if(Pkt.Type == TYPE_ARI or Pkt.Type == TYPE_KAESU or Pkt.Rssi > GOOD_DISTANCE_dBm) {
-                TypesAround.IncCnt(Pkt.Type);
+            // Process Ari and Kaesu, do not add to list
+            if(Pkt.Type == TYPE_ARI) {
+                if((Cfg.IsNorth() and Pkt.RCmd == RCMD_NORTH_ARI_KAESU) or (Cfg.IsSouth() and Pkt.RCmd == RCMD_SOUTH_ARI_KAESU)) {
+                    TypesAround.IncCnt(Pkt.Type);
+                    Indi.DoAriAppear();
+                }
+                else if(Pkt.RCmd == RCMD_BESILENT) BeSilent();
+            }
+            else if(Pkt.Type == TYPE_KAESU) {
+                if((Cfg.IsNorth() and Pkt.RCmd == RCMD_NORTH_ARI_KAESU) or (Cfg.IsSouth() and Pkt.RCmd == RCMD_SOUTH_ARI_KAESU)) {
+                    TypesAround.IncCnt(Pkt.Type);
+                    Indi.DoKaesuAppear();
+                }
+                else if(Pkt.RCmd == RCMD_BESILENT) BeSilent();
+            }
+            else { // Some other
+                if(TimeToBeSilent == 0) { // Do not react even if something is received
+                    // Check if Attack/Retreat
+                    if(Cfg.IsNorth()) {
+                        if     (Pkt.RCmd == RCMD_NORTH_ATTACK)  Vibro.StartIfIdle(vsqAttack);
+                        else if(Pkt.RCmd == RCMD_NORTH_RETREAT) Vibro.StartIfIdle(vsqRetreat);
+                    }
+                    else if(Cfg.IsSouth()) {
+                        if     (Pkt.RCmd == RCMD_SOUTH_ATTACK)  Vibro.StartIfIdle(vsqAttack);
+                        else if(Pkt.RCmd == RCMD_SOUTH_RETREAT) Vibro.StartIfIdle(vsqRetreat);
+                    }
+                    // Add to list
+                    if(Pkt.Rssi > GOOD_DISTANCE_dBm) TypesAround.IncCnt(Pkt.Type);
+                }
             }
         }
-    }
-
-    // Check if Ari appeared
-    if(TypesAround.IsAriAppeared())   Indi.DoAriAppear();
-    if(TypesAround.IsKaesuAppeared()) Indi.DoKaesuAppear();
-
-    // Check if Attack/Retreat
-    if(Cfg.IsNorth()) {
-        if(TypesAround.IsNear(TYPE_NORTH_ATTACK))  { Vibro.StartOrContinue(vsqAttack); return; }
-        if(TypesAround.IsNear(TYPE_NORTH_RETREAT)) { Vibro.StartOrContinue(vsqRetreat); return; }
-    }
-    else if(Cfg.IsSouth()) {
-        if(TypesAround.IsNear(TYPE_SOUTH_ATTACK))  { Vibro.StartOrContinue(vsqAttack); return; }
-        if(TypesAround.IsNear(TYPE_SOUTH_RETREAT)) { Vibro.StartOrContinue(vsqRetreat); return; }
     }
 
     // Check if Others changed
     if(TypesAround.HasChangedOthers()) {
         Indi.DoChanged();
+    }
+}
+
+void ProcessButtonsAriKaesu(uint8_t BtnID, BtnEvt_t Type) {
+    if(Type != beLongPress) return;
+    Vibro.StartOrRestart(vsqBrrBrr);
+    if(BtnID == 0) {
+        Radio.PktTxFar.RCmd = RCMD_NORTH_ARI_KAESU;
+        Indi.ShowSelfType();
+        Radio.DoTransmitFar(900);
+    }
+    else if(BtnID == 1) {
+        Radio.PktTxFar.RCmd = RCMD_SOUTH_ARI_KAESU;
+        Indi.ShowSelfType();
+        Radio.DoTransmitFar(900);
+    }
+    else if(BtnID == 2) {
+        Radio.PktTxFar.RCmd = RCMD_BESILENT;
+        Led.StartOrRestart(lsqHidden);
+        Radio.DoTransmitFar(900);
+    }
+}
+
+void ProcessButtonsOthers(uint8_t BtnID, BtnEvt_t Type) {
+    if(BtnID == 0) {
+        if(Type == beShortPress) {
+            // Show visibility
+            if(TimeToBeHidden == 0) Indi.AddVisible();
+            else Indi.AddHidden();
+            Indi.ShowWhoIsNear();
+        }
+        else if(Type == beLongPress and Cfg.IsStrong()) {
+            if(TimeToBeHidden == 0) { // Be hidden
+                TimeToBeHidden = TIME_TO_BE_HIDDEN_S;
+                Cfg.MustTxInEachOther = false;
+                Led.StartOrRestart(lsqHidden);
+            }
+            else { // Be visible
+                TimeToBeHidden = 0;
+                Cfg.MustTxInEachOther = true;
+                Led.StartOrRestart(lsqVisible);
+            }
+        }
+    }
+    // Retreat
+    else if(BtnID == 1 and Type == beLongPress) {
+        Vibro.StartOrRestart(vsqBrrBrr);
+        if(Cfg.IsNorth()) Radio.PktTxFar.RCmd = RCMD_NORTH_RETREAT;
+        else if(Cfg.IsSouth()) Radio.PktTxFar.RCmd = RCMD_SOUTH_RETREAT;
+        Radio.DoTransmitFar(18);
+    }
+    // Attack
+    else if(BtnID == 2 and Type == beLongPress) {
+        Vibro.StartOrRestart(vsqBrrBrr);
+        if(Cfg.IsNorth()) Radio.PktTxFar.RCmd = RCMD_NORTH_ATTACK;
+        else if(Cfg.IsSouth()) Radio.PktTxFar.RCmd = RCMD_SOUTH_ATTACK;
+        Radio.DoTransmitFar(18);
     }
 }
 #endif
@@ -308,47 +373,19 @@ void ITask() {
                 // Hidden & Silent
                 if(TimeToBeHidden != 0) {
                     TimeToBeHidden--;
-                    if(TimeToBeHidden == 0) Cfg.MustTxInEachOther = true;
+                    if(TimeToBeHidden == 0 and TimeToBeSilent == 0) Cfg.MustTxInEachOther = true;
+                }
+                if(TimeToBeSilent != 0) {
+                    TimeToBeSilent--;
+                    if(TimeToBeHidden == 0 and TimeToBeSilent == 0) Cfg.MustTxInEachOther = true;
                 }
                 break;
 
 #if BUTTONS_ENABLED
             case evtIdButtons:
                 Printf("Btn %u %u\r", Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
-                if(Msg.BtnEvtInfo.BtnID == 0) {
-                    if(Msg.BtnEvtInfo.Type == beShortPress) {
-                        // Show visibility
-                        if(TimeToBeHidden == 0) Indi.AddVisible();
-                        else Indi.AddHidden();
-                        Indi.ShowWhoIsNear();
-                    }
-                    else if(Msg.BtnEvtInfo.Type == beLongPress and Cfg.IsStrong()) {
-                        if(TimeToBeHidden == 0) { // Be hidden
-                            TimeToBeHidden = TIME_TO_BE_HIDDEN_S;
-                            Cfg.MustTxInEachOther = false;
-                            Led.StartOrRestart(lsqHidden);
-                        }
-                        else { // Be visible
-                            TimeToBeHidden = 0;
-                            Cfg.MustTxInEachOther = true;
-                            Led.StartOrRestart(lsqVisible);
-                        }
-                    }
-                }
-                // Retreat
-                else if(Msg.BtnEvtInfo.BtnID == 1 and Msg.BtnEvtInfo.Type == beLongPress) {
-                    Vibro.StartOrRestart(vsqBrrBrr);
-                    if(Cfg.IsNorth()) Radio.PktTxFar.Type = TYPE_NORTH_RETREAT;
-                    else if(Cfg.IsSouth()) Radio.PktTxFar.Type = TYPE_SOUTH_RETREAT;
-                    Radio.TransmitAttackRetreat();
-                }
-                // Attack
-                else if(Msg.BtnEvtInfo.BtnID == 2 and Msg.BtnEvtInfo.Type == beLongPress) {
-                    Vibro.StartOrRestart(vsqBrrBrr);
-                    if(Cfg.IsNorth()) Radio.PktTxFar.Type = TYPE_NORTH_ATTACK;
-                    else if(Cfg.IsSouth()) Radio.PktTxFar.Type = TYPE_SOUTH_ATTACK;
-                    Radio.TransmitAttackRetreat();
-                }
+                if(Cfg.IsAriKaesu()) ProcessButtonsAriKaesu(Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
+                else ProcessButtonsOthers(Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
                 break;
 #endif
 
@@ -387,6 +424,7 @@ void ReadAndSetupMode() {
     Printf("Type: %u; Pwr: %u\r", Type, b);
     Cfg.SetSelfType(Type);
     Radio.PktTx.Type = Cfg.Type;
+    Radio.PktTxFar.Type = Cfg.Type;
     Indi.ShowSelfType();
     Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
 }

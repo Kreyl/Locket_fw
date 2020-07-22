@@ -2,7 +2,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "JSON"
+#define APP_NAME            "Dalan"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE

@@ -1,7 +1,7 @@
 /*
  * ChunkTypes.h
  *
- *  Created on: 08 ÿíâ. 2015 ã.
+ *  Created on: 08 ï¿½ï¿½ï¿½. 2015 ï¿½.
  *      Author: Kreyl
  */
 
@@ -133,6 +133,10 @@ public:
     void StartOrContinue(const TChunk *PChunk) {
         if(PChunk == IPStartChunk) return; // Same sequence
         else StartOrRestart(PChunk);
+    }
+
+    void StartIfIdle(const TChunk *PChunk) {
+        if(IsIdle()) StartOrRestart(PChunk);
     }
 
     void Stop() {

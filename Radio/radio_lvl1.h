@@ -74,9 +74,10 @@ static const uint8_t PwrTable[12] = {
 union rPkt_t {
     uint32_t DW32;
     struct {
-        uint16_t ID;
-        uint8_t Type;
-        int8_t Rssi; // Will be set after RX. Trnasmitting is useless, but who cares.
+        uint8_t ID = 0;
+        uint8_t Type = 0;
+        uint8_t RCmd = 0;
+        int8_t Rssi = 0; // Will be set after RX. Trnasmitting is useless, but who cares.
     } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {
         DW32 = Right.DW32;
@@ -182,7 +183,12 @@ public:
 class rLevel1_t {
 private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
-    uint8_t CntTxFar = 0;
+    uint32_t CntTxFar = 0;
+    // Different modes of operation
+    void TaskFeelEachOther();
+    void TaskFeelEachOtherSilently();
+    void TaskFeelFar();
+    void TaskTransmitFar();
 public:
     rPkt_t PktRx, PktTx, PktTxFar;
     RxTable_t& GetRxTable() {
@@ -202,13 +208,9 @@ public:
         return *RxTableR;
     }
     uint8_t Init();
-    void TransmitAttackRetreat()  { CntTxFar = 27; }
-    // Different modes of operation
+    void DoTransmitFar(uint32_t TxCnt)  { CntTxFar = TxCnt; }
+    // Inner use
     void GlobalTask();
-    void TaskFeelEachOther();
-    void TaskFeelEachOtherSilently();
-    void TaskFeelFar();
-    void TaskTransmitFar();
 };
 
 extern rLevel1_t Radio;

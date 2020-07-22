@@ -195,7 +195,7 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #define SHORTPAUSETIME  72
 
 const LedRGBChunk_t lsqAri[] = {
-        {csSetup, 0, clGreen}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlue}, {csWait, SHOWTIME},
         {csSetup, 0, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
@@ -225,10 +225,10 @@ const LedRGBChunk_t lsqSouth[] = {
         {csEnd},
 };
 const LedRGBChunk_t lsqSouthStrong[] = {
-        {csSetup, 0, {128,0,255}}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},     {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clWhite},     {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},     {csWait, PAUSETIME},
+        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clWhite},   {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
         {csEnd},
 };
 
@@ -241,16 +241,16 @@ const LedRGBChunk_t lsqNorthCursed[] = {
         {csEnd},
 };
 const LedRGBChunk_t lsqSouthCursed[] = {
-        {csSetup, 0, {128,0,255}}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},     {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clRed},       {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},     {csWait, PAUSETIME},
+        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clRed},     {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
         {csEnd},
 };
 
 
 const LedRGBChunk_t lsqHidden[] = {
-        {csSetup, 0, clBlue}, {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlue},  {csWait, SHORTPAUSETIME},
         {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
         {csRepeat, 1},
         {csWait, PAUSETIME},
@@ -314,7 +314,7 @@ const LedSmoothChunk_t lsqEnterIdle[] = {
 
 #endif
 
-#if 1 // ============================= Beeper ==================================
+#if 0 // ============================= Beeper ==================================
 #define BEEP_VOLUME     2   // Maximum 10
 
 #if 1 // ==== Notes ====

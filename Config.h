@@ -27,12 +27,18 @@
 #define TYPE_NORTH_CURSED       6
 #define TYPE_SOUTH_CURSED       7
 
-#define TYPE_NORTH_ATTACK       8
-#define TYPE_NORTH_RETREAT      9
-#define TYPE_SOUTH_ATTACK       10
-#define TYPE_SOUTH_RETREAT      11
+#define TYPE_CNT                8
 
-#define TYPE_CNT                12 // Sitting in the dirt, feeling kinda hurt
+#define RCMD_NONE               0
+#define RCMD_NORTH_ATTACK       1
+#define RCMD_NORTH_RETREAT      2
+#define RCMD_SOUTH_ATTACK       3
+#define RCMD_SOUTH_RETREAT      4
+#define RCMD_NORTH_ARI_KAESU    5
+#define RCMD_SOUTH_ARI_KAESU    6
+#define RCMD_BESILENT           7
+
+
 
 class Config_t {
 private:
