@@ -74,10 +74,13 @@ static const uint8_t PwrTable[12] = {
 union rPkt_t {
     uint32_t DW32;
     struct {
-        uint8_t ID = 0;
-        uint8_t Type = 0;
-        uint8_t RCmd = 0;
-        int8_t Rssi = 0; // Will be set after RX. Trnasmitting is useless, but who cares.
+        uint16_t ID : 6;
+        uint16_t Cycle : 4;
+        uint16_t TimeSrcID : 6;
+        // Payload
+        uint16_t Type : 4;
+        uint16_t RCmd : 4;
+        int8_t Rssi; // Will be set after RX. Trnasmitting is useless, but who cares.
     } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {
         DW32 = Right.DW32;
@@ -95,14 +98,17 @@ union rPkt_t {
 #define TX_PWR_FAR      CC_PwrPlus10dBm
 
 // Feel-Each-Other related
-#define CYCLE_CNT           4
-#define SLOT_CNT            54
-#define SLOT_DURATION_MS    2
-#define CYCLE_DURATION_MS   (SLOT_DURATION_MS * SLOT_CNT)
-#define MAX_RANDOM_DURATION_MS  18
+#define RCYCLE_CNT              5
+#define FAR_CYCLE_INDX          (RCYCLE_CNT - 1)
+#define FAR_CYCLE_DURATION_MS   42
+#define RSLOT_CNT               54
+#define RSLOT_DURATION_ST       27
+#define CYCLE_DURATION_ST       (RSLOT_DURATION_ST * RSLOT_CNT)
+//#define MAX_RANDOM_DURATION_MS  18
 
-// Timings
-#define MIN_SLEEP_DURATION_MS   18
+
+#define SCYCLES_TO_KEEP_TIMESRC 4   // After that amount of supercycles, TimeSrcID become self ID
+
 #endif
 
 #if 1 // ============================= RX Table ================================
@@ -180,6 +186,17 @@ public:
 };
 #endif
 
+// Message queue
+#define R_MSGQ_LEN      9
+enum RmsgId_t { rmsgEachOthRx, rmsgEachOthTx, rmsgEachOthSleep, rmsgPktRx, rmsgFar };
+struct RMsg_t {
+    RmsgId_t Cmd;
+    uint8_t Value;
+    RMsg_t() : Cmd(rmsgEachOthSleep), Value(0) {}
+    RMsg_t(RmsgId_t ACmd) : Cmd(ACmd), Value(0) {}
+    RMsg_t(RmsgId_t ACmd, uint8_t AValue) : Cmd(ACmd), Value(AValue) {}
+} __attribute__((packed));
+
 class rLevel1_t {
 private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
@@ -191,6 +208,7 @@ private:
     void TaskTransmitFar();
 public:
     rPkt_t PktRx, PktTx, PktTxFar;
+    EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
     RxTable_t& GetRxTable() {
         chSysLock();
         RxTable_t* RxTableR;
@@ -210,7 +228,7 @@ public:
     uint8_t Init();
     void DoTransmitFar(uint32_t TxCnt)  { CntTxFar = TxCnt; }
     // Inner use
-    void GlobalTask();
+    void ITask();
 };
 
 extern rLevel1_t Radio;

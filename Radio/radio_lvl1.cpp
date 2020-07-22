@@ -34,18 +34,147 @@ cc1101_t CC(CC_Setup0);
 
 rLevel1_t Radio;
 
+void TmrRadioCallback(void *p);
+static volatile enum CCState_t {ccstIdle, ccstRx, ccstTx} CCState = ccstIdle;
+
+static class RadioTime_t {
+private:
+    virtual_timer_t ITmr;
+    void StopTimerI()  { chVTResetI(&ITmr); }
+    uint16_t TimeSrcTimeout;
+    void IncCycle() {
+        CycleN++;
+        if(CycleN >= RCYCLE_CNT) {
+            DBG1_SET();
+            CycleN = 0;
+            CC.Recalibrate();
+            Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthRx));
+            // Check TimeSrc timeout
+            if(TimeSrcTimeout >= SCYCLES_TO_KEEP_TIMESRC) TimeSrcId = Cfg.ID;
+            else TimeSrcTimeout++;
+            StartTimerForTSlotI();
+        }
+        else if(CycleN == FAR_CYCLE_INDX) {
+            Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgFar));
+            StartTimerForFarCycleI();
+        }
+        else StartTimerForTSlotI();
+    }
+public:
+    volatile int32_t CycleN = 0, TimeSlot = 0;
+    uint16_t TimeSrcId = 63;
+    void StartTimerForTSlotI() { chVTSetI(&ITmr, RSLOT_DURATION_ST, TmrRadioCallback, nullptr); }
+    void StartTimerForFarCycleI() { chVTSetI(&ITmr, TIME_MS2I(FAR_CYCLE_DURATION_MS), TmrRadioCallback, nullptr); }
+    void IncTimeSlot() {
+        TimeSlot++;
+        if(TimeSlot >= RSLOT_CNT) {
+            DBG1_CLR();
+            TimeSlot = 0;
+            IncCycle();
+        }
+        else StartTimerForTSlotI();
+    }
+    void Adjust() {
+        // Adjust time if theirs TimeSrc < OursTimeSrc
+        if(Radio.PktRx.TimeSrcID <= TimeSrcId) {
+//            Printf("Old: CN %u; s %u; Src %u\r", CycleN, TimeSlot, TimeSrcId);
+            chSysLock();
+            StopTimerI();
+            CycleN = Radio.PktRx.Cycle;
+            TimeSlot = Radio.PktRx.ID;
+            TimeSrcId = Radio.PktRx.TimeSrcID;
+            TimeSrcTimeout = 0; // Reset Time Src Timeout
+            IOnTimerI();
+            chSysUnlock();
+//            Printf("New: CN %u; s %u; Src %u\r", CycleN, TimeSlot, TimeSrcId);
+        }
+    }
+
+    void IOnTimerI() {
+//        Printf("
+        if(CycleN == FAR_CYCLE_INDX) {
+            IncCycle();
+        }
+        else { // Cycles 0...3
+            IncTimeSlot();
+            if(TimeSlot == Cfg.ID) Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthTx));
+            else { // Not our timeslot
+                if(CycleN == 0) { // Enter RX if not yet
+                    if(CCState != ccstRx) Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthRx));
+                }
+                else { // CycleN != 0
+                    if(CCState != ccstIdle) Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthSleep));
+                }
+            }
+        }
+    }
+} RadioTime;
+
+void TmrRadioCallback(void *p) {
+    chSysLockFromISR();
+    RadioTime.IOnTimerI();
+    chSysUnlockFromISR();
+}
+
+void RxCallback() {
+    Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgPktRx));
+}
+
 #if 1 // ================================ Task =================================
 static THD_WORKING_AREA(warLvl1Thread, 256);
 __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
-    Radio.GlobalTask();
+    Radio.ITask();
 }
 
 __noreturn
-void rLevel1_t::GlobalTask() {
+void rLevel1_t::ITask() {
     while(true) {
-        if(Cfg.IsAriKaesu()) {
+        RMsg_t msg = RMsgQ.Fetch(TIME_INFINITE);
+        switch(msg.Cmd) {
+            case rmsgEachOthTx:
+                CC.EnterIdle();
+                CCState = ccstTx;
+                PktTx.ID = Cfg.ID;
+                PktTx.Cycle = RadioTime.CycleN;
+                PktTx.TimeSrcID = RadioTime.TimeSrcId;
+                CC.Recalibrate();
+                CC.Transmit(&PktTx, RPKT_LEN);
+                break;
+
+            case rmsgEachOthRx:
+//                Printf("r\r");
+                CCState = ccstRx;
+                CC.ReceiveAsync(RxCallback);
+                break;
+
+            case rmsgEachOthSleep:
+//                Printf("s\r");
+                CCState = ccstIdle;
+                CC.EnterIdle();
+                break;
+
+            case rmsgPktRx:
+//                Printf("rx\r");
+                CCState = ccstIdle;
+                if(CC.ReadFIFO(&PktRx, &PktRx.Rssi, RPKT_LEN) == retvOk) {  // if pkt successfully received
+                    RadioTime.Adjust();
+                    Printf("ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
+                    RxTableW->AddOrReplaceExistingPkt(PktRx);
+                }
+                break;
+
+            case rmsgFar:
+//                Printf("f\r");
+                break;
+        } // switch
+    } // while true
+}
+
+/*
+ *
+         if(Cfg.IsAriKaesu()) {
             if(CntTxFar > 0) {
                 Printf("FarAK: %u\r", CntTxFar);
                 CntTxFar--;
@@ -67,8 +196,7 @@ void rLevel1_t::GlobalTask() {
             }
             else TaskFeelFar();
         }
-    } // while true
-}
+ */
 
 void rLevel1_t::TaskTransmitFar() {
     CC.SetChannel(RCHNL_FAR);
@@ -92,7 +220,7 @@ void rLevel1_t::TaskFeelEachOther() {
     CC.DoRxAfterTx();
     CC.Recalibrate();
     sysinterval_t CycleStart_st = chVTGetSystemTimeX();
-    sysinterval_t CycleDur_st = TIME_MS2I(CYCLE_DURATION_MS);
+    sysinterval_t CycleDur_st = CYCLE_DURATION_ST;
 
     // First phase: try to Rx
 //    Printf("F\r");
@@ -151,7 +279,7 @@ void rLevel1_t::TaskFeelEachOther() {
 #if 1 // ==== Other cycles ====
     CC.EnterIdle();
     CC.DoIdleAfterTx();
-    for(uint32_t CycleN=1; CycleN < CYCLE_CNT; CycleN++) {   // Iterate cycles
+    for(uint32_t CycleN=1; CycleN < RCYCLE_CNT; CycleN++) {   // Iterate cycles
 //        Delay_st = TIME_MS2I(Random::Generate(0, MAX_RANDOM_DURATION_MS));
 //        Printf("%u: %u\r", CycleN, Delay_st);
         CC.Recalibrate(); // After this, CC will be in IDLE state
@@ -199,9 +327,9 @@ void rLevel1_t::TaskFeelEachOtherSilently() {
     // First phase: RX only
     while(true) {
         sysinterval_t Elapsed_st = chVTTimeElapsedSinceX(CycleStart_st);
-        if(Elapsed_st >= TIME_MS2I(CYCLE_DURATION_MS)) break;
+        if(Elapsed_st >= CYCLE_DURATION_ST) break;
         else {
-            sysinterval_t RxDuration_st = TIME_MS2I(CYCLE_DURATION_MS) - Elapsed_st;
+            sysinterval_t RxDuration_st = CYCLE_DURATION_ST - Elapsed_st;
             if(CC.RxIfNotYet_st(RxDuration_st, &PktRx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
                 Printf("3 ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
                 RxTableW->AddOrReplaceExistingPkt(PktRx);
@@ -211,7 +339,7 @@ void rLevel1_t::TaskFeelEachOtherSilently() {
     // Second phase: sleep
     CC.EnterIdle();
     CC.EnterPwrDown();
-    chThdSleepMilliseconds(CYCLE_DURATION_MS * (CYCLE_CNT - 1));
+//    chThdSleepMilliseconds(CYCLE_DURATION_MS * (RCYCLE_CNT - 1));
 }
 
 
@@ -234,11 +362,20 @@ uint8_t rLevel1_t::Init() {
     PinSetupOut(DBG_GPIO2, DBG_PIN2, omPushPull);
 #endif
 
+    RMsgQ.Init();
     if(CC.Init() == retvOk) {
         CC.SetPktSize(RPKT_LEN);
+        CC.DoIdleAfterTx();
+        CC.SetChannel(RCHNL_EACH_OTH);
+        CC.SetTxPower(Cfg.TxPower);
+        CC.SetBitrate(CCBitrate500k);
 //        CC.EnterPwrDown();
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
+        chSysLock();
+        RadioTime.StartTimerForTSlotI();
+        RadioTime.TimeSrcId = Cfg.ID;
+        chSysUnlock();
         return retvOk;
     }
     else return retvFail;

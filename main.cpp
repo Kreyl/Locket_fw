@@ -326,6 +326,8 @@ int main(void) {
     Clk.PrintFreqs();
     Random::Seed(GetUniqID3());   // Init random algorythm with uniq ID
 
+    Printf("PktSz: %u\r", RPKT_LEN);
+
     Led.Init();
     Led.SetupSeqEndEvt(evtIdLedSeqDone);
     Vibro.Init();

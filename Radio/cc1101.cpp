@@ -97,10 +97,9 @@ void cc1101_t::SetBitrate(const CCRegValue_t* BRSetup) {
 }
 
 void cc1101_t::Transmit(void *Ptr, uint8_t Len) {
-//     WaitUntilChannelIsBusy();   // If this is not done, time after time FIFO is destroyed
-//    while(IState != CC_STB_IDLE) EnterIdle();
     EnterTX();  // Start transmission of preamble while writing FIFO
     chSysLock();
+    ICallback = nullptr;
     WriteTX((uint8_t*)Ptr, Len);
     // Enter TX and wait IRQ
     chThdSuspendS(&ThdRef); // Wait IRQ
@@ -126,8 +125,21 @@ uint8_t cc1101_t::Receive_st(sysinterval_t Timeout_st, void *Ptr, uint8_t Len, i
     else return ReadFIFO(Ptr, PRssi, Len);
 }
 
+void cc1101_t::ReceiveAsync(ftVoidVoid Callback) {
+    chSysLock();
+    GetStatus();
+    if((IState & 0x70) != 0x10) { // Not in RX
+        EnterIdle();
+        FlushRxFIFO();
+        EnterRX();
+    }
+    ICallback = Callback;
+    chSysUnlock();
+}
+
 uint8_t cc1101_t::RxCcaTx_st(void *PtrTx, uint8_t Len,  int8_t *PRssi) {
     chSysLock();
+    ICallback = nullptr;
     // Enter RX if not yet
     GetStatus();
 //    PrintfI("S1: %X\r", IState);
@@ -262,8 +274,9 @@ uint8_t cc1101_t::ReadFIFO(void *Ptr, int8_t *PRssi, uint8_t Len) {
 #endif
 
 void cc1101_t::IIrqHandler() {
-    chThdResumeI(&ThdRef, MSG_OK);  // NotNull check performed inside chThdResumeI
-//    uint8_t b = 0;
-//    ReadRegister(CC_MARCSTATE, &b);
-//    PrintfI("I %X %X\r", IState, b);
+    if(ICallback != nullptr) {
+        ICallback();
+        ICallback = nullptr;
+    }
+    else chThdResumeI(&ThdRef, MSG_OK);  // NotNull check performed inside chThdResumeI
 }

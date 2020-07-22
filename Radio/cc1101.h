@@ -24,6 +24,7 @@ private:
     const PinIrq_t IGdo0;
     uint8_t IState; // Inner CC state, returned as first byte
     thread_reference_t ThdRef;
+    ftVoidVoid ICallback = nullptr;
     // Pins
     uint8_t BusyWait() {
         for(uint32_t i=0; i<CC_BUSYWAIT_TIMEOUT; i++) {
@@ -59,6 +60,7 @@ public:
     void Transmit(void *Ptr, uint8_t Len);
     uint8_t Receive(uint32_t Timeout_ms, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
     uint8_t Receive_st(sysinterval_t Timeout_st, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
+    void ReceiveAsync(ftVoidVoid Callback);
 
     uint8_t RxCcaTx_st(void *PtrTx, uint8_t Len,  int8_t *PRssi=nullptr);
     uint8_t RxIfNotYet_st(sysinterval_t RxTimeout_st, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
