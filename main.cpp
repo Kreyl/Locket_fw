@@ -55,10 +55,13 @@ void CheckRxTable();
 #define GOOD_DISTANCE_dBm       (-111)
 #define ARI_KAESU_IND_TIME_S    4
 #define CHANGED_IND_TIME_S      2
-#define VIBRO_ARI_KAESU         vsqBrrBrr
-#define VIBRO_SMTH_CHANGED      vsqBrr
 #define TIME_TO_BE_HIDDEN_S     3600
 #define TIME_TO_BE_SILENT_S     600
+
+#define VIBRO_ARI_KAESU         vsqBrrBrr
+#define VIBRO_SMTH_CHANGED      vsqBrr
+#define VIBRO_ATTACK            vsqBrr
+
 
 // Indication command with all required data
 //struct IndicationCmd_t {
@@ -101,7 +104,12 @@ public:
 
     bool HasChangedOthers() {
         for(int i=2; i<TYPE_CNT; i++) {
-            if(ITypes1[i] != ITypes2[i]) return true;
+            if(pNew[i] != pOld[i]) {
+                Printf("Changed: ");
+                for(int j=2; j<TYPE_CNT; j++)  Printf("%u %u; ", pNew[j], pOld[j]);
+                PrintfEOL();
+                return true;
+            }
         }
         return false;
     }
@@ -206,12 +214,21 @@ void CheckRxTable() {
     }
 
     // Check if Ari appeared
-    if(TypesAround.IsAriAppeared()) Indi.DoAriAppear();
+    if(TypesAround.IsAriAppeared())   Indi.DoAriAppear();
     if(TypesAround.IsKaesuAppeared()) Indi.DoKaesuAppear();
+
+    // Check if Attack/Retreat
+    if(Cfg.IsNorth()) {
+        if(TypesAround.IsNear(TYPE_NORTH_ATTACK))  { Vibro.StartOrContinue(vsqAttack); return; }
+        if(TypesAround.IsNear(TYPE_NORTH_RETREAT)) { Vibro.StartOrContinue(vsqRetreat); return; }
+    }
+    else if(Cfg.IsSouth()) {
+        if(TypesAround.IsNear(TYPE_SOUTH_ATTACK))  { Vibro.StartOrContinue(vsqAttack); return; }
+        if(TypesAround.IsNear(TYPE_SOUTH_RETREAT)) { Vibro.StartOrContinue(vsqRetreat); return; }
+    }
 
     // Check if Others changed
     if(TypesAround.HasChangedOthers()) {
-        Printf("Changed\r");
         Indi.DoChanged();
     }
 }
@@ -303,7 +320,7 @@ void ITask() {
                         else Indi.AddHidden();
                         Indi.ShowWhoIsNear();
                     }
-                    else if(Msg.BtnEvtInfo.Type == beLongPress and (Cfg.SelfInfo->Type == TYPE_NORTH_STRONG or Cfg.SelfInfo->Type == TYPE_SOUTH_STRONG)) {
+                    else if(Msg.BtnEvtInfo.Type == beLongPress and Cfg.IsStrong()) {
                         if(TimeToBeHidden == 0) { // Be hidden
                             TimeToBeHidden = TIME_TO_BE_HIDDEN_S;
                             Cfg.MustTxInEachOther = false;
@@ -316,8 +333,20 @@ void ITask() {
                         }
                     }
                 }
-
-
+                // Retreat
+                else if(Msg.BtnEvtInfo.BtnID == 1 and Msg.BtnEvtInfo.Type == beLongPress) {
+                    Vibro.StartOrRestart(vsqBrrBrr);
+                    if(Cfg.IsNorth()) Radio.PktTxFar.Type = TYPE_NORTH_RETREAT;
+                    else if(Cfg.IsSouth()) Radio.PktTxFar.Type = TYPE_SOUTH_RETREAT;
+                    Radio.TransmitAttackRetreat();
+                }
+                // Attack
+                else if(Msg.BtnEvtInfo.BtnID == 2 and Msg.BtnEvtInfo.Type == beLongPress) {
+                    Vibro.StartOrRestart(vsqBrrBrr);
+                    if(Cfg.IsNorth()) Radio.PktTxFar.Type = TYPE_NORTH_ATTACK;
+                    else if(Cfg.IsSouth()) Radio.PktTxFar.Type = TYPE_SOUTH_ATTACK;
+                    Radio.TransmitAttackRetreat();
+                }
                 break;
 #endif
 
@@ -434,6 +463,7 @@ void ReadIDfromEE() {
         Cfg.ID = ID_DEFAULT;
     }
     Radio.PktTx.ID = Cfg.ID;
+    Radio.PktTxFar.ID = Cfg.ID;
 }
 
 uint8_t ISetID(int32_t NewID) {

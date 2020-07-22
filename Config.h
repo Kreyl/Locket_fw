@@ -27,7 +27,12 @@
 #define TYPE_NORTH_CURSED       6
 #define TYPE_SOUTH_CURSED       7
 
-#define TYPE_CNT                8 // Sitting in the dirt, feeling kinda hurt
+#define TYPE_NORTH_ATTACK       8
+#define TYPE_NORTH_RETREAT      9
+#define TYPE_SOUTH_ATTACK       10
+#define TYPE_SOUTH_RETREAT      11
+
+#define TYPE_CNT                12 // Sitting in the dirt, feeling kinda hurt
 
 enum VibroType_t { vbrNone = 0, vbrBrr, vbrBrrBrr, vbrBrrBrrBrr };
 #define VIBRO_TYPE_BRR          "Brr"
@@ -93,6 +98,10 @@ private:
     const LocketInfo_t ZeroInfo;
 public:
     LocketInfo_t *SelfInfo = (LocketInfo_t*)&ZeroInfo;
+    bool IsNorth() { return (SelfInfo->Type == TYPE_NORTH or SelfInfo->Type == TYPE_NORTH_STRONG or SelfInfo->Type == TYPE_NORTH_CURSED); }
+    bool IsSouth() { return (SelfInfo->Type == TYPE_SOUTH or SelfInfo->Type == TYPE_SOUTH_STRONG or SelfInfo->Type == TYPE_SOUTH_CURSED); }
+    bool IsStrong() { return (SelfInfo->Type == TYPE_NORTH_STRONG or SelfInfo->Type == TYPE_SOUTH_STRONG); }
+
     uint32_t GetCountOfTypes() { return Lockets.size(); }
     int32_t ID = ID_MIN;
     std::vector<Reaction_t> Rctns;

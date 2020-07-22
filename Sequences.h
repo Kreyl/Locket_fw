@@ -445,40 +445,33 @@ const BaseChunk_t vsqBrrBrrBrr[] = {
         {csEnd}
 };
 
-// ==== Health ====
-const BaseChunk_t vsqIll[] = {
-        {csSetup, VIBRO_VOLUME},
+const BaseChunk_t vsqAttack[] = {
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csWait, 450},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 1008},
+        {csRepeat, 2},
         {csWait, 999},
-        {csSetup, 0},
-        {csWait, 3600},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
+        {csEnd}
 };
 
-const BaseChunk_t vsqDeath[] = {
-        {csSetup, VIBRO_VOLUME},
+const BaseChunk_t vsqRetreat[] = {
+        {csSetup, VIBRO_VOLUME}, {csWait, 360},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 720},
+        {csRepeat, 2},
         {csWait, 999},
-        {csSetup, 0},
-        {csWait, 4005},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
-};
-
-// Cataclysm
-const BaseChunk_t vsqCataclysm[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
-        {csSetup, 0},
-        {csWait, 999},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 99},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
+        {csEnd}
 };
 
 /*
