@@ -291,14 +291,14 @@ void ProcessButtonsOthers(uint8_t BtnID, BtnEvt_t Type) {
         Vibro.StartOrRestart(vsqBrrBrr);
         if(Cfg.IsNorth()) Radio.PktTxFar.RCmd = RCMD_NORTH_RETREAT;
         else if(Cfg.IsSouth()) Radio.PktTxFar.RCmd = RCMD_SOUTH_RETREAT;
-        Radio.DoTransmitFar(18);
+        Radio.DoTransmitFar(90);
     }
     // Attack
     else if(BtnID == 2 and Type == beLongPress) {
         Vibro.StartOrRestart(vsqBrrBrr);
         if(Cfg.IsNorth()) Radio.PktTxFar.RCmd = RCMD_NORTH_ATTACK;
         else if(Cfg.IsSouth()) Radio.PktTxFar.RCmd = RCMD_SOUTH_ATTACK;
-        Radio.DoTransmitFar(18);
+        Radio.DoTransmitFar(90);
     }
 }
 #endif

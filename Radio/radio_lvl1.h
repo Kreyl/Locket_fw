@@ -200,7 +200,7 @@ struct RMsg_t {
 class rLevel1_t {
 private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
-    uint32_t CntTxFar = 0;
+    int32_t CntTxFar = 0;
     // Different modes of operation
     void TaskFeelEachOther();
     void TaskFeelEachOtherSilently();
