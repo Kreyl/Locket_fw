@@ -555,6 +555,13 @@ public:
         ITmr->SMCR = tmp;
     }
 
+    enum InputPresacaler_t{pscDiv1=0UL, pscDiv2=01UL, pscDiv4=2UL, pscDiv8=3UL};
+    void SetupInput1(uint16_t Mode, InputPresacaler_t Psc, RiseFall_t Rsfll) const {
+        ITmr->CCMR1 = (ITmr->CCMR1 & 0xFF00) | ((uint32_t)Psc << 2)  | (Mode << 0);
+        uint16_t bits = (Rsfll == rfRising)? 0b0000U : (Rsfll == rfFalling)? 0b0010U : 0b1010;
+        ITmr->CCER = (ITmr->CCER & ~(0xAU << 0)) | (bits << 0);
+    }
+
     // DMA, Irq, Evt
     void EnableDmaOnTrigger() const { ITmr->DIER |= TIM_DIER_TDE; }
     void EnableDMAOnCapture(uint8_t CaptureReq) const { ITmr->DIER |= (1 << (CaptureReq + 8)); }

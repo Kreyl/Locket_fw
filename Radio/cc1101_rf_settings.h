@@ -53,7 +53,8 @@
 
 #define CC_FIFOTHR_VALUE    0b00000111  // RX attenuation = 0; RXFIFO and TXFIFO thresholds: TX 33, RX 32
 //#define CC_IOCFG2_VALUE     0x0E        // GDO2: Carrier Sense
-#define CC_IOCFG2_VALUE     0x09        // GDO2: Clear Channal Assesment
+//#define CC_IOCFG2_VALUE     0x09        // GDO2: Clear Channal Assesment
+#define CC_IOCFG2_VALUE     0x3F        // GDO2: CLK_XOSC/192
 #define CC_IOCFG0_VALUE     0x06        // GDO0 - Asserts when sync word has been sent / received, and de-asserts at the end of the packet.
                                         // In RX, the pin will also deassert when a packet is discarded due to address or maximum length filtering
 

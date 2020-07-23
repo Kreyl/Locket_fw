@@ -34,20 +34,20 @@ cc1101_t CC(CC_Setup0);
 
 rLevel1_t Radio;
 
-void TmrRadioCallback(void *p);
+static Timer_t IHwTmr(TIM9);
+
 static volatile enum CCState_t {ccstIdle, ccstRx, ccstTx} CCState = ccstIdle;
 
 static class RadioTime_t {
 private:
-    virtual_timer_t ITmr;
-    void StopTimerI()  { chVTResetI(&ITmr); }
+    void StopTimerI()  { IHwTmr.Disable(); }
     uint16_t TimeSrcTimeout;
     void IncCycle() {
+        DBG1_CLR();
         CycleN++;
         if(CycleN >= RCYCLE_CNT) {
             DBG1_SET();
             CycleN = 0;
-            CC.Recalibrate();
             Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthRx));
             // Check TimeSrc timeout
             if(TimeSrcTimeout >= SCYCLES_TO_KEEP_TIMESRC) TimeSrcId = Cfg.ID;
@@ -63,12 +63,29 @@ private:
 public:
     volatile int32_t CycleN = 0, TimeSlot = 0;
     uint16_t TimeSrcId = 63;
-    void StartTimerForTSlotI() { chVTSetI(&ITmr, RSLOT_DURATION_ST, TmrRadioCallback, nullptr); }
-    void StartTimerForFarCycleI() { chVTSetI(&ITmr, TIME_MS2I(FAR_CYCLE_DURATION_MS), TmrRadioCallback, nullptr); }
+    void StartTimerForTSlotI() {
+        IHwTmr.SetCounter(0);
+        IHwTmr.SetTopValue(360);
+        IHwTmr.GenerateUpdateEvt();
+        IHwTmr.Enable();
+    }
+    void StartTimerForFarCycleI() {
+        IHwTmr.SetCounter(0);
+        IHwTmr.SetTopValue(5625);
+        IHwTmr.GenerateUpdateEvt();
+        IHwTmr.Enable();
+    }
+    void StartTimerForAdjustI() {
+        IHwTmr.SetCounter(0);
+        IHwTmr.SetTopValue(90);
+        IHwTmr.GenerateUpdateEvt();
+        IHwTmr.Enable();
+    }
+
     void IncTimeSlot() {
         TimeSlot++;
         if(TimeSlot >= RSLOT_CNT) {
-            DBG1_CLR();
+//            DBG1_CLR();
             TimeSlot = 0;
             IncCycle();
         }
@@ -77,14 +94,15 @@ public:
     void Adjust() {
         // Adjust time if theirs TimeSrc < OursTimeSrc
         if(Radio.PktRx.TimeSrcID <= TimeSrcId) {
-//            Printf("Old: CN %u; s %u; Src %u\r", CycleN, TimeSlot, TimeSrcId);
+//        if(Radio.PktRx.ID <= Cfg.ID) {
+//            Printf("Old: CN %u; s %u; Src  %u\r", CycleN, TimeSlot, TimeSrcId);
             chSysLock();
-            StopTimerI();
             CycleN = Radio.PktRx.Cycle;
-            TimeSlot = Radio.PktRx.ID;
+            TimeSlot = Radio.PktRx.ID; // XXX Will be increased later, in IOnTimerI
             TimeSrcId = Radio.PktRx.TimeSrcID;
             TimeSrcTimeout = 0; // Reset Time Src Timeout
-            IOnTimerI();
+//            IOnTimerI();
+            StartTimerForAdjustI();
             chSysUnlock();
 //            Printf("New: CN %u; s %u; Src %u\r", CycleN, TimeSlot, TimeSrcId);
         }
@@ -110,14 +128,21 @@ public:
     }
 } RadioTime;
 
-void TmrRadioCallback(void *p) {
-    chSysLockFromISR();
-    RadioTime.IOnTimerI();
-    chSysUnlockFromISR();
-}
-
 void RxCallback() {
     Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgPktRx));
+}
+
+extern "C"
+void VectorA4() {
+//    DBG1_SET();
+    CH_IRQ_PROLOGUE();
+    chSysLockFromISR();
+//    PrintfI("irq\r");
+    TIM9->SR &= ~TIM_SR_UIF;
+    RadioTime.IOnTimerI();
+    chSysUnlockFromISR();
+    CH_IRQ_EPILOGUE();
+//    DBG1_CLR();
 }
 
 #if 1 // ================================ Task =================================
@@ -159,9 +184,9 @@ void rLevel1_t::ITask() {
 //                Printf("rx\r");
                 CCState = ccstIdle;
                 if(CC.ReadFIFO(&PktRx, &PktRx.Rssi, RPKT_LEN) == retvOk) {  // if pkt successfully received
-                    RadioTime.Adjust();
-                    Printf("ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
+//                    Printf("ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
                     RxTableW->AddOrReplaceExistingPkt(PktRx);
+                    RadioTime.Adjust();
                 }
                 break;
 
@@ -370,6 +395,18 @@ uint8_t rLevel1_t::Init() {
         CC.SetTxPower(Cfg.TxPower);
         CC.SetBitrate(CCBitrate500k);
 //        CC.EnterPwrDown();
+
+        PinSetupAlterFunc(GPIOA, 2, omPushPull, pudNone, AF3);
+        IHwTmr.Init();
+        IHwTmr.SetTopValue(14000);
+        IHwTmr.SelectSlaveMode(smExternal);
+        IHwTmr.SetTriggerInput(tiTI1FP1);
+        IHwTmr.SetupInput1(0b01, Timer_t::pscDiv1, rfRising);
+        IHwTmr.EnableIrq(TIM9_IRQn, IRQ_PRIO_HIGH);
+        IHwTmr.EnableIrqOnUpdate();
+        TIM9->CR1 |= TIM_CR1_URS;
+        IHwTmr.Enable();
+
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         chSysLock();

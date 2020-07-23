@@ -101,8 +101,8 @@ union rPkt_t {
 #define RCYCLE_CNT              5
 #define FAR_CYCLE_INDX          (RCYCLE_CNT - 1)
 #define FAR_CYCLE_DURATION_MS   42
-#define RSLOT_CNT               54
-#define RSLOT_DURATION_ST       27
+#define RSLOT_CNT               50
+#define RSLOT_DURATION_ST       36
 #define CYCLE_DURATION_ST       (RSLOT_DURATION_ST * RSLOT_CNT)
 //#define MAX_RANDOM_DURATION_MS  18
 
