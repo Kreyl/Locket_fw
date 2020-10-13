@@ -257,6 +257,14 @@ const LedRGBChunk_t lsqHidden[] = {
         {csEnd},
 };
 
+const LedRGBChunk_t lsqSilent[] = {
+        {csSetup, 0, {255, 90, 0}},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
+        {csRepeat, 1},
+        {csWait, PAUSETIME},
+        {csEnd},
+};
+
 const LedRGBChunk_t lsqVisible[] = {
         {csSetup, 0, clGreen}, {csWait, SHORTPAUSETIME},
         {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},

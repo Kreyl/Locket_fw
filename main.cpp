@@ -192,6 +192,7 @@ public:
 
     void AddVisible() { Que.PutIfNotOverflow(lsqVisible); }
     void AddHidden()  { Que.PutIfNotOverflow(lsqHidden); }
+    void AddSilent()  { Que.PutIfNotOverflow(lsqSilent); }
 } Indi;
 
 void BeSilent() {
@@ -240,9 +241,9 @@ void CheckRxTable() {
     }
 
     // Check if Others changed
-    if(TypesAround.HasChangedOthers()) {
-        Indi.DoChanged();
-    }
+//    if(TypesAround.HasChangedOthers()) {
+//        Indi.DoChanged();
+//    }
 }
 
 void ProcessButtonsAriKaesu(uint8_t BtnID, BtnEvt_t Type) {
@@ -269,9 +270,15 @@ void ProcessButtonsOthers(uint8_t BtnID, BtnEvt_t Type) {
     if(BtnID == 0) {
         if(Type == beShortPress) {
             // Show visibility
-            if(TimeToBeHidden == 0) Indi.AddVisible();
-            else Indi.AddHidden();
-            Indi.ShowWhoIsNear();
+            if(TimeToBeSilent != 0) {
+                Indi.AddSilent();
+                Indi.ProcessQue();
+            }
+            else {
+                if(TimeToBeHidden == 0) Indi.AddVisible();
+                else Indi.AddHidden();
+                Indi.ShowWhoIsNear();
+            }
         }
         else if(Type == beLongPress and Cfg.IsStrong()) {
             if(TimeToBeHidden == 0) { // Be hidden
@@ -455,6 +462,9 @@ void OnCmd(Shell_t *PShell) {
         PShell->Ack(r);
     }
 
+    if(PCmd->NameIs("State")) {
+        Printf("TTBS: %u; TTBH: %u\r", TimeToBeSilent, TimeToBeHidden);
+    }
 
 #if PILL_ENABLED // ==== Pills ====
     else if(PCmd->NameIs("PillRead32")) {

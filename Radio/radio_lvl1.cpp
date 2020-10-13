@@ -153,7 +153,7 @@ void rLevel1_t::ITask() {
             CC.SetBitrate(CCBitrate10k);
         //    CC.SetBitrate(CCBitrate2k4);
             while(CntTxFar--) {
-                Printf("Far: %u\r", CntTxFar);
+//                Printf("Far: %u\r", CntTxFar);
                 CC.Recalibrate();
                 CC.Transmit(&PktTxFar, RPKT_LEN);
             }
@@ -168,12 +168,6 @@ void rLevel1_t::ITask() {
                 chThdSleepMilliseconds(540);
             }
             else { // Not Ari/Kaesu
-                if(CntTxFar > 0) {
-                    Printf("Far: %u\r", CntTxFar);
-                    CntTxFar--;
-                    TaskTransmitFar();
-                }
-
                 RMsg_t msg = RMsgQ.Fetch(TIME_INFINITE);
                 switch(msg.Cmd) {
                     case rmsgEachOthTx:
@@ -207,7 +201,7 @@ void rLevel1_t::ITask() {
                         CC.SetBitrate(CCBitrate10k);
                         CC.Recalibrate();
                         if(CC.Receive(36, &PktRx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
-                            Printf("Far t=%d; Rssi=%d\r", PktRx.Type, PktRx.Rssi);
+//                            Printf("Far t=%d; Rssi=%d\r", PktRx.Type, PktRx.Rssi);
                             RxTableW->AddOrReplaceExistingPkt(PktRx);
                         }
                         CC.EnterIdle();
@@ -219,178 +213,6 @@ void rLevel1_t::ITask() {
             } // if Not Ari/Kaesu
         }// if nothing to tx far
     } // while true
-}
-
-/*
- *
-         if(Cfg.IsAriKaesu()) {
-            if(CntTxFar > 0) {
-                Printf("FarAK: %u\r", CntTxFar);
-                CntTxFar--;
-                TaskTransmitFar();
-            }
-            else {
-                CC.EnterIdle();
-                chThdSleepMilliseconds(540);
-            }
-        }
-        else {
-            if(Cfg.MustTxInEachOther) TaskFeelEachOther();
-            else TaskFeelEachOtherSilently(); // To allow be invisible
-            // Transmit far if needed
-            if(CntTxFar > 0) {
-                Printf("Far: %u\r", CntTxFar);
-                CntTxFar--;
-                TaskTransmitFar();
-            }
-            else TaskFeelFar();
-        }
- */
-
-
-void rLevel1_t::TaskFeelEachOther() {
-    CC.EnterIdle();
-    CC.SetChannel(RCHNL_EACH_OTH);
-    CC.SetTxPower(Cfg.TxPower);
-    CC.SetBitrate(CCBitrate500k);
-    DBG1_SET();
-
-    // ==== Cycle 0: RX-TX-RX ====
-    CC.DoRxAfterTx();
-    CC.Recalibrate();
-    sysinterval_t CycleStart_st = chVTGetSystemTimeX();
-    sysinterval_t CycleDur_st = CYCLE_DURATION_ST;
-
-    // First phase: try to Rx
-//    Printf("F\r");
-//    sysinterval_t Delay_st = TIME_MS2I(Random::Generate(0, MAX_RANDOM_DURATION_MS));
-//    while(true) {
-//        sysinterval_t Elapsed_st = chVTTimeElapsedSinceX(CycleStart_st);
-//        if(Elapsed_st >= Delay_st) break;
-//        else {
-//            sysinterval_t RxDuration_st = Delay_st - Elapsed_st;
-//            if(CC.RxIfNotYet_st(RxDuration_st, &PktRx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
-//                Printf("1 ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
-//                RxTableW->AddOrReplaceExistingPkt(PktRx);
-//            }
-//        }
-//    }
-
-    // Second phase: try to TX
-//    Printf("S\r");
-    while(true) {
-        // Get out if there was no success trying to transmit
-        if(chVTTimeElapsedSinceX(CycleStart_st) >= CycleDur_st) goto EndOfZeroCycle;
-        // Try to Tx
-        if(CC.RxCcaTx_st(&PktTx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
-//            Printf("TX: %u\r", chVTTimeElapsedSinceX(CycleStart_st));
-            break;
-        }
-        else { // Tx failed, Rx for some time not trying to Tx
-//            Printf("**********************\r");
-            sysinterval_t RxStart_st = chVTGetSystemTimeX();
-            sysinterval_t RxDuration_st = TIME_MS2I(Random::Generate(2, 18));
-            while(chVTTimeElapsedSinceX(RxStart_st) < RxDuration_st) {
-                if(CC.RxIfNotYet_st(RxDuration_st, &PktRx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
-                    Printf("2 t=%d; Rssi=%d\r", PktRx.Type, PktRx.Rssi);
-                    RxTableW->AddOrReplaceExistingPkt(PktRx);
-                }
-            } // while
-        }
-    } // while
-
-    // Third phase: RX until end of cycle
-//    Printf("T\r");
-    while(true) {
-        sysinterval_t Elapsed_st = chVTTimeElapsedSinceX(CycleStart_st);
-        if(Elapsed_st >= CycleDur_st) break;
-        else {
-            sysinterval_t RxDuration_st = CycleDur_st - Elapsed_st;
-            if(CC.RxIfNotYet_st(RxDuration_st, &PktRx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
-                Printf("3 ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
-                RxTableW->AddOrReplaceExistingPkt(PktRx);
-            }
-        }
-    }
-    EndOfZeroCycle:
-    DBG1_CLR();
-
-#if 1 // ==== Other cycles ====
-    CC.EnterIdle();
-    CC.DoIdleAfterTx();
-    for(uint32_t CycleN=1; CycleN < RCYCLE_CNT; CycleN++) {   // Iterate cycles
-//        Delay_st = TIME_MS2I(Random::Generate(0, MAX_RANDOM_DURATION_MS));
-//        Printf("%u: %u\r", CycleN, Delay_st);
-        CC.Recalibrate(); // After this, CC will be in IDLE state
-        CycleStart_st = chVTGetSystemTimeX();
-        // Sleep for Delay
-//        if(Delay_st != 0) {
-//            CC.EnterIdle();
-//            chThdSleep(Delay_st);
-//        }
-        // Try to TX
-        while(true) {
-            // Get out of cycle if there was no success trying to transmit
-            if(chVTTimeElapsedSinceX(CycleStart_st) >= CycleDur_st) break;
-            // Try to transmit
-            if(CC.RxCcaTx_st(&PktTx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
-//                Printf("TX: %u\r", chVTTimeElapsedSinceX(CycleStart_st));
-                break; // Will be in IDLE if success
-            }
-            else { // Channel was occupied, wait some time
-//                Printf("########################\r");
-                CC.EnterIdle();
-                uint32_t Delay_ms = Random::Generate(2, 18);
-                chThdSleepMilliseconds(Delay_ms);
-            }
-        }
-        // Sleep remainder of the cycle
-        sysinterval_t Elapsed_st = chVTTimeElapsedSinceX(CycleStart_st);
-        if(Elapsed_st < CycleDur_st) {
-            CC.EnterIdle();
-            CC.EnterPwrDown();
-            sysinterval_t SleepDuration_st = CycleDur_st - Elapsed_st;
-//            Printf("S %u\r", SleepDuration_st);
-            chThdSleep(SleepDuration_st);
-        }
-    }
-#endif
-}
-
-void rLevel1_t::TaskFeelEachOtherSilently() {
-    CC.EnterIdle();
-    CC.SetChannel(RCHNL_EACH_OTH);
-    CC.SetBitrate(CCBitrate500k);
-    CC.Recalibrate();
-    sysinterval_t CycleStart_st = chVTGetSystemTimeX();
-    // First phase: RX only
-    while(true) {
-        sysinterval_t Elapsed_st = chVTTimeElapsedSinceX(CycleStart_st);
-        if(Elapsed_st >= CYCLE_DURATION_ST) break;
-        else {
-            sysinterval_t RxDuration_st = CYCLE_DURATION_ST - Elapsed_st;
-            if(CC.RxIfNotYet_st(RxDuration_st, &PktRx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
-                Printf("3 ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
-                RxTableW->AddOrReplaceExistingPkt(PktRx);
-            }
-        }
-    }
-    // Second phase: sleep
-    CC.EnterIdle();
-    CC.EnterPwrDown();
-//    chThdSleepMilliseconds(CYCLE_DURATION_MS * (RCYCLE_CNT - 1));
-}
-
-
-void rLevel1_t::TaskFeelFar() {
-    CC.SetChannel(RCHNL_FAR);
-    CC.SetBitrate(CCBitrate10k);
-    CC.Recalibrate();
-    uint8_t RxRslt = CC.Receive(45, &PktRx, RPKT_LEN, &PktRx.Rssi);
-    if(RxRslt == retvOk) {
-        Printf("Far t=%d; Rssi=%d\r", PktRx.Type, PktRx.Rssi);
-        RxTableW->AddOrReplaceExistingPkt(PktRx);
-    }
 }
 #endif // task
 

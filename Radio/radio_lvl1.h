@@ -202,10 +202,7 @@ private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
     int32_t CntTxFar = 0;
     // Different modes of operation
-    void TaskFeelEachOther();
-    void TaskFeelEachOtherSilently();
     void TaskFeelFar();
-    void TaskTransmitFar();
 public:
     rPkt_t PktRx, PktTx, PktTxFar;
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
