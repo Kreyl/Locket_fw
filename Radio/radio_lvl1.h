@@ -74,12 +74,7 @@ static const uint8_t PwrTable[12] = {
 union rPkt_t {
     uint32_t DW32;
     struct {
-        uint16_t ID : 6;
-        uint16_t Cycle : 4;
-        uint16_t TimeSrcID : 6;
-        // Payload
-        uint16_t Type : 4;
-        uint16_t RCmd : 4;
+        uint8_t RCmd;
         int8_t Rssi; // Will be set after RX. Trnasmitting is useless, but who cares.
     } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {
@@ -111,7 +106,7 @@ union rPkt_t {
 
 #endif
 
-#if 1 // ============================= RX Table ================================
+#if 0 // ============================= RX Table ================================
 #define RXTABLE_SZ              50
 #define RXT_PKT_REQUIRED        TRUE
 class RxTable_t {
@@ -188,42 +183,21 @@ public:
 
 // Message queue
 #define R_MSGQ_LEN      9
-enum RmsgId_t { rmsgEachOthRx, rmsgEachOthTx, rmsgEachOthSleep, rmsgPktRx, rmsgFar };
+enum RmsgId_t { rmsgOnOff=9, rmsgFire=36, rmsgWhite=27, rmsgFlash=45 };
 struct RMsg_t {
     RmsgId_t Cmd;
     uint8_t Value;
-    RMsg_t() : Cmd(rmsgEachOthSleep), Value(0) {}
+    RMsg_t() : Cmd(rmsgOnOff), Value(0) {}
     RMsg_t(RmsgId_t ACmd) : Cmd(ACmd), Value(0) {}
     RMsg_t(RmsgId_t ACmd, uint8_t AValue) : Cmd(ACmd), Value(AValue) {}
 } __attribute__((packed));
 
 class rLevel1_t {
 private:
-    RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
-    int32_t CntTxFar = 0;
-    // Different modes of operation
-    void TaskFeelFar();
 public:
-    rPkt_t PktRx, PktTx, PktTxFar;
+    rPkt_t PktRx, PktTx;
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
-    RxTable_t& GetRxTable() {
-        chSysLock();
-        RxTable_t* RxTableR;
-        // Switch tables
-        if(RxTableW == &RxTable1) {
-            RxTableW = &RxTable2;
-            RxTableR = &RxTable1;
-        }
-        else {
-            RxTableW = &RxTable1;
-            RxTableR = &RxTable2;
-        }
-        RxTableW->Cnt = 0; // Clear it
-        chSysUnlock();
-        return *RxTableR;
-    }
     uint8_t Init();
-    void DoTransmitFar(uint32_t TxCnt)  { CntTxFar = TxCnt; }
     // Inner use
     void ITask();
 };

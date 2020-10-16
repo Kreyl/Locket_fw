@@ -283,6 +283,12 @@ const LedRGBChunk_t lsqStart[] = {
         {csEnd},
 };
 
+const LedRGBChunk_t lsqBlink[] = {
+        {csSetup, 0, clBlue},  {csWait, 108},
+        {csSetup, 0, {0,1,0}},
+        {csEnd},
+};
+
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
         {csWait, 99},
