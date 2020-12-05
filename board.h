@@ -2,12 +2,16 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "Dalan"
+#define APP_NAME            "StainedGlassTx"
+
+#ifndef TRUE
+#define TRUE    1
+#endif
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      FALSE
-#define BUTTONS_ENABLED     TRUE
+#define BUTTONS_ENABLED     FALSE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
@@ -24,7 +28,7 @@
 
 #define I2C1_ENABLED        PILL_ENABLED
 #define I2C_USE_SEMAPHORE   FALSE
-#define ADC_REQUIRED        FALSE
+#define ADC_REQUIRED        TRUE
 
 #if 1 // ========================== GPIO =======================================
 // PortMinTim_t: GPIO, Pin, Tim, TimChnl, invInverted, omPushPull, TopValue
@@ -76,10 +80,10 @@
 // Radio: SPI, PGpio, Sck, Miso, Mosi, Cs, Gdo0
 #define CC_Setup0       SPI1, GPIOA, 5,6,7, GPIOA,4, GPIOA,3
 
-#endif // GPIO
+// ADC
+#define ADC_RVAR_PIN    GPIOA, 0
 
-#if 1 // ========================= Timer =======================================
-#endif // Timer
+#endif // GPIO
 
 #if I2C1_ENABLED // ====================== I2C ================================
 #define I2C1_BAUDRATE   400000
@@ -87,20 +91,13 @@
 #endif
 
 #if ADC_REQUIRED // ======================= Inner ADC ==========================
-// Clock divider: clock is generated from the APB2
-#define ADC_CLK_DIVIDER     adcDiv2
-
-// ADC channels
-//#define BAT_CHNL          1
-
+#define RVAR_CHNL           0
 #define ADC_VREFINT_CHNL    17  // All 4xx, F072 and L151 devices. Do not change.
-#define ADC_CHANNELS        { ADC_VREFINT_CHNL }
-#define ADC_CHANNEL_CNT     1   // Do not use countof(AdcChannels) as preprocessor does not know what is countof => cannot check
+#define ADC_CHANNELS        { RVAR_CHNL, ADC_VREFINT_CHNL }
+#define ADC_CHANNEL_CNT     2   // Do not use countof(AdcChannels) as preprocessor does not know what is countof => cannot check
 #define ADC_SAMPLE_TIME     ast96Cycles
 #define ADC_SAMPLE_CNT      8   // How many times to measure every channel
-
 #define ADC_SEQ_LEN         (ADC_SAMPLE_CNT * ADC_CHANNEL_CNT)
-
 #endif
 
 #if 1 // =========================== DMA =======================================
@@ -119,7 +116,7 @@
 #endif
 
 #if ADC_REQUIRED
-#define ADC_DMA         STM32_DMA1_STREAM1
+#define ADC_DMA         STM32_DMA_STREAM_ID(1, 1)
 #define ADC_DMA_MODE    STM32_DMA_CR_CHSEL(0) |   /* dummy */ \
                         DMA_PRIORITY_LOW | \
                         STM32_DMA_CR_MSIZE_HWORD | \

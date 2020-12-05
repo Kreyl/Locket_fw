@@ -12,6 +12,7 @@
 #include "MsgQ.h"
 #include "SimpleSensors.h"
 #include "buttons.h"
+#include "kl_adc.h"
 
 #include <vector>
 
@@ -30,6 +31,11 @@ Beeper_t Beeper {BEEPER_PIN};
 #endif
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+
+// RVar measurement
+static TmrKL_t TmrMeasure {TIME_MS2I(99), evtIdMeasure, tktPeriodic};
+static void OnMeasurementDone();
+
 #endif
 
 int main(void) {
@@ -50,17 +56,19 @@ int main(void) {
 
     Led.Init();
     Vibro.Init();
-    Vibro.StartOrRestart(vsqBrrBrr);
-#if BUTTONS_ENABLED
-    SimpleSensors::Init();
-#endif
+//    Vibro.StartOrRestart(vsqBrrBrr);
 
     // ==== Radio ====
     if(Radio.Init() != retvOk) {
         Led.StartOrRestart(lsqFailure);
         chThdSleepMilliseconds(1008);
     }
-    else Led.StartOrRestart(lsqStart);
+//    else Led.StartOrRestart(lsqStart);
+
+    // ADC
+    PinSetupAnalog(ADC_RVAR_PIN);
+    Adc.Init();
+    TmrMeasure.StartOrRestart();
 
     // Main cycle
     ITask();
@@ -87,9 +95,8 @@ void ITask() {
                 break;
 #endif
 
-            case evtIdRadioCmd:
-                Vibro.StartOrRestart(vsqBrr);
-                break;
+            case evtIdMeasure: Adc.StartMeasurement(); break;
+            case evtIdAdcRslt: OnMeasurementDone(); break;
 
             case evtIdShellCmd:
                 OnCmd((Shell_t*)Msg.Ptr);
@@ -99,6 +106,20 @@ void ITask() {
         } // Switch
     } // while true
 } // ITask()
+
+void OnMeasurementDone() {
+//    Printf("AdcDone\r");
+    if(Adc.FirstConversion) Adc.FirstConversion = false;
+    else {
+        uint32_t Vadc = Adc.GetResult(RVAR_CHNL);
+        Printf("Rvar: %u\r", Vadc);
+        Radio.PktTx.Lvl = Vadc;
+        uint32_t c = 1 + (Vadc * 99) / 4096;
+        Color_t Clr;
+        Clr.FromHSV(120, 100, c);
+        Led.SetColor(Clr);
+    }
+}
 
 #if 1 // ================= Command processing ====================
 void OnCmd(Shell_t *PShell) {

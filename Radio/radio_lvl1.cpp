@@ -43,21 +43,13 @@ static void rLvl1Thread(void *arg) {
 __noreturn
 void rLevel1_t::ITask() {
     while(true) {
-        RMsg_t RMsg = RMsgQ.Fetch(TIME_INFINITE);
-        PktTx.RCmd = (uint8_t)RMsg.Cmd;
-        // Several tries
-        for(int i=0; i<7; i++) {
-            Printf("%u:\r", i);
-            CC.Recalibrate();
-            CC.Transmit(&PktTx, RPKT_LEN);
-            if(CC.Receive(18, &PktRx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
-                Printf("Rx: %X; RSSI: %d\r", PktRx.DW32, PktRx.Rssi);
-                if((PktRx.DW32 & 0xFFFF0000UL) == 0xCA110000) {
-                    EvtQMain.SendNowOrExit(EvtMsg_t(evtIdRadioCmd));
-                    break;
-                }
-            }
-        } // for
+        chThdSleepMilliseconds(7);
+        CC.Recalibrate();
+        CC.Transmit(&PktTx, RPKT_LEN);
+//        if(CC.Receive(18, &PktRx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
+//            Printf("Lvl: %u; RSSI: %d\r", PktRx.Lvl, PktRx.Rssi);
+////            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdRadioCmd));
+//        }
     } // while true
 }
 #endif // task
@@ -69,7 +61,6 @@ uint8_t rLevel1_t::Init() {
     PinSetupOut(DBG_GPIO2, DBG_PIN2, omPushPull);
 #endif
 
-    RMsgQ.Init();
     if(CC.Init() == retvOk) {
         CC.SetPktSize(RPKT_LEN);
         CC.DoIdleAfterTx();
