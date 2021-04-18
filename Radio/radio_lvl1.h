@@ -72,18 +72,20 @@ static const uint8_t PwrTable[12] = {
 
 #if 1 // =========================== Pkt_t =====================================
 union rPkt_t {
-    uint32_t DW32;
+    uint32_t DW32[2];
     struct {
-        uint16_t ID : 6;
-        uint16_t Cycle : 4;
-        uint16_t TimeSrcID : 6;
+        // Syncing header (3 bytes)
+        uint8_t ID;
+        uint8_t CycleN;
+        uint8_t TimeSrcID;
         // Payload
-        uint16_t Type : 4;
-        uint16_t RCmd : 4;
-        int8_t Rssi; // Will be set after RX. Trnasmitting is useless, but who cares.
+        uint8_t Type;
+        // Will be set after RX. Trnasmitting is useless, but who cares.
+        int8_t Rssi;
     } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {
-        DW32 = Right.DW32;
+        DW32[0] = Right.DW32[0];
+        DW32[1] = Right.DW32[1];
         return *this;
     }
 } __attribute__ ((__packed__));
@@ -93,26 +95,24 @@ union rPkt_t {
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
 #define RCHNL_EACH_OTH  7
-#define RCHNL_FAR       0
 
-#define TX_PWR_FAR      CC_PwrPlus10dBm
+// Change if CC settings changed, too. Do not touch until you know what you do.
+#define HWTIM_CLK_FREQ_HZ       (27000000UL / 192UL) // 27MHz / 192, set in CC settings
+#define HWTIM_TICK_DUR_us       (1000000UL / HWTIM_CLK_FREQ_HZ)
 
 // Feel-Each-Other related
-#define RCYCLE_CNT              5
-#define FAR_CYCLE_INDX          (RCYCLE_CNT - 1)
-#define FAR_CYCLE_DURATION_MS   42
-#define RSLOT_CNT               50
-#define RSLOT_DURATION_ST       36
-#define CYCLE_DURATION_ST       (RSLOT_DURATION_ST * RSLOT_CNT)
-//#define MAX_RANDOM_DURATION_MS  18
-
+#define RCYCLE_CNT              4
+#define RSLOT_CNT               (ID_MAX+1) // Max count of lockets in system
+#define RSLOT_DURATION_us       2200UL // Measured time is 1540us, but there must be reserve to deal with timer's jitter
+#define RSLOT_DURATION_tics     (RSLOT_DURATION_us / HWTIM_TICK_DUR_us)
+#define END_OF_PKT_SHIFT_tics   235U // Measured experimentally. This is time at transmitter's side when transmission is done. We have to set same time at ours side.
 
 #define SCYCLES_TO_KEEP_TIMESRC 4   // After that amount of supercycles, TimeSrcID become self ID
 
 #endif
 
 #if 1 // ============================= RX Table ================================
-#define RXTABLE_SZ              50
+#define RXTABLE_SZ              36
 #define RXT_PKT_REQUIRED        TRUE
 class RxTable_t {
 private:
@@ -188,7 +188,7 @@ public:
 
 // Message queue
 #define R_MSGQ_LEN      9
-enum RmsgId_t { rmsgEachOthRx, rmsgEachOthTx, rmsgEachOthSleep, rmsgPktRx, rmsgFar };
+enum RmsgId_t { rmsgEachOthRx, rmsgEachOthTx, rmsgEachOthSleep, rmsgPktRx };
 struct RMsg_t {
     RmsgId_t Cmd;
     uint8_t Value;
@@ -200,11 +200,7 @@ struct RMsg_t {
 class rLevel1_t {
 private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
-    int32_t CntTxFar = 0;
-    // Different modes of operation
-    void TaskFeelFar();
 public:
-    rPkt_t PktRx, PktTx, PktTxFar;
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
     RxTable_t& GetRxTable() {
         chSysLock();
@@ -223,7 +219,6 @@ public:
         return *RxTableR;
     }
     uint8_t Init();
-    void DoTransmitFar(uint32_t TxCnt)  { CntTxFar = TxCnt; }
     // Inner use
     void ITask();
 };

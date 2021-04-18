@@ -13,18 +13,17 @@
 #include "Sequences.h"
 #include "Config.h"
 
-
 cc1101_t CC(CC_Setup0);
 
 #define DBG_PINS
 
 #ifdef DBG_PINS
 #define DBG_GPIO1   GPIOB
-#define DBG_PIN1    10
+#define DBG_PIN1    6
 #define DBG1_SET()  PinSetHi(DBG_GPIO1, DBG_PIN1)
 #define DBG1_CLR()  PinSetLo(DBG_GPIO1, DBG_PIN1)
 #define DBG_GPIO2   GPIOB
-#define DBG_PIN2    9
+#define DBG_PIN2    7
 #define DBG2_SET()  PinSetHi(DBG_GPIO2, DBG_PIN2)
 #define DBG2_CLR()  PinSetLo(DBG_GPIO2, DBG_PIN2)
 #else
@@ -33,6 +32,7 @@ cc1101_t CC(CC_Setup0);
 #endif
 
 rLevel1_t Radio;
+static rPkt_t PktRx;
 
 static Timer_t IHwTmr(TIM9);
 
@@ -42,90 +42,62 @@ static class RadioTime_t {
 private:
     void StopTimerI()  { IHwTmr.Disable(); }
     uint16_t TimeSrcTimeout;
-    void IncCycle() {
-        DBG1_CLR();
-        CycleN++;
-        if(CycleN >= RCYCLE_CNT) {
-            DBG1_SET();
-            CycleN = 0;
-            Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthRx));
-            // Check TimeSrc timeout
-            if(TimeSrcTimeout >= SCYCLES_TO_KEEP_TIMESRC) TimeSrcId = Cfg.ID;
-            else TimeSrcTimeout++;
-            StartTimerForTSlotI();
-        }
-        else if(CycleN == FAR_CYCLE_INDX) {
-            Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgFar));
-            StartTimerForFarCycleI();
-        }
-        else StartTimerForTSlotI();
-    }
 public:
-    volatile int32_t CycleN = 0, TimeSlot = 0;
-    uint16_t TimeSrcId = 63;
-    void StartTimerForTSlotI() {
-        IHwTmr.SetCounter(0);
-        IHwTmr.SetTopValue(360);
-        IHwTmr.GenerateUpdateEvt();
-        IHwTmr.Enable();
-    }
-    void StartTimerForFarCycleI() {
-        IHwTmr.SetCounter(0);
-        IHwTmr.SetTopValue(5625);
-        IHwTmr.GenerateUpdateEvt();
-        IHwTmr.Enable();
-    }
-    void StartTimerForAdjustI() {
-        IHwTmr.SetCounter(90);
-        IHwTmr.SetTopValue(72);
-        IHwTmr.GenerateUpdateEvt();
-        IHwTmr.Enable();
-    }
+    volatile uint8_t CycleN = 0, TimeSlot = 0;
+    uint16_t TimeSrcId = ID_MAX;
 
     void IncTimeSlot() {
         TimeSlot++;
-        if(TimeSlot >= RSLOT_CNT) {
+        if(TimeSlot >= RSLOT_CNT) {  // Increment cycle
             TimeSlot = 0;
-            IncCycle();
+            DBG1_CLR();
+            CycleN++;
+            if(CycleN >= RCYCLE_CNT) { // New supercycle begins
+                DBG1_SET();
+                CycleN = 0;
+                Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthRx));
+                // Check TimeSrc timeout
+                if(TimeSrcTimeout >= SCYCLES_TO_KEEP_TIMESRC) TimeSrcId = Cfg.ID;
+                else TimeSrcTimeout++;
+            }
         }
-        else StartTimerForTSlotI();
     }
+
     void AdjustI() {
-        if(Radio.PktRx.TimeSrcID <= TimeSrcId) { // Adjust time if theirs TimeSrc < OursTimeSrc
-            CycleN = Radio.PktRx.Cycle;
-            TimeSlot = Radio.PktRx.ID; // Will be increased later, in IOnTimerI
-            TimeSrcId = Radio.PktRx.TimeSrcID;
+        if(PktRx.TimeSrcID <= TimeSrcId) { // Adjust time if theirs TimeSrc <= OursTimeSrc
+            CycleN = PktRx.CycleN;
+            TimeSlot = PktRx.ID;
+            TimeSrcId = PktRx.TimeSrcID;
             TimeSrcTimeout = 0; // Reset Time Src Timeout
-            StartTimerForAdjustI();
+            IHwTmr.SetCounter(END_OF_PKT_SHIFT_tics);
         }
     }
 
     void IOnTimerI() {
-        if(CycleN == FAR_CYCLE_INDX) {
-            IncCycle();
-        }
-        else { // Cycles 0...3
-            IncTimeSlot();
-            if(TimeSlot == Cfg.ID and Cfg.MustTxInEachOther) Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthTx));
-            else { // Not our timeslot
-                if(CycleN == 0) { // Enter RX if not yet
-                    if(CCState != ccstRx) Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthRx));
-                }
-                else { // CycleN != 0
-                    if(CCState != ccstIdle) Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthSleep));
-                }
+        IncTimeSlot();
+        // Tx if now is our timeslot
+        if(TimeSlot == Cfg.ID) Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthTx));
+        // Not our timeslot
+        else {
+            if(CycleN == 0) { // Enter RX if not yet
+                if(CCState != ccstRx) Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthRx));
+            }
+            else { // CycleN != 0, enter sleep
+                if(CCState != ccstIdle) Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgEachOthSleep));
             }
         }
     }
 } RadioTime;
 
 void RxCallback() {
-    if(CC.ReadFIFO(&Radio.PktRx, &Radio.PktRx.Rssi, RPKT_LEN) == retvOk) {  // if pkt successfully received
+    if(CC.ReadFIFO(&PktRx, &PktRx.Rssi, RPKT_LEN) == retvOk) {  // if pkt successfully received
+        DBG2_SET();
         RadioTime.AdjustI();
         Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgPktRx));
     }
 }
 
+// RadioTime HW Timer IRQ. Calls OnTimer method.
 extern "C"
 void VectorA4() {
     CH_IRQ_PROLOGUE();
@@ -147,71 +119,40 @@ static void rLvl1Thread(void *arg) {
 __noreturn
 void rLevel1_t::ITask() {
     while(true) {
-        if(CntTxFar > 0) {
-            CC.SetChannel(RCHNL_FAR);
-            CC.SetTxPower(TX_PWR_FAR);
-            CC.SetBitrate(CCBitrate10k);
-        //    CC.SetBitrate(CCBitrate2k4);
-            while(CntTxFar--) {
-//                Printf("Far: %u\r", CntTxFar);
-                CC.Recalibrate();
-                CC.Transmit(&PktTxFar, RPKT_LEN);
-            }
-            CC.EnterIdle();
-            CC.SetChannel(RCHNL_EACH_OTH);
-            CC.SetTxPower(Cfg.TxPower);
-            CC.SetBitrate(CCBitrate500k);
-        }
-        else {
-            if(Cfg.IsAriKaesu()) {
+    RMsg_t msg = RMsgQ.Fetch(TIME_INFINITE);
+        switch(msg.Cmd) {
+            case rmsgEachOthTx: {
+                DBG2_SET();
                 CC.EnterIdle();
-                chThdSleepMilliseconds(540);
-            }
-            else { // Not Ari/Kaesu
-                RMsg_t msg = RMsgQ.Fetch(TIME_INFINITE);
-                switch(msg.Cmd) {
-                    case rmsgEachOthTx:
-                        CC.EnterIdle();
-                        CCState = ccstTx;
-                        PktTx.ID = Cfg.ID;
-                        PktTx.Cycle = RadioTime.CycleN;
-                        PktTx.TimeSrcID = RadioTime.TimeSrcId;
-                        CC.Recalibrate();
-                        CC.Transmit(&PktTx, RPKT_LEN);
-                        break;
+                CCState = ccstTx;
+                rPkt_t PktTx;
+                PktTx.ID = Cfg.ID;
+                PktTx.CycleN = RadioTime.CycleN;
+                PktTx.TimeSrcID = RadioTime.TimeSrcId;
+                PktTx.Type = Cfg.Type;
+                CC.Recalibrate();
+                CC.Transmit(&PktTx, RPKT_LEN);
+                DBG2_CLR();
+            } break;
 
-                    case rmsgEachOthRx:
-                        CCState = ccstRx;
-                        CC.ReceiveAsync(RxCallback);
-                        break;
+            case rmsgEachOthRx:
+                CCState = ccstRx;
+                CC.ReceiveAsync(RxCallback);
+                break;
 
-                    case rmsgEachOthSleep:
-                        CCState = ccstIdle;
-                        CC.EnterIdle();
-                        break;
+            case rmsgEachOthSleep:
+                CCState = ccstIdle;
+                CC.EnterIdle();
+                break;
 
-                    case rmsgPktRx:
-                        CCState = ccstIdle;
-        //                    Printf("ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
-                        RxTableW->AddOrReplaceExistingPkt(PktRx);
-                        break;
-
-                    case rmsgFar:
-                        CC.SetChannel(RCHNL_FAR);
-                        CC.SetBitrate(CCBitrate10k);
-                        CC.Recalibrate();
-                        if(CC.Receive(36, &PktRx, RPKT_LEN, &PktRx.Rssi) == retvOk) {
-//                            Printf("Far t=%d; Rssi=%d\r", PktRx.Type, PktRx.Rssi);
-                            RxTableW->AddOrReplaceExistingPkt(PktRx);
-                        }
-                        CC.EnterIdle();
-                        CC.SetChannel(RCHNL_EACH_OTH);
-                        CC.SetBitrate(CCBitrate500k);
-                        CC.Recalibrate();
-                        break;
-                } // switch
-            } // if Not Ari/Kaesu
-        }// if nothing to tx far
+            case rmsgPktRx:
+                CCState = ccstIdle;
+//                Printf("ID=%u; Cyc=%d; TmrSrc=%u; Rssi=%d\r", PktRx.ID, PktRx.CycleN, PktRx.TimeSrcID, PktRx.Rssi);
+//                Printf("ID=%u; Now=%u; Rxt: %u %u, RxSlot=%d; Slot=%u; sh=%u\r", PktRx.ID, IHwTmr.GetCounter(), rxtime1,rxtime2, rxslot, RadioTime.TimeSlot, TmrShift);
+                RxTableW->AddOrReplaceExistingPkt(PktRx);
+                DBG2_CLR();
+                break;
+            } // switch
     } // while true
 }
 #endif // task
@@ -232,22 +173,22 @@ uint8_t rLevel1_t::Init() {
         CC.SetBitrate(CCBitrate500k);
 //        CC.EnterPwrDown();
 
-        PinSetupAlterFunc(GPIOA, 2, omPushPull, pudNone, AF3);
+        // Setup HW timer: it generates IRQ at timeslot end
+//        Printf("RSLOT dur us: %u; tics: %u\r", RSLOT_DURATION_us, RSLOT_DURATION_tics);
+        PinSetupAlterFunc(GPIOA, 2, omPushPull, pudNone, AF3); // TIM9 Ch1. This is clock input. CC generates stable clock at GDO2: CLK_XOSC/192 (27MHz / 192 = 140625 Hz)
         IHwTmr.Init();
-        IHwTmr.SetTopValue(14000);
-        IHwTmr.SelectSlaveMode(smExternal);
-        IHwTmr.SetTriggerInput(tiTI1FP1);
-        IHwTmr.SetupInput1(0b01, Timer_t::pscDiv1, rfRising);
+        IHwTmr.SetTopValue(RSLOT_DURATION_tics);
+        IHwTmr.SelectSlaveMode(smExternal);                     // }
+        IHwTmr.SetTriggerInput(tiTI1FP1);                       // }
+        IHwTmr.SetupInput1(0b01, Timer_t::pscDiv1, rfRising);   // } Timer is clocked by external clock, provided by CC
         IHwTmr.EnableIrq(TIM9_IRQn, IRQ_PRIO_HIGH);
         IHwTmr.EnableIrqOnUpdate();
-        TIM9->CR1 |= TIM_CR1_URS;
-        IHwTmr.Enable();
 
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         chSysLock();
-        RadioTime.StartTimerForTSlotI();
         RadioTime.TimeSrcId = Cfg.ID;
+        IHwTmr.Enable(); // Start timer
         chSysUnlock();
         return retvOk;
     }
