@@ -47,20 +47,60 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
-//static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
 static uint32_t TimeS;
 #endif
 
 #if 1 // ========================== Logic ======================================
-#define GOOD_DISTANCE_dBm       (-111)
-#define CHANGED_IND_TIME_S      2
+// Indication. Colors are changed when reading mode.
+LedRGBChunk_t lsqStart[] = {
+        {csSetup, 0, clBlue},
+        {csWait, 720},
+        {csSetup, 0, clBlue},
+        {csEnd},
+};
+
+LedRGBChunk_t lsqFadeIn[] = {
+        {csSetup, 450, clBlue},
+        {csEnd},
+};
+
+LedRGBChunk_t lsqFadeOut[] = {
+        {csSetup, 450, clBlue},
+        {csEnd},
+};
 
 void CheckRxTable() {
+    // Who is near?
     RxTable_t& Tbl = Radio.GetRxTable();
+    bool BlueIsNear = false;
+    bool GreenIsNear = false;
+    bool RedIsNear = false;
+    bool VioletIsNear = false;
+    bool OrangeIsNear = false;
+    bool WhiteIsNear = false;
+
     for(uint32_t i=0; i<Tbl.Cnt; i++) { // i is just number of pkt in table, no relation with type
         rPkt_t Pkt = Tbl[i];
-//        Printf("ID rcvd: %u\r", Pkt.ID);
         Printf("type rcvd: %u\r", Pkt.Type);
+        switch(Pkt.Type) {
+            case typeBlue:   BlueIsNear = true;   break;
+            case typeGreen:  GreenIsNear = true;  break;
+            case typeRed:    RedIsNear = true;    break;
+            case typeViolet: VioletIsNear = true; break;
+            case typeOrange: OrangeIsNear = true; break;
+            case typeWhite:  WhiteIsNear = true;  break;
+            default: break;
+        }
+    }
+
+    // ==== React on who is near ====
+    if(Cfg.Type == typeOrange) {
+        if(BlueIsNear and GreenIsNear and RedIsNear and VioletIsNear) Led.StartOrContinue(lsqFadeIn);
+        else Led.StartOrContinue(lsqFadeOut);
+    }
+    else if(Cfg.Type == typeYellow) {
+        if(OrangeIsNear and WhiteIsNear) Led.StartOrContinue(lsqFadeIn);
+        else if(!Led.IsOff()) Led.StartOrContinue(lsqFadeOut);
     }
 }
 #endif
@@ -91,10 +131,12 @@ int main(void) {
     Printf("PktSz: %u\r", RPKT_LEN);
 
     Led.Init();
-    Led.SetupSeqEndEvt(evtIdLedSeqDone);
+//    Led.SetupSeqEndEvt(evtIdLedSeqDone);
+
     Vibro.Init();
 //    Vibro.SetupSeqEndEvt(evtIdVibroSeqDone);
-//    Vibro.StartOrRestart(vsqBrrBrr);
+    Vibro.StartOrRestart(vsqBrrBrr);
+
 #if BEEPER_ENABLED // === Beeper ===
 //    Beeper.Init();
 //    Beeper.StartOrRestart(bsqBeepBeep);
@@ -165,15 +207,21 @@ void ReadAndSetupMode() {
     Vibro.Stop();
     Led.Stop();
     // Select self type
-    chSysLock();
     uint32_t Type = b >> 4;
-//    if(SelfType >= LcktType.size()) SelfType = LcktType.size() - 1;
-    chSysUnlock();
+    if(Type <= 6) {
+        Cfg.Type = (Type_t)Type;
+        // Setup colors
+        lsqStart[0].Color = ActivClr[Type];
+        lsqStart[2].Color =  IdleClr[Type];
+        lsqFadeIn[0].Color = ActivClr[Type];
+        lsqFadeOut[0].Color = IdleClr[Type];
+    }
+    Led.StartOrRestart(lsqStart);
+
     // Select power
     b &= 0b1111; // Remove high bits
     Printf("Type: %u; Pwr: %u\r", Type, b);
-    Cfg.Type = Type;
-    Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
+    Radio.SetPwr((b > 11)? CC_PwrPlus12dBm : PwrTable[b]);
 }
 
 #if 1 // ================= Command processing ====================

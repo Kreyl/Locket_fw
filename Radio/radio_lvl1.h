@@ -200,6 +200,7 @@ struct RMsg_t {
 class rLevel1_t {
 private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
+    uint8_t TxPwr = 0; // 0 means "do not change"
 public:
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
     RxTable_t& GetRxTable() {
@@ -219,6 +220,7 @@ public:
         return *RxTableR;
     }
     uint8_t Init();
+    void SetPwr(uint8_t Pwr) { TxPwr = Pwr; }
     // Inner use
     void ITask();
 };

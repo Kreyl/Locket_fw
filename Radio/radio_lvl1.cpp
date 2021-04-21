@@ -130,6 +130,10 @@ void rLevel1_t::ITask() {
                 PktTx.CycleN = RadioTime.CycleN;
                 PktTx.TimeSrcID = RadioTime.TimeSrcId;
                 PktTx.Type = Cfg.Type;
+                if(TxPwr != 0) {
+                    CC.SetTxPower(TxPwr);
+                    TxPwr = 0;
+                }
                 CC.Recalibrate();
                 CC.Transmit(&PktTx, RPKT_LEN);
                 DBG2_CLR();
@@ -169,7 +173,7 @@ uint8_t rLevel1_t::Init() {
         CC.SetPktSize(RPKT_LEN);
         CC.DoIdleAfterTx();
         CC.SetChannel(RCHNL_EACH_OTH);
-        CC.SetTxPower(Cfg.TxPower);
+        CC.SetTxPower(CC_PwrMinus10dBm);
         CC.SetBitrate(CCBitrate500k);
 //        CC.EnterPwrDown();
 
