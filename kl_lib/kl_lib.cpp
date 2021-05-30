@@ -72,7 +72,7 @@ void PrintMemoryInfo() {
 
 #if 1 // ============================ kl_string ================================
 __always_inline
-inline int kl_tolower(char c) {
+int kl_tolower(char c) {
     return (c >= 'A' and c <= 'Z')? (c + ('a' - 'A')) : c;
 }
 
