@@ -127,7 +127,7 @@ public:
     void AddOrReplaceExistingPkt(rPkt_t &APkt) {
         chSysLock();
         for(uint32_t i=0; i<Cnt; i++) {
-            if(IBuf[i].ID == APkt.ID) {
+            if((IBuf[i].ID == APkt.ID) and (IBuf[i].RCmd == APkt.RCmd)) {
                 if(IBuf[i].Rssi < APkt.Rssi) IBuf[i] = APkt; // Replace with newer pkt if RSSI is stronger
                 chSysUnlock();
                 return;

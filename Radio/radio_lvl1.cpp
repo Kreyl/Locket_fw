@@ -192,7 +192,7 @@ void rLevel1_t::ITask() {
 
                     case rmsgPktRx:
                         CCState = ccstIdle;
-        //                    Printf("ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
+//                            Printf("ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
                         RxTableW->AddOrReplaceExistingPkt(PktRx);
                         break;
 
