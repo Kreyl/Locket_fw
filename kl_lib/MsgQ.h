@@ -57,6 +57,7 @@ union EvtMsg_t {
                 int32_t Value;
                 uint8_t ValueID;
             } __attribute__((__packed__));
+
 //            uint8_t b[EMSG_DATA8_CNT];
 //            uint16_t w16[EMSG_DATA16_CNT];
 #if BUTTONS_ENABLED
