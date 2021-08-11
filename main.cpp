@@ -32,7 +32,7 @@ static uint8_t OldChnl = 0xFF; // non valid value
 
 static LedRGBChunk_t lsq[] = {
         {csSetup, 0, clBlack},
-        {csSetup, 99, clBlue},
+        {csSetup, 99, clCyan},
         {csEnd},
 };
 #endif
@@ -88,9 +88,9 @@ void ITask() {
                 // Show if color has changed
                 if(OldChnl != Msg.ValueID) {
                     OldChnl = Msg.ValueID;
-                    Color_t Clr;
-                    Clr.DWord32 = (uint32_t)Msg.Value;
-                    lsq[1].Color = Clr;
+//                    Color_t Clr;
+//                    Clr.DWord32 = (uint32_t)Msg.Value;
+//                    lsq[1].Color = Clr;
                     Led.StartOrRestart(lsq);
                 }
             } break;

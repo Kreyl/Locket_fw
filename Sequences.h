@@ -195,14 +195,14 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #define SHORTPAUSETIME  72
 
 const LedRGBChunk_t lsqStart[] = {
-        {csSetup, 360, clBlue},  {csWait, 207},
+        {csSetup, 360, clCyan},  {csWait, 207},
 //        {csSetup, 0, clBlack},
-        {csSetup, 360, {0,0,1}},
+        {csSetup, 360, {0,1,1}},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqFadeout[] = {
-        {csSetup, 540, clBlack},
+        {csSetup, 540, {0,1,1}},
         {csEnd},
 };
 
