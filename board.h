@@ -2,12 +2,12 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "GargoyleTX"
+#define APP_NAME            "Lustra"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      TRUE
-#define BUTTONS_ENABLED     TRUE
+#define BUTTONS_ENABLED     FALSE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 

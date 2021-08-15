@@ -57,6 +57,7 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 
 #if 1 // =========================== Pkt_t =====================================
 struct rPkt_t {
+    uint8_t ID;
     uint32_t TheWord;
 } __attribute__ ((__packed__));
 #endif
