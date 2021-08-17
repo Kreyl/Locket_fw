@@ -126,6 +126,8 @@ void ReadAndSetupMode() {
     Printf("Dip: 0x%02X\r", b);
     // Select power
     PwrLvlId = b & 0b1111; // Remove high bits
+    if(PwrLvlId > 11) PwrLvlId = 11;
+
 }
 
 void ReadEE() {
