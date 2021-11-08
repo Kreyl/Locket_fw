@@ -1,7 +1,7 @@
 /*
  * Sequences.h
  *
- *  Created on: 09 ÿíâ. 2015 ã.
+ *  Created on: 09 ï¿½ï¿½ï¿½. 2015 ï¿½.
  *      Author: Kreyl
  */
 
@@ -189,6 +189,100 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #endif
 
 #if 1 // ============================ LED RGB ==================================
+#define LOW_BRTNESS     4
+#define SHOWTIME        270
+#define PAUSETIME       720
+#define SHORTPAUSETIME  72
+
+const LedRGBChunk_t lsqAri[] = {
+        {csSetup, 0, clBlue}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqKaesu[] = {
+        {csSetup, 0, clRed},   {csWait, SHOWTIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqNorth[] = {
+        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csEnd},
+};
+const LedRGBChunk_t lsqNorthStrong[] = {
+        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clWhite},  {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqSouth[] = {
+        {csSetup, 0, {128,0,255}}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},     {csWait, PAUSETIME},
+        {csEnd},
+};
+const LedRGBChunk_t lsqSouthStrong[] = {
+        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clWhite},   {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
+        {csEnd},
+};
+
+
+const LedRGBChunk_t lsqNorthCursed[] = {
+        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
+        {csSetup, 0, clRed},    {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csEnd},
+};
+const LedRGBChunk_t lsqSouthCursed[] = {
+        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clRed},     {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
+        {csEnd},
+};
+
+
+const LedRGBChunk_t lsqHidden[] = {
+        {csSetup, 0, clBlue},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
+        {csRepeat, 1},
+        {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqSilent[] = {
+        {csSetup, 0, {255, 90, 0}},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
+        {csRepeat, 1},
+        {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqVisible[] = {
+        {csSetup, 0, clGreen}, {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
+        {csRepeat, 1},
+        {csWait, PAUSETIME},
+        {csEnd},
+};
+
+
+const LedRGBChunk_t lsqStart[] = {
+        {csSetup, 0, clRed},   {csWait, 207},
+        {csSetup, 0, clGreen}, {csWait, 207},
+        {csSetup, 0, clBlue},  {csWait, 207},
+//        {csSetup, 0, clBlack},
+        {csSetup, 0, {0,1,0}},
+        {csEnd},
+};
+
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
         {csWait, 99},
@@ -200,16 +294,6 @@ const LedRGBChunk_t lsqFailure[] = {
         {csWait, 99},
         {csSetup, 0, clRed},
         {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csEnd}
-};
-
-const LedRGBChunk_t lsqOn[] = {
-        {csSetup, 0, clGreen},
-        {csEnd}
-};
-
-const LedRGBChunk_t lsqOff[] = {
         {csSetup, 0, clBlack},
         {csEnd}
 };
@@ -238,7 +322,7 @@ const LedSmoothChunk_t lsqEnterIdle[] = {
 
 #endif
 
-#if 1 // ============================= Beeper ==================================
+#if 0 // ============================= Beeper ==================================
 #define BEEP_VOLUME     2   // Maximum 10
 
 #if 1 // ==== Notes ====
@@ -303,7 +387,7 @@ const BeepChunk_t bsqBeepBeep[] = {
 
 #if 1 // ==== Extensions ====
 // Pill
-const BeepChunk_t BeepPillOk[] = {
+const BeepChunk_t bsqBeepPillOk[] = {
         {csSetup, BEEP_VOLUME, Si_3},
         {csWait, 180},
         {csSetup, BEEP_VOLUME, Re_D_4},
@@ -314,7 +398,7 @@ const BeepChunk_t BeepPillOk[] = {
         {csEnd}
 };
 
-const BeepChunk_t BeepPillBad[] = {
+const BeepChunk_t bsqBeepPillBad[] = {
         {csSetup, BEEP_VOLUME, Fa_4},
         {csWait, 180},
         {csSetup, BEEP_VOLUME, Re_4},
@@ -328,16 +412,19 @@ const BeepChunk_t BeepPillBad[] = {
 #endif // beeper
 
 #if 1 // ============================== Vibro ==================================
-#define VIBRO_VOLUME    27  // 1 to 22
+#define VIBRO_VOLUME    100  // 1 to 100
 
 #define VIBRO_SHORT_MS          99
+#define VIBRO_REPEAT_PERIOD     1008
 
 const BaseChunk_t vsqBrr[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, VIBRO_SHORT_MS},
         {csSetup, 0},
+        {csWait, VIBRO_REPEAT_PERIOD},
         {csEnd}
 };
+
 const BaseChunk_t vsqBrrBrr[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, VIBRO_SHORT_MS},
@@ -346,9 +433,56 @@ const BaseChunk_t vsqBrrBrr[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, VIBRO_SHORT_MS},
         {csSetup, 0},
+        {csWait, VIBRO_REPEAT_PERIOD},
         {csEnd}
 };
 
+const BaseChunk_t vsqBrrBrrBrr[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csWait, 99},
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csWait, 99},
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_SHORT_MS},
+        {csSetup, 0},
+        {csWait, VIBRO_REPEAT_PERIOD},
+        {csEnd}
+};
+
+const BaseChunk_t vsqAttack[] = {
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csWait, 450},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 1008},
+        {csRepeat, 2},
+        {csWait, 999},
+        {csEnd}
+};
+
+const BaseChunk_t vsqRetreat[] = {
+        {csSetup, VIBRO_VOLUME}, {csWait, 360},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 720},
+        {csRepeat, 2},
+        {csWait, 999},
+        {csEnd}
+};
+
+/*
 const BaseChunk_t vsqError[] = {
         {csSetup, VIBRO_VOLUME},
         {csWait, 999},
@@ -389,4 +523,5 @@ const BaseChunk_t vsqMany[] = {
         {csWait, 1008},
         {csGoto, 0}
 };
+*/
 #endif
