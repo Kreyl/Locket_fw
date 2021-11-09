@@ -74,13 +74,8 @@ static const uint8_t PwrTable[12] = {
 union rPkt_t {
     uint32_t DW32;
     struct {
-        uint16_t ID : 6;
-        uint16_t Cycle : 4;
-        uint16_t TimeSrcID : 6;
-        // Payload
-        uint16_t Type : 4;
-        uint16_t RCmd : 4;
-        int8_t Rssi; // Will be set after RX. Trnasmitting is useless, but who cares.
+        uint8_t ID;
+        int8_t Rssi; // Will be set after RX. Transmitting is useless, but who cares.
     } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {
         DW32 = Right.DW32;
@@ -111,7 +106,7 @@ union rPkt_t {
 
 #endif
 
-#if 1 // ============================= RX Table ================================
+#if 0 // ============================= RX Table ================================
 #define RXTABLE_SZ              50
 #define RXT_PKT_REQUIRED        TRUE
 class RxTable_t {
@@ -199,31 +194,10 @@ struct RMsg_t {
 
 class rLevel1_t {
 private:
-    RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
-    int32_t CntTxFar = 0;
-    // Different modes of operation
-    void TaskFeelFar();
 public:
-    rPkt_t PktRx, PktTx, PktTxFar;
+    rPkt_t PktRx, PktTx;
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
-    RxTable_t& GetRxTable() {
-        chSysLock();
-        RxTable_t* RxTableR;
-        // Switch tables
-        if(RxTableW == &RxTable1) {
-            RxTableW = &RxTable2;
-            RxTableR = &RxTable1;
-        }
-        else {
-            RxTableW = &RxTable1;
-            RxTableR = &RxTable2;
-        }
-        RxTableW->Cnt = 0; // Clear it
-        chSysUnlock();
-        return *RxTableR;
-    }
     uint8_t Init();
-    void DoTransmitFar(uint32_t TxCnt)  { CntTxFar = TxCnt; }
     // Inner use
     void ITask();
 };

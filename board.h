@@ -2,11 +2,11 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "Dalan"
+#define APP_NAME            "QTest"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
-#define BEEPER_ENABLED      FALSE
+#define BEEPER_ENABLED      TRUE
 #define BUTTONS_ENABLED     TRUE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
