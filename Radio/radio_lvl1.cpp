@@ -44,19 +44,34 @@ static void rLvl1Thread(void *arg) {
     Radio.ITask();
 }
 
+
+ColorHSV_t hsv {120, 100, 100};
+
+
 __noreturn
 void rLevel1_t::ITask() {
     while(true) {
+        hsv.H++;
+        if(hsv.H > 360) hsv.H = 0;
+        Color_t Clr = hsv.ToRGB();
+        PktTx.R = Clr.R;
+        PktTx.G = Clr.G;
+        PktTx.B = Clr.B;
+        PktTx.Sign = 0xCA115EA1;
+
         CC.Recalibrate();
         CC.Transmit(&PktTx, RPKT_LEN);
-        uint8_t Rslt = CC.Receive(270, &PktRx, RPKT_LEN, &Rssi);
-        if(Rslt == retvOk) {
+
+
+
+//        uint8_t Rslt = CC.Receive(270, &PktRx, RPKT_LEN, &Rssi);
+//        if(Rslt == retvOk) {
 //            PktTx.Rssi = Rssi;
 //            CC.Transmit(&PktTx, RPKT_LEN);
-            Printf("Rssi: our= %d; their=%d\r", Rssi, PktRx.Rssi);
-            Led.StartOrRestart(lsqBlink);
-        }
-        chThdSleepMilliseconds(630);
+//            Printf("Rssi: our= %d; their=%d\r", Rssi, PktRx.Rssi);
+//            Led.StartOrRestart(lsqBlink);
+//        }
+        chThdSleepMilliseconds(63);
     } // while true
 }
 #endif // task
