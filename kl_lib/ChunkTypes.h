@@ -81,13 +81,13 @@ protected:
                     break;
 
                 case csWait: { // Start timer, pointing to next chunk
-                        uint32_t Delay = IPCurrentChunk->Time_ms;
-                        IPCurrentChunk++;
-                        if(Delay != 0) {
-                            SetupDelay(Delay);
-                            return;
-                        }
+                    uint32_t Delay = IPCurrentChunk->Time_ms;
+                    IPCurrentChunk++;
+                    if(Delay != 0) {
+                        SetupDelay(Delay);
+                        return;
                     }
+                }
                     break;
 
                 case csGoto:
@@ -98,7 +98,11 @@ protected:
                     break;
 
                 case csEnd:
-                    if(IEvtMsg.ID != evtIdNone) EvtQMain.SendNowOrExitI(IEvtMsg);
+                    if(IEvtMsg.ID != evtIdNone) {
+                        Printf("SendNowOrExitI happened\r");
+                        EvtQMain.SendNowOrExitI(IEvtMsg);
+                    }
+                    Printf("csEnd happened\r");
                     IPStartChunk = nullptr;
                     IPCurrentChunk = nullptr;
                     return;
