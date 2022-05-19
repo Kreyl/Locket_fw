@@ -119,8 +119,11 @@ void ITask() {
                 break;
 
 #if BUTTONS_ENABLED
-            case evtIdButtons:
+                case evtIdButtons:
                 Printf("Btn %u %u\r", Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
+                if (Msg.BtnEvtInfo.BtnID == 0 && Msg.BtnEvtInfo.Type == beShortPress) {
+                	Beeper.StartOrRestart(bsqBeepPillOk);
+                }
                 break;
 #endif
 
@@ -160,7 +163,7 @@ void ReadAndSetupMode() {
 
 #if 1 // ================= Command processing ====================
 void OnCmd(Shell_t *PShell) {
-	Cmd_t *PCmd = &PShell->Cmd;
+    Cmd_t *PCmd = &PShell->Cmd;
     __attribute__((unused)) int32_t dw32 = 0;  // May be unused in some configurations
 //    Uart.Printf("%S\r", PCmd->Name);
     // Handle command
@@ -181,9 +184,23 @@ void OnCmd(Shell_t *PShell) {
 //        Radio.RMsgQ.SendNowOrExit(msg);
         PShell->Ack(r);
     }
+    else if(PCmd->NameIs("Led")) {
+        uint32_t r, g, b, delay;
+        PCmd->GetNext<uint32_t>(&r);
+        PCmd->GetNext<uint32_t>(&g);
+        PCmd->GetNext<uint32_t>(&b);
+        PCmd->GetNext<uint32_t>(&delay);
+        const LedRGBChunk_t lsqOnCommand[] = {
+                {csSetup, 0, {r, g, b}},
+                {csWait, delay},
+                {csEnd},
+        };
+
+        Led.StartOrRestart(lsqOnCommand);
+    }
 
 #if PILL_ENABLED // ==== Pills ====
-    else if(PCmd->NameIs("PillRead32")) {
+        else if(PCmd->NameIs("PillRead32")) {
         int32_t Cnt = 0;
         if(PCmd->GetNextInt32(&Cnt) != OK) { PShell->Ack(CMD_ERROR); return; }
         uint8_t MemAddr = 0, b = OK;
