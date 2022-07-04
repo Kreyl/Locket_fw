@@ -2,12 +2,12 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "Dalan"
+#define APP_NAME            "Hi22Locket"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      FALSE
-#define BUTTONS_ENABLED     TRUE
+#define BUTTONS_ENABLED     FALSE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
@@ -134,7 +134,8 @@
 #if 1 // ========================== USART ======================================
 #define PRINTF_FLOAT_EN FALSE
 #define UART_TXBUF_SZ   256
-#define UART_RXBUF_SZ   99
+#define UART_RXBUF_SZ   128
+#define CMD_BUF_SZ      128
 
 #define CMD_UART        USART1
 

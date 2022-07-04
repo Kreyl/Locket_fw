@@ -7,9 +7,9 @@
 
 #include "shell.h"
 #include <stdarg.h>
-#include <string.h>
 #include "MsgQ.h"
 #include <malloc.h>
+#include "board.h"
 #include <string>
 
 #if 0 // ============================ General ==================================
@@ -87,56 +87,6 @@ caddr_t _sbrk(int incr) {
     current_end += incr;
     return (caddr_t)current_block_address;
 }
-
-#if 1 // ============================ kl_string ================================
-__always_inline
-int kl_tolower(char c) {
-    return (c >= 'A' and c <= 'Z')? (c + ('a' - 'A')) : c;
-}
-
-/* Compare S1 and S2, ignoring case, returning less than, equal to or
-   greater than zero if S1 is lexicographically less than,
-   equal to or greater than S2.  */
-int kl_strcasecmp(const char *s1, const char *s2) {
-  const unsigned char *p1 = (const unsigned char *) s1;
-  const unsigned char *p2 = (const unsigned char *) s2;
-  int result;
-  if (p1 == p2) return 0;
-  while((result = kl_tolower(*p1) - kl_tolower(*p2++)) == 0) {
-      if(*p1++ == '\0') break;
-  }
-  return result;
-}
-
-char* kl_strtok(register char* s, register const char* delim, register char**PLast) {
-    if(s == nullptr and (s = *PLast) == nullptr) return nullptr;
-    register char* spanp;
-    // Skip leading delimiters
-    cont:
-    register char c = *s++, sc;
-    for(spanp = (char*)delim; (sc = *spanp++) != 0;) {
-        if(c == sc) goto cont;
-    }
-
-    if(c == 0) {    // no non-delimiter characters left, but string ended
-        *PLast = nullptr;
-        return nullptr;
-    }
-    char* tok = s - 1;
-    while(true) {
-        c = *s++;
-        spanp = (char*)delim;
-        do {
-            if((sc = *spanp++) == c) {
-                if(c == 0) s = nullptr;
-                else *(s-1) = 0;
-                *PLast = s;
-                return tok;
-            }
-        } while (sc != 0);
-    }
-}
-#endif
 
 #ifdef DMA_MEM2MEM
 static thread_reference_t MemThdRef;
@@ -219,7 +169,7 @@ uint32_t TrueGenerate(uint32_t LowInclusive, uint32_t HighInclusive) {
 void SeedWithTrue() {
     while((RNG->SR & RNG_SR_DRDY) == 0);    // Wait for new random value
     uint32_t dw = RNG->DR;
-    srandom(dw);
+    Seed(dw);
 }
 
 } // namespace
@@ -378,6 +328,7 @@ void PinOutputPWM_t::Init() const {
 #if !defined STM32L151xB
     ITmr->BDTR = 0xC000;   // Main output Enable
 #endif
+    ITmr->CR1 |= TIM_CR1_ARPE;
     ITmr->ARR = ISetup.TopValue;
     // Setup Output
     uint16_t tmp = (ISetup.Inverted == invInverted)? 0b111 : 0b110; // PWM mode 1 or 2
@@ -413,7 +364,10 @@ void PinOutputPWM_t::Init() const {
     PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF);
 #elif defined STM32F0XX
     if     (ITmr == TIM1)  PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF2);
-    else if(ITmr == TIM3)  PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF1);
+    else if(ITmr == TIM3) {
+        if(ISetup.PGpio == GPIOA or ISetup.PGpio == GPIOB) PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF1);
+        else PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF0);
+    }
     else if(ITmr == TIM14) {
         if(ISetup.PGpio == GPIOA) PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF4);
         else PinSetupAlterFunc(ISetup.PGpio, ISetup.Pin, ISetup.OutputType, pudNone, AF0);
@@ -490,20 +444,30 @@ void Timer_t::SetUpdateFrequencyChangingBoth(uint32_t FreqHz) const {
     ITmr->PSC = Psc;
     SetUpdateFrequencyChangingTopValue(FreqHz);
 }
+
+void Timer_t::SetTmrClkFreq(uint32_t FreqHz) const {
+    uint32_t Psc = Clk.GetTimInputFreq(ITmr) / FreqHz;
+    if(Psc != 0) Psc--;
+    ITmr->PSC = Psc;
+}
 #endif
 
 #if 1 // ========================= Virtual Timers ==============================
 // Universal VirtualTimer callback
-void TmrKLCallback(void *p) {
+void TmrKLCallback(virtual_timer_t *vtp, void *p) {
     chSysLockFromISR();
     ((IrqHandler_t*)p)->IIrqHandler();
     chSysUnlockFromISR();
 }
 
 void TmrKL_t::IIrqHandler() {    // Call it inside callback
-    EvtMsg_t Msg(EvtId);
-    EvtQMain.SendNowOrExitI(Msg);
+    EvtQMain.SendNowOrExitI(EvtMsg_t(EvtId));
     if(TmrType == tktPeriodic) StartI();
+}
+
+void TmrKL_t::StartI() {
+    if(Period == 0) EvtQMain.SendNowOrExitI(EvtMsg_t(EvtId)); // Do not restart even if periodic: this will not work good anyway
+    else chVTSetI(&Tmr, Period, TmrKLCallback, this); // Will be reset before start
 }
 #endif
 
@@ -568,7 +532,7 @@ void ClearErrFlags() {
 }
 
 // Wait for a Flash operation to complete or a TIMEOUT to occur
-static uint8_t WaitForLastOperation(systime_t Timeout_st) {
+uint8_t WaitForLastOperation(systime_t Timeout_st) {
     systime_t start = chVTGetSystemTimeX();
     while(FLASH->SR & FLASH_SR_BSY) {
         if(Timeout_st != TIME_INFINITE) {
@@ -603,14 +567,14 @@ static uint8_t GetStatus(void) {
     else return retvOk;
 }
 
-static uint8_t WaitForLastOperation(systime_t Timeout_st) {
+uint8_t WaitForLastOperation(systime_t Timeout_st) {
     uint8_t status = retvOk;
     // Wait for a Flash operation to complete or a TIMEOUT to occur
+    systime_t Start = chVTGetSystemTimeX();
     do {
         status = GetStatus();
-        Timeout_st--;
-    } while((status == retvBusy) and (Timeout_st != 0x00));
-    if(Timeout_st == 0x00) status = retvTimeout;
+        if(chVTTimeElapsedSinceX(Start) >= Timeout_st) return retvTimeout;
+    } while(status == retvBusy);
     return status;
 }
 #endif
@@ -631,6 +595,10 @@ static void LockEEAndPECR() { FLASH->PECR |= FLASH_PECR_PELOCK; }
 #endif // L151
 
 // ==== Flash ====
+#if !defined STM32L1XX
+bool IsLocked() { return (bool)(FLASH->CR & FLASH_CR_LOCK); }
+#endif
+
 void UnlockFlash() {
 #if defined STM32L1XX
     UnlockEEAndPECR();
@@ -650,7 +618,7 @@ void LockFlash() {
 #endif
 }
 
-// Beware: use Page Address (0...255), not absolute address kind of 0x08003f00
+// Beware: for L4xx, use Page Address (0...255), not absolute address kind of 0x08003f00. For Fxx, absolute addr is required.
 uint8_t ErasePage(uint32_t PageAddress) {
     uint8_t status = WaitForLastOperation(FLASH_EraseTimeout);
     if(status == retvOk) {
@@ -684,10 +652,11 @@ uint8_t ErasePage(uint32_t PageAddress) {
         FLASH->CR |= FLASH_CR_PER;
         FLASH->AR = PageAddress;
         FLASH->CR |= FLASH_CR_STRT;
+        __NOP(); // The software should start checking if the BSY bit equals “0” at least one CPU cycle after setting the STRT bit.
         // Wait for last operation to be completed
         status = WaitForLastOperation(FLASH_EraseTimeout);
         // Disable the PER Bit
-        FLASH->CR &= 0x00001FFD;
+        FLASH->CR &= ~FLASH_CR_PER;
 #endif
     }
     return status;
@@ -734,17 +703,17 @@ uint8_t ProgramWord(uint32_t Address, uint32_t Data) {
         *((volatile uint32_t*)Address) = Data;
         status = WaitForLastOperation(FLASH_ProgramTimeout);
 #else
-        FLASH->CR |= 0x00000001; // FLASH_CR_PG_Set
+        FLASH->CR |= FLASH_CR_PG;
         // Program the new first half word
         *(volatile uint16_t*)Address = (uint16_t)Data;
         status = WaitForLastOperation(FLASH_ProgramTimeout);
         if(status == retvOk) {
             // Program the new second half word
-            uint32_t tmp = Address + 2;
-            *(volatile uint16_t*)tmp = Data >> 16;
+            Address += 2;
+            *(volatile uint16_t*)Address = Data >> 16;
             status = WaitForLastOperation(FLASH_ProgramTimeout);
         }
-        FLASH->CR &= 0x00001FFE;  // FLASH_CR_PG_Reset Disable the PG Bit
+        FLASH->CR &= ~FLASH_CR_PG;
 #endif
     }
     return status;
@@ -1309,7 +1278,7 @@ uint8_t TryStrToFloat(char* S, float *POutput) {
 }; // namespace
 #endif
 
-#if 0 // ============================== IWDG ===================================
+#if 1 // ============================== IWDG ===================================
 namespace Iwdg {
 enum Pre_t {
     iwdgPre4 = 0x00,
@@ -1322,7 +1291,11 @@ enum Pre_t {
 };
 
 void DisableInDebug() {
+#ifdef DBGMCU_APB1FZR1_DBG_IWDG_STOP
     DBGMCU->APB1FZR1 |= DBGMCU_APB1FZR1_DBG_IWDG_STOP;
+#else
+    DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_IWDG_STOP;
+#endif
 }
 
 static void Enable() { IWDG->KR = 0xCCCC; }
@@ -1335,7 +1308,7 @@ void SetTimeout(uint32_t ms) {
     EnableAccess();
     SetPrescaler(iwdgPre256);
     uint32_t Count = (ms * (LSI_FREQ_HZ/1000UL)) / 256UL;
-    TRIM_VALUE(Count, 0xFFF);
+    LimitMaxValue(Count, 0xFFF);
     SetReload(Count);
     Reload();   // Reload and lock access
 }
@@ -1524,7 +1497,6 @@ uint8_t Clk_t::SwitchToHSE() {
 
 // Enables HSE, enables PLL, switches to PLL
 uint8_t Clk_t::SwitchToPLL() {
-    if(EnableHSE() != 0) return 1;
     if(EnablePLL() != 0) return 2;
     // Select PLL as system clock src
     RCC->CFGR |= RCC_CFGR_SW_PLL;
@@ -1552,7 +1524,6 @@ uint8_t Clk_t::SetupPLLDividers(PllMul_t PllMul, PllDiv_t PllDiv) {
     tmp &= RCC_CFGR_PLLDIV | RCC_CFGR_PLLMUL;
     tmp |= ((uint32_t)PllDiv) << 22;
     tmp |= ((uint32_t)PllMul) << 18;
-    tmp |= RCC_CFGR_PLLSRC_HSE;
     RCC->CFGR = tmp;
     return 0;
 }
@@ -1839,7 +1810,7 @@ void Clk_t::UpdateFreqValues() {
     // Timer multi
     TimerClkMulti = (tmp == 0)? 1 : 2;
     // ==== Update prescaler in System Timer ====
-    uint32_t Psc = (SYS_TIM_CLK / OSAL_ST_FREQUENCY) - 1;
+    uint32_t Psc = (STM32_TIMCLK1 / OSAL_ST_FREQUENCY) - 1;
     TMR_DISABLE(STM32_ST_TIM);          // Stop counter
     uint32_t Cnt = STM32_ST_TIM->CNT;   // Save current time
     STM32_ST_TIM->PSC = Psc;
@@ -2389,7 +2360,7 @@ void Clk_t::UpdateFreqValues() {
     APB2FreqHz = AHBFreqHz >> tmp;
 
     // ==== Update prescaler in System Timer ====
-    uint32_t Psc = (SYS_TIM_CLK / OSAL_ST_FREQUENCY) - 1;
+    uint32_t Psc = (STM32_TIMCLK1 / OSAL_ST_FREQUENCY) - 1;
     TMR_DISABLE(STM32_ST_TIM);          // Stop counter
     uint32_t Cnt = STM32_ST_TIM->CNT;   // Save current time
     STM32_ST_TIM->PSC = Psc;
@@ -2467,75 +2438,6 @@ void Clk_t::SetupFlashLatency(uint8_t AHBClk_MHz, MCUVoltRange_t VoltRange) {
 //    while(FLASH->ACR != tmp);
 }
 
-void Clk_t::SetCoreClk(CoreClk_t CoreClk) {
-    EnablePrefetch();
-    // First, switch to MSI if clock src is not MSI
-    if((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_MSI) {
-        if(SwitchToMSI() != retvOk) return;
-    }
-
-    // Disable PLL and SAI1, enable HSE
-    DisablePLL();
-    DisablePllSai1();
-    if(CoreClk >= cclk16MHz) {
-        if(EnableHSE() != retvOk) return;
-        SetVoltageRange(mvrHiPerf);
-    }
-
-    // Setup dividers
-    switch(CoreClk) {
-        case cclk8MHz:
-            break;
-        // Setup PLL (must be disabled first)
-        case cclk16MHz:
-            if(AHBFreqHz < (uint32_t)CoreClk) SetupFlashLatency(16, mvrHiPerf);
-            // 12MHz / 1 = 12; 12 * 8 / 6 = 16
-            if(SetupPll(8, 6, 2) != retvOk) return;
-            SetupFlashLatency(16, mvrHiPerf);
-            break;
-        case cclk24MHz:
-            if(AHBFreqHz < (uint32_t)CoreClk) SetupFlashLatency(24, mvrHiPerf);
-            // 12MHz / 1 = 12; 12 * 8 / 4 = 24
-            if(SetupPll(8, 4, 2) != retvOk) return;
-            SetupFlashLatency(24, mvrHiPerf);
-            break;
-        case cclk48MHz:
-            if(AHBFreqHz < (uint32_t)CoreClk) SetupFlashLatency(48, mvrHiPerf);
-            // 12MHz / 1 = 12; 12 * 8 / 2 => 48
-            if(SetupPll(8, 2, 2) != retvOk) return;
-            SetupFlashLatency(48, mvrHiPerf);
-            break;
-        case cclk64MHz:
-            if(AHBFreqHz < (uint32_t)CoreClk) SetupFlashLatency(64, mvrHiPerf);
-            // 12MHz / 3 = 4; 4 * 32 / 2 => 64
-            if(SetupPll(32, 2, 2) != retvOk) return;
-            SetupFlashLatency(64, mvrHiPerf);
-            break;
-        case cclk72MHz:
-            if(AHBFreqHz < (uint32_t)CoreClk) SetupFlashLatency(72, mvrHiPerf);
-            // 12MHz / 1 = 12; 12 * 12 / 2 = 72
-            if(SetupPll(24, 4, 6) != retvOk) return;
-            SetupFlashLatency(72, mvrHiPerf);
-            break;
-        case cclk80MHz:
-            if(AHBFreqHz < (uint32_t)CoreClk) SetupFlashLatency(80, mvrHiPerf);
-            // 12MHz / 3 = 4; 4 * 40 / 2 = 80; * 24 / 2 = 48
-            if(SetupPll(40, 2, 2) != retvOk) return;
-            SetupFlashLatency(80, mvrHiPerf);
-            break;
-        default: break;
-    } // switch
-
-    if(CoreClk >= cclk16MHz) {
-        SetupBusDividers(ahbDiv1, apbDiv1, apbDiv1);
-        if(EnablePLL() == retvOk) {
-            EnablePllROut();
-            SwitchToPLL();
-        }
-    }
-}
-
-
 void Clk_t::SetVoltageRange(MCUVoltRange_t VoltRange) {
     uint32_t tmp = PWR->CR1;
     tmp &= ~PWR_CR1_VOS;
@@ -2597,20 +2499,6 @@ void Clk_t::SetupPllSai2(uint32_t N, uint32_t R, uint32_t P) {
     else SET_BIT(RCC->PLLSAI2CFGR, RCC_PLLSAI2CFGR_PLLSAI2P);
 }
 
-void Clk_t::SetupSai1Qas48MhzSrc() {
-    uint32_t tmp = RCC->CCIPR;
-    tmp &= ~RCC_CCIPR_CLK48SEL;
-    tmp |= ((uint32_t)src48PllSai1Q) << 26;
-    RCC->CCIPR = tmp;
-}
-
-void Clk_t::SetupPllQas48MhzSrc() {
-    uint32_t tmp = RCC->CCIPR;
-    tmp &= ~RCC_CCIPR_CLK48SEL;
-    tmp |= ((uint32_t)src48PllQ) << 26;
-    RCC->CCIPR = tmp;
-}
-
 // ==== Enable/Disable ====
 uint8_t Clk_t::EnableHSI() {
     RCC->CR |= RCC_CR_HSION;
@@ -2643,7 +2531,7 @@ uint8_t Clk_t::EnablePLL() {
     return retvTimeout;
 }
 
-void Clk_t::DisablePLL() {
+void Clk_t::DisablePll() {
     RCC->CR &= ~RCC_CR_PLLON;
     while(RCC->CR & RCC_CR_PLLRDY); // Wait until ready
 }
@@ -3085,6 +2973,28 @@ void Spi_t::Setup(BitOrder_t BitOrder, CPOL_t CPOL, CPHA_t CPHA,
     else PSpi->CR2 = ((uint16_t)0b0111 << 8) | SPI_CR2_FRXTH;   // 8 bit, RXNE generated when 8 bit is received
 #endif
 }
+void Spi_t::PrintFreq() const {
+    uint32_t SpiFreqHz;
+#if defined STM32L1XX || defined STM32F4XX || defined STM32F2XX || defined STM32L4XX
+    if(PSpi == SPI1) SpiFreqHz = Clk.APB2FreqHz;
+    else SpiFreqHz = Clk.APB1FreqHz;
+#elif defined STM32F030 || defined STM32F0
+    SpiFreqHz = Clk.APBFreqHz;
+#elif defined STM32F7XX
+    if(PSpi == SPI2 or PSpi == SPI3) SpiFreqHz = Clk.APB1FreqHz;
+    else SpiFreqHz = Clk.APB2FreqHz;
+#endif
+    uint16_t ClkDiv = (PSpi->CR1 >> 3)&0b111;
+    if (ClkDiv == sclkDiv2) SpiFreqHz /= 2;
+    else if (ClkDiv == sclkDiv4) SpiFreqHz /= 4;
+    else if (ClkDiv == sclkDiv8) SpiFreqHz /= 8;
+    else if (ClkDiv == sclkDiv16) SpiFreqHz /= 16;
+    else if (ClkDiv == sclkDiv32) SpiFreqHz /= 32;
+    else if (ClkDiv == sclkDiv64) SpiFreqHz /= 64;
+    else if (ClkDiv == sclkDiv128) SpiFreqHz /= 128;
+    else if (ClkDiv == sclkDiv256) SpiFreqHz /= 256;
+    Printf("SPI Freq=%uHz\r", SpiFreqHz);
+}
 
 // IRQs
 static ftVoidVoid Spi1RxIrqHandler = nullptr;
@@ -3128,7 +3038,7 @@ void VectorCC() {   // SPI1
     CH_IRQ_PROLOGUE();
     chSysLockFromISR();
     uint32_t SR = SPI1->SR;
-    if(SR & SPI_SR_RXNE and Spi1RxIrqHandler) Spi1RxIrqHandler();
+    if((SR & SPI_SR_RXNE) and Spi1RxIrqHandler) Spi1RxIrqHandler();
     chSysUnlockFromISR();
     CH_IRQ_EPILOGUE();
 }
@@ -3138,7 +3048,7 @@ void VectorD0() {   // SPI2
     CH_IRQ_PROLOGUE();
     chSysLockFromISR();
     uint32_t SR = SPI2->SR;
-    if(SR & SPI_SR_RXNE and Spi2RxIrqHandler) Spi2RxIrqHandler();
+    if((SR & SPI_SR_RXNE) and Spi2RxIrqHandler) Spi2RxIrqHandler();
     chSysUnlockFromISR();
     CH_IRQ_EPILOGUE();
 }
@@ -3148,7 +3058,7 @@ void Vector10C() {   // SPI3
     CH_IRQ_PROLOGUE();
     chSysLockFromISR();
     uint32_t SR = SPI3->SR;
-    if(SR & SPI_SR_RXNE and Spi3RxIrqHandler) Spi3RxIrqHandler();
+    if((SR & SPI_SR_RXNE) and Spi3RxIrqHandler) Spi3RxIrqHandler();
     chSysUnlockFromISR();
     CH_IRQ_EPILOGUE();
 }

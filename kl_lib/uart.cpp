@@ -444,7 +444,7 @@ void CmdUart_t::ProcessByteIfReceived() {
 }
 #endif
 
-#if 1 // ==== Modbus ====
+#if 0 // ==== Modbus ====
 ProcessDataResult_t ModbusCmd_t::PutChar(char c) {
     // Start of cmd
     if(c == ':') {

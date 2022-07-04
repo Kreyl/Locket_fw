@@ -25,8 +25,6 @@
 #ifndef STM32_REGISTRY_H
 #define STM32_REGISTRY_H
 
-#include "board.h"
-
 #if defined(STM32L100xB) || defined(STM32L151xB) || defined(STM32L152xB)
 #define STM32L1XX_PROD_CAT      1
 
@@ -345,6 +343,8 @@
 #define STM32_HAS_USART6                    FALSE
 #define STM32_HAS_UART7                     FALSE
 #define STM32_HAS_UART8                     FALSE
+#define STM32_HAS_UART9                     FALSE
+#define STM32_HAS_UART10                    FALSE
 #define STM32_HAS_LPUART1                   FALSE
 
 /* USB attributes.*/

@@ -190,89 +190,27 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
-#define SHOWTIME        270
-#define PAUSETIME       720
-#define SHORTPAUSETIME  72
+#define SHOWTIME        45
+#define PAUSETIME       540
+#define SMOOTHVAL       180
 
-const LedRGBChunk_t lsqAri[] = {
-        {csSetup, 0, clBlue}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+const LedRGBChunk_t lsqLightMagic[] = {
+        {csSetup, SMOOTHVAL, clGreen}, {csWait, SHOWTIME},
+        {csSetup, SMOOTHVAL, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
 
-const LedRGBChunk_t lsqKaesu[] = {
-        {csSetup, 0, clRed},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+const LedRGBChunk_t lsqDarkMagic[] = {
+        {csSetup, SMOOTHVAL, clRed}, {csWait, SHOWTIME},
+        {csSetup, SMOOTHVAL, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
 
-const LedRGBChunk_t lsqNorth[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+const LedRGBChunk_t lsqObserver[] = {
+        {csSetup, SMOOTHVAL, clBlue}, {csWait, SHOWTIME},
+        {csSetup, SMOOTHVAL, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
-const LedRGBChunk_t lsqNorthStrong[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clWhite},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
-        {csEnd},
-};
-
-const LedRGBChunk_t lsqSouth[] = {
-        {csSetup, 0, {128,0,255}}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},     {csWait, PAUSETIME},
-        {csEnd},
-};
-const LedRGBChunk_t lsqSouthStrong[] = {
-        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clWhite},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
-        {csEnd},
-};
-
-
-const LedRGBChunk_t lsqNorthCursed[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clRed},    {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
-        {csEnd},
-};
-const LedRGBChunk_t lsqSouthCursed[] = {
-        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clRed},     {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
-        {csEnd},
-};
-
-
-const LedRGBChunk_t lsqHidden[] = {
-        {csSetup, 0, clBlue},  {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
-        {csRepeat, 1},
-        {csWait, PAUSETIME},
-        {csEnd},
-};
-
-const LedRGBChunk_t lsqSilent[] = {
-        {csSetup, 0, {255, 90, 0}},  {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
-        {csRepeat, 1},
-        {csWait, PAUSETIME},
-        {csEnd},
-};
-
-const LedRGBChunk_t lsqVisible[] = {
-        {csSetup, 0, clGreen}, {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
-        {csRepeat, 1},
-        {csWait, PAUSETIME},
-        {csEnd},
-};
-
 
 const LedRGBChunk_t lsqStart[] = {
         {csSetup, 0, clRed},   {csWait, 207},
@@ -288,13 +226,7 @@ const LedRGBChunk_t lsqFailure[] = {
         {csWait, 99},
         {csSetup, 0, clBlack},
         {csWait, 99},
-        {csSetup, 0, clRed},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
-        {csWait, 99},
-        {csSetup, 0, clRed},
-        {csWait, 99},
-        {csSetup, 0, clBlack},
+        {csRepeat, 4},
         {csEnd}
 };
 

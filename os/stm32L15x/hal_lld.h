@@ -41,11 +41,16 @@
 #define HAL_LLD_H
 
 #include "stm32_registry.h"
-#include "mcuconf.h"
+#include "board.h"
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
 /*===========================================================================*/
+
+/**
+ * @brief   Requires use of SPIv2 driver model.
+ */
+#define HAL_LLD_SELECT_SPI_V2           TRUE
 
 /**
  * @name    Platform identification
@@ -81,28 +86,14 @@
 #endif
 /** @} */
 
-
-/*===========================================================================*/
-/* Driver pre-compile time settings.                                         */
-/*===========================================================================*/
-
 /**
- * @name    Configuration options
+ * @name    Internal clock sources
  * @{
  */
-/**
- * @brief   Disables the PWR/RCC initialization in the HAL.
- */
-#if !defined(STM32_NO_INIT) || defined(__DOXYGEN__)
-#define STM32_NO_INIT               FALSE
-#endif
+#define STM32_HSICLK            16000000    /**< High speed internal clock. */
+#define STM32_LSICLK            38000       /**< Low speed internal clock.  */
+/** @} */
 
-/*
- * Configuration-related checks.
- */
-#if !defined(STM32L1xx_MCUCONF)
-#error "Using a wrong mcuconf.h file, STM32L1xx_MCUCONF not defined"
-#endif
 
 /*===========================================================================*/
 /* External declarations.                                                    */
@@ -116,11 +107,13 @@
 #include "stm32_dma.h"
 #include "stm32_exti.h"
 #include "stm32_rcc.h"
+#include "stm32_tim.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
   void hal_lld_init(void);
+  void stm32_clock_init(void);
 #ifdef __cplusplus
 }
 #endif

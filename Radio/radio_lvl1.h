@@ -14,46 +14,6 @@
 #include "uart.h"
 #include "MsgQ.h"
 
-#if 0 // ========================= Signal levels ===============================
-// Python translation for db
-#define RX_LVL_TOP      1000
-// Jolaf: str(tuple(1 + int(sqrt(float(i) / 65) * 99) for i in xrange(0, 65 + 1)))
-//const int32_t dBm2Percent1000Tbl[66] = {10, 130, 180, 220, 250, 280, 310, 330, 350, 370, 390, 410, 430, 450, 460, 480, 500, 510, 530, 540, 550, 570, 580, 590, 610, 620, 630, 640, 650, 670, 680, 690, 700, 710, 720, 730, 740, 750, 760, 770, 780, 790, 800, 810, 820, 830, 840, 850, 860, 860, 870, 880, 890, 900, 910, 920, 920, 930, 940, 950, 960, 960, 970, 980, 990, 1000};
-const int32_t dBm2Percent1000Tbl[86] = {
-         10, 117, 162, 196, 225, 250, 273, 294, 314, 332,
-        350, 366, 382, 397, 412, 426, 440, 453, 466, 478,
-        490, 502, 514, 525, 536, 547, 558, 568, 578, 588,
-        598, 608, 617, 627, 636, 645, 654, 663, 672, 681,
-        689, 698, 706, 714, 722, 730, 738, 746, 754, 762,
-        769, 777, 784, 792, 799, 806, 814, 821, 828, 835,
-        842, 849, 856, 862, 869, 876, 882, 889, 895, 902,
-        908, 915, 921, 927, 934, 940, 946, 952, 958, 964,
-        970, 976, 982, 988, 994, 1000
-};
-
-static inline int32_t dBm2Percent(int32_t Rssi) {
-    if(Rssi < -100) Rssi = -100;
-    else if(Rssi > -15) Rssi = -15;
-    Rssi += 100;    // 0...85
-    return dBm2Percent1000Tbl[Rssi];
-}
-
-// Conversion Lvl1000 <=> Lvl250
-#define Lvl1000ToLvl250(Lvl1000) ((uint8_t)((Lvl1000 + 3) / 4))
-
-static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
-    *PLvl = (*PLvl) * 4;
-}
-
-// Sensitivity Constants, percent [1...1000]. Feel if RxLevel > SnsConst.
-#define RLVL_NEVER              10000
-#define RLVL_2M                 800     // 0...4m
-#define RLVL_4M                 700     // 1...20m
-#define RLVL_10M                600
-#define RLVL_50M                1
-
-#endif
-
 __unused
 static const uint8_t PwrTable[12] = {
         CC_PwrMinus30dBm, // 0
@@ -72,47 +32,43 @@ static const uint8_t PwrTable[12] = {
 
 #if 1 // =========================== Pkt_t =====================================
 union rPkt_t {
-    uint32_t DW32;
+    uint32_t DW32[2];
     struct {
-        uint16_t ID : 6;
-        uint16_t Cycle : 4;
-        uint16_t TimeSrcID : 6;
+        uint8_t ID;
+        uint8_t TimeSrcID;
+        uint8_t Cycle;
+        int8_t Rssi; // Will be set after RX. Transmitting is useless, but who cares.
         // Payload
-        uint16_t Type : 4;
-        uint16_t RCmd : 4;
-        int8_t Rssi; // Will be set after RX. Trnasmitting is useless, but who cares.
+        uint8_t Type;
+        uint16_t Salt;
     } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {
-        DW32 = Right.DW32;
+        DW32[0] = Right.DW32[0];
+        DW32[1] = Right.DW32[1];
         return *this;
     }
 } __attribute__ ((__packed__));
 #endif
 
 #define RPKT_LEN    sizeof(rPkt_t)
+#define RPKT_SALT   0xCA11
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
-#define RCHNL_EACH_OTH  7
-#define RCHNL_FAR       0
-
-#define TX_PWR_FAR      CC_PwrPlus10dBm
+#define RCHNL_EACH_OTH  0
 
 // Feel-Each-Other related
 #define RCYCLE_CNT              5
-#define FAR_CYCLE_INDX          (RCYCLE_CNT - 1)
-#define FAR_CYCLE_DURATION_MS   42
-#define RSLOT_CNT               50
-#define RSLOT_DURATION_ST       36
-#define CYCLE_DURATION_ST       (RSLOT_DURATION_ST * RSLOT_CNT)
-//#define MAX_RANDOM_DURATION_MS  18
-
-
+#define RSLOT_CNT               100
 #define SCYCLES_TO_KEEP_TIMESRC 4   // After that amount of supercycles, TimeSrcID become self ID
+
+// Timings
+#define TIMESLOT_DUR_TICKS      360
+#define ADJUST_DELAY_TICS       72
 
 #endif
 
 #if 1 // ============================= RX Table ================================
-#define RXTABLE_SZ              50
+#define RXTABLE_SZ              RSLOT_CNT
 #define RXT_PKT_REQUIRED        TRUE
 class RxTable_t {
 private:
@@ -127,7 +83,7 @@ public:
     void AddOrReplaceExistingPkt(rPkt_t &APkt) {
         chSysLock();
         for(uint32_t i=0; i<Cnt; i++) {
-            if((IBuf[i].ID == APkt.ID) and (IBuf[i].RCmd == APkt.RCmd)) {
+            if(IBuf[i].ID == APkt.ID) {
                 if(IBuf[i].Rssi < APkt.Rssi) IBuf[i] = APkt; // Replace with newer pkt if RSSI is stronger
                 chSysUnlock();
                 return;
@@ -177,7 +133,7 @@ public:
         Printf("RxTable Cnt: %u\r", Cnt);
         for(uint32_t i=0; i<Cnt; i++) {
 #if RXT_PKT_REQUIRED
-//            Printf("ID: %u; State: %u\r", IBuf[i].ID, IBuf[i].State);
+            Printf("ID: %u; Type: %u\r", IBuf[i].ID, IBuf[i].Type);
 #else
             Printf("ID: %u\r", IdBuf[i]);
 #endif
@@ -188,7 +144,7 @@ public:
 
 // Message queue
 #define R_MSGQ_LEN      9
-enum RmsgId_t { rmsgEachOthRx, rmsgEachOthTx, rmsgEachOthSleep, rmsgPktRx, rmsgFar };
+enum RmsgId_t { rmsgEachOthRx, rmsgEachOthTx, rmsgEachOthSleep, rmsgPktRx };
 struct RMsg_t {
     RmsgId_t Cmd;
     uint8_t Value;
@@ -200,9 +156,6 @@ struct RMsg_t {
 class rLevel1_t {
 private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
-    int32_t CntTxFar = 0;
-    // Different modes of operation
-    void TaskFeelFar();
 public:
     rPkt_t PktRx, PktTx, PktTxFar;
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
@@ -223,7 +176,6 @@ public:
         return *RxTableR;
     }
     uint8_t Init();
-    void DoTransmitFar(uint32_t TxCnt)  { CntTxFar = TxCnt; }
     // Inner use
     void ITask();
 };

@@ -22,15 +22,10 @@
  * @{
  */
 
-/* TODO: LSEBYP like in F3.*/
+/* CHTODO: LSEBYP like in F3.*/
 
 #include "hal.h"
 
-/**
- * @brief   Low level HAL driver initialization.
- *
- * @notapi
- */
 void hal_lld_init(void) {
 
   /* Reset of all peripherals.
@@ -42,6 +37,7 @@ void hal_lld_init(void) {
 
   /* PWR clock enabled.*/
   rccEnablePWRInterface(true);
+  rccEnableAPB2(RCC_APB2ENR_SYSCFGEN, true);
 
   /* DMA subsystems initialization.*/
 #if defined(STM32_DMA_REQUIRED)

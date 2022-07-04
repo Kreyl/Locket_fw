@@ -1,12 +1,12 @@
 /*
-    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
+              2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
     ChibiOS is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 3 of the License, or
-    (at your option) any later version.
+    the Free Software Foundation version 3 of the License.
 
     ChibiOS is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    chmemcore.h
+ * @file    oslib/include/chmemcore.h
  * @brief   Core memory manager macros and structures.
  *
  * @addtogroup oslib_memcore
@@ -82,16 +82,32 @@ typedef struct {
   /**
    * @brief   Next free address.
    */
-  uint8_t *nextmem;
+  uint8_t *basemem;
   /**
    * @brief   Final address.
    */
-  uint8_t *endmem;
+  uint8_t *topmem;
 } memcore_t;
 
 /*===========================================================================*/
 /* Module macros.                                                            */
 /*===========================================================================*/
+
+/**
+ * @brief   Allocates a memory block.
+ * @note    This is a generic form with unspecified allocation position.
+ *
+ * @iclass
+ */
+#define chCoreAllocAlignedWithOffsetI chCoreAllocFromTopI
+
+/**
+ * @brief   Allocates a memory block.
+ * @note    This is a generic form with unspecified allocation position.
+ *
+ * @api
+ */
+#define chCoreAllocAlignedWithOffset chCoreAllocFromTop
 
 /*===========================================================================*/
 /* External declarations.                                                    */
@@ -104,13 +120,11 @@ extern memcore_t ch_memcore;
 #ifdef __cplusplus
 extern "C" {
 #endif
-  void _core_init(void);
-  void *chCoreAllocAlignedWithOffsetI(size_t size,
-                                      unsigned align,
-                                      size_t offset);
-  void *chCoreAllocAlignedWithOffset(size_t size,
-                                     unsigned align,
-                                     size_t offset);
+  void __core_init(void);
+  void *chCoreAllocFromBaseI(size_t size, unsigned align, size_t offset);
+  void *chCoreAllocFromTopI(size_t size, unsigned align, size_t offset);
+  void *chCoreAllocFromBase(size_t size, unsigned align, size_t offset);
+  void *chCoreAllocFromTop(size_t size, unsigned align, size_t offset);
   size_t chCoreGetStatusX(void);
 #ifdef __cplusplus
 }
@@ -124,6 +138,7 @@ extern "C" {
  * @brief   Allocates a memory block.
  * @details The allocated block is guaranteed to be properly aligned to the
  *          specified alignment.
+ * @note    This is a generic form with unspecified allocation position.
  *
  * @param[in] size      the size of the block to be allocated.
  * @param[in] align     desired memory alignment
@@ -141,6 +156,7 @@ static inline void *chCoreAllocAlignedI(size_t size, unsigned align) {
  * @brief   Allocates a memory block.
  * @details The allocated block is guaranteed to be properly aligned to the
  *          specified alignment.
+ * @note    This is a generic form with unspecified allocation position.
  *
  * @param[in] size      the size of the block to be allocated
  * @param[in] align     desired memory alignment
@@ -150,19 +166,15 @@ static inline void *chCoreAllocAlignedI(size_t size, unsigned align) {
  * @api
  */
 static inline void *chCoreAllocAligned(size_t size, unsigned align) {
-  void *p;
 
-  chSysLock();
-  p = chCoreAllocAlignedWithOffsetI(size, align, 0U);
-  chSysUnlock();
-
-  return p;
+  return chCoreAllocAlignedWithOffset(size, align, 0U);
 }
 
 /**
  * @brief   Allocates a memory block.
  * @details The allocated block is guaranteed to be properly aligned for a
  *          pointer data type.
+ * @note    This is a generic form with unspecified allocation position.
  *
  * @param[in] size      the size of the block to be allocated.
  * @return              A pointer to the allocated memory block.
@@ -179,6 +191,7 @@ static inline void *chCoreAllocI(size_t size) {
  * @brief   Allocates a memory block.
  * @details The allocated block is guaranteed to be properly aligned for a
  *          pointer data type.
+ * @note    This is a generic form with unspecified allocation position.
  *
  * @param[in] size      the size of the block to be allocated.
  * @return              A pointer to the allocated memory block.

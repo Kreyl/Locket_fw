@@ -56,8 +56,8 @@ struct UartParams_t {
 // ==== Base class ====
 class BaseUart_t {
 protected:
-    const stm32_dma_stream_t *PDmaTx;
-    const stm32_dma_stream_t *PDmaRx;
+    const stm32_dma_stream_t *PDmaTx = nullptr;
+    const stm32_dma_stream_t *PDmaRx = nullptr;
     const UartParams_t *Params;
 #if UART_USE_DMA
     char TXBuf[UART_TXBUF_SZ];
@@ -108,16 +108,19 @@ private:
     void IOnTxEnd() {} // Dummy
     uint8_t IPutChar(char c) { return IPutByte(c);  }
     void IStartTransmissionIfNotYet() { BaseUart_t::IStartTransmissionIfNotYet(); }
+public:
+    CmdUart_t(const UartParams_t *APParams) : BaseUart_t(APParams) {}
     void Print(const char *format, ...) {
         va_list args;
         va_start(args, format);
         IVsPrintf(format, args);
         va_end(args);
     }
-public:
-    CmdUart_t(const UartParams_t *APParams) : BaseUart_t(APParams) {}
+
     void ProcessByteIfReceived();
     void SignalCmdProcessed() { BaseUart_t::SignalRxProcessed(); }
+    uint8_t ReceiveBinaryToBuf(uint8_t *ptr, uint32_t Len, uint32_t Timeout_ms) { return retvFail; }
+    uint8_t TransmitBinaryFromBuf(uint8_t *ptr, uint32_t Len, uint32_t Timeout_ms) { return retvFail; }
 };
 
 class CmdUart485_t : public CmdUart_t {
@@ -145,7 +148,7 @@ public:
         CmdUart_t(APParams), PinTxRx(APGPIO, APin, AOutputType) {}
 };
 
-#if 1 // ==== Modbus ====
+#if 0 // ==== Modbus ====
 #define MODBUS_DATA_LEN     (252+1) // + LRC
 
 class ModbusCmd_t {
