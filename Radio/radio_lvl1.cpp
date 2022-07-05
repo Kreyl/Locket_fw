@@ -121,7 +121,7 @@ void VectorA4() {
     CH_IRQ_PROLOGUE();
     chSysLockFromISR();
     TIM9->SR &= ~TIM_SR_UIF;
-    RadioTime.IOnTimerI();
+//    RadioTime.IOnTimerI();
     chSysUnlockFromISR();
     CH_IRQ_EPILOGUE();
 }
@@ -192,7 +192,7 @@ uint8_t rLevel1_t::Init() {
         IHwTmr.SelectSlaveMode(smExternal);
         IHwTmr.SetTriggerInput(tiTI1FP1);
         IHwTmr.SetupInput1(0b01, Timer_t::pscDiv1, rfRising);
-        IHwTmr.EnableIrq(TIM9_IRQn, IRQ_PRIO_HIGH);
+        IHwTmr.EnableIrq(TIM9_IRQn, IRQ_PRIO_VERYHIGH);
         IHwTmr.EnableIrqOnUpdate();
         TIM9->CR1 |= TIM_CR1_URS;
         IHwTmr.Enable();

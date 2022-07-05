@@ -50,6 +50,7 @@ static uint32_t TimeS;
 #endif
 
 #if 1 // ========================== Logic ======================================
+Config_t Cfg;
 class Indication_t {
 private:
     CircBuf_t<const LedRGBChunk_t*, 18> Que;

@@ -24,6 +24,7 @@
 
 #include "hal.h"
 #include "kl_lib.h"
+#include "board.h"
 
 #if (OSAL_ST_MODE != OSAL_ST_MODE_NONE) || defined(__DOXYGEN__)
 

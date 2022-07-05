@@ -28,7 +28,7 @@ class Config_t {
 public:
     int32_t ID = ID_MIN;
     uint8_t Type = 0;
-    void SetSelfType(uint8_t AType);
+    void SetSelfType(uint8_t AType) { Type = AType; }
     bool MustTxInEachOther() { return Type != TYPE_OBSERVER; }
     uint8_t TxPower = 0;
 };

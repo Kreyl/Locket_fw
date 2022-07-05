@@ -273,6 +273,7 @@ public:
     void EOL() { Print("\r\n"); }
 	virtual uint8_t ReceiveBinaryToBuf(uint8_t *ptr, uint32_t Len, uint32_t Timeout_ms) = 0;
 	virtual uint8_t TransmitBinaryFromBuf(uint8_t *ptr, uint32_t Len, uint32_t Timeout_ms) = 0;
+	virtual void SignalCmdProcessed() = 0;
 };
 
 
