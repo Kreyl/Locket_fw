@@ -41,7 +41,7 @@
 /*===========================================================================*/
 
 static const uint8_t zero_status[] = {0x00, 0x00};
-static const uint8_t active_status[] = {0x00, 0x00};
+static const uint8_t active_status[] ={0x00, 0x00};
 static const uint8_t halted_status[] = {0x01, 0x00};
 
 /*===========================================================================*/
@@ -297,12 +297,10 @@ void usbObjectInit(USBDriver *usbp) {
  *
  * @param[in] usbp      pointer to the @p USBDriver object
  * @param[in] config    pointer to the @p USBConfig object
- * @return              The operation status.
  *
  * @api
  */
-msg_t usbStart(USBDriver *usbp, const USBConfig *config) {
-  msg_t msg;
+void usbStart(USBDriver *usbp, const USBConfig *config) {
   unsigned i;
 
   osalDbgCheck((usbp != NULL) && (config != NULL));
@@ -310,28 +308,13 @@ msg_t usbStart(USBDriver *usbp, const USBConfig *config) {
   osalSysLock();
   osalDbgAssert((usbp->state == USB_STOP) || (usbp->state == USB_READY),
                 "invalid state");
-
   usbp->config = config;
   for (i = 0; i <= (unsigned)USB_MAX_ENDPOINTS; i++) {
     usbp->epc[i] = NULL;
   }
-
-#if defined(USB_LLD_ENHANCED_API)
-  msg = usb_lld_start(usbp);
-#else
   usb_lld_start(usbp);
-  msg = HAL_RET_SUCCESS;
-#endif
-  if (msg == HAL_RET_SUCCESS) {
-    usbp->state = USB_READY;
-  }
-  else {
-    usbp->state = USB_STOP;
-  }
-
+  usbp->state = USB_READY;
   osalSysUnlock();
-
-  return msg;
 }
 
 /**
@@ -737,10 +720,6 @@ void _usb_suspend(USBDriver *usbp) {
   /* Notification of suspend event.*/
   _usb_isr_invoke_event_cb(usbp, USB_EVENT_SUSPEND);
 
-  /* Terminating all pending transactions.*/
-  usbp->transmitting  = 0;
-  usbp->receiving     = 0;
-
   /* Signaling the event to threads waiting on endpoints.*/
 #if USB_USE_WAIT == TRUE
   {
@@ -797,7 +776,7 @@ void _usb_ep0setup(USBDriver *usbp, usbep_t ep) {
      packets?*/
   if (usbp->ep0state != USB_EP0_STP_WAITING) {
     /* This is unexpected could require handling with a warning event.*/
-    /* CHTODO: handling here.*/
+    /* TODO: handling here.*/
 
     /* Resetting the EP0 state machine and going ahead.*/
     usbp->ep0state = USB_EP0_STP_WAITING;

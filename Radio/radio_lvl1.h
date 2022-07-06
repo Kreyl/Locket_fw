@@ -34,12 +34,12 @@ static const uint8_t PwrTable[12] = {
 union rPkt_t {
     uint32_t DW32[2];
     struct {
-        uint8_t ID;
+        uint8_t ID; // Required to distinct packets from same src
         uint8_t TimeSrcID;
-        uint8_t Cycle;
-        int8_t Rssi; // Will be set after RX. Transmitting is useless, but who cares.
+        uint16_t iTime;
         // Payload
         uint8_t Type;
+        int8_t Rssi; // Will be set after RX. Transmitting is useless, but who cares.
         uint16_t Salt;
     } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {
@@ -51,18 +51,23 @@ union rPkt_t {
 #endif
 
 #define RPKT_LEN    sizeof(rPkt_t)
-#define RPKT_SALT   0xCA11
+#define RPKT_SALT   0xCA11U
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
 #define RCHNL_EACH_OTH  0
 
 // Feel-Each-Other related
-#define RCYCLE_CNT              5
-#define RSLOT_CNT               100
+#define RCYCLE_CNT              5U
+#define RSLOT_CNT               4U
 #define SCYCLES_TO_KEEP_TIMESRC 4   // After that amount of supercycles, TimeSrcID become self ID
 
-// Timings
-#define TIMESLOT_DUR_TICKS      360
+// Timings: based on (27MHz/192) clock of CC, divided by 4 with prescaler
+#define RTIM_PRESCALER          0U
+#define TIMESLOT_DUR_TICKS      88U
+#define CYCLE_DUR_TICKS         (TIMESLOT_DUR_TICKS * RSLOT_CNT)
+#define SUPERCYCLE_DUR_TICKS    (CYCLE_DUR_TICKS * RCYCLE_CNT)
+
+// XXX
 #define ADJUST_DELAY_TICS       72
 
 #endif
@@ -157,7 +162,6 @@ class rLevel1_t {
 private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
 public:
-    rPkt_t PktRx, PktTx, PktTxFar;
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
     RxTable_t& GetRxTable() {
         chSysLock();

@@ -10,11 +10,9 @@
 #include <cstring>
 #include <stdarg.h>
 #include "kl_lib.h"
-#include "board.h"
 #include "color.h"
-#include "kl_string.h"
 
-#define DELIMITERS              " ,"
+#define DELIMITERS      " ,"
 #define PREV_CHAR_TIMEOUT_ms    99UL
 
 enum ProcessDataResult_t {pdrProceed, pdrNewCmd};
@@ -255,13 +253,11 @@ public:
         Name = nullptr;
     }
 };
-
 class Shell_t {
 public:
 	Cmd_t Cmd;
+	virtual void SignalCmdProcessed() = 0;
 	virtual void Print(const char *format, ...) = 0;
-//	void Reply(const char* CmdCode, int32_t Data) { Print("%S,%d\r\n", CmdCode, Data); }
-//	void Ack(int32_t Result) { Print("Ack %d\r\n", Result); }
     void Ok()  { Print("Ok\r\n"); }
     void BadParam() { Print("BadParam\r\n"); }
     void CRCError() { Print("CRCError\r\n"); }
@@ -271,9 +267,6 @@ public:
     void Timeout() { Print("Timeout\r\n"); }
     void NoAnswer() { Print("NoAnswer\r\n"); }
     void EOL() { Print("\r\n"); }
-	virtual uint8_t ReceiveBinaryToBuf(uint8_t *ptr, uint32_t Len, uint32_t Timeout_ms) = 0;
-	virtual uint8_t TransmitBinaryFromBuf(uint8_t *ptr, uint32_t Len, uint32_t Timeout_ms) = 0;
-	virtual void SignalCmdProcessed() = 0;
 };
 
 
@@ -289,7 +282,7 @@ public:
     void PrintEOL();
 };
 
-#if 1 // ========================= Byte protocol ===============================
+#if 0 // ========================= Byte protocol ===============================
 #define BYTECMD_DATA_SZ     99
 class ByteCmd_t {
 private:

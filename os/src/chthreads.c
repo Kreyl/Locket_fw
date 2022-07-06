@@ -1,12 +1,12 @@
 /*
-    ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
-              2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
     ChibiOS is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
-    the Free Software Foundation version 3 of the License.
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
     ChibiOS is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    rt/src/chthreads.c
+ * @file    chthreads.c
  * @brief   Threads code.
  *
  * @addtogroup threads
@@ -78,7 +78,6 @@
  * @brief   Initializes a thread structure.
  * @note    This is an internal functions, do not use it in application code.
  *
- * @param[in] oip       pointer to the OS instance
  * @param[in] tp        pointer to the thread
  * @param[in] name      thread name
  * @param[in] prio      the priority level for the new thread
@@ -86,40 +85,36 @@
  *
  * @notapi
  */
-thread_t *__thd_object_init(os_instance_t *oip,
-                            thread_t *tp,
-                            const char *name,
-                            tprio_t prio) {
+thread_t *_thread_init(thread_t *tp, const char *name, tprio_t prio) {
 
-  tp->hdr.pqueue.prio   = prio;
-  tp->state             = CH_STATE_WTSTART;
-  tp->flags             = CH_FLAG_MODE_STATIC;
-  tp->owner             = oip;
+  tp->prio      = prio;
+  tp->state     = CH_STATE_WTSTART;
+  tp->flags     = CH_FLAG_MODE_STATIC;
 #if CH_CFG_TIME_QUANTUM > 0
-  tp->ticks             = (tslices_t)CH_CFG_TIME_QUANTUM;
+  tp->ticks     = (tslices_t)CH_CFG_TIME_QUANTUM;
 #endif
 #if CH_CFG_USE_MUTEXES == TRUE
-  tp->realprio          = prio;
-  tp->mtxlist           = NULL;
+  tp->realprio  = prio;
+  tp->mtxlist   = NULL;
 #endif
 #if CH_CFG_USE_EVENTS == TRUE
-  tp->epending          = (eventmask_t)0;
+  tp->epending  = (eventmask_t)0;
 #endif
 #if CH_DBG_THREADS_PROFILING == TRUE
-  tp->time              = (systime_t)0;
+  tp->time      = (systime_t)0;
 #endif
 #if CH_CFG_USE_REGISTRY == TRUE
-  tp->refs              = (trefs_t)1;
-  tp->name              = name;
-  REG_INSERT(oip, tp);
+  tp->refs      = (trefs_t)1;
+  tp->name      = name;
+  REG_INSERT(tp);
 #else
   (void)name;
 #endif
 #if CH_CFG_USE_WAITEXIT == TRUE
-  ch_list_init(&tp->waiting);
+  list_init(&tp->waiting);
 #endif
 #if CH_CFG_USE_MESSAGES == TRUE
-  ch_queue_init(&tp->msgqueue);
+  queue_init(&tp->msgqueue);
 #endif
 #if CH_DBG_STATISTICS == TRUE
   chTMObjectInit(&tp->stats);
@@ -130,18 +125,19 @@ thread_t *__thd_object_init(os_instance_t *oip,
 
 #if (CH_DBG_FILL_THREADS == TRUE) || defined(__DOXYGEN__)
 /**
- * @brief   Stack fill utility.
+ * @brief   Memory fill utility.
  *
  * @param[in] startp    first address to fill
  * @param[in] endp      last address to fill +1
+ * @param[in] v         filler value
  *
  * @notapi
  */
-void __thd_stackfill(uint8_t *startp, uint8_t *endp) {
+void _thread_memfill(uint8_t *startp, uint8_t *endp, uint8_t v) {
 
-  do {
-    *startp++ = CH_DBG_STACK_FILL_VALUE;
-  } while (likely(startp < endp));
+  while (startp < endp) {
+    *startp++ = v;
+  }
 }
 #endif /* CH_DBG_FILL_THREADS */
 
@@ -182,8 +178,8 @@ thread_t *chThdCreateSuspendedI(const thread_descriptor_t *tdp) {
   /* The thread structure is laid out in the upper part of the thread
      workspace. The thread position structure is aligned to the required
      stack alignment because it represents the stack top.*/
-  tp = threadref(((uint8_t *)tdp->wend -
-                 MEM_ALIGN_NEXT(sizeof (thread_t), PORT_STACK_ALIGN)));
+  tp = (thread_t *)((uint8_t *)tdp->wend -
+                    MEM_ALIGN_NEXT(sizeof (thread_t), PORT_STACK_ALIGN));
 
 #if (CH_DBG_ENABLE_STACK_CHECK == TRUE) || (CH_CFG_USE_DYNAMIC == TRUE)
   /* Stack boundary.*/
@@ -193,14 +189,8 @@ thread_t *chThdCreateSuspendedI(const thread_descriptor_t *tdp) {
   /* Setting up the port-dependent part of the working area.*/
   PORT_SETUP_CONTEXT(tp, tdp->wbase, tp, tdp->funcp, tdp->arg);
 
-  /* The thread object is initialized but not started.*/
-#if CH_CFG_SMP_MODE != FALSE
-  if (tdp->instance != NULL) {
-    return __thd_object_init(tdp->instance, tp, tdp->name, tdp->prio);
-  }
-#endif
-
-  return __thd_object_init(currcore, tp, tdp->name, tdp->prio);
+  /* The driver object is initialized but not started.*/
+  return _thread_init(tp, tdp->name, tdp->prio);
 }
 
 /**
@@ -232,7 +222,9 @@ thread_t *chThdCreateSuspended(const thread_descriptor_t *tdp) {
 #endif
 
 #if CH_DBG_FILL_THREADS == TRUE
-  __thd_stackfill((uint8_t *)tdp->wbase, (uint8_t *)tdp->wend);
+  _thread_memfill((uint8_t *)tdp->wbase,
+                  (uint8_t *)tdp->wend,
+                  CH_DBG_STACK_FILL_VALUE);
 #endif
 
   chSysLock();
@@ -295,7 +287,9 @@ thread_t *chThdCreate(const thread_descriptor_t *tdp) {
 #endif
 
 #if CH_DBG_FILL_THREADS == TRUE
-  __thd_stackfill((uint8_t *)tdp->wbase, (uint8_t *)tdp->wend);
+  _thread_memfill((uint8_t *)tdp->wbase,
+                  (uint8_t *)tdp->wend,
+                  CH_DBG_STACK_FILL_VALUE);
 #endif
 
   chSysLock();
@@ -343,7 +337,9 @@ thread_t *chThdCreateStatic(void *wsp, size_t size,
 #endif
 
 #if CH_DBG_FILL_THREADS == TRUE
-  __thd_stackfill((uint8_t *)wsp, (uint8_t *)wsp + size);
+  _thread_memfill((uint8_t *)wsp,
+                  (uint8_t *)wsp + size,
+                  CH_DBG_STACK_FILL_VALUE);
 #endif
 
   chSysLock();
@@ -351,8 +347,8 @@ thread_t *chThdCreateStatic(void *wsp, size_t size,
   /* The thread structure is laid out in the upper part of the thread
      workspace. The thread position structure is aligned to the required
      stack alignment because it represents the stack top.*/
-  tp = threadref(((uint8_t *)wsp + size -
-                 MEM_ALIGN_NEXT(sizeof (thread_t), PORT_STACK_ALIGN)));
+  tp = (thread_t *)((uint8_t *)wsp + size -
+                    MEM_ALIGN_NEXT(sizeof (thread_t), PORT_STACK_ALIGN));
 
 #if (CH_DBG_ENABLE_STACK_CHECK == TRUE) || (CH_CFG_USE_DYNAMIC == TRUE)
   /* Stack boundary.*/
@@ -362,7 +358,7 @@ thread_t *chThdCreateStatic(void *wsp, size_t size,
   /* Setting up the port-dependent part of the working area.*/
   PORT_SETUP_CONTEXT(tp, wsp, tp, pf, arg);
 
-  tp = __thd_object_init(currcore, tp, "noname", prio);
+  tp = _thread_init(tp, "noname", prio);
 
   /* Starting the thread immediately.*/
   chSchWakeupS(tp, MSG_OK);
@@ -503,33 +499,34 @@ void chThdExit(msg_t msg) {
  * @sclass
  */
 void chThdExitS(msg_t msg) {
-  thread_t *currtp = chThdGetSelfX();
+  thread_t *tp = currp;
 
   /* Storing exit message.*/
-  currtp->u.exitcode = msg;
+  tp->u.exitcode = msg;
 
   /* Exit handler hook.*/
   CH_CFG_THREAD_EXIT_HOOK(tp);
 
 #if CH_CFG_USE_WAITEXIT == TRUE
   /* Waking up any waiting thread.*/
-  while (unlikely(ch_list_notempty(&currtp->waiting))) {
-    (void) chSchReadyI(threadref(ch_list_unlink(&currtp->waiting)));
+  while (list_notempty(&tp->waiting)) {
+    (void) chSchReadyI(list_remove(&tp->waiting));
   }
 #endif
 
 #if CH_CFG_USE_REGISTRY == TRUE
-  if (unlikely(currtp->refs == (trefs_t)0)) {
+  /* Static threads with no references are immediately removed from the
+     registry because there is no memory to recover.*/
 #if CH_CFG_USE_DYNAMIC == TRUE
-    /* Static threads are immediately removed from the registry because there
-       is no memory to recover.*/
-    if (unlikely(((currtp->flags & CH_FLAG_MODE_MASK) == CH_FLAG_MODE_STATIC))) {
-      REG_REMOVE(currtp);
-    }
-#else
-    REG_REMOVE(currtp);
-#endif
+  if ((tp->refs == (trefs_t)0) &&
+      ((tp->flags & CH_FLAG_MODE_MASK) == CH_FLAG_MODE_STATIC)) {
+    REG_REMOVE(tp);
   }
+#else
+  if (tp->refs == (trefs_t)0) {
+    REG_REMOVE(tp);
+  }
+#endif
 #endif
 
   /* Going into final state.*/
@@ -560,19 +557,18 @@ void chThdExitS(msg_t msg) {
  * @api
  */
 msg_t chThdWait(thread_t *tp) {
-  thread_t *currtp = chThdGetSelfX();
   msg_t msg;
 
   chDbgCheck(tp != NULL);
 
   chSysLock();
-  chDbgAssert(tp != currtp, "waiting self");
+  chDbgAssert(tp != currp, "waiting self");
 #if CH_CFG_USE_REGISTRY == TRUE
   chDbgAssert(tp->refs > (trefs_t)0, "no references");
 #endif
 
-  if (likely(tp->state != CH_STATE_FINAL)) {
-    ch_list_link(&tp->waiting, &currtp->hdr.list);
+  if (tp->state != CH_STATE_FINAL) {
+    list_insert(currp, &tp->waiting);
     chSchGoSleepS(CH_STATE_WTEXIT);
   }
   msg = tp->u.exitcode;
@@ -600,22 +596,20 @@ msg_t chThdWait(thread_t *tp) {
  * @api
  */
 tprio_t chThdSetPriority(tprio_t newprio) {
-  thread_t *currtp = chThdGetSelfX();
   tprio_t oldprio;
 
   chDbgCheck(newprio <= HIGHPRIO);
 
   chSysLock();
 #if CH_CFG_USE_MUTEXES == TRUE
-  oldprio = currtp->realprio;
-  if ((currtp->hdr.pqueue.prio == currtp->realprio) ||
-      (newprio > currtp->hdr.pqueue.prio)) {
-    currtp->hdr.pqueue.prio = newprio;
+  oldprio = currp->realprio;
+  if ((currp->prio == currp->realprio) || (newprio > currp->prio)) {
+    currp->prio = newprio;
   }
-  currtp->realprio = newprio;
+  currp->realprio = newprio;
 #else
-  oldprio = currtp->hdr.pqueue.prio;
-  currtp->hdr.pqueue.prio = newprio;
+  oldprio = currp->prio;
+  currp->prio = newprio;
 #endif
   chSchRescheduleS();
   chSysUnlock();
@@ -679,7 +673,7 @@ void chThdSleepUntil(systime_t time) {
 
   chSysLock();
   interval = chTimeDiffX(chVTGetSystemTimeX(), time);
-  if (likely(interval > (sysinterval_t)0)) {
+  if (interval > (sysinterval_t)0) {
     chThdSleepS(interval);
   }
   chSysUnlock();
@@ -688,7 +682,7 @@ void chThdSleepUntil(systime_t time) {
 /**
  * @brief   Suspends the invoking thread until the system time arrives to the
  *          specified value.
- * @note    The system time is assumed to be between @p prev and @p next
+ * @note    The system time is assumed to be between @p prev and @p time
  *          else the call is assumed to have been called outside the
  *          allowed time interval, in this case no sleep is performed.
  * @see     chThdSleepUntil()
@@ -704,7 +698,7 @@ systime_t chThdSleepUntilWindowed(systime_t prev, systime_t next) {
 
   chSysLock();
   time = chVTGetSystemTimeX();
-  if (likely(chTimeIsInRangeX(time, prev, next))) {
+  if (chTimeIsInRangeX(time, prev, next)) {
     chThdSleepS(chTimeDiffX(time, next));
   }
   chSysUnlock();
@@ -758,7 +752,7 @@ msg_t chThdSuspendS(thread_reference_t *trp) {
  *                      handled as follow:
  *                      - @a TIME_INFINITE the thread enters an infinite sleep
  *                        state.
- *                      - @a TIME_IMMEDIATE the thread is not suspended and
+ *                      - @a TIME_IMMEDIATE the thread is not enqueued and
  *                        the function returns @p MSG_TIMEOUT as if a timeout
  *                        occurred.
  *                      .
@@ -772,7 +766,7 @@ msg_t chThdSuspendTimeoutS(thread_reference_t *trp, sysinterval_t timeout) {
 
   chDbgAssert(*trp == NULL, "not NULL");
 
-  if (unlikely(TIME_IMMEDIATE == timeout)) {
+  if (TIME_IMMEDIATE == timeout) {
     return MSG_TIMEOUT;
   }
 
@@ -868,13 +862,12 @@ void chThdResume(thread_reference_t *trp, msg_t msg) {
  * @sclass
  */
 msg_t chThdEnqueueTimeoutS(threads_queue_t *tqp, sysinterval_t timeout) {
-  thread_t *currtp = chThdGetSelfX();
 
-  if (unlikely(TIME_IMMEDIATE == timeout)) {
+  if (TIME_IMMEDIATE == timeout) {
     return MSG_TIMEOUT;
   }
 
-  ch_queue_insert(&tqp->queue, (ch_queue_t *)currtp);
+  queue_insert(currp, tqp);
 
   return chSchGoSleepTimeoutS(CH_STATE_QUEUED, timeout);
 }
@@ -890,7 +883,7 @@ msg_t chThdEnqueueTimeoutS(threads_queue_t *tqp, sysinterval_t timeout) {
  */
 void chThdDequeueNextI(threads_queue_t *tqp, msg_t msg) {
 
-  if (ch_queue_notempty(&tqp->queue)) {
+  if (queue_notempty(tqp)) {
     chThdDoDequeueNextI(tqp, msg);
   }
 }
@@ -905,7 +898,7 @@ void chThdDequeueNextI(threads_queue_t *tqp, msg_t msg) {
  */
 void chThdDequeueAllI(threads_queue_t *tqp, msg_t msg) {
 
-  while (ch_queue_notempty(&tqp->queue)) {
+  while (queue_notempty(tqp)) {
     chThdDoDequeueNextI(tqp, msg);
   }
 }

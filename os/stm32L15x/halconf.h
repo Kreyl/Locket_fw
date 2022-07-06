@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2020 Giovanni Di Sirio
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@
 #define HALCONF_H
 
 #define _CHIBIOS_HAL_CONF_
-#define _CHIBIOS_HAL_CONF_VER_8_0_
+#define _CHIBIOS_HAL_CONF_VER_7_0_
 
 #include "mcuconf.h"
 
@@ -66,13 +66,6 @@
  */
 #if !defined(HAL_USE_DAC) || defined(__DOXYGEN__)
 #define HAL_USE_DAC                         FALSE
-#endif
-
-/**
- * @brief   Enables the EFlash subsystem.
- */
-#if !defined(HAL_USE_EFL) || defined(__DOXYGEN__)
-#define HAL_USE_EFL                         FALSE
 #endif
 
 /**
@@ -230,7 +223,7 @@
  * @note    Disabling this option saves both code and data space.
  */
 #if !defined(ADC_USE_WAIT) || defined(__DOXYGEN__)
-#define ADC_USE_WAIT                        TRUE
+#define ADC_USE_WAIT                        FALSE
 #endif
 
 /**
@@ -238,7 +231,7 @@
  * @note    Disabling this option saves both code and data space.
  */
 #if !defined(ADC_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
-#define ADC_USE_MUTUAL_EXCLUSION            TRUE
+#define ADC_USE_MUTUAL_EXCLUSION            FALSE
 #endif
 
 /*===========================================================================*/
@@ -249,7 +242,7 @@
  * @brief   Sleep mode related APIs inclusion switch.
  */
 #if !defined(CAN_USE_SLEEP_MODE) || defined(__DOXYGEN__)
-#define CAN_USE_SLEEP_MODE                  TRUE
+#define CAN_USE_SLEEP_MODE                  FALSE
 #endif
 
 /**
@@ -290,7 +283,7 @@
  * @note    Disabling this option saves both code and data space.
  */
 #if !defined(DAC_USE_WAIT) || defined(__DOXYGEN__)
-#define DAC_USE_WAIT                        TRUE
+#define DAC_USE_WAIT                        FALSE
 #endif
 
 /**
@@ -298,7 +291,7 @@
  * @note    Disabling this option saves both code and data space.
  */
 #if !defined(DAC_USE_MUTUAL_EXCLUSION) || defined(__DOXYGEN__)
-#define DAC_USE_MUTUAL_EXCLUSION            TRUE
+#define DAC_USE_MUTUAL_EXCLUSION            FALSE
 #endif
 
 /*===========================================================================*/
@@ -416,26 +409,6 @@
 #endif
 
 /*===========================================================================*/
-/* SIO driver related settings.                                              */
-/*===========================================================================*/
-
-/**
- * @brief   Default bit rate.
- * @details Configuration parameter, this is the baud rate selected for the
- *          default configuration.
- */
-#if !defined(SIO_DEFAULT_BITRATE) || defined(__DOXYGEN__)
-#define SIO_DEFAULT_BITRATE                 38400
-#endif
-
-/**
- * @brief   Support for thread synchronization API.
- */
-#if !defined(SIO_USE_SYNCHRONIZATION) || defined(__DOXYGEN__)
-#define SIO_USE_SYNCHRONIZATION             TRUE
-#endif
-
-/*===========================================================================*/
 /* SERIAL_USB driver related setting.                                        */
 /*===========================================================================*/
 
@@ -471,11 +444,13 @@
 #endif
 
 /**
- * @brief   Inserts an assertion on function errors before returning.
+ * @brief   Enables circular transfers APIs.
+ * @note    Disabling this option saves both code and data space.
  */
-#if !defined(SPI_USE_ASSERT_ON_ERROR) || defined(__DOXYGEN__)
-#define SPI_USE_ASSERT_ON_ERROR             TRUE
+#if !defined(SPI_USE_CIRCULAR) || defined(__DOXYGEN__)
+#define SPI_USE_CIRCULAR                    FALSE
 #endif
+
 
 /**
  * @brief   Enables the @p spiAcquireBus() and @p spiReleaseBus() APIs.

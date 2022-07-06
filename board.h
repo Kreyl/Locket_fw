@@ -18,7 +18,7 @@
 #define CRYSTAL_FREQ_HZ     12000000
 
 // OS timer settings
-#define STM32_ST_IRQ_PRIORITY   2
+#define STM32_ST_IRQ_PRIORITY   8
 #define STM32_ST_USE_TIMER      2
 #define STM32_TIMCLK1           (Clk.APB1FreqHz)
 

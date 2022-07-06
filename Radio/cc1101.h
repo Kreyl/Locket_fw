@@ -34,6 +34,8 @@ private:
     }
     void CsHi() { PinSetHi((GPIO_TypeDef*)CSGpio, Cs); }
     void CsLo() { PinSetLo((GPIO_TypeDef*)CSGpio, Cs); }
+    void EnableIrq() { IGdo0.EnableIrq(IRQ_PRIO_HIGH); }
+    void DisableIrq() { IGdo0.DisableIrq(); }
     // General
     int8_t RSSI_dBm(uint8_t ARawRSSI);
     // Registers and buffers
@@ -57,7 +59,8 @@ public:
     void SetPktSize(uint8_t ASize) { WriteRegister(CC_PKTLEN, ASize); }
     void SetBitrate(const CCRegValue_t* BRSetup);
     // State change
-    void Transmit(void *Ptr, uint8_t Len);
+    void TransmitAsyncX(uint8_t *Ptr, uint8_t Len);
+    void Transmit(uint8_t *Ptr, uint8_t Len);
     uint8_t Receive(uint32_t Timeout_ms, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
     uint8_t Receive_st(sysinterval_t Timeout_st, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
     void ReceiveAsync(ftVoidVoid Callback);

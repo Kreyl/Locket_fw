@@ -1,12 +1,12 @@
 /*
-    ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
-              2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
     ChibiOS is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
-    the Free Software Foundation version 3 of the License.
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
     ChibiOS is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,32 +18,60 @@
 */
 
 /**
- * @file    rt/include/chrfcu.h
- * @brief   Runtime Faults Collection Unit macros and structures.
+ * @file    chcustomer.h
+ * @brief   Customer-related info.
  *
- * @addtogroup rfcu
+ * @addtogroup chibios_customer
+ * @details This module incapsulates licensee information, this is only
+ *          meaningful for commercial licenses. It is a stub for public
+ *          releases.
  * @{
  */
 
-#ifndef CHRFCU_H
-#define CHRFCU_H
+#ifndef CHCUSTOMER_H
+#define CHCUSTOMER_H
 
 /*===========================================================================*/
 /* Module constants.                                                         */
 /*===========================================================================*/
 
 /**
- * @name    Predefined Faults
- * @{
+ * @brief   Customer readable identifier.
  */
-#define CH_RFCU_VT_INSUFFICIENT_DELTA       1U
-#define CH_RFCU_VT_SKIPPED_DEADLINE         2U
-/** @} */
+#define CH_CUSTOMER_ID_STRING               "Santa, North Pole"
 
 /**
- * @brief   Mask of all faults.
+ * @brief   Customer code.
  */
-#define CH_RFCU_ALL_FAULTS                  ((rfcu_mask_t)-1)
+#define CH_CUSTOMER_ID_CODE                 "xxxx-yyyy"
+
+/**
+ * @brief   Current license.
+ * @note    This setting is reserved to the copyright owner.
+ * @note    Changing this setting invalidates the license.
+ * @note    The license statement in the source headers is valid, applicable
+ *          and binding regardless this setting.
+ */
+#define CH_LICENSE                          CH_LICENSE_GPL
+
+/**
+ * @name    Licensed Products
+ * @{
+ */
+#define CH_CUSTOMER_LIC_RT                  TRUE
+#define CH_CUSTOMER_LIC_NIL                 TRUE
+#define CH_CUSTOMER_LIC_OSLIB               TRUE
+#define CH_CUSTOMER_LIC_EX                  TRUE
+#define CH_CUSTOMER_LIC_PORT_CM0            TRUE
+#define CH_CUSTOMER_LIC_PORT_CM3            TRUE
+#define CH_CUSTOMER_LIC_PORT_CM4            TRUE
+#define CH_CUSTOMER_LIC_PORT_CM7            TRUE
+#define CH_CUSTOMER_LIC_PORT_ARM79          TRUE
+#define CH_CUSTOMER_LIC_PORT_E200Z0         TRUE
+#define CH_CUSTOMER_LIC_PORT_E200Z2         TRUE
+#define CH_CUSTOMER_LIC_PORT_E200Z3         TRUE
+#define CH_CUSTOMER_LIC_PORT_E200Z4         TRUE
+/** @} */
 
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
@@ -57,21 +85,6 @@
 /* Module data structures and types.                                         */
 /*===========================================================================*/
 
-/**
- * @brief   Type of a faults mask.
- */
-typedef uint32_t rfcu_mask_t;
-
-/**
- * @brief   Type of an RFCU structure.
- */
-typedef struct ch_rfcu {
-  /**
-   * @brief   Mask of the pending runtime faults.
-   */
-  rfcu_mask_t                   mask;
-} rfcu_t;
-
 /*===========================================================================*/
 /* Module macros.                                                            */
 /*===========================================================================*/
@@ -80,32 +93,10 @@ typedef struct ch_rfcu {
 /* External declarations.                                                    */
 /*===========================================================================*/
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-  void chRFCUCollectFaultsI(rfcu_mask_t mask);
-  rfcu_mask_t chRFCUGetAndClearFaultsI(rfcu_mask_t mask);
-#ifdef __cplusplus
-}
-#endif
-
 /*===========================================================================*/
 /* Module inline functions.                                                  */
 /*===========================================================================*/
 
-/**
- * @brief   Runtime Faults Collection Unit initialization.
- * @note    Internal use only.
- *
- * @param[out] rfcup    pointer to the @p rfcu_t structure
- *
- * @notapi
- */
-static inline void __rfcu_object_init(rfcu_t *rfcup) {
-
-  rfcup->mask = (rfcu_mask_t)0;
-}
-
-#endif /* CHRFCU_H */
+#endif /* CHCUSTOMER_H */
 
 /** @} */

@@ -73,7 +73,6 @@ uint8_t cc1101_t::Init() {
     WriteRegister(CC_MCSM2, CC_MCSM2_VALUE);
     WriteRegister(CC_MCSM1, CC_MCSM1_VALUE);
 
-    IGdo0.EnableIrq(IRQ_PRIO_HIGH);
     Printf("CC init ok\r");
     return retvOk;
 }
@@ -96,11 +95,17 @@ void cc1101_t::SetBitrate(const CCRegValue_t* BRSetup) {
     }
 }
 
-void cc1101_t::Transmit(void *Ptr, uint8_t Len) {
+void cc1101_t::TransmitAsyncX(uint8_t *Ptr, uint8_t Len) {
+    EnterTX();  // Start transmission of preamble while writing FIFO
+    WriteTX(Ptr, Len);
+}
+
+void cc1101_t::Transmit(uint8_t *Ptr, uint8_t Len) {
     EnterTX();  // Start transmission of preamble while writing FIFO
     chSysLock();
     ICallback = nullptr;
-    WriteTX((uint8_t*)Ptr, Len);
+    EnableIrq();
+    WriteTX(Ptr, Len);
     // Enter TX and wait IRQ
     chThdSuspendS(&ThdRef); // Wait IRQ
     chSysUnlock();          // Will be here when IRQ fires

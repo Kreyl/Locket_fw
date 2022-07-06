@@ -212,7 +212,6 @@ void ReadAndSetupMode() {
     b &= 0b1111; // Remove high bits
     Printf("Type: %u; Pwr: %u\r", Type, b);
     Cfg.SetSelfType(Type);
-    Radio.PktTx.Type = Cfg.Type;
     Indi.ShowSelfType();
     Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
 }
@@ -280,8 +279,6 @@ void ReadIDfromEE() {
         Printf("\rUsing default ID\r");
         Cfg.ID = ID_DEFAULT;
     }
-    Radio.PktTx.ID = Cfg.ID;
-    Radio.PktTxFar.ID = Cfg.ID;
 }
 
 uint8_t ISetID(int32_t NewID) {
@@ -289,7 +286,6 @@ uint8_t ISetID(int32_t NewID) {
     uint8_t rslt = EE::Write32(EE_ADDR_DEVICE_ID, NewID);
     if(rslt == retvOk) {
         Cfg.ID = NewID;
-        Radio.PktTx.ID = Cfg.ID;
         Printf("New ID: %u\r", Cfg.ID);
         return retvOk;
     }

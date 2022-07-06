@@ -1,12 +1,12 @@
 /*
-    ChibiOS - Copyright (C) 2006,2007,2008,2009,2010,2011,2012,2013,2014,
-              2015,2016,2017,2018,2019,2020,2021 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
     ChibiOS is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
-    the Free Software Foundation version 3 of the License.
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
 
     ChibiOS is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,7 +18,7 @@
 */
 
 /**
- * @file    rt/src/chdebug.c
+ * @file    chdebug.c
  * @brief   Debug support code.
  *
  * @addtogroup checks_assertions
@@ -109,11 +109,9 @@
  *
  * @notapi
  */
-void __dbg_check_disable(void) {
-  os_instance_t *oip = currcore;
+void _dbg_check_disable(void) {
 
-  if (unlikely((oip->dbg.isr_cnt != (cnt_t)0) ||
-               (oip->dbg.lock_cnt != (cnt_t)0))) {
+  if ((ch.dbg.isr_cnt != (cnt_t)0) || (ch.dbg.lock_cnt != (cnt_t)0)) {
     chSysHalt("SV#1");
   }
 }
@@ -123,11 +121,9 @@ void __dbg_check_disable(void) {
  *
  * @notapi
  */
-void __dbg_check_suspend(void) {
-  os_instance_t *oip = currcore;
+void _dbg_check_suspend(void) {
 
-  if (unlikely((oip->dbg.isr_cnt != (cnt_t)0) ||
-               (oip->dbg.lock_cnt != (cnt_t)0))) {
+  if ((ch.dbg.isr_cnt != (cnt_t)0) || (ch.dbg.lock_cnt != (cnt_t)0)) {
     chSysHalt("SV#2");
   }
 }
@@ -137,11 +133,9 @@ void __dbg_check_suspend(void) {
  *
  * @notapi
  */
-void __dbg_check_enable(void) {
-  os_instance_t *oip = currcore;
+void _dbg_check_enable(void) {
 
-  if (unlikely((oip->dbg.isr_cnt != (cnt_t)0) ||
-               (oip->dbg.lock_cnt != (cnt_t)0))) {
+  if ((ch.dbg.isr_cnt != (cnt_t)0) || (ch.dbg.lock_cnt != (cnt_t)0)) {
     chSysHalt("SV#3");
   }
 }
@@ -151,14 +145,12 @@ void __dbg_check_enable(void) {
  *
  * @notapi
  */
-void __dbg_check_lock(void) {
-  os_instance_t *oip = currcore;
+void _dbg_check_lock(void) {
 
-  if (unlikely((oip->dbg.isr_cnt != (cnt_t)0) ||
-               (oip->dbg.lock_cnt != (cnt_t)0))) {
+  if ((ch.dbg.isr_cnt != (cnt_t)0) || (ch.dbg.lock_cnt != (cnt_t)0)) {
     chSysHalt("SV#4");
   }
-  oip->dbg.lock_cnt = (cnt_t)1;
+  _dbg_enter_lock();
 }
 
 /**
@@ -166,14 +158,12 @@ void __dbg_check_lock(void) {
  *
  * @notapi
  */
-void __dbg_check_unlock(void) {
-  os_instance_t *oip = currcore;
+void _dbg_check_unlock(void) {
 
-  if (unlikely((oip->dbg.isr_cnt != (cnt_t)0) ||
-               (oip->dbg.lock_cnt <= (cnt_t)0))) {
+  if ((ch.dbg.isr_cnt != (cnt_t)0) || (ch.dbg.lock_cnt <= (cnt_t)0)) {
     chSysHalt("SV#5");
   }
-  oip->dbg.lock_cnt = (cnt_t)0;
+  _dbg_leave_lock();
 }
 
 /**
@@ -181,14 +171,12 @@ void __dbg_check_unlock(void) {
  *
  * @notapi
  */
-void __dbg_check_lock_from_isr(void) {
-  os_instance_t *oip = currcore;
+void _dbg_check_lock_from_isr(void) {
 
-  if (unlikely((oip->dbg.isr_cnt <= (cnt_t)0) ||
-               (oip->dbg.lock_cnt != (cnt_t)0))) {
+  if ((ch.dbg.isr_cnt <= (cnt_t)0) || (ch.dbg.lock_cnt != (cnt_t)0)) {
     chSysHalt("SV#6");
   }
-  oip->dbg.lock_cnt = (cnt_t)1;
+  _dbg_enter_lock();
 }
 
 /**
@@ -196,14 +184,12 @@ void __dbg_check_lock_from_isr(void) {
  *
  * @notapi
  */
-void __dbg_check_unlock_from_isr(void) {
-  os_instance_t *oip = currcore;
+void _dbg_check_unlock_from_isr(void) {
 
-  if (unlikely((oip->dbg.isr_cnt <= (cnt_t)0) ||
-               (oip->dbg.lock_cnt <= (cnt_t)0))) {
+  if ((ch.dbg.isr_cnt <= (cnt_t)0) || (ch.dbg.lock_cnt <= (cnt_t)0)) {
     chSysHalt("SV#7");
   }
-  oip->dbg.lock_cnt = (cnt_t)0;
+  _dbg_leave_lock();
 }
 
 /**
@@ -211,15 +197,13 @@ void __dbg_check_unlock_from_isr(void) {
  *
  * @notapi
  */
-void __dbg_check_enter_isr(void) {
-  os_instance_t *oip = currcore;
+void _dbg_check_enter_isr(void) {
 
   port_lock_from_isr();
-  if (unlikely((oip->dbg.isr_cnt < (cnt_t)0) ||
-               (oip->dbg.lock_cnt != (cnt_t)0))) {
+  if ((ch.dbg.isr_cnt < (cnt_t)0) || (ch.dbg.lock_cnt != (cnt_t)0)) {
     chSysHalt("SV#8");
   }
-  oip->dbg.isr_cnt++;
+  ch.dbg.isr_cnt++;
   port_unlock_from_isr();
 }
 
@@ -228,15 +212,13 @@ void __dbg_check_enter_isr(void) {
  *
  * @notapi
  */
-void __dbg_check_leave_isr(void) {
-  os_instance_t *oip = currcore;
+void _dbg_check_leave_isr(void) {
 
   port_lock_from_isr();
-  if (unlikely((oip->dbg.isr_cnt <= (cnt_t)0) ||
-               (oip->dbg.lock_cnt != (cnt_t)0))) {
+  if ((ch.dbg.isr_cnt <= (cnt_t)0) || (ch.dbg.lock_cnt != (cnt_t)0)) {
     chSysHalt("SV#9");
   }
-  oip->dbg.isr_cnt--;
+  ch.dbg.isr_cnt--;
   port_unlock_from_isr();
 }
 
@@ -249,10 +231,8 @@ void __dbg_check_leave_isr(void) {
  * @api
  */
 void chDbgCheckClassI(void) {
-  os_instance_t *oip = currcore;
 
-  if (unlikely((oip->dbg.isr_cnt < (cnt_t)0) ||
-               (oip->dbg.lock_cnt <= (cnt_t)0))) {
+  if ((ch.dbg.isr_cnt < (cnt_t)0) || (ch.dbg.lock_cnt <= (cnt_t)0)) {
     chSysHalt("SV#10");
   }
 }
@@ -266,10 +246,8 @@ void chDbgCheckClassI(void) {
  * @api
  */
 void chDbgCheckClassS(void) {
-  os_instance_t *oip = currcore;
 
-  if (unlikely((oip->dbg.isr_cnt != (cnt_t)0) ||
-               (oip->dbg.lock_cnt <= (cnt_t)0))) {
+  if ((ch.dbg.isr_cnt != (cnt_t)0) || (ch.dbg.lock_cnt <= (cnt_t)0)) {
     chSysHalt("SV#11");
   }
 }

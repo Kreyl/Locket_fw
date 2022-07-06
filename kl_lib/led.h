@@ -1,7 +1,7 @@
 /*
  * led_rgb.h
  *
- *  Created on: 31 ï¿½ï¿½ï¿½. 2014 ï¿½.
+ *  Created on: 31 àâã. 2014 ã.
  *      Author: Kreyl
  */
 
@@ -43,27 +43,27 @@ public:
 
 #if 1 // ======================== Single Led Smooth ============================
 class LedSmooth_t : public BaseSequencer_t<LedSmoothChunk_t> {
-protected:
+private:
     const PinOutputPWM_t IChnl;
-    uint32_t ICurrentValue;
+    uint8_t ICurrentBrightness;
     const uint32_t PWMFreq;
-    void ISwitchOff() { Set(0); }
+    void ISwitchOff() { SetBrightness(0); }
     SequencerLoopTask_t ISetup() {
-        if(ICurrentValue != IPCurrentChunk->Brightness) {
+        if(ICurrentBrightness != IPCurrentChunk->Brightness) {
             if(IPCurrentChunk->Value == 0) {     // If smooth time is zero,
-                ICurrentValue = IPCurrentChunk->Brightness;
-                SetCurrent();
+                SetBrightness(IPCurrentChunk->Brightness); // set color now,
+                ICurrentBrightness = IPCurrentChunk->Brightness;
                 IPCurrentChunk++;                // and goto next chunk
             }
             else {
-                if     (ICurrentValue < IPCurrentChunk->Brightness) ICurrentValue++;
-                else if(ICurrentValue > IPCurrentChunk->Brightness) ICurrentValue--;
-                SetCurrent();
+                if     (ICurrentBrightness < IPCurrentChunk->Brightness) ICurrentBrightness++;
+                else if(ICurrentBrightness > IPCurrentChunk->Brightness) ICurrentBrightness--;
+                SetBrightness(ICurrentBrightness);
                 // Check if completed now
-                if(ICurrentValue == IPCurrentChunk->Brightness) IPCurrentChunk++;
+                if(ICurrentBrightness == IPCurrentChunk->Brightness) IPCurrentChunk++;
                 else { // Not completed
                     // Calculate time to next adjustment
-                    uint32_t Delay = ClrCalcDelay(ICurrentValue, IPCurrentChunk->Value);
+                    uint32_t Delay = ClrCalcDelay(ICurrentBrightness, IPCurrentChunk->Value);
                     SetupDelay(Delay);
                     return sltBreak;
                 } // Not completed
@@ -72,45 +72,18 @@ protected:
         else IPCurrentChunk++; // Color is the same, goto next chunk
         return sltProceed;
     }
-    void SetCurrent() { IChnl.Set(ICurrentValue); }
 public:
     LedSmooth_t(const PwmSetup_t APinSetup, const uint32_t AFreq = 0xFFFFFFFF) :
-        BaseSequencer_t(), IChnl(APinSetup), ICurrentValue(0), PWMFreq(AFreq) {}
+        BaseSequencer_t(), IChnl(APinSetup), ICurrentBrightness(0), PWMFreq(AFreq) {}
     void Init() {
         IChnl.Init();
         IChnl.SetFrequencyHz(PWMFreq);
-        Set(0);
+        SetBrightness(0);
     }
-    void Set(uint32_t AValue) {
-        ICurrentValue = AValue;
-        IChnl.Set(ICurrentValue);
-    }
+    void SetBrightness(uint8_t ABrightness) { IChnl.Set(ABrightness); }
 };
 #endif
 
-#if 1 // ============= Single Led Smooth with brightness control================
-// Set LED top value to (255*255)
-class LedSmoothWBrt_t : public LedSmooth_t {
-private:
-    uint32_t CurrBrt = 0;
-    void SetCurrent() {
-        // CurrBrt=[0;LED_SMOOTH_MAX_BRT]; ICurrentValue=[0;255]
-        uint32_t FValue = ICurrentValue * CurrBrt;
-        IChnl.Set(FValue);
-//        Printf("v=%u\r", FValue);
-    }
-public:
-    LedSmoothWBrt_t(const PwmSetup_t APinSetup, const uint32_t AFreq = 0xFFFFFFFF) : LedSmooth_t(APinSetup, AFreq) {}
-    void SetBrightness(uint32_t NewBrt) {
-        CurrBrt = NewBrt;
-        SetCurrent();
-    }
-    void Set(uint32_t AValue) {
-        ICurrentValue = AValue;
-        SetCurrent();
-    }
-};
-#endif
 
 #if 0 // ==================== RGB blinker (no smooth switch) ===================
 #define LED_RGB_BLINKER

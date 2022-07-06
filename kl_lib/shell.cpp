@@ -1,12 +1,12 @@
 /*
  * shell.cpp
  *
- *  Created on: 21 пїЅпїЅпїЅ. 2017 пїЅ.
+ *  Created on: 21 апр. 2017 г.
  *      Author: Kreyl
  */
 
-#include <uart.h>
 #include "shell.h"
+#include "uart.h"
 
 extern CmdUart_t Uart;
 
@@ -105,7 +105,7 @@ void PrintfHelper_t::PrintEOL() {
 
 void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
     const char *fmt = format;
-    int width = 0, precision;
+    uint32_t width = 0, precision;
     char c, filler;
     while(true) {
         c = *fmt++;
@@ -152,9 +152,9 @@ void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
             case 's':
             case 'S': {
                 char *s = va_arg(args, char*);
-                width -= strlen(s); // Do padding of string
-                while(s and *s)    { if(IPutChar(*s++)   != retvOk) goto End; }
-                while(width-- > 0) { if(IPutChar(filler) != retvOk) goto End; } // Do padding of string
+                while(*s != 0) {
+                    if(IPutChar(*s++) != retvOk) goto End;
+                }
             }
             break;
 

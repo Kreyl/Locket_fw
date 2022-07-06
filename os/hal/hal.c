@@ -55,6 +55,9 @@
  */
 void halInit(void) {
 
+  /* Initializes the OS Abstraction Layer.*/
+  osalInit();
+
   /* Platform low level initializations.*/
   hal_lld_init();
 
@@ -76,9 +79,6 @@ void halInit(void) {
 #endif
 #if (HAL_USE_DAC == TRUE) || defined(__DOXYGEN__)
   dacInit();
-#endif
-#if (HAL_USE_EFL == TRUE) || defined(__DOXYGEN__)
-  eflInit();
 #endif
 #if (HAL_USE_GPT == TRUE) || defined(__DOXYGEN__)
   gptInit();
@@ -103,9 +103,6 @@ void halInit(void) {
 #endif
 #if (HAL_USE_SDC == TRUE) || defined(__DOXYGEN__)
   sdcInit();
-#endif
-#if (HAL_USE_SIO == TRUE) || defined(__DOXYGEN__)
-  sioInit();
 #endif
 #if (HAL_USE_SPI == TRUE) || defined(__DOXYGEN__)
   spiInit();

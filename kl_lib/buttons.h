@@ -27,7 +27,7 @@
  */
 
 // ================================= Settings ==================================
-#define BUTTONS_CNT                 2
+#define BUTTONS_CNT                 3
 // Select required events etc.
 #define BTN_SHORTPRESS              TRUE    // beShortPress evt
 #define BTN_RELEASE                 FALSE
@@ -39,7 +39,7 @@
 #define BTN_GETSTATE_REQUIRED       FALSE
 
 #define BTN_REPEAT_PERIOD_MS        180
-#define BTN_LONGPRESS_DELAY_MS      999
+#define BTN_LONGPRESS_DELAY_MS      1710
 #define BTN_DELAY_BEFORE_REPEAT_MS  450
 #define BTN_DOUBLECLICK_DELAY_MS    500
 
