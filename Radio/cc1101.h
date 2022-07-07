@@ -17,7 +17,8 @@
 void CCIrqHandler();
 
 class cc1101_t : public IrqHandler_t {
-private:
+//private:
+public:
     const Spi_t ISpi;
     const GPIO_TypeDef *SpiGpio, *CSGpio;
     const uint16_t Sck, Miso, Mosi, Cs;
@@ -34,8 +35,6 @@ private:
     }
     void CsHi() { PinSetHi((GPIO_TypeDef*)CSGpio, Cs); }
     void CsLo() { PinSetLo((GPIO_TypeDef*)CSGpio, Cs); }
-    void EnableIrq() { IGdo0.EnableIrq(IRQ_PRIO_HIGH); }
-    void DisableIrq() { IGdo0.DisableIrq(); }
     // General
     int8_t RSSI_dBm(uint8_t ARawRSSI);
     // Registers and buffers
@@ -50,7 +49,7 @@ private:
     uint8_t FlushRxFIFO() { return WriteStrobe(CC_SFRX); }
     uint8_t FlushTxFIFO() { return WriteStrobe(CC_SFTX); }
     uint8_t GetStatus()   { return WriteStrobe(CC_SNOP); }
-public:
+//public:
     uint8_t Init();
     uint8_t EnterIdle()    { return WriteStrobe(CC_SIDLE); }
     uint8_t EnterPwrDown() { return WriteStrobe(CC_SPWD);  }
@@ -59,20 +58,21 @@ public:
     void SetPktSize(uint8_t ASize) { WriteRegister(CC_PKTLEN, ASize); }
     void SetBitrate(const CCRegValue_t* BRSetup);
     // State change
-    void TransmitAsyncX(uint8_t *Ptr, uint8_t Len);
+    void TransmitAsyncX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback);
     void Transmit(uint8_t *Ptr, uint8_t Len);
-    uint8_t Receive(uint32_t Timeout_ms, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
-    uint8_t Receive_st(sysinterval_t Timeout_st, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
+    uint8_t Receive(uint32_t Timeout_ms, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
+    uint8_t Receive_st(sysinterval_t Timeout_st, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
     void ReceiveAsync(ftVoidVoid Callback);
+    void ReceiveAsyncI(ftVoidVoid Callback);
 
     uint8_t RxCcaTx_st(void *PtrTx, uint8_t Len,  int8_t *PRssi=nullptr);
-    uint8_t RxIfNotYet_st(sysinterval_t RxTimeout_st, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
+    uint8_t RxIfNotYet_st(sysinterval_t RxTimeout_st, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
 
     void PowerOff();
     uint8_t Recalibrate() {
-        while(IState != CC_STB_IDLE) {
+        do {
             if(EnterIdle() != retvOk) return retvFail;
-        }
+        } while(IState != CC_STB_IDLE);
         if(WriteStrobe(CC_SCAL) != retvOk) return retvFail;
         do {
             GetStatus();
@@ -85,7 +85,7 @@ public:
     void DoRxAfterTx()   { WriteRegister(CC_MCSM1, (CC_MCSM1_VALUE | 0x03)); }
     void DoIdleAfterTx() { WriteRegister(CC_MCSM1, CC_MCSM1_VALUE); }
 
-    uint8_t ReadFIFO(void *Ptr, int8_t *PRssi, uint8_t Len);
+    uint8_t ReadFIFO(uint8_t *p, int8_t *PRssi, uint8_t Len);
 
     void IIrqHandler();
 
