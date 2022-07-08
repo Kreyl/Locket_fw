@@ -17,15 +17,14 @@
 void CCIrqHandler();
 
 class cc1101_t : public IrqHandler_t {
-//private:
-public:
+private:
     const Spi_t ISpi;
     const GPIO_TypeDef *SpiGpio, *CSGpio;
     const uint16_t Sck, Miso, Mosi, Cs;
     const PinIrq_t IGdo0;
     uint8_t IState; // Inner CC state, returned as first byte
     thread_reference_t ThdRef;
-    ftVoidVoid ICallback = nullptr;
+    volatile ftVoidVoid ICallback = nullptr;
     // Pins
     uint8_t BusyWait() {
         for(uint32_t i=0; i<CC_BUSYWAIT_TIMEOUT; i++) {
@@ -49,7 +48,7 @@ public:
     uint8_t FlushRxFIFO() { return WriteStrobe(CC_SFRX); }
     uint8_t FlushTxFIFO() { return WriteStrobe(CC_SFTX); }
     uint8_t GetStatus()   { return WriteStrobe(CC_SNOP); }
-//public:
+public:
     uint8_t Init();
     uint8_t EnterIdle()    { return WriteStrobe(CC_SIDLE); }
     uint8_t EnterPwrDown() { return WriteStrobe(CC_SPWD);  }
@@ -59,13 +58,14 @@ public:
     void SetBitrate(const CCRegValue_t* BRSetup);
     // State change
     void TransmitAsyncX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback);
+    void TransmitAsyncX(uint8_t *Ptr, uint8_t Len);
     void Transmit(uint8_t *Ptr, uint8_t Len);
     uint8_t Receive(uint32_t Timeout_ms, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
     uint8_t Receive_st(sysinterval_t Timeout_st, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
     void ReceiveAsync(ftVoidVoid Callback);
     void ReceiveAsyncI(ftVoidVoid Callback);
 
-    uint8_t RxCcaTx_st(void *PtrTx, uint8_t Len,  int8_t *PRssi=nullptr);
+    uint8_t RxCcaTx_st(uint8_t *PtrTx, uint8_t Len,  int8_t *PRssi=nullptr);
     uint8_t RxIfNotYet_st(sysinterval_t RxTimeout_st, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
 
     void PowerOff();
@@ -80,8 +80,8 @@ public:
         return retvOk;
     }
     // Setup
-//    void DoRxAfterRxAndRxAfterTx()   { WriteRegister(CC_MCSM1, (CC_MCSM1_VALUE | 0x0F)); }
-//    void DoRxAfterRxAndIdleAfterTx() { WriteRegister(CC_MCSM1, ((CC_MCSM1_VALUE | 0x0C) & 0xFC)); }
+    void DoRxAfterRxAndRxAfterTx()   { WriteRegister(CC_MCSM1, (CC_MCSM1_VALUE | 0x0F)); }
+    void DoRxAfterRxAndIdleAfterTx() { WriteRegister(CC_MCSM1, ((CC_MCSM1_VALUE | 0x0C) & 0xFC)); }
     void DoRxAfterTx()   { WriteRegister(CC_MCSM1, (CC_MCSM1_VALUE | 0x03)); }
     void DoIdleAfterTx() { WriteRegister(CC_MCSM1, CC_MCSM1_VALUE); }
 

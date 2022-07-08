@@ -114,27 +114,31 @@ public:
 */
 
 static void RxCallback() {
+    DBG1_SET();
     if(CC.ReadFIFO((uint8_t*)&PktRx, (int8_t*)&PktRx.Rssi, RPKT_LEN) == retvOk) {  // if pkt successfully received
 //        if(Radio.PktRx.Salt == RPKT_SALT) {
 //            RadioTime.AdjustI();
 //            Radio.RMsgQ.SendNowOrExitI(RMsg_t(rmsgPktRx));
-        PrintfI("rx\r");
+        PrintfI("rx %u\r", PktRx.ID);
 //        }
     }
+    else PrintfI("errx\r");
+    if(IHwTmr.GetCounter() < CYCLE_DUR_TICKS) CC.ReceiveAsyncI(RxCallback);
+    DBG1_CLR();
 }
 
 // After TX done, enter either RX in cycle 0 or Sleep in other case
 static void TxCallback() {
-//    if(IHwTmr.GetCounter() < CYCLE_DUR_TICKS) CC.ReceiveAsyncI(RxCallback);
+    if(IHwTmr.GetCounter() < CYCLE_DUR_TICKS) CC.ReceiveAsyncI(RxCallback);
 //    else CC.EnterIdle(); // XXX
+//    PrintfI("t");
 }
 
-
-
 static void IOnNewSupercycleI() {
+    DBG2_SET();
     // Prepare to tx if needed
 //    if(Cfg.MustTxInEachOther()) {
-    /*
+
         NextTick = (Cfg.ID + 1) * TIMESLOT_DUR_TICKS; // skip first timeslot to allow recalibration to complete
         IHwTmr.SetCCR1(NextTick);
         IHwTmr.EnableIrqOnCompare1();
@@ -143,45 +147,33 @@ static void IOnNewSupercycleI() {
         //*/
 //    }
 //    else IHwTmr.DisableIrqOnCompare1();
-//    CC.Recalibrate();
-    // Enter RX if ID is not 0 - otherwise immediate TX is required
-//    if(Cfg.ID != 0)
-
-//    PrintfI("0x%02X\r", CC.IState);
-
-    DBG2_SET();
     CC.Recalibrate();
-//    DBG2_CLR();
-//
-//    DBG1_SET();
-    CC.ReceiveAsyncI(RxCallback);
-//    DBG1_CLR();
+    // Enter RX if ID is not 0 - otherwise immediate TX is required
+    if(Cfg.ID != 0) CC.ReceiveAsyncI(RxCallback);
     DBG2_CLR();
 }
 
 // Will be here if IRQ is enabled, which is determined at end of supercycle
 static void IOnTxSlotI() {
-    DBG1_SET();
+//    DBG1_SET();
     // Setup next time
     NextTick += CYCLE_DUR_TICKS;
     if(NextTick < SUPERCYCLE_DUR_TICKS) IHwTmr.SetCCR1(NextTick); // Do not set CCR greater than TOP value, as it will fire at overflow.
     // Transmit pkt
     PktTx.TimeSrcID = TimeSrcId;
     PktTx.iTime = IHwTmr.GetCounter();
-    CC.Recalibrate();
     CC.TransmitAsyncX((uint8_t*)&PktTx, RPKT_LEN, TxCallback);
-    DBG1_CLR();
-
+//    DBG1_CLR();
 }
 
 static void IOnCycle0EndI() {
+    CC.EnterIdle();
 //    DBG1_SET();
 }
 
 
 extern "C"
 void VectorA4() {
-//    DBG1_SET();
     CH_IRQ_PROLOGUE();
     chSysLockFromISR();
     uint32_t SR = TIM9->SR & TIM9->DIER; // Process enabled irqs only
@@ -191,11 +183,9 @@ void VectorA4() {
     if(SR & TIM_SR_UIF)   IOnNewSupercycleI();
     chSysUnlockFromISR();
     CH_IRQ_EPILOGUE();
-//    DBG1_CLR();
-//    DBG2_CLR();
 }
 
-#if 1 // ================================ Task =================================
+#if 0 // ================================ Task =================================
 static THD_WORKING_AREA(warLvl1Thread, 256);
 __noreturn
 static void rLvl1Thread(void *arg) {
@@ -207,13 +197,16 @@ __noreturn
 void rLevel1_t::ITask() {
     while(true) {
         CC.Recalibrate();
+//        CC.Transmit((uint8_t*)&PktTx, RPKT_LEN);
+//        CC.TransmitAsyncX((uint8_t*)&PktTx, RPKT_LEN, TxCallback);
+//        chThdSleepMilliseconds(45);
+
         if(CC.Receive(360, (uint8_t*)&PktRx, RPKT_LEN, (int8_t*)&PktRx.Rssi) == retvOk) {
             Printf("rx\r");
         }
         Printf("t");
 
-//        CC.Transmit((uint8_t*)&PktTx, RPKT_LEN);
-//        chThdSleepMilliseconds(45);
+//
         /*
         RMsg_t msg = RMsgQ.Fetch(TIME_INFINITE);
         switch(msg.Cmd) {
@@ -260,12 +253,15 @@ uint8_t rLevel1_t::Init() {
     if(CC.Init() == retvOk) {
         CC.SetPktSize(RPKT_LEN);
         CC.SetChannel(RCHNL_EACH_OTH);
-        CC.SetTxPower(Cfg.TxPower);
+//        CC.SetTxPower(Cfg.TxPower);
+        CC.SetTxPower(CC_Pwr0dBm);
         CC.SetBitrate(CCBitrate500k);
+//        CC.SetBitrate(CCBitrate100k);
 //        CC.EnterPwrDown();
 
         PktTx.Salt = RPKT_SALT;
-/*
+        TimeSrcId = Cfg.ID;
+
         // Setup HW Timer: input is CC's (27MHz/192)
         // IRQs: UPD is new supercycle, CCR1 is TX, CCR2 is end of Cycle0
         IHwTmr.Init();
@@ -281,11 +277,10 @@ uint8_t rLevel1_t::Init() {
         IHwTmr.EnableIrqOnUpdate();   // New supercycle
         IHwTmr.EnableIrqOnCompare2(); // End of cycle 0
         IHwTmr.EnableIrq(TIM9_IRQn, IRQ_PRIO_VERYHIGH);
-        TimeSrcId = Cfg.ID;
         IHwTmr.Enable();
-*/
+//*/
         // Thread
-        chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
+//        chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return retvOk;
     }
     else return retvFail;
