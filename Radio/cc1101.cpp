@@ -104,12 +104,14 @@ void cc1101_t::SetBitrate(const CCRegValue_t* BRSetup) {
 
 void cc1101_t::TransmitAsyncX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback) {
     EnterTX();
+#if CC_CCA_MODE != 0
     // if prev state == RX, ClearChannelCheck is applied.
     if(IState == CC_STB_RX) {
         DELAY_LOOP_34uS(); // Wait >30 us
         GetStatus();
         if(IState != CC_STB_TX) return; // TX not entered
     }
+#endif
     ICallback = Callback;
     WriteTX(Ptr, Len);
 }

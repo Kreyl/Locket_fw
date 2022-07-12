@@ -88,6 +88,10 @@ public:
     void FlushQueue() { Que.Flush(); }
 } Indi;
 
+void AddToRxTableI(uint8_t AID, uint8_t AType) {
+
+}
+
 void CheckRxTable() {
     // Analyze table: get count of every type near
     int32_t TypesCnt[TYPE_CNT] = {0};
@@ -231,14 +235,10 @@ void OnCmd(Shell_t *PShell) {
         else PShell->Failure();
     }
 
-    else if(PCmd->NameIs("t")) {
-//        uint32_t t = 0;
-        if(PCmd->GetNext<uint32_t>(&rdelay) != retvOk) { PShell->CmdError(); return; }
-//        chSysLock();
-//        AdjustRadioTimeI(t);
-//        chSysUnlock();
-        PShell->Ok();
-    }
+//    else if(PCmd->NameIs("t")) {
+//        if(PCmd->GetNext<uint32_t>(&rdelay) != retvOk) { PShell->CmdError(); return; }
+//        PShell->Ok();
+//    }
 
 #if PILL_ENABLED // ==== Pills ====
     else if(PCmd->NameIs("PillRead32")) {

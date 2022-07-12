@@ -55,7 +55,7 @@ union rPkt_t {
 #define RPKT_SALT   0xCA
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
-#define RCHNL_EACH_OTH  0
+#define RCHNL_EACH_OTH  2
 
 // Feel-Each-Other related
 #define RCYCLE_CNT              5U
@@ -73,8 +73,7 @@ union rPkt_t {
 #define ZERO_ID_INCREMENT       3U // [0;100) -> [3;103) to process start of zero cycle calibration delay
 #define HOPS_CNT_MAX            4U // do not adjust time if too many hops. Required to avoid eternal loops adjustment.
 // Experimental values
-#define ZEROCYCLE_TX_DUR_TICS       36U
-#define NONZEROCYCLE_TX_DUR_TICS    30U
+#define TX_DUR_TICS             60U
 
 #endif
 
@@ -93,19 +92,18 @@ public:
 #if RXT_PKT_REQUIRED
     void AddOrReplaceExistingPkt(rPkt_t &APkt) {
         chSysLock();
+        AddOrReplaceExistingPktI(APkt);
+        chSysUnlock();
+    }
+    void AddOrReplaceExistingPktI(rPkt_t &APkt) {
         for(uint32_t i=0; i<Cnt; i++) {
             if(IBuf[i].ID == APkt.ID) {
                 if(IBuf[i].Rssi < APkt.Rssi) IBuf[i] = APkt; // Replace with newer pkt if RSSI is stronger
-                chSysUnlock();
                 return;
             }
         }
         // Same ID not found
-        if(Cnt < RXTABLE_SZ) {
-            IBuf[Cnt] = APkt;
-            Cnt++;
-        }
-        chSysUnlock();
+        if(Cnt < RXTABLE_SZ) IBuf[Cnt++] = APkt;
     }
 
     uint8_t GetPktByID(uint8_t ID, rPkt_t *ptr) {

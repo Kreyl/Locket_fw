@@ -32,6 +32,8 @@ cc1101_t CC(CC_Setup0);
 #define DBG1_CLR()
 #endif
 
+void AddToRxTableI(uint8_t AID, uint8_t AType);
+
 rLevel1_t Radio;
 
 static Timer_t IHwTmr(TIM9);
@@ -39,7 +41,7 @@ static volatile uint8_t TimeSrc, HopCnt;
 static volatile rPkt_t PktRx, PktTx;
 static volatile uint32_t TimeSrcTimeout = 0;
 
-uint32_t rdelay = 60;
+//uint32_t rdelay = 60;
 
 static inline bool IsInZeroCycle() { return (IHwTmr.GetCounter() < CYCLE_DUR_TICKS); }
 
@@ -61,35 +63,23 @@ static void AdjustRadioTimeI() {
         TimeSrc = PktRx.TimeSrc;
         HopCnt = PktRx.HopCnt + 1;
         TimeSrcTimeout = 0; // Reset Time Src Timeout
-//        IHwTmr.Disable();
         TIM9->SR = 0; // Clear flags
-//        TIM9->CR1 |= TIM_CR1_URS | TIM_CR1_UDIS;
         uint32_t t = PktRx.iTime;
         // Increment time to take into account duration of pkt transmission
-//        t += ZEROCYCLE_TX_DUR_TICS;
-        t += rdelay;
+        t += TX_DUR_TICS;
         IHwTmr.SetCounter(t);
         PrepareNextTx();
-//        TIM9->EGR = TIM_EGR_UG;
-//        TIM9->CR1 &= ~TIM_CR1_UDIS;
-//        IHwTmr.Enable();
-//        PrintfI("nt %d\r", t);
     }
 }
 
 static void RxCallback() {
-//    DBG1_SET();
     if(CC.ReadFIFO((uint8_t*)&PktRx, (int8_t*)&PktRx.Rssi, RPKT_LEN) == retvOk) {  // if pkt successfully received
-//        if(Radio.PktRx.Salt == RPKT_SALT) {
+        if(PktRx.Salt == RPKT_SALT) {
 //        PrintfI("%u ID=%u ts=%u h=%u t=%u\r", IHwTmr.GetCounter(), PktRx.ID, PktRx.TimeSrc, PktRx.HopCnt, PktRx.iTime);
-//        DBG1_CLR();
-        AdjustRadioTimeI();
-//        DBG1_CLR();
-//        Radio.AddPktToRxTable((rPkt_t*)&PktRx);
-//        PrintfI("ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
-//        }
+            AdjustRadioTimeI();
+            AddToRxTableI(PktRx.ID, PktRx.Type);
+        }
     }
-    else PrintfI("errx\r");
     if(IsInZeroCycle()) CC.ReceiveAsyncI(RxCallback);
     else CC.EnterIdle();
     DBG1_CLR();
@@ -98,12 +88,7 @@ static void RxCallback() {
 // After TX done, enter either RX in cycle 0 or Sleep in other case
 static void TxCallback() {
     DBG1_CLR();
-//    CC.PrintStateI();
     if(IsInZeroCycle()) CC.ReceiveAsyncI(RxCallback);
-
-//    else CC.EnterIdle();
-//    uint32_t t = IHwTmr.GetCounter();
-//    PrintfI("%d %d %d\r", PktTx.iTime, t, t - PktTx.iTime);
 }
 
 static void IOnNewSupercycleI() {
@@ -130,8 +115,6 @@ static void IOnTxSlotI() {
     PktTx.iTime = IHwTmr.GetCounter();
     CC.TransmitAsyncX((uint8_t*)&PktTx, RPKT_LEN, TxCallback);
     PrepareNextTx();
-//    PrintfI("txt: %u\r", PktTx.iTime);
-//    DBG1_CLR();
 }
 
 static void IOnCycle0EndI() {
