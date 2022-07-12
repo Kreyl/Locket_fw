@@ -85,6 +85,11 @@ void cc1101_t::PowerOff() {
     EnterPwrDown();
 }
 
+void cc1101_t::PrintStateI() {
+    GetStatus();
+    PrintfI("0x%02X\r", IState);
+}
+
 void cc1101_t::SetChannel(uint8_t AChannel) {
     while(IState != CC_STB_IDLE) EnterIdle();   // CC must be in IDLE mode
     WriteRegister(CC_CHANNR, AChannel);         // Now set channel
@@ -101,12 +106,27 @@ void cc1101_t::TransmitAsyncX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback) {
     EnterTX();
     // if prev state == RX, ClearChannelCheck is applied.
     if(IState == CC_STB_RX) {
-        for(volatile uint32_t i=0; i<30; i++); // Wait >30 us
+        DELAY_LOOP_34uS(); // Wait >30 us
         GetStatus();
-        if(IState != CC_STB_TX) return; // TX not enered
+        if(IState != CC_STB_TX) return; // TX not entered
     }
     ICallback = Callback;
     WriteTX(Ptr, Len);
+}
+
+void cc1101_t::TransmitCcaX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback) {
+    GetStatus();
+    if(IState != CC_STB_RX) {
+        EnterRX(); // if prev state == RX, ClearChannelCheck is applied.
+        DELAY_LOOP_144uS(); // 100...150 uS for 250kBaud
+    }
+    EnterTX();
+    DELAY_LOOP_34uS(); // Wait >30 us
+    GetStatus();
+    if(IState == CC_STB_TX) { // TX entered
+        ICallback = Callback;
+        WriteTX(Ptr, Len);
+    }
 }
 
 void cc1101_t::TransmitAsyncX(uint8_t *Ptr, uint8_t Len) {

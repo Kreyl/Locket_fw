@@ -231,6 +231,15 @@ void OnCmd(Shell_t *PShell) {
         else PShell->Failure();
     }
 
+    else if(PCmd->NameIs("t")) {
+//        uint32_t t = 0;
+        if(PCmd->GetNext<uint32_t>(&rdelay) != retvOk) { PShell->CmdError(); return; }
+//        chSysLock();
+//        AdjustRadioTimeI(t);
+//        chSysUnlock();
+        PShell->Ok();
+    }
+
 #if PILL_ENABLED // ==== Pills ====
     else if(PCmd->NameIs("PillRead32")) {
         int32_t Cnt = 0;

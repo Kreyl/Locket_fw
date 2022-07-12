@@ -58,6 +58,7 @@ public:
     void SetBitrate(const CCRegValue_t* BRSetup);
     // State change
     void TransmitAsyncX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback);
+    void TransmitCcaX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback);
     void TransmitAsyncX(uint8_t *Ptr, uint8_t Len);
     void Transmit(uint8_t *Ptr, uint8_t Len);
     uint8_t Receive(uint32_t Timeout_ms, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
@@ -79,6 +80,9 @@ public:
         } while(IState != CC_STB_IDLE);
         return retvOk;
     }
+
+    void PrintStateI();
+
     // Setup
     void DoRxAfterRxAndRxAfterTx()   { WriteRegister(CC_MCSM1, (CC_MCSM1_VALUE | 0x0F)); }
     void DoRxAfterRxAndIdleAfterTx() { WriteRegister(CC_MCSM1, ((CC_MCSM1_VALUE | 0x0C) & 0xFC)); }
@@ -99,3 +103,6 @@ public:
         IGdo0(AGd0Gpio, AGdo0, pudNone, CCIrqHandler),
         IState(0), ThdRef(nullptr) {}
 };
+
+#define DELAY_LOOP_34uS()       { for(volatile uint32_t i=0; i<12; i++); } // 12 leads to 34us @ 4MHz sys clk
+#define DELAY_LOOP_144uS()      { for(volatile uint32_t i=0; i<54; i++); } // 54 leads to 144us @ 4MHz sys clk

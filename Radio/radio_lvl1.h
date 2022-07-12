@@ -35,12 +35,13 @@ union rPkt_t {
     uint32_t DW32[2];
     struct {
         uint8_t ID; // Required to distinct packets from same src
-        uint8_t TimeSrcID;
+        uint8_t TimeSrc;
+        uint8_t HopCnt;
         uint16_t iTime;
         // Payload
         uint8_t Type;
         int8_t Rssi; // Will be set after RX. Transmitting is useless, but who cares.
-        uint16_t Salt;
+        uint8_t Salt;
     } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {
         DW32[0] = Right.DW32[0];
@@ -51,24 +52,29 @@ union rPkt_t {
 #endif
 
 #define RPKT_LEN    sizeof(rPkt_t)
-#define RPKT_SALT   0xCA11U
+#define RPKT_SALT   0xCA
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
 #define RCHNL_EACH_OTH  0
 
 // Feel-Each-Other related
 #define RCYCLE_CNT              5U
-#define RSLOT_CNT               108U
-#define SCYCLES_TO_KEEP_TIMESRC 7   // After that amount of supercycles, TimeSrcID become self ID
+#define RSLOT_CNT               104U // From excel
+#define SCYCLES_TO_KEEP_TIMESRC 4U  // After that amount of supercycles, TimeSrcID become self ID
 
 // Timings: based on (27MHz/192) clock of CC, divided by 4 with prescaler
-#define RTIM_PRESCALER          0U   // From excel
-#define TIMESLOT_DUR_TICKS      114U // From excel
+#define RTIM_PRESCALER          1U  // From excel
+#define TIMESLOT_DUR_TICKS      72U // From excel
 #define CYCLE_DUR_TICKS         (TIMESLOT_DUR_TICKS * RSLOT_CNT)
 #define SUPERCYCLE_DUR_TICKS    (CYCLE_DUR_TICKS * RCYCLE_CNT)
-
-// XXX
-#define ADJUST_DELAY_TICS       72
+#if SUPERCYCLE_DUR_TICKS >= 0xFFFF
+#error "Too long supercycle"
+#endif
+#define ZERO_ID_INCREMENT       3U // [0;100) -> [3;103) to process start of zero cycle calibration delay
+#define HOPS_CNT_MAX            4U // do not adjust time if too many hops. Required to avoid eternal loops adjustment.
+// Experimental values
+#define ZEROCYCLE_TX_DUR_TICS       36U
+#define NONZEROCYCLE_TX_DUR_TICS    30U
 
 #endif
 
@@ -163,6 +169,7 @@ private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
 public:
     EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
+    void AddPktToRxTable(rPkt_t *PPkt) { RxTableW->AddOrReplaceExistingPkt(*PPkt); }
     RxTable_t& GetRxTable() {
         chSysLock();
         RxTable_t* RxTableR;
@@ -185,3 +192,5 @@ public:
 };
 
 extern rLevel1_t Radio;
+
+extern uint32_t rdelay;
