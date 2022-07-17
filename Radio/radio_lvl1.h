@@ -106,9 +106,9 @@ public:
         return IBuf[Indx];
     }
 
-    void ProcessCountingDistinctTypes(uint32_t *TypeTable, uint8_t MaxType) {
+    void ProcessCountingDistinctTypes(uint32_t *TypeTable, uint8_t TableSz) {
         for(auto &Payload : IBuf) {
-            if(Payload.IsValid and Payload.Type <= MaxType) {
+            if(Payload.IsValid and Payload.Type < TableSz) {
                 TypeTable[Payload.Type]++;
                 Payload.IsValid = 0; // Clear item for future use
             }

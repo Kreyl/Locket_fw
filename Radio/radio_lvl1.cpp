@@ -37,15 +37,16 @@ static volatile uint32_t TimeSrcTimeout = 0;
 
 // ================== Tx preparation and time adjustment =======================
 static void PrepareNextTx() {
-//    if(Cfg.MustTxInEachOther()) {
-    IHwTmr.EnableIrqOnCompare1(); // Always, as nothing changes when enabled
-    uint32_t TxTime = (Cfg.ID + ZERO_ID_INCREMENT) * TIMESLOT_DUR_TICKS; // skip first timeslot to allow recalibration to complete
-    uint32_t t = IHwTmr.GetCounter();
-    while(t >= TxTime) TxTime += CYCLE_DUR_TICKS;
-    if(TxTime < SUPERCYCLE_DUR_TICKS) IHwTmr.SetCCR1(TxTime); // Do not set CCR greater than TOP value, as it will fire at overflow.
-    PktTx.ID = Cfg.ID;
-    PktTx.Type = Cfg.Type;
-    //    else IHwTmr.DisableIrqOnCompare1();
+    if(Cfg.MustTxInEachOther()) {
+        IHwTmr.EnableIrqOnCompare1(); // Always, as nothing changes when enabled
+        uint32_t TxTime = (Cfg.ID + ZERO_ID_INCREMENT) * TIMESLOT_DUR_TICKS; // skip first timeslot to allow recalibration to complete
+        uint32_t t = IHwTmr.GetCounter();
+        while(t >= TxTime) TxTime += CYCLE_DUR_TICKS;
+        if(TxTime < SUPERCYCLE_DUR_TICKS) IHwTmr.SetCCR1(TxTime); // Do not set CCR greater than TOP value, as it will fire at overflow.
+        PktTx.ID = Cfg.ID;
+        PktTx.Type = Cfg.Type;
+    }
+    else IHwTmr.DisableIrqOnCompare1();
 }
 
 // Adjust time if hops cnt is not too large and if theirs TimeSrc < OursTimeSrc or if TimeSrc is the same, use one with less hops.
