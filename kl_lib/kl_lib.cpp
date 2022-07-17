@@ -11,6 +11,7 @@
 #include "MsgQ.h"
 #include <malloc.h>
 #include <string>
+#include "board.h"
 
 #if 0 // ============================ General ==================================
 // To replace standard error handler in case of virtual methods implementation

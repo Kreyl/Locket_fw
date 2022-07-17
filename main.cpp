@@ -106,7 +106,7 @@ void CheckRxTable() {
 
 int main(void) {
     // ==== Init Vcore & clock system ====
-    SetupVCore(vcore1V5);
+    SetupVCore(vcore1V2);
     Clk.SetMSI4MHz();
     Clk.UpdateFreqValues();
 
