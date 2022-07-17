@@ -18,6 +18,7 @@
 #define ID_MAX                  99
 #define ID_DEFAULT              ID_MIN
 
+// === Types ===
 #define TYPE_LIGHTSIDE          0
 #define TYPE_DARKSIDE           1
 #define TYPE_OBSERVER           2

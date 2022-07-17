@@ -8,11 +8,7 @@
 #include "radio_lvl1.h"
 #include "cc1101.h"
 #include "uart.h"
-
-#include "led.h"
-#include "Sequences.h"
 #include "Config.h"
-
 
 cc1101_t CC(CC_Setup0);
 
@@ -32,8 +28,6 @@ cc1101_t CC(CC_Setup0);
 #define DBG1_CLR()
 #endif
 
-void AddToRxTableI(uint8_t AID, uint8_t AType);
-
 rLevel1_t Radio;
 
 static Timer_t IHwTmr(TIM9);
@@ -41,10 +35,7 @@ static volatile uint8_t TimeSrc, HopCnt;
 static volatile rPkt_t PktRx, PktTx;
 static volatile uint32_t TimeSrcTimeout = 0;
 
-//uint32_t rdelay = 60;
-
-static inline bool IsInZeroCycle() { return (IHwTmr.GetCounter() < CYCLE_DUR_TICKS); }
-
+// ================== Tx preparation and time adjustment =======================
 static void PrepareNextTx() {
 //    if(Cfg.MustTxInEachOther()) {
     IHwTmr.EnableIrqOnCompare1(); // Always, as nothing changes when enabled
@@ -61,7 +52,7 @@ static void PrepareNextTx() {
 static void AdjustRadioTimeI() {
     if(PktRx.TimeSrc < Cfg.ID and PktRx.HopCnt < HOPS_CNT_MAX and (PktRx.TimeSrc < TimeSrc or (PktRx.TimeSrc == TimeSrc and PktRx.HopCnt < HopCnt))) {
         TimeSrc = PktRx.TimeSrc;
-        HopCnt = PktRx.HopCnt + 1;
+        HopCnt = PktRx.HopCnt + 1; // Increment hopcnt to show that it is from someone else
         TimeSrcTimeout = 0; // Reset Time Src Timeout
         TIM9->SR = 0; // Clear flags
         uint32_t t = PktRx.iTime;
@@ -72,12 +63,15 @@ static void AdjustRadioTimeI() {
     }
 }
 
+static inline bool IsInZeroCycle() { return (IHwTmr.GetCounter() < CYCLE_DUR_TICKS); }
+
+// =========================== TX and RX callbacks =============================
 static void RxCallback() {
     if(CC.ReadFIFO((uint8_t*)&PktRx, (int8_t*)&PktRx.Rssi, RPKT_LEN) == retvOk) {  // if pkt successfully received
         if(PktRx.Salt == RPKT_SALT) {
 //        PrintfI("%u ID=%u ts=%u h=%u t=%u\r", IHwTmr.GetCounter(), PktRx.ID, PktRx.TimeSrc, PktRx.HopCnt, PktRx.iTime);
             AdjustRadioTimeI();
-            AddToRxTableI(PktRx.ID, PktRx.Type);
+            Radio.AddPktToRxTableI((rPkt_t*)&PktRx);
         }
     }
     if(IsInZeroCycle()) CC.ReceiveAsyncI(RxCallback);
@@ -91,14 +85,18 @@ static void TxCallback() {
     if(IsInZeroCycle()) CC.ReceiveAsyncI(RxCallback);
 }
 
+// ============================ Timing IRQ handlers ============================
 static void IOnNewSupercycleI() {
     DBG2_SET();
+    if(Radio.TxPower != Cfg.TxPower) {
+        Radio.TxPower = Cfg.TxPower;
+        CC.SetTxPower(Cfg.TxPower);
+    }
     // Check if time to reset TimeSrc to self ID. Will overflow eventually, does not make sense
     if(++TimeSrcTimeout > SCYCLES_TO_KEEP_TIMESRC) {
         TimeSrc = Cfg.ID;
         HopCnt = 0;
     }
-//    PrintfI("Src %u %u\r", TimeSrc, HopCnt);
     CC.Recalibrate();
     // Enter RX if ID is not 0 - otherwise immediate TX is required
     CC.ReceiveAsyncI(RxCallback);
@@ -109,7 +107,6 @@ static void IOnNewSupercycleI() {
 // Will be here if IRQ is enabled, which is determined at end of supercycle
 static void IOnTxSlotI() {
     DBG1_SET();
-    // Transmit pkt
     PktTx.TimeSrc = TimeSrc;
     PktTx.HopCnt = HopCnt;
     PktTx.iTime = IHwTmr.GetCounter();
@@ -121,7 +118,7 @@ static void IOnCycle0EndI() {
     CC.EnterIdle();
 }
 
-
+// ==== Timer IRQ ====
 extern "C"
 void VectorA4() {
     CH_IRQ_PROLOGUE();
@@ -135,63 +132,6 @@ void VectorA4() {
     CH_IRQ_EPILOGUE();
 }
 
-#if 0 // ================================ Task =================================
-static THD_WORKING_AREA(warLvl1Thread, 256);
-__noreturn
-static void rLvl1Thread(void *arg) {
-    chRegSetThreadName("rLvl1");
-    Radio.ITask();
-}
-
-__noreturn
-void rLevel1_t::ITask() {
-    while(true) {
-        CC.Recalibrate();
-//        CC.Transmit((uint8_t*)&PktTx, RPKT_LEN);
-//        CC.TransmitAsyncX((uint8_t*)&PktTx, RPKT_LEN, TxCallback);
-//        chThdSleepMilliseconds(45);
-
-        if(CC.Receive(360, (uint8_t*)&PktRx, RPKT_LEN, (int8_t*)&PktRx.Rssi) == retvOk) {
-            Printf("rx\r");
-        }
-        Printf("t");
-
-//
-        /*
-        RMsg_t msg = RMsgQ.Fetch(TIME_INFINITE);
-        switch(msg.Cmd) {
-            case rmsgEachOthTx:
-                CC.EnterIdle();
-                CCState = ccstTx;
-                PktTx.ID = Cfg.ID;
-//                PktTx.Cycle = RadioTime.CycleN;
-                PktTx.TimeSrcID = RadioTime.TimeSrcId;
-                PktTx.Salt = 0xCA11;
-                CC.Recalibrate();
-                CC.Transmit(&PktTx, RPKT_LEN);
-                break;
-
-            case rmsgEachOthRx:
-                CCState = ccstRx;
-                CC.ReceiveAsync(RxCallback);
-                break;
-
-            case rmsgEachOthSleep:
-                CCState = ccstIdle;
-                CC.EnterIdle();
-                break;
-
-            case rmsgPktRx:
-                CCState = ccstIdle;
-//                            Printf("ID=%u; t=%d; Rssi=%d\r", PktRx.ID, PktRx.Type, PktRx.Rssi);
-                RxTableW->AddOrReplaceExistingPkt(PktRx);
-                break;
-        } // switch
-        */
-    } // while true
-}
-#endif // task
-
 #if 1 // ============================
 uint8_t rLevel1_t::Init() {
 #ifdef DBG_PINS
@@ -199,15 +139,12 @@ uint8_t rLevel1_t::Init() {
     PinSetupOut(DBG_GPIO2, DBG_PIN2, omPushPull);
 #endif
 
-    RMsgQ.Init();
     if(CC.Init() == retvOk) {
         CC.SetPktSize(RPKT_LEN);
         CC.SetChannel(RCHNL_EACH_OTH);
-//        CC.SetTxPower(Cfg.TxPower);
-        CC.SetTxPower(CC_Pwr0dBm);
+        CC.SetTxPower(Cfg.TxPower);
+        Radio.TxPower = Cfg.TxPower;
         CC.SetBitrate(CCBitrate500k);
-//        CC.SetBitrate(CCBitrate100k);
-//        CC.EnterPwrDown();
 
         PktTx.Salt = RPKT_SALT;
         TimeSrc = Cfg.ID;
@@ -229,9 +166,7 @@ uint8_t rLevel1_t::Init() {
         IHwTmr.EnableIrqOnCompare2(); // End of cycle 0
         IHwTmr.EnableIrq(TIM9_IRQn, IRQ_PRIO_VERYHIGH);
         IHwTmr.Enable();
-//*/
-        // Thread
-//        chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
+
         return retvOk;
     }
     else return retvFail;

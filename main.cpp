@@ -58,8 +58,10 @@ private:
 public:
     void ShowSelfType() { Led.StartOrRestart(Lsqs[Cfg.Type]); }
 
-    void ShowWhoIsNear(int32_t *PTypesNear) {
+    void ShowWhoIsNear(uint32_t *PTypesNear) {
         for(int i=0; i<TYPE_CNT; i++) {
+            Printf("%u: %u\r", i, PTypesNear[i]);
+            /*
             uint32_t Cnt = PTypesNear[i]; // Cnt of type which is near
             switch(Cnt) {
                 case 0: break; // Noone of such kind is around
@@ -76,8 +78,10 @@ public:
                     Que.PutIfNotOverflow(Lsqs[i]);
                     break;
             } // switch
+            */
         } // for
-        ProcessQue();
+        PrintfEOL();
+//        ProcessQue();
     }
 
     void ProcessQue() {
@@ -94,12 +98,9 @@ void AddToRxTableI(uint8_t AID, uint8_t AType) {
 
 void CheckRxTable() {
     // Analyze table: get count of every type near
-    int32_t TypesCnt[TYPE_CNT] = {0};
-    RxTable_t& Tbl = Radio.GetRxTable();
-    for(uint32_t i=0; i<Tbl.Cnt; i++) { // i is just number of pkt in table, no relation with type
-        rPkt_t Pkt = Tbl[i];
-        if(Pkt.Type < TYPE_CNT) TypesCnt[Pkt.Type]++;
-    }
+    uint32_t TypesCnt[TYPE_CNT] = {0};
+    RxTable_t *Tbl = Radio.GetRxTable();
+    Tbl->ProcessCountingDistinctTypes(TypesCnt, TYPE_OBSERVER);
     Indi.ShowWhoIsNear(TypesCnt);
 }
 #endif

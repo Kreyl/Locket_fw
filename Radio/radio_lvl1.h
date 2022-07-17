@@ -78,97 +78,61 @@ union rPkt_t {
 #endif
 
 #if 1 // ============================= RX Table ================================
+struct rPayload_t {
+    uint8_t IsValid = 0;
+    uint8_t Type;
+} __attribute__ ((__packed__));
+
 #define RXTABLE_SZ              RSLOT_CNT
-#define RXT_PKT_REQUIRED        TRUE
+
+// RxTable must be cleared during processing
 class RxTable_t {
 private:
-#if RXT_PKT_REQUIRED
-    rPkt_t IBuf[RXTABLE_SZ];
-#else
-    uint8_t IdBuf[RXTABLE_SZ];
-#endif
+    rPayload_t IBuf[RXTABLE_SZ];
 public:
-    uint32_t Cnt = 0;
-#if RXT_PKT_REQUIRED
-    void AddOrReplaceExistingPkt(rPkt_t &APkt) {
+    void AddOrReplaceExistingPkt(rPkt_t *APkt) {
         chSysLock();
         AddOrReplaceExistingPktI(APkt);
         chSysUnlock();
     }
-    void AddOrReplaceExistingPktI(rPkt_t &APkt) {
-        for(uint32_t i=0; i<Cnt; i++) {
-            if(IBuf[i].ID == APkt.ID) {
-                if(IBuf[i].Rssi < APkt.Rssi) IBuf[i] = APkt; // Replace with newer pkt if RSSI is stronger
-                return;
-            }
+    void AddOrReplaceExistingPktI(rPkt_t *pPkt) {
+        if(pPkt->ID < RXTABLE_SZ) {
+            IBuf[pPkt->ID].Type = pPkt->Type;
+            IBuf[pPkt->ID].IsValid = 1;
         }
-        // Same ID not found
-        if(Cnt < RXTABLE_SZ) IBuf[Cnt++] = APkt;
     }
 
-    uint8_t GetPktByID(uint8_t ID, rPkt_t *ptr) {
-        for(uint32_t i=0; i<Cnt; i++) {
-            if(IBuf[i].ID == ID) {
-                *ptr = IBuf[i];
-                return retvOk;
-            }
-        }
-        return retvFail;
-    }
-
-    bool IDPresents(uint8_t ID) {
-        for(uint32_t i=0; i<Cnt; i++) {
-            if(IBuf[i].ID == ID) return true;
-        }
-        return false;
-    }
-
-    rPkt_t& operator[](const int32_t Indx) {
+    rPayload_t& operator[](const int32_t Indx) {
         return IBuf[Indx];
     }
-#else
-    void AddId(uint8_t ID) {
-        if(Cnt >= RXTABLE_SZ) return;   // Buffer is full, nothing to do here
-        for(uint32_t i=0; i<Cnt; i++) {
-            if(IdBuf[i] == ID) return;
+
+    void ProcessCountingDistinctTypes(uint32_t *TypeTable, uint8_t MaxType) {
+        for(auto &Payload : IBuf) {
+            if(Payload.IsValid and Payload.Type <= MaxType) {
+                TypeTable[Payload.Type]++;
+                Payload.IsValid = 0; // Clear item for future use
+            }
         }
-        IdBuf[Cnt] = ID;
-        Cnt++;
     }
 
-#endif
-
     void Print() {
-        Printf("RxTable Cnt: %u\r", Cnt);
-        for(uint32_t i=0; i<Cnt; i++) {
-#if RXT_PKT_REQUIRED
-            Printf("ID: %u; Type: %u\r", IBuf[i].ID, IBuf[i].Type);
-#else
-            Printf("ID: %u\r", IdBuf[i]);
-#endif
+        Printf("RxTable\r");
+        for(uint32_t i=0; i<RXTABLE_SZ; i++) {
+            if(IBuf[i].IsValid) Printf("ID: %u; Type: %u\r", i, IBuf[i].Type);
         }
     }
 };
 #endif
 
-// Message queue
-#define R_MSGQ_LEN      9
-enum RmsgId_t { rmsgEachOthRx, rmsgEachOthTx, rmsgEachOthSleep, rmsgPktRx };
-struct RMsg_t {
-    RmsgId_t Cmd;
-    uint8_t Value;
-    RMsg_t() : Cmd(rmsgEachOthSleep), Value(0) {}
-    RMsg_t(RmsgId_t ACmd) : Cmd(ACmd), Value(0) {}
-    RMsg_t(RmsgId_t ACmd, uint8_t AValue) : Cmd(ACmd), Value(AValue) {}
-} __attribute__((packed));
-
 class rLevel1_t {
 private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
 public:
-    EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
-    void AddPktToRxTable(rPkt_t *PPkt) { RxTableW->AddOrReplaceExistingPkt(*PPkt); }
-    RxTable_t& GetRxTable() {
+    uint8_t TxPower;
+
+    void AddPktToRxTableI(rPkt_t *pPkt) { RxTableW->AddOrReplaceExistingPktI(pPkt); }
+
+    RxTable_t* GetRxTable() {
         chSysLock();
         RxTable_t* RxTableR;
         // Switch tables
@@ -180,15 +144,14 @@ public:
             RxTableW = &RxTable1;
             RxTableR = &RxTable2;
         }
-        RxTableW->Cnt = 0; // Clear it
         chSysUnlock();
-        return *RxTableR;
+        return RxTableR;
     }
+
     uint8_t Init();
+
     // Inner use
     void ITask();
 };
 
 extern rLevel1_t Radio;
-
-extern uint32_t rdelay;
