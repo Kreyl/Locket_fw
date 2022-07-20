@@ -11,6 +11,8 @@
 #include <stdarg.h>
 #include "kl_lib.h"
 #include "color.h"
+#include "kl_string.h"
+#include "board.h"
 
 #define DELIMITERS      " ,"
 #define PREV_CHAR_TIMEOUT_ms    99UL
