@@ -34,6 +34,7 @@ static Timer_t IHwTmr(TIM9);
 static volatile uint8_t TimeSrc, HopCnt;
 static volatile rPkt_t PktRx, PktTx;
 static volatile uint32_t TimeSrcTimeout = 0;
+static bool IsTxFar = false;
 
 // ================== Tx preparation and time adjustment =======================
 static void PrepareNextTx() {
@@ -64,7 +65,11 @@ static void AdjustRadioTimeI() {
     }
 }
 
-static inline bool IsInZeroCycle() { return (IHwTmr.GetCounter() < CYCLE_DUR_TICKS); }
+static inline bool IsIn0Cycle() {
+    return (IHwTmr.GetCounter() < FIRST_CYCLE_START_TICK);
+}
+
+static inline bool IsInFarRxCycle() { return (IHwTmr.GetCounter() >= FAR_CYCLE_START_TICK); }
 
 // =========================== TX and RX callbacks =============================
 static void RxCallback() {
@@ -75,7 +80,7 @@ static void RxCallback() {
             Radio.AddPktToRxTableI((rPkt_t*)&PktRx);
         }
     }
-    if(IsInZeroCycle()) CC.ReceiveAsyncI(RxCallback);
+    if(IsIn0Cycle() or IsInFarRxCycle()) CC.ReceiveAsyncI(RxCallback);
     else CC.EnterIdle();
     DBG1_CLR();
 }
@@ -83,31 +88,70 @@ static void RxCallback() {
 // After TX done, enter either RX in cycle 0 or Sleep in other case
 static void TxCallback() {
     DBG1_CLR();
-    if(IsInZeroCycle()) CC.ReceiveAsyncI(RxCallback);
+    if(IsTxFar) {
+        if(Radio.CntTxFar > 0) {
+            Radio.CntTxFar--;
+            CC.Recalibrate();
+            CC.TransmitAsyncX((uint8_t*)&Radio.PktTxFar, RPKT_LEN, TxCallback);
+            DBG1_SET();
+        }
+    }
+    else if(IsInFarRxCycle()) {
+        CC.SetChannel(RCHNL_FAR);
+        CC.SetBitrate(CCBitrate10k);
+        CC.ReceiveAsyncI(RxCallback);
+    }
+    else if(IsIn0Cycle()) CC.ReceiveAsyncI(RxCallback);
 }
 
 // ============================ Timing IRQ handlers ============================
 static void IOnNewSupercycleI() {
     DBG2_SET();
-    if(Radio.TxPower != Cfg.TxPower) {
-        Radio.TxPower = Cfg.TxPower;
+    CC.EnterIdle();
+    if(Radio.CntTxFar > 0) {
+        IsTxFar = true;
+        Radio.CntTxFar--;
+        DBG1_SET();
+        CC.SetChannel(RCHNL_FAR);
+        CC.SetTxPower(TX_PWR_FAR);
+        CC.SetBitrate(CCBitrate10k);
+        Radio.PktTxFar.ID = Cfg.ID;
+        Radio.PktTxFar.iTime = IHwTmr.GetCounter(); // Just to salt
+        CC.Recalibrate();
+        CC.TransmitAsyncX((uint8_t*)&Radio.PktTxFar, RPKT_LEN, TxCallback);
+    }
+    else {
+        // Always return to FeelEachOther, as last cycle was for far communication
+        CC.SetChannel(RCHNL_EACH_OTH);
         CC.SetTxPower(Cfg.TxPower);
+        CC.SetBitrate(CCBitrate500k);
+        IsTxFar = false;
+
+        // Check if time to reset TimeSrc to self ID. Will overflow eventually, does not make sense
+        if(++TimeSrcTimeout > SCYCLES_TO_KEEP_TIMESRC) {
+            TimeSrc = Cfg.ID;
+            HopCnt = 0;
+        }
+
+        CC.Recalibrate();
+        CC.ReceiveAsyncI(RxCallback);
+        PrepareNextTx(); // Prepare to tx if needed
     }
-    // Check if time to reset TimeSrc to self ID. Will overflow eventually, does not make sense
-    if(++TimeSrcTimeout > SCYCLES_TO_KEEP_TIMESRC) {
-        TimeSrc = Cfg.ID;
-        HopCnt = 0;
-    }
-    CC.Recalibrate();
-    // Enter RX if ID is not 0 - otherwise immediate TX is required
-    CC.ReceiveAsyncI(RxCallback);
-    PrepareNextTx(); // Prepare to tx if needed
     DBG2_CLR();
 }
 
 // Will be here if IRQ is enabled, which is determined at end of supercycle
 static void IOnTxSlotI() {
+    if(IsTxFar) return;
     DBG1_SET();
+    if(IsInFarRxCycle()) {
+        uint8_t sta = CC.GetPktStatus();
+//        PrintfI("0x%02X\r", sta);
+        if(sta & 0x40) return;
+        CC.SetChannel(RCHNL_EACH_OTH);
+        CC.SetTxPower(Cfg.TxPower);
+        CC.SetBitrate(CCBitrate500k);
+    }
     PktTx.TimeSrc = TimeSrc;
     PktTx.HopCnt = HopCnt;
     PktTx.iTime = IHwTmr.GetCounter();
@@ -115,8 +159,23 @@ static void IOnTxSlotI() {
     PrepareNextTx();
 }
 
-static void IOnCycle0EndI() {
+static void IOnCycleNEndI() {
+    if(IsTxFar) return;
     CC.EnterIdle();
+    // Process cycle0 end
+    uint32_t TimeOfFire = IHwTmr.GetCCR2();
+    if(TimeOfFire == FIRST_CYCLE_START_TICK) {
+         IHwTmr.SetCCR2(FAR_CYCLE_START_TICK);
+    }
+    // Process Far cycle start
+    else if(TimeOfFire == FAR_CYCLE_START_TICK) {
+        IHwTmr.SetCCR2(FIRST_CYCLE_START_TICK);
+        // Receive at far settings
+        CC.SetChannel(RCHNL_FAR);
+        CC.SetBitrate(CCBitrate10k);
+        CC.Recalibrate();
+        CC.ReceiveAsyncI(RxCallback);
+    }
 }
 
 // ==== Timer IRQ ====
@@ -127,7 +186,7 @@ void VectorA4() {
     uint32_t SR = TIM9->SR & TIM9->DIER; // Process enabled irqs only
     TIM9->SR = 0; // Clear flags
     if(SR & TIM_SR_CC1IF) IOnTxSlotI();
-    if(SR & TIM_SR_CC2IF) IOnCycle0EndI();
+    if(SR & TIM_SR_CC2IF) IOnCycleNEndI();
     if(SR & TIM_SR_UIF)   IOnNewSupercycleI();
     chSysUnlockFromISR();
     CH_IRQ_EPILOGUE();
@@ -144,10 +203,10 @@ uint8_t rLevel1_t::Init() {
         CC.SetPktSize(RPKT_LEN);
         CC.SetChannel(RCHNL_EACH_OTH);
         CC.SetTxPower(Cfg.TxPower);
-        Radio.TxPower = Cfg.TxPower;
         CC.SetBitrate(CCBitrate500k);
 
         PktTx.Salt = RPKT_SALT;
+        Radio.PktTxFar.Salt = RPKT_SALT;
         TimeSrc = Cfg.ID;
         HopCnt = 0;
 
@@ -161,7 +220,7 @@ uint8_t rLevel1_t::Init() {
         // Setup timings
         IHwTmr.SetPrescaler(RTIM_PRESCALER);
         IHwTmr.SetTopValue(SUPERCYCLE_DUR_TICKS); // Will update at supercycle end
-        IHwTmr.SetCCR2(CYCLE_DUR_TICKS);          // Will fire at end of cycle 0
+        IHwTmr.SetCCR2(FIRST_CYCLE_START_TICK);   // Will fire at end of cycle 0
         // Setup IRQs
         IHwTmr.EnableIrqOnUpdate();   // New supercycle
         IHwTmr.EnableIrqOnCompare2(); // End of cycle 0

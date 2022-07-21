@@ -191,7 +191,7 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
 #define SHOWTIME        270
-#define PAUSETIME       720
+#define PAUSETIME       360
 #define SHORTPAUSETIME  72
 
 const LedRGBChunk_t lsqAri[] = {
@@ -219,7 +219,7 @@ const LedRGBChunk_t lsqSouth[] = {
 };
 
 const LedRGBChunk_t lsqVatey[] = {
-        {csSetup, 0, clCyan},      {csWait, SHOWTIME},
+        {csSetup, 0, clGreen},      {csWait, SHOWTIME},
         {csSetup, 0, clBlack},     {csWait, PAUSETIME},
         {csEnd},
 };

@@ -547,6 +547,11 @@ public:
     void SetCCR3(uint32_t AValue) const { ITmr->CCR3 = AValue; }
     void SetCCR4(uint32_t AValue) const { ITmr->CCR4 = AValue; }
 
+    uint32_t GetCCR1() const { return ITmr->CCR1; }
+    uint32_t GetCCR2() const { return ITmr->CCR2; }
+    uint32_t GetCCR3() const { return ITmr->CCR3; }
+    uint32_t GetCCR4() const { return ITmr->CCR4; }
+
     // Master/Slave
     void SetTriggerInput(TmrTrigInput_t TrgInput) const {
         uint16_t tmp = ITmr->SMCR;

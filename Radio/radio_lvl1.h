@@ -56,11 +56,13 @@ union rPkt_t {
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
 #define RCHNL_EACH_OTH  2
+#define RCHNL_FAR       0
+#define TX_PWR_FAR      CC_PwrPlus10dBm
 
 // Feel-Each-Other related
-#define RCYCLE_CNT              5U
-#define RSLOT_CNT               104U // From excel
-#define SCYCLES_TO_KEEP_TIMESRC 4U  // After that amount of supercycles, TimeSrcID become self ID
+#define RCYCLE_CNT              6U
+#define RSLOT_CNT               54U
+#define SCYCLES_TO_KEEP_TIMESRC 5U  // After that amount of supercycles, TimeSrcID become self ID
 
 // Timings: based on (27MHz/192) clock of CC, divided by 4 with prescaler
 #define RTIM_PRESCALER          1U  // From excel
@@ -74,6 +76,10 @@ union rPkt_t {
 #define HOPS_CNT_MAX            4U // do not adjust time if too many hops. Required to avoid eternal loops adjustment.
 // Experimental values
 #define TX_DUR_TICS             60U
+
+#define FIRST_CYCLE_START_TICK  CYCLE_DUR_TICKS
+#define FAR_CYCLE_INDX          (RCYCLE_CNT - 1U)
+#define FAR_CYCLE_START_TICK    (FAR_CYCLE_INDX * CYCLE_DUR_TICKS)
 
 #endif
 
@@ -128,8 +134,8 @@ class rLevel1_t {
 private:
     RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
 public:
-    uint8_t TxPower;
-
+    int32_t CntTxFar = 0;
+    rPkt_t PktTxFar;
     void AddPktToRxTableI(rPkt_t *pPkt) { RxTableW->AddOrReplaceExistingPktI(pPkt); }
 
     RxTable_t* GetRxTable() {
@@ -149,6 +155,7 @@ public:
     }
 
     uint8_t Init();
+    void DoTransmitFar(uint32_t TxCnt)  { CntTxFar = TxCnt; }
 
     // Inner use
     void ITask();

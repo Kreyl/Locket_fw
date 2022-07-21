@@ -97,14 +97,6 @@ public:
         // Ari / Kaesu
         if(PTypesNear[TYPE_ARI]) AriTime = ARI_KAESU_IND_TIME_S;
         if(PTypesNear[TYPE_KAESU]) KaesuTime = ARI_KAESU_IND_TIME_S;
-        // Check changes
-        bool HasChanged = false;
-        if(TypeHasChanged(PrevTypes[TYPE_NORTH], PTypesNear[TYPE_NORTH])) HasChanged = true;
-        if(TypeHasChanged(PrevTypes[TYPE_SOUTH], PTypesNear[TYPE_SOUTH])) HasChanged = true;
-        if(TypeHasChanged(PrevTypes[TYPE_VATEY], PTypesNear[TYPE_VATEY])) HasChanged = true;
-        PrevTypes[TYPE_NORTH] = PTypesNear[TYPE_NORTH];
-        PrevTypes[TYPE_SOUTH] = PTypesNear[TYPE_SOUTH];
-        PrevTypes[TYPE_VATEY] = PTypesNear[TYPE_VATEY];
 
         // === Show who is near ===
         // Ari & Kaesu
@@ -118,12 +110,25 @@ public:
             Vibro.StartOrContinue(vsqBrr);
             KaesuTime -= ARI_KAESU_TIME_DECREMENT;
         }
-        // Others
-        PutNumberToQ(PTypesNear[TYPE_NORTH], lsqNorth);
-        PutNumberToQ(PTypesNear[TYPE_SOUTH], lsqSouth);
-        PutNumberToQ(PTypesNear[TYPE_VATEY], lsqVatey);
+
+        if(!(AriTime > 0 or KaesuTime > 0)) {
+            // Check changes
+            bool HasChanged = false;
+            if(TypeHasChanged(PrevTypes[TYPE_NORTH], PTypesNear[TYPE_NORTH])) HasChanged = true;
+            if(TypeHasChanged(PrevTypes[TYPE_SOUTH], PTypesNear[TYPE_SOUTH])) HasChanged = true;
+            if(TypeHasChanged(PrevTypes[TYPE_VATEY], PTypesNear[TYPE_VATEY])) HasChanged = true;
+            PrevTypes[TYPE_NORTH] = PTypesNear[TYPE_NORTH];
+            PrevTypes[TYPE_SOUTH] = PTypesNear[TYPE_SOUTH];
+            PrevTypes[TYPE_VATEY] = PTypesNear[TYPE_VATEY];
+
+            // Others
+            PutNumberToQ(PTypesNear[TYPE_NORTH], lsqNorth);
+            PutNumberToQ(PTypesNear[TYPE_SOUTH], lsqSouth);
+            PutNumberToQ(PTypesNear[TYPE_VATEY], lsqVatey);
+            if(HasChanged and Cfg.VibroEn) Vibro.StartIfIdle(vsqBrrBrr);
+        }
         ProcessQue();
-        if(HasChanged and Cfg.VibroEn) Vibro.StartIfIdle(vsqBrrBrr);
+
     }
 
     void ProcessQue() {
@@ -268,7 +273,7 @@ void ReadAndSetupMode() {
     // Select power
     b &= 0b1111; // Remove high bits = group 5678
     Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
-    Printf("Type: %u; VibroEn: %u; Pwr: %S\r", Cfg.Type,  CC_PwrToString(Cfg.TxPower));
+    Printf("Type: %u; VibroEn: %u; Pwr: %S\r", Cfg.Type, Cfg.VibroEn, CC_PwrToString(Cfg.TxPower));
     Indi.ShowSelfType();
 }
 

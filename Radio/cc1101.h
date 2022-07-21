@@ -81,6 +81,16 @@ public:
         return retvOk;
     }
 
+    uint8_t GetPktStatus() {
+        uint8_t Rslt;
+        ReadRegister(CC_PKTSTATUS, &Rslt);
+        return Rslt;
+    }
+
+    bool IsChannelClear() {
+        return (true);
+    }
+
     void PrintStateI();
 
     // Setup
