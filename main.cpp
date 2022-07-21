@@ -15,8 +15,6 @@
 
 #include "Config.h"
 
-#include <vector>
-
 #if 1 // ======================== Variables and defines ========================
 // Forever
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
@@ -49,11 +47,17 @@ static uint32_t TimeS;
 #endif
 
 #if 1 // ========================== Logic ======================================
+#define ARI_KAESU_IND_TIME_S        18
+#define ARI_KAESU_TIME_DECREMENT    4
+
 Config_t Cfg;
+
 class Indication_t {
 private:
+    int32_t AriTime = 0, KaesuTime = 0;
     CircBuf_t<const LedRGBChunk_t*, 18> Que;
-    const LedRGBChunk_t* Lsqs[TYPE_CNT] = { lsqObserver, lsqDarkMagic, lsqLightMagic, lsqBoth };
+    const LedRGBChunk_t* Lsqs[TYPE_CNT] = { lsqAri, lsqKaesu, lsqNorth, lsqSouth, lsqVatey };
+    int32_t PrevTypes[TYPE_CNT] = {0};
 
     void PutNumberToQ(uint32_t Cnt, const LedRGBChunk_t* lsq) {
         switch(Cnt) {
@@ -76,26 +80,50 @@ public:
     void ShowSelfType() {
         FlushQueue();
         Que.PutIfNotOverflow(Lsqs[Cfg.Type]);
-        Que.PutIfNotOverflow(Lsqs[Cfg.TypeToShow]);
         ProcessQue();
     }
 
-    void ShowWhoIsNear(uint32_t *PTypesNear) {
-//        for(uint32_t i=0; i<4; i++) Printf("%u: %u\r", i, PTypesNear[i]);
-//        PrintfEOL();
-        bool MustVibrate = false;
-        if(Cfg.TypeToShow == TYPE_DARKSIDE or Cfg.TypeToShow == TYPE_BOTH) {
-            uint32_t Cnt = PTypesNear[TYPE_DARKSIDE] + PTypesNear[TYPE_BOTH];
-            PutNumberToQ(Cnt, lsqDarkMagic);
-            if(Cnt) MustVibrate = true;
-        }
-        if(Cfg.TypeToShow == TYPE_LIGHTSIDE or Cfg.TypeToShow == TYPE_BOTH) {
-            uint32_t Cnt = PTypesNear[TYPE_LIGHTSIDE] + PTypesNear[TYPE_BOTH];
-            PutNumberToQ(Cnt, lsqLightMagic);
-            if(Cnt) MustVibrate = true;
-        }
+    void ShowType(uint32_t AType) {
+        FlushQueue();
+        Que.PutIfNotOverflow(Lsqs[AType]);
         ProcessQue();
-        if(MustVibrate) Vibro.StartOrRestart(vsqBrr);
+    }
+
+    bool TypeHasChanged(uint32_t OldCnt, uint32_t NewCnt) {
+        return ((OldCnt == 0 and NewCnt > 0) or (OldCnt > 0 and NewCnt == 0));
+    }
+
+    void ProcessTypesAround(uint32_t *PTypesNear) {
+        // Ari / Kaesu
+        if(PTypesNear[TYPE_ARI]) AriTime = ARI_KAESU_IND_TIME_S;
+        if(PTypesNear[TYPE_KAESU]) KaesuTime = ARI_KAESU_IND_TIME_S;
+        // Check changes
+        bool HasChanged = false;
+        if(TypeHasChanged(PrevTypes[TYPE_NORTH], PTypesNear[TYPE_NORTH])) HasChanged = true;
+        if(TypeHasChanged(PrevTypes[TYPE_SOUTH], PTypesNear[TYPE_SOUTH])) HasChanged = true;
+        if(TypeHasChanged(PrevTypes[TYPE_VATEY], PTypesNear[TYPE_VATEY])) HasChanged = true;
+        PrevTypes[TYPE_NORTH] = PTypesNear[TYPE_NORTH];
+        PrevTypes[TYPE_SOUTH] = PTypesNear[TYPE_SOUTH];
+        PrevTypes[TYPE_VATEY] = PTypesNear[TYPE_VATEY];
+
+        // === Show who is near ===
+        // Ari & Kaesu
+        if(AriTime > 0) {
+            Que.PutIfNotOverflow(lsqAri);
+            Vibro.StartOrContinue(vsqBrr);
+            AriTime -= ARI_KAESU_TIME_DECREMENT;
+        }
+        if(KaesuTime > 0) {
+            Que.PutIfNotOverflow(lsqKaesu);
+            Vibro.StartOrContinue(vsqBrr);
+            KaesuTime -= ARI_KAESU_TIME_DECREMENT;
+        }
+        // Others
+        PutNumberToQ(PTypesNear[TYPE_NORTH], lsqNorth);
+        PutNumberToQ(PTypesNear[TYPE_SOUTH], lsqSouth);
+        PutNumberToQ(PTypesNear[TYPE_VATEY], lsqVatey);
+        ProcessQue();
+        if(HasChanged and Cfg.VibroEn) Vibro.StartIfIdle(vsqBrrBrr);
     }
 
     void ProcessQue() {
@@ -114,7 +142,22 @@ void CheckRxTable() {
     uint32_t TypesCnt[TYPE_CNT] = {0};
     RxTable_t *Tbl = Radio.GetRxTable();
     Tbl->ProcessCountingDistinctTypes(TypesCnt, TYPE_CNT);
-    Indi.ShowWhoIsNear(TypesCnt);
+    Indi.ProcessTypesAround(TypesCnt);
+}
+
+void ProcessButtonsAriKaesu(uint8_t BtnID, BtnEvt_t Type) {
+    if(Type != beLongPress) return;
+    Vibro.StartOrRestart(vsqBrrBrr);
+    if(BtnID == 0) {
+        Radio.PktTxFar.Type = TYPE_ARI;
+        Indi.ShowType(TYPE_ARI);
+        Radio.DoTransmitFar(900);
+    }
+    else if(BtnID == 1) {
+        Radio.PktTxFar.Type = TYPE_KAESU;
+        Indi.ShowType(TYPE_KAESU);
+        Radio.DoTransmitFar(900);
+    }
 }
 #endif
 
@@ -146,9 +189,9 @@ int main(void) {
     Vibro.Init();
 
 #if BEEPER_ENABLED // === Beeper ===
-//    Beeper.Init();
-//    Beeper.StartOrRestart(bsqBeepBeep);
-//    chThdSleepMilliseconds(702);    // Let it complete the show
+    Beeper.Init();
+    Beeper.StartOrRestart(bsqBeepBeep);
+    chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
 #if BUTTONS_ENABLED
     SimpleSensors::Init();
@@ -189,7 +232,6 @@ void ITask() {
             case evtIdButtons:
                 Printf("Btn %u %u\r", Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
                 if(Cfg.IsAriKaesu()) ProcessButtonsAriKaesu(Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
-                else ProcessButtonsOthers(Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
                 break;
 #endif
 
@@ -218,13 +260,15 @@ void ReadAndSetupMode() {
     Indi.FlushQueue();
     Vibro.Stop();
     Led.Stop();
-    // Select type to tx and show
-    Cfg.TypeToShow = (b >> 6) & 0b11; // Group 12
-    Cfg.Type = (b >> 4) & 0b11; // Group 34
+    // Select self type
+    uint8_t t = (b >> 4) & 0b111; // Group 234
+    Cfg.Type = (t > (TYPE_CNT-1))? (TYPE_CNT-1) : t;
+    // Select VibroEn
+    Cfg.VibroEn = b & 0x80;
     // Select power
     b &= 0b1111; // Remove high bits = group 5678
     Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
-    Printf("TypeToShow: %u; Type: %u; Pwr: %u\r", Cfg.TypeToShow, Cfg.Type, b);
+    Printf("Type: %u; VibroEn: %u; Pwr: %S\r", Cfg.Type,  CC_PwrToString(Cfg.TxPower));
     Indi.ShowSelfType();
 }
 
