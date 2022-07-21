@@ -78,8 +78,8 @@ int main(void) {
     Printf("Vibro\r");
     Vibro.Init();
 //    Vibro.SetupSeqEndEvt(evtIdVibroSeqDone);
-//    Vibro.StartOrRestart(vsqBrrBrr);
-//    chThdSleepMilliseconds(270);
+    Vibro.StartOrRestart(vsqBrrBrr);
+    chThdSleepMilliseconds(270);
 
 #if BEEPER_ENABLED // === Beeper ===
     Printf("Beeper\r");
@@ -230,7 +230,7 @@ void ReadIDfromEE() {
         Printf("\rUsing default ID\r");
         Cfg.ID = ID_DEFAULT;
     }
-//    Radio.PktTx.ID = Cfg.ID;
+    Radio.PktTx.ID = Cfg.ID;
 }
 
 uint8_t ISetID(int32_t NewID) {
@@ -238,7 +238,7 @@ uint8_t ISetID(int32_t NewID) {
     uint8_t rslt = EE::Write32(EE_ADDR_DEVICE_ID, NewID);
     if(rslt == retvOk) {
         Cfg.ID = NewID;
-//        Radio.PktTx.ID = Cfg.ID;
+        Radio.PktTx.ID = Cfg.ID;
         Printf("New ID: %u\r", Cfg.ID);
         return retvOk;
     }

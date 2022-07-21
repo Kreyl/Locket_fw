@@ -72,18 +72,18 @@ static const uint8_t PwrTable[12] = {
 
 #if 1 // =========================== Pkt_t =====================================
 union rPkt_t {
-    uint32_t DW32[2];
+    uint32_t DW32;
     struct {
-        uint32_t Sign;
-        uint8_t R, G, B, W;
+        uint8_t ID;
+        int8_t Rssi; // Will be set after RX. Transmitting is useless, but who cares.
     } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {
-        DW32[0] = Right.DW32[0];
-        DW32[1] = Right.DW32[1];
+        DW32 = Right.DW32;
         return *this;
     }
 } __attribute__ ((__packed__));
 #endif
+
 #define RPKT_LEN    sizeof(rPkt_t)
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
