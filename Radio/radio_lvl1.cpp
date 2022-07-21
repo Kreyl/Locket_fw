@@ -44,19 +44,29 @@ static void rLvl1Thread(void *arg) {
     Radio.ITask();
 }
 
+//#define TEST_STATION
+
 __noreturn
 void rLevel1_t::ITask() {
     while(true) {
         CC.Recalibrate();
+#ifdef TEST_STATION
+        uint8_t Rslt = CC.Receive(270, &PktRx, RPKT_LEN, &Rssi);
+        if(Rslt == retvOk) {
+            PktTx.Rssi = Rssi;
+            CC.Transmit(&PktTx, RPKT_LEN);
+            Printf("Rssi: our= %d; their=%d\r", Rssi, PktRx.Rssi);
+            Led.StartOrRestart(lsqBlink);
+        }
+#else
         CC.Transmit(&PktTx, RPKT_LEN);
         uint8_t Rslt = CC.Receive(270, &PktRx, RPKT_LEN, &Rssi);
         if(Rslt == retvOk) {
-//            PktTx.Rssi = Rssi;
-//            CC.Transmit(&PktTx, RPKT_LEN);
             Printf("Rssi: our= %d; their=%d\r", Rssi, PktRx.Rssi);
             Led.StartOrRestart(lsqBlink);
         }
         chThdSleepMilliseconds(630);
+#endif
     } // while true
 }
 #endif // task
