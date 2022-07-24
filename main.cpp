@@ -43,7 +43,7 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
-static uint32_t TimeS;
+static int32_t TimeToNextRxTableCheck = 4;
 #endif
 
 #if 1 // ========================== Logic ======================================
@@ -58,18 +58,22 @@ private:
             case 0: break; // Noone of such kind is around
             case 1:
                 Que.PutIfNotOverflow(lsq);
+                TotalCntOfFlashes += 1;
                 break;
             case 2:
                 Que.PutIfNotOverflow(lsq);
                 Que.PutIfNotOverflow(lsq);
+                TotalCntOfFlashes += 2;
                 break;
             default:
                 Que.PutIfNotOverflow(lsq);
                 Que.PutIfNotOverflow(lsq);
                 Que.PutIfNotOverflow(lsq);
+                TotalCntOfFlashes += 3;
                 break;
         } // switch
     }
+    uint32_t TotalCntOfFlashes = 0;
 public:
     void ShowSelfType() {
         FlushQueue();
@@ -81,6 +85,7 @@ public:
     void ShowWhoIsNear(uint32_t *PTypesNear) {
 //        for(uint32_t i=0; i<4; i++) Printf("%u: %u\r", i, PTypesNear[i]);
 //        PrintfEOL();
+        TotalCntOfFlashes = 0; // Count total number
         bool MustVibrate = false;
         if(Cfg.TypeToShow == TYPE_DARKSIDE or Cfg.TypeToShow == TYPE_BOTH) {
             uint32_t Cnt = PTypesNear[TYPE_DARKSIDE] + PTypesNear[TYPE_BOTH];
@@ -93,7 +98,7 @@ public:
             if(Cnt) MustVibrate = true;
         }
         ProcessQue();
-//        if(MustVibrate) Vibro.StartOrRestart(vsqBrr);
+//        if(MustVibrate) Vibro.StartOrRestart(vsqBrr); XXX
     }
 
     void ProcessQue() {
@@ -105,6 +110,13 @@ public:
         Led.Stop();
         Que.Flush();
     }
+
+    uint32_t GetNextCheckRxTableDelay_s() {
+        if(TotalCntOfFlashes <= 2) return 4;
+        else if(TotalCntOfFlashes <= 4) return 5;
+        else return 7;
+    }
+
 } Indi;
 
 void CheckRxTable() {
@@ -178,9 +190,12 @@ void ITask() {
         EvtMsg_t Msg = EvtQMain.Fetch(TIME_INFINITE);
         switch(Msg.ID) {
             case evtIdEverySecond:
-                TimeS++;
                 ReadAndSetupMode();
-                if(TimeS % 4 == 0) CheckRxTable();
+                TimeToNextRxTableCheck--;
+                if(TimeToNextRxTableCheck <= 0) {
+                    CheckRxTable();
+                    TimeToNextRxTableCheck = Indi.GetNextCheckRxTableDelay_s();
+                }
                 break;
 
 #if BUTTONS_ENABLED
