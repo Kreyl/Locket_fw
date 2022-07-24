@@ -29,6 +29,7 @@ cc1101_t CC(CC_Setup0);
 #endif
 
 rLevel1_t Radio;
+volatile uint32_t tdelay = 53;
 
 static Timer_t IHwTmr(TIM9);
 static volatile uint8_t TimeSrc, HopCnt;
@@ -58,7 +59,7 @@ static void AdjustRadioTimeI() {
         TIM9->SR = 0; // Clear flags
         uint32_t t = PktRx.iTime;
         // Increment time to take into account duration of pkt transmission
-        t += TX_DUR_TICS;
+        t += tdelay; //TX_DUR_TICS;
         IHwTmr.SetCounter(t);
         PrepareNextTx();
     }
@@ -82,8 +83,8 @@ static void RxCallback() {
 
 // After TX done, enter either RX in cycle 0 or Sleep in other case
 static void TxCallback() {
-    DBG1_CLR();
     if(IsInZeroCycle()) CC.ReceiveAsyncI(RxCallback);
+    DBG1_CLR();
 }
 
 // ============================ Timing IRQ handlers ============================
@@ -108,10 +109,11 @@ static void IOnNewSupercycleI() {
 // Will be here if IRQ is enabled, which is determined at end of supercycle
 static void IOnTxSlotI() {
     DBG1_SET();
+    CC.Recalibrate();
     PktTx.TimeSrc = TimeSrc;
     PktTx.HopCnt = HopCnt;
     PktTx.iTime = IHwTmr.GetCounter();
-    CC.TransmitAsyncX((uint8_t*)&PktTx, RPKT_LEN, TxCallback);
+    CC.TransmitCcaX((uint8_t*)&PktTx, RPKT_LEN, TxCallback);
     PrepareNextTx();
 }
 

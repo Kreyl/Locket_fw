@@ -191,29 +191,28 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
 #define SHOWTIME        45
-//#define PAUSETIME       540
-#define SMOOTHVAL       27
+#define SMOOTHVAL       7
 
 const LedRGBChunk_t lsqObserver[] = {
-        {csSetup, SMOOTHVAL, clBlue}, {csWait, SHOWTIME},
+        {csSetup, SMOOTHVAL, clBlue}, //{csWait, SHOWTIME},
         {csSetup, SMOOTHVAL, clBlack},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqDarkMagic[] = {
-        {csSetup, SMOOTHVAL, clRed}, {csWait, SHOWTIME},
+        {csSetup, SMOOTHVAL, clRed}, //{csWait, SHOWTIME},
         {csSetup, SMOOTHVAL, clBlack},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqLightMagic[] = {
-        {csSetup, SMOOTHVAL, clGreen}, {csWait, SHOWTIME},
+        {csSetup, SMOOTHVAL, clGreen}, //{csWait, SHOWTIME},
         {csSetup, SMOOTHVAL, clBlack},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqBoth[] = {
-        {csSetup, SMOOTHVAL, clYellow}, {csWait, SHOWTIME},
+        {csSetup, SMOOTHVAL, clYellow}, //{csWait, SHOWTIME},
         {csSetup, SMOOTHVAL, clBlack},
         {csEnd},
 };

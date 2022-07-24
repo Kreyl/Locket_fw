@@ -15,8 +15,6 @@
 
 #include "Config.h"
 
-#include <vector>
-
 #if 1 // ======================== Variables and defines ========================
 // Forever
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
@@ -95,7 +93,7 @@ public:
             if(Cnt) MustVibrate = true;
         }
         ProcessQue();
-        if(MustVibrate) Vibro.StartOrRestart(vsqBrr);
+//        if(MustVibrate) Vibro.StartOrRestart(vsqBrr);
     }
 
     void ProcessQue() {
@@ -228,6 +226,7 @@ void ReadAndSetupMode() {
     Indi.ShowSelfType();
 }
 
+extern volatile uint32_t tdelay;
 #if 1 // ================= Command processing ====================
 void OnCmd(Shell_t *PShell) {
 	Cmd_t *PCmd = &PShell->Cmd;
@@ -241,6 +240,11 @@ void OnCmd(Shell_t *PShell) {
         if(PCmd->GetNext<int32_t>(&FID) != retvOk) { PShell->CmdError(); return; }
         if(ISetID(FID) == retvOk) PShell->Ok();
         else PShell->Failure();
+    }
+
+    else if(PCmd->NameIs("t")) {
+        if(PCmd->GetNext<uint32_t>((uint32_t*)&tdelay) != retvOk) { PShell->CmdError(); return; }
+        else PShell->Ok();
     }
 
 #if PILL_ENABLED // ==== Pills ====

@@ -42,10 +42,10 @@
 #define CC_MCSM0_VALUE      0x08        // Never calibrate
 
 // ==== MCSM1 ==== bits 7:6 not used, 5:4 ClearChannel mode, 3:2 RxOff mode, 1:0 TxOff mode
-#define CC_CCA_MODE         0x00  // Always clear
+//#define CC_CCA_MODE         0x00  // Always clear
 //#define CC_CCA_MODE         0x10  // If RSSI below threshold
 //#define CC_CCA_MODE         0x20  // Unless currently receiving a packet
-//#define CC_CCA_MODE         0x30  // If RSSI below threshold unless currently receiving a packet
+#define CC_CCA_MODE         0x30  // If RSSI below threshold unless currently receiving a packet
 // RX->IDLE, TX->IDLE
 #define CC_MCSM1_VALUE      (CC_CCA_MODE)
 

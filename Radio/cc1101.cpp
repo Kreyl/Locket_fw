@@ -129,6 +129,7 @@ void cc1101_t::TransmitCcaX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback) {
         ICallback = Callback;
         WriteTX(Ptr, Len);
     }
+    else CC.EnterIdle();
 }
 
 void cc1101_t::TransmitAsyncX(uint8_t *Ptr, uint8_t Len) {

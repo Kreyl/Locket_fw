@@ -55,16 +55,16 @@ union rPkt_t {
 #define RPKT_SALT   0xCA
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
-#define RCHNL_EACH_OTH  2
+#define RCHNL_EACH_OTH          2
 
 // Feel-Each-Other related
 #define RCYCLE_CNT              5U
-#define RSLOT_CNT               104U // From excel
+#define RSLOT_CNT               50U // From excel
 #define SCYCLES_TO_KEEP_TIMESRC 4U  // After that amount of supercycles, TimeSrcID become self ID
 
 // Timings: based on (27MHz/192) clock of CC, divided by 4 with prescaler
-#define RTIM_PRESCALER          1U  // From excel
-#define TIMESLOT_DUR_TICKS      72U // From excel
+#define RTIM_PRESCALER          2U  // From excel
+#define TIMESLOT_DUR_TICKS      108U // From excel
 #define CYCLE_DUR_TICKS         (TIMESLOT_DUR_TICKS * RSLOT_CNT)
 #define SUPERCYCLE_DUR_TICKS    (CYCLE_DUR_TICKS * RCYCLE_CNT)
 #if SUPERCYCLE_DUR_TICKS >= 0xFFFF
@@ -73,7 +73,7 @@ union rPkt_t {
 #define ZERO_ID_INCREMENT       3U // [0;100) -> [3;103) to process start of zero cycle calibration delay
 #define HOPS_CNT_MAX            4U // do not adjust time if too many hops. Required to avoid eternal loops adjustment.
 // Experimental values
-#define TX_DUR_TICS             60U
+#define TX_DUR_TICS             53U // Experimental value to sync time scale
 
 #endif
 
