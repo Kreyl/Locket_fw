@@ -29,7 +29,6 @@ cc1101_t CC(CC_Setup0);
 #endif
 
 rLevel1_t Radio;
-volatile uint32_t tdelay = 53;
 
 static Timer_t IHwTmr(TIM9);
 static volatile uint8_t TimeSrc, HopCnt;
@@ -59,7 +58,7 @@ static void AdjustRadioTimeI() {
         TIM9->SR = 0; // Clear flags
         uint32_t t = PktRx.iTime;
         // Increment time to take into account duration of pkt transmission
-        t += tdelay; //TX_DUR_TICS;
+        t += TX_DUR_TICS;
         IHwTmr.SetCounter(t);
         PrepareNextTx();
     }

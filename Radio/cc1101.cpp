@@ -20,7 +20,7 @@ uint8_t cc1101_t::Init() {
     AlterFunc_t CC_AF;
     if(ISpi.PSpi == SPI1 or ISpi.PSpi == SPI2) CC_AF = AF5;
     else CC_AF = AF6;
-#elif defined STM32F030 || defined STM32F0
+#elif defined STM32F030 || defined STM32F0 ||defined STM32F1XX
 #define CC_AF   AF0
 #endif
     PinSetupOut      ((GPIO_TypeDef*)CSGpio, Cs,   omPushPull);

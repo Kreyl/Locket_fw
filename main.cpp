@@ -98,7 +98,7 @@ public:
             if(Cnt) MustVibrate = true;
         }
         ProcessQue();
-//        if(MustVibrate) Vibro.StartOrRestart(vsqBrr); XXX
+        if(MustVibrate) Vibro.StartOrRestart(vsqBrr);
     }
 
     void ProcessQue() {
@@ -241,7 +241,6 @@ void ReadAndSetupMode() {
     Indi.ShowSelfType();
 }
 
-extern volatile uint32_t tdelay;
 #if 1 // ================= Command processing ====================
 void OnCmd(Shell_t *PShell) {
 	Cmd_t *PCmd = &PShell->Cmd;
@@ -257,10 +256,10 @@ void OnCmd(Shell_t *PShell) {
         else PShell->Failure();
     }
 
-    else if(PCmd->NameIs("t")) {
-        if(PCmd->GetNext<uint32_t>((uint32_t*)&tdelay) != retvOk) { PShell->CmdError(); return; }
-        else PShell->Ok();
-    }
+//    else if(PCmd->NameIs("t")) {
+//        if(PCmd->GetNext<uint32_t>((uint32_t*)&tdelay) != retvOk) { PShell->CmdError(); return; }
+//        else PShell->Ok();
+//    }
 
 #if PILL_ENABLED // ==== Pills ====
     else if(PCmd->NameIs("PillRead32")) {

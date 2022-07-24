@@ -58,8 +58,8 @@ union rPkt_t {
 #define RCHNL_EACH_OTH          2
 
 // Feel-Each-Other related
-#define RCYCLE_CNT              5U
-#define RSLOT_CNT               50U // From excel
+#define RCYCLE_CNT              4U
+#define RSLOT_CNT               104U // From excel
 #define SCYCLES_TO_KEEP_TIMESRC 4U  // After that amount of supercycles, TimeSrcID become self ID
 
 // Timings: based on (27MHz/192) clock of CC, divided by 4 with prescaler
