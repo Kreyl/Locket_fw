@@ -4,6 +4,13 @@
 #define BOARD_NAME          "Locket5"
 #define APP_NAME            "Zalex22"
 
+#ifndef TRUE
+#define TRUE    1
+#endif
+#ifndef FALSE
+#define FALSE   0
+#endif
+
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      FALSE
@@ -24,7 +31,7 @@
 
 #define I2C1_ENABLED        PILL_ENABLED
 #define I2C_USE_SEMAPHORE   FALSE
-#define ADC_REQUIRED        FALSE
+#define ADC_REQUIRED        TRUE
 
 #if 1 // ========================== GPIO =======================================
 // PortMinTim_t: GPIO, Pin, Tim, TimChnl, invInverted, omPushPull, TopValue
@@ -91,13 +98,11 @@
 #define ADC_CLK_DIVIDER     adcDiv2
 
 // ADC channels
-//#define BAT_CHNL          1
-
 #define ADC_VREFINT_CHNL    17  // All 4xx, F072 and L151 devices. Do not change.
 #define ADC_CHANNELS        { ADC_VREFINT_CHNL }
 #define ADC_CHANNEL_CNT     1   // Do not use countof(AdcChannels) as preprocessor does not know what is countof => cannot check
 #define ADC_SAMPLE_TIME     ast96Cycles
-#define ADC_SAMPLE_CNT      8   // How many times to measure every channel
+#define ADC_SAMPLE_CNT      9   // How many times to measure every channel
 
 #define ADC_SEQ_LEN         (ADC_SAMPLE_CNT * ADC_CHANNEL_CNT)
 
@@ -119,7 +124,7 @@
 #endif
 
 #if ADC_REQUIRED
-#define ADC_DMA         STM32_DMA1_STREAM1
+#define ADC_DMA         STM32_DMA_STREAM_ID(1, 1)
 #define ADC_DMA_MODE    STM32_DMA_CR_CHSEL(0) |   /* dummy */ \
                         DMA_PRIORITY_LOW | \
                         STM32_DMA_CR_MSIZE_HWORD | \

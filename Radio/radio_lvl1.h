@@ -78,8 +78,8 @@ union rPkt_t {
 
 #if 1 // ============================= RX Table ================================
 struct rPayload_t {
-    uint8_t IsValid = 0;
-    int8_t Rssi;
+    int32_t Cnt = 0; // Count of packets with this ID
+    int32_t Rssi;
 } __attribute__ ((__packed__));
 
 #define RXTABLE_SZ              RSLOT_CNT
@@ -89,20 +89,18 @@ class RxTable_t {
 private:
     rPayload_t IBuf[RXTABLE_SZ];
 public:
-    void AddOrReplaceExistingPkt(rPkt_t *APkt) {
-        chSysLock();
-        AddOrReplaceExistingPktI(APkt);
-        chSysUnlock();
-    }
-    void AddOrReplaceExistingPktI(rPkt_t *pPkt) {
+    void AddPktI(rPkt_t *pPkt) {
         if(pPkt->ID < RXTABLE_SZ) {
-            IBuf[pPkt->ID].Rssi = pPkt->Rssi;
-            IBuf[pPkt->ID].IsValid = 1;
+            IBuf[pPkt->ID].Rssi += pPkt->Rssi;
+            IBuf[pPkt->ID].Cnt++;
         }
     }
 
     void CleanUp() {
-        for(auto &v : IBuf) v.IsValid = 0;
+        for(auto &v : IBuf) {
+            v.Cnt = 0;
+            v.Rssi = 0;
+        }
     }
 
     rPayload_t& operator[](const int32_t Indx) {
@@ -112,7 +110,7 @@ public:
     void Print() {
         Printf("RxTable\r");
         for(uint32_t i=0; i<RXTABLE_SZ; i++) {
-            if(IBuf[i].IsValid) Printf("ID: %u; Rssi: %d\r", i, IBuf[i].Rssi);
+            if(IBuf[i].Cnt) Printf("ID: %u; Cnt: %u; Rssi: %d\r", i, IBuf[i].Cnt, IBuf[i].Rssi);
         }
     }
 };
@@ -124,7 +122,7 @@ private:
 public:
     uint8_t TxPower;
 
-    void AddPktToRxTableI(rPkt_t *pPkt) { RxTableW->AddOrReplaceExistingPktI(pPkt); }
+    void AddPktToRxTableI(rPkt_t *pPkt) { RxTableW->AddPktI(pPkt); }
 
     RxTable_t& GetRxTable() {
         chSysLock();

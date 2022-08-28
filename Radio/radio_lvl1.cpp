@@ -115,8 +115,16 @@ static void IOnTxSlotI() {
     PrepareNextTx();
 }
 
+static uint32_t SupercyclCnt = 0;
+uint32_t SupercyclesCntToCheckRxTable = 4; // Adjusted at main.cpp
 static void IOnCycle0EndI() {
     CC.EnterIdle();
+    // Send CheckRxTbl if needed
+    SupercyclCnt++;
+    if(SupercyclCnt >= SupercyclesCntToCheckRxTable) {
+        SupercyclCnt = 0;
+        EvtQMain.SendNowOrExitI(EvtMsg_t(evtIdCheckRxTable));
+    }
 }
 
 // ==== Timer IRQ ====

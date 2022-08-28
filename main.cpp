@@ -12,6 +12,7 @@
 #include "MsgQ.h"
 #include "SimpleSensors.h"
 #include "buttons.h"
+#include "adcL151.h"
 
 #include "Config.h"
 
@@ -24,6 +25,7 @@ static void ITask();
 static void OnCmd(Shell_t *PShell);
 
 static void ReadAndSetupMode();
+extern uint32_t SupercyclesCntToCheckRxTable;
 
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
@@ -43,11 +45,17 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
-static int32_t TimeToNextRxTableCheck = 4;
 #endif
 
 #if 1 // ========================== Logic ======================================
 Config_t Cfg;
+// RSSI to Color: [RSSI_MIN; RSSI_MAX] => [240; 0] == [Blue; Red]
+#define RSSI_TO_SHOW    (-80L) // Min rssi to react to
+#define RSSI_MIN        (-75L)
+#define RSSI_MAX        (-54L)
+#define HSV_H_MIN       240L // Blue
+#define HSV_H_MAX       0L // Red
+
 class Indication_t {
 private:
     const LedRGBChunk_t* Lsqs[TYPE_CNT] = { lsqObserver, lsqTransmitter };
@@ -56,7 +64,9 @@ private:
     LedRGBChunk_t lsqThree[7] = { {csSetup, SMOOTHVAL, clGreen}, {csSetup, SMOOTHVAL, clBlack}, {csSetup, SMOOTHVAL, clGreen}, {csSetup, SMOOTHVAL, clBlack}, {csSetup, SMOOTHVAL, clMagenta}, {csSetup, SMOOTHVAL, clBlack}, {csEnd} };
 
     void Rssi2RGB(int32_t Rssi, Color_t *PClr) {
-        uint32_t H = Proportion<int32_t>(-100, -45, 240, 0, Rssi);
+        if(Rssi > RSSI_MAX) Rssi = RSSI_MAX;
+        else if(Rssi < RSSI_MIN) Rssi = RSSI_MIN;
+        int32_t H = Proportion<int32_t>(RSSI_MIN, RSSI_MAX, HSV_H_MIN, HSV_H_MAX, Rssi);
         PClr->FromHSV(H, 100, 100);
     }
 
@@ -65,7 +75,7 @@ public:
     void ShowSelfType() { Led.StartOrRestart(Lsqs[Cfg.Type]); }
 
     void ShowWhoIsNear(uint32_t Cnt, int32_t Rssi1, int32_t Rssi2) {
-        if(Cnt) Printf("%u; %d %d\r", Cnt, Rssi1, Rssi2);
+//        if(Cnt) Printf("%d; %d %d\r", Cnt, Rssi1, Rssi2);
         ICnt = Cnt;
         switch(Cnt) {
             case 0: return; break;
@@ -75,43 +85,41 @@ public:
                 break;
             case 2:
                 Rssi2RGB(Rssi1, &lsqTwo[0].Color);
-                Rssi2RGB(Rssi1, &lsqTwo[2].Color);
+                Rssi2RGB(Rssi2, &lsqTwo[2].Color);
                 Led.StartOrRestart(lsqTwo);
                 break;
             default:
                 Rssi2RGB(Rssi1, &lsqThree[0].Color);
-                Rssi2RGB(Rssi1, &lsqThree[2].Color);
+                Rssi2RGB(Rssi2, &lsqThree[2].Color);
                 Led.StartOrRestart(lsqThree);
                 break;
         }
         if(Cnt != 0) Vibro.StartOrRestart(vsqBrr);
     }
-
-    uint32_t GetNextCheckRxTableDelay_s() {
-        if(ICnt <= 2) return 4;
-        else if(ICnt <= 4) return 5;
-        else return 7;
-    }
 } Indi;
 
 void CheckRxTable() {
-    // Analyze table: get count of transmitters near
     uint32_t Cnt = 0;
     int32_t Rssi1 = -111, Rssi2 = -111;
     RxTable_t &Tbl = Radio.GetRxTable();
     for(uint32_t i=0; i<RXTABLE_SZ; i++) {
-        if(Tbl[i].IsValid) {
-            Cnt++;
-            int32_t Rssi = Tbl[i].Rssi;
-            if(Rssi > Rssi2) Rssi2 = Rssi;
-            if(Rssi2 > Rssi1) { // Switch Rssi1 and Rssi2
-                Rssi2 = Rssi1;
-                Rssi1 = Rssi;
+        if(Tbl[i].Cnt) {
+            int32_t Rssi = Tbl[i].Rssi / Tbl[i].Cnt;
+//            Printf("ID: %u; Rssi: %d\r", i, Rssi);
+            if(Rssi > RSSI_TO_SHOW) {
+                Cnt++;
+                if(Rssi > Rssi2) Rssi2 = Rssi;
+                if(Rssi2 > Rssi1) { // Switch Rssi1 and Rssi2
+                    Rssi2 = Rssi1;
+                    Rssi1 = Rssi;
+                }
             }
         }
     }
     Tbl.CleanUp();
     Indi.ShowWhoIsNear(Cnt, Rssi1, Rssi2);
+    if(Cnt <= 2) SupercyclesCntToCheckRxTable = 4;
+    else SupercyclesCntToCheckRxTable = 6;
 }
 #endif
 
@@ -130,28 +138,25 @@ int main(void) {
     Uart.Init();
     ReadIDfromEE();
     Printf("\r%S %S; ID=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), Cfg.ID);
-//    Printf("\r%X\t%X\t%X\r", GetUniqID1(), GetUniqID2(), GetUniqID3());
-//    if(Sleep::WasInStandby()) {
-//        Printf("WasStandby\r");
-//        Sleep::ClearStandbyFlag();
-//    }
     Clk.PrintFreqs();
     Random::Seed(GetUniqID3());   // Init random algorythm with uniq ID
 
     Led.Init();
     Vibro.Init();
 
-#if BEEPER_ENABLED // === Beeper ===
-//    Beeper.Init();
-//    Beeper.StartOrRestart(bsqBeepBeep);
-//    chThdSleepMilliseconds(702);    // Let it complete the show
+#if ADC_REQUIRED
+    Adc.Init();
+#endif
+
+#if BEEPER_ENABLED
+    Beeper.Init();
+    Beeper.StartOrRestart(bsqBeepBeep);
+    chThdSleepMilliseconds(702);    // Let it complete the show
 #endif
 #if BUTTONS_ENABLED
     SimpleSensors::Init();
 #endif
-//    Adc.Init();
-
-#if PILL_ENABLED // === Pill ===
+#if PILL_ENABLED
     i2c1.Init();
     PillMgr.Init();
 #endif
@@ -177,11 +182,10 @@ void ITask() {
         switch(Msg.ID) {
             case evtIdEverySecond:
                 ReadAndSetupMode();
-                TimeToNextRxTableCheck--;
-                if(TimeToNextRxTableCheck <= 0) {
-                    CheckRxTable();
-                    TimeToNextRxTableCheck = Indi.GetNextCheckRxTableDelay_s();
-                }
+                break;
+
+            case evtIdCheckRxTable:
+                if(Cfg.Type == TYPE_OBSERVER) CheckRxTable();
                 break;
 
 #if BUTTONS_ENABLED
@@ -191,7 +195,9 @@ void ITask() {
                 else ProcessButtonsOthers(Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
                 break;
 #endif
-
+#if ADC_REQUIRED
+            case evtIdAdcRslt: Printf("Battery: %u mV\r", Adc.GetVDAmV(Adc.GetResultMedian(0))); break;
+#endif
             case evtIdShellCmd:
                 OnCmd((Shell_t*)Msg.Ptr);
                 ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
@@ -217,7 +223,7 @@ void ReadAndSetupMode() {
     // Select power
     b &= 0b1111; // Remove high bits = group 5678
     Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
-    Printf("Type: %u; Pwr: %u\r", Cfg.Type, b);
+    Printf("Type: %u; Pwr: %S\r", Cfg.Type, CC_PwrToString(Cfg.TxPower));
     Indi.ShowSelfType();
 }
 
@@ -228,6 +234,9 @@ void OnCmd(Shell_t *PShell) {
     if(PCmd->NameIs("Ping")) PShell->Ok();
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
     else if(PCmd->NameIs("GetID")) PShell->Print("ID: %u\r", Cfg.ID);
+#if ADC_REQUIRED
+    else if(PCmd->NameIs("GetBat")) Adc.StartMeasurement();
+#endif
 
     else if(PCmd->NameIs("SetID")) {
         int32_t FID = 0;
