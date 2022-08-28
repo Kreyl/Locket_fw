@@ -44,7 +44,6 @@ static void PrepareNextTx() {
         while(t >= TxTime) TxTime += CYCLE_DUR_TICKS;
         if(TxTime < SUPERCYCLE_DUR_TICKS) IHwTmr.SetCCR1(TxTime); // Do not set CCR greater than TOP value, as it will fire at overflow.
         PktTx.ID = Cfg.ID;
-        PktTx.Type = Cfg.Type;
     }
     else IHwTmr.DisableIrqOnCompare1();
 }

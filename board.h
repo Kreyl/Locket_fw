@@ -2,7 +2,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "Hi22Locket"
+#define APP_NAME            "Zalex22"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE

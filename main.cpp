@@ -50,81 +50,68 @@ static int32_t TimeToNextRxTableCheck = 4;
 Config_t Cfg;
 class Indication_t {
 private:
-    CircBuf_t<const LedRGBChunk_t*, 18> Que;
-    const LedRGBChunk_t* Lsqs[TYPE_CNT] = { lsqObserver, lsqDarkMagic, lsqLightMagic, lsqBoth };
+    const LedRGBChunk_t* Lsqs[TYPE_CNT] = { lsqObserver, lsqTransmitter };
+    LedRGBChunk_t lsqOne[3] = { {csSetup, SMOOTHVAL, clGreen}, {csSetup, SMOOTHVAL, clBlack}, {csEnd} };
+    LedRGBChunk_t lsqTwo[5] = { {csSetup, SMOOTHVAL, clGreen}, {csSetup, SMOOTHVAL, clBlack}, {csSetup, SMOOTHVAL, clGreen}, {csSetup, SMOOTHVAL, clBlack}, {csEnd} };
+    LedRGBChunk_t lsqThree[7] = { {csSetup, SMOOTHVAL, clGreen}, {csSetup, SMOOTHVAL, clBlack}, {csSetup, SMOOTHVAL, clGreen}, {csSetup, SMOOTHVAL, clBlack}, {csSetup, SMOOTHVAL, clMagenta}, {csSetup, SMOOTHVAL, clBlack}, {csEnd} };
 
-    void PutNumberToQ(uint32_t Cnt, const LedRGBChunk_t* lsq) {
+    void Rssi2RGB(int32_t Rssi, Color_t *PClr) {
+        uint32_t H = Proportion<int32_t>(-100, -45, 240, 0, Rssi);
+        PClr->FromHSV(H, 100, 100);
+    }
+
+    uint32_t ICnt = 0;
+public:
+    void ShowSelfType() { Led.StartOrRestart(Lsqs[Cfg.Type]); }
+
+    void ShowWhoIsNear(uint32_t Cnt, int32_t Rssi1, int32_t Rssi2) {
+        if(Cnt) Printf("%u; %d %d\r", Cnt, Rssi1, Rssi2);
+        ICnt = Cnt;
         switch(Cnt) {
-            case 0: break; // Noone of such kind is around
+            case 0: return; break;
             case 1:
-                Que.PutIfNotOverflow(lsq);
-                TotalCntOfFlashes += 1;
+                Rssi2RGB(Rssi1, &lsqOne[0].Color);
+                Led.StartOrRestart(lsqOne);
                 break;
             case 2:
-                Que.PutIfNotOverflow(lsq);
-                Que.PutIfNotOverflow(lsq);
-                TotalCntOfFlashes += 2;
+                Rssi2RGB(Rssi1, &lsqTwo[0].Color);
+                Rssi2RGB(Rssi1, &lsqTwo[2].Color);
+                Led.StartOrRestart(lsqTwo);
                 break;
             default:
-                Que.PutIfNotOverflow(lsq);
-                Que.PutIfNotOverflow(lsq);
-                Que.PutIfNotOverflow(lsq);
-                TotalCntOfFlashes += 3;
+                Rssi2RGB(Rssi1, &lsqThree[0].Color);
+                Rssi2RGB(Rssi1, &lsqThree[2].Color);
+                Led.StartOrRestart(lsqThree);
                 break;
-        } // switch
-    }
-    uint32_t TotalCntOfFlashes = 0;
-public:
-    void ShowSelfType() {
-        FlushQueue();
-        Que.PutIfNotOverflow(Lsqs[Cfg.Type]);
-        Que.PutIfNotOverflow(Lsqs[Cfg.TypeToShow]);
-        ProcessQue();
-    }
-
-    void ShowWhoIsNear(uint32_t *PTypesNear) {
-//        for(uint32_t i=0; i<4; i++) Printf("%u: %u\r", i, PTypesNear[i]);
-//        PrintfEOL();
-        TotalCntOfFlashes = 0; // Count total number
-        bool MustVibrate = false;
-        if(Cfg.TypeToShow == TYPE_DARKSIDE or Cfg.TypeToShow == TYPE_BOTH) {
-            uint32_t Cnt = PTypesNear[TYPE_DARKSIDE] + PTypesNear[TYPE_BOTH];
-            PutNumberToQ(Cnt, lsqDarkMagic);
-            if(Cnt) MustVibrate = true;
         }
-        if(Cfg.TypeToShow == TYPE_LIGHTSIDE or Cfg.TypeToShow == TYPE_BOTH) {
-            uint32_t Cnt = PTypesNear[TYPE_LIGHTSIDE] + PTypesNear[TYPE_BOTH];
-            PutNumberToQ(Cnt, lsqLightMagic);
-            if(Cnt) MustVibrate = true;
-        }
-        ProcessQue();
-        if(MustVibrate) Vibro.StartOrRestart(vsqBrr);
-    }
-
-    void ProcessQue() {
-        const LedRGBChunk_t* Seq;
-        if(Que.Get(&Seq) == retvOk) Led.StartOrRestart(Seq);
-    }
-
-    void FlushQueue() {
-        Led.Stop();
-        Que.Flush();
+        if(Cnt != 0) Vibro.StartOrRestart(vsqBrr);
     }
 
     uint32_t GetNextCheckRxTableDelay_s() {
-        if(TotalCntOfFlashes <= 2) return 4;
-        else if(TotalCntOfFlashes <= 4) return 5;
+        if(ICnt <= 2) return 4;
+        else if(ICnt <= 4) return 5;
         else return 7;
     }
-
 } Indi;
 
 void CheckRxTable() {
-    // Analyze table: get count of every type near
-    uint32_t TypesCnt[TYPE_CNT] = {0};
-    RxTable_t *Tbl = Radio.GetRxTable();
-    Tbl->ProcessCountingDistinctTypes(TypesCnt, TYPE_CNT);
-    Indi.ShowWhoIsNear(TypesCnt);
+    // Analyze table: get count of transmitters near
+    uint32_t Cnt = 0;
+    int32_t Rssi1 = -111, Rssi2 = -111;
+    RxTable_t &Tbl = Radio.GetRxTable();
+    for(uint32_t i=0; i<RXTABLE_SZ; i++) {
+        if(Tbl[i].IsValid) {
+            Cnt++;
+            int32_t Rssi = Tbl[i].Rssi;
+            if(Rssi > Rssi2) Rssi2 = Rssi;
+            if(Rssi2 > Rssi1) { // Switch Rssi1 and Rssi2
+                Rssi2 = Rssi1;
+                Rssi1 = Rssi;
+            }
+        }
+    }
+    Tbl.CleanUp();
+    Indi.ShowWhoIsNear(Cnt, Rssi1, Rssi2);
 }
 #endif
 
@@ -152,7 +139,6 @@ int main(void) {
     Random::Seed(GetUniqID3());   // Init random algorythm with uniq ID
 
     Led.Init();
-    Led.SetupSeqEndEvt(evtIdLedSeqDone);
     Vibro.Init();
 
 #if BEEPER_ENABLED // === Beeper ===
@@ -206,10 +192,6 @@ void ITask() {
                 break;
 #endif
 
-            case evtIdLedSeqDone:
-                Indi.ProcessQue(); // proceed with indication if current completed
-                break;
-
             case evtIdShellCmd:
                 OnCmd((Shell_t*)Msg.Ptr);
                 ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
@@ -228,16 +210,14 @@ void ReadAndSetupMode() {
     Printf("Dip: 0x%02X; ", b);
     OldDipSettings = b;
     // Reset everything
-    Indi.FlushQueue();
     Vibro.Stop();
     Led.Stop();
     // Select type to tx and show
-    Cfg.TypeToShow = (b >> 6) & 0b11; // Group 12
-    Cfg.Type = (b >> 4) & 0b11; // Group 34
+    Cfg.Type = (b & 0x80)? TYPE_TRANSMITTER : TYPE_OBSERVER;
     // Select power
     b &= 0b1111; // Remove high bits = group 5678
     Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
-    Printf("TypeToShow: %u; Type: %u; Pwr: %u\r", Cfg.TypeToShow, Cfg.Type, b);
+    Printf("Type: %u; Pwr: %u\r", Cfg.Type, b);
     Indi.ShowSelfType();
 }
 
@@ -255,11 +235,6 @@ void OnCmd(Shell_t *PShell) {
         if(ISetID(FID) == retvOk) PShell->Ok();
         else PShell->Failure();
     }
-
-//    else if(PCmd->NameIs("t")) {
-//        if(PCmd->GetNext<uint32_t>((uint32_t*)&tdelay) != retvOk) { PShell->CmdError(); return; }
-//        else PShell->Ok();
-//    }
 
 #if PILL_ENABLED // ==== Pills ====
     else if(PCmd->NameIs("PillRead32")) {

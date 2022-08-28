@@ -39,9 +39,8 @@ union rPkt_t {
         uint8_t HopCnt;
         uint16_t iTime;
         // Payload
-        uint8_t Type;
         int8_t Rssi; // Will be set after RX. Transmitting is useless, but who cares.
-        uint8_t Salt;
+        uint16_t Salt;
     } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {
         DW32[0] = Right.DW32[0];
@@ -52,14 +51,14 @@ union rPkt_t {
 #endif
 
 #define RPKT_LEN    sizeof(rPkt_t)
-#define RPKT_SALT   0xCA
+#define RPKT_SALT   0xCA11
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
 #define RCHNL_EACH_OTH          2
 
 // Feel-Each-Other related
-#define RCYCLE_CNT              4U
-#define RSLOT_CNT               104U // From excel
+#define RCYCLE_CNT              5U
+#define RSLOT_CNT               54U // There is 45 devices in system
 #define SCYCLES_TO_KEEP_TIMESRC 4U  // After that amount of supercycles, TimeSrcID become self ID
 
 // Timings: based on (27MHz/192) clock of CC, divided by 4 with prescaler
@@ -80,7 +79,7 @@ union rPkt_t {
 #if 1 // ============================= RX Table ================================
 struct rPayload_t {
     uint8_t IsValid = 0;
-    uint8_t Type;
+    int8_t Rssi;
 } __attribute__ ((__packed__));
 
 #define RXTABLE_SZ              RSLOT_CNT
@@ -97,28 +96,23 @@ public:
     }
     void AddOrReplaceExistingPktI(rPkt_t *pPkt) {
         if(pPkt->ID < RXTABLE_SZ) {
-            IBuf[pPkt->ID].Type = pPkt->Type;
+            IBuf[pPkt->ID].Rssi = pPkt->Rssi;
             IBuf[pPkt->ID].IsValid = 1;
         }
+    }
+
+    void CleanUp() {
+        for(auto &v : IBuf) v.IsValid = 0;
     }
 
     rPayload_t& operator[](const int32_t Indx) {
         return IBuf[Indx];
     }
 
-    void ProcessCountingDistinctTypes(uint32_t *TypeTable, uint8_t TableSz) {
-        for(auto &Payload : IBuf) {
-            if(Payload.IsValid and Payload.Type < TableSz) {
-                TypeTable[Payload.Type]++;
-                Payload.IsValid = 0; // Clear item for future use
-            }
-        }
-    }
-
     void Print() {
         Printf("RxTable\r");
         for(uint32_t i=0; i<RXTABLE_SZ; i++) {
-            if(IBuf[i].IsValid) Printf("ID: %u; Type: %u\r", i, IBuf[i].Type);
+            if(IBuf[i].IsValid) Printf("ID: %u; Rssi: %d\r", i, IBuf[i].Rssi);
         }
     }
 };
@@ -132,7 +126,7 @@ public:
 
     void AddPktToRxTableI(rPkt_t *pPkt) { RxTableW->AddOrReplaceExistingPktI(pPkt); }
 
-    RxTable_t* GetRxTable() {
+    RxTable_t& GetRxTable() {
         chSysLock();
         RxTable_t* RxTableR;
         // Switch tables
@@ -145,7 +139,7 @@ public:
             RxTableR = &RxTable2;
         }
         chSysUnlock();
-        return RxTableR;
+        return *RxTableR;
     }
 
     uint8_t Init();
