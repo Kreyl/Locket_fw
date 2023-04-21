@@ -194,6 +194,12 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #define SHOWTIME        45
 #define SMOOTHVAL       7
 
+const LedRGBChunk_t lsqTX[] = {
+        {csSetup, 180, clBlue},
+        {csSetup, 180, clBlack},
+        {csGoto, 0}
+};
+
 const LedRGBChunk_t lsqObserver[] = {
         {csSetup, SMOOTHVAL, clGreen},
         {csSetup, SMOOTHVAL, clBlack},
@@ -338,7 +344,7 @@ const BeepChunk_t bsqBeepPillBad[] = {
 #endif // beeper
 
 #if 1 // ============================== Vibro ==================================
-#define VIBRO_VOLUME    100  // 1 to 100
+#define VIBRO_VOLUME    81  // 1 to 100
 
 #define VIBRO_SHORT_MS          99
 #define VIBRO_REPEAT_PERIOD     1008

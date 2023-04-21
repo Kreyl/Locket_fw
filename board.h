@@ -15,7 +15,7 @@
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      FALSE
-#define BUTTONS_ENABLED     TRUE
+#define BUTTONS_ENABLED     FALSE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
@@ -48,7 +48,7 @@
 #define LED_R_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
 
 // Buttons
-#define BTN1_PIN        GPIOA, 0, pudPullDown
+#define BTN1_PIN        GPIOA, 0
 #define BTN2_PIN        GPIOA, 1, pudPullDown
 #define BTN3_PIN        GPIOB, 8, pudPullDown
 #define BTN_CNT         3
