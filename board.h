@@ -3,7 +3,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "Zalex22"
+#define APP_NAME            "TxByBtn"
 
 #ifndef TRUE
 #define TRUE    1
@@ -15,7 +15,7 @@
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      FALSE
-#define BUTTONS_ENABLED     FALSE
+#define BUTTONS_ENABLED     TRUE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
@@ -23,16 +23,16 @@
 #define STM32L151xB
 
 // Freq of external crystal if any. Leave it here even if not used.
-#define CRYSTAL_FREQ_HZ     12000000
+#define CRYSTAL_FREQ_HZ         12000000
 
 // OS timer settings
 #define STM32_ST_IRQ_PRIORITY   8
 #define STM32_ST_USE_TIMER      2
 #define STM32_TIMCLK1           (Clk.APB1FreqHz)
 
-#define I2C1_ENABLED        PILL_ENABLED
-#define I2C_USE_SEMAPHORE   FALSE
-#define ADC_REQUIRED        TRUE
+#define I2C1_ENABLED            PILL_ENABLED
+#define I2C_USE_SEMAPHORE       FALSE
+#define ADC_REQUIRED            FALSE
 
 #if 1 // ========================== GPIO =======================================
 // PortMinTim_t: GPIO, Pin, Tim, TimChnl, invInverted, omPushPull, TopValue
