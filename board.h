@@ -1,15 +1,21 @@
-#pragma once
-
-#include <inttypes.h>
+#ifndef BOARD_H__
+#define BOARD_H__
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "TxBtn"
+#define APP_NAME            "Zalex22"
+
+#ifndef TRUE
+#define TRUE    1
+#endif
+#ifndef FALSE
+#define FALSE   0
+#endif
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      FALSE
-#define BUTTONS_ENABLED     TRUE
+#define BUTTONS_ENABLED     FALSE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
@@ -19,10 +25,14 @@
 // Freq of external crystal if any. Leave it here even if not used.
 #define CRYSTAL_FREQ_HZ     12000000
 
-#define SYS_TIM_CLK         (Clk.APB1FreqHz)
+// OS timer settings
+#define STM32_ST_IRQ_PRIORITY   8
+#define STM32_ST_USE_TIMER      2
+#define STM32_TIMCLK1           (Clk.APB1FreqHz)
+
 #define I2C1_ENABLED        PILL_ENABLED
 #define I2C_USE_SEMAPHORE   FALSE
-#define ADC_REQUIRED        FALSE
+#define ADC_REQUIRED        TRUE
 
 #if 1 // ========================== GPIO =======================================
 // PortMinTim_t: GPIO, Pin, Tim, TimChnl, invInverted, omPushPull, TopValue
@@ -41,6 +51,7 @@
 #define BTN1_PIN        GPIOA, 0, pudPullDown
 #define BTN2_PIN        GPIOA, 1, pudPullDown
 #define BTN3_PIN        GPIOB, 8, pudPullDown
+#define BTN_CNT         3
 
 // Vibro
 #define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, 99 }
@@ -71,7 +82,7 @@
 #define PILL_PWR_PIN    { GPIOB, 3, omPushPull }
 
 // Radio: SPI, PGpio, Sck, Miso, Mosi, Cs, Gdo0
-#define CC_Setup0       SPI1, GPIOA, 5,6,7, 4, 3
+#define CC_Setup0       SPI1, GPIOA, 5,6,7, GPIOA,4, GPIOA,3
 
 #endif // GPIO
 
@@ -88,13 +99,11 @@
 #define ADC_CLK_DIVIDER     adcDiv2
 
 // ADC channels
-//#define BAT_CHNL          1
-
 #define ADC_VREFINT_CHNL    17  // All 4xx, F072 and L151 devices. Do not change.
 #define ADC_CHANNELS        { ADC_VREFINT_CHNL }
 #define ADC_CHANNEL_CNT     1   // Do not use countof(AdcChannels) as preprocessor does not know what is countof => cannot check
 #define ADC_SAMPLE_TIME     ast96Cycles
-#define ADC_SAMPLE_CNT      8   // How many times to measure every channel
+#define ADC_SAMPLE_CNT      9   // How many times to measure every channel
 
 #define ADC_SEQ_LEN         (ADC_SAMPLE_CNT * ADC_CHANNEL_CNT)
 
@@ -105,8 +114,8 @@
 // ==== Uart ====
 #define UART_DMA_TX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_LOW | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_M2P | STM32_DMA_CR_TCIE)
 #define UART_DMA_RX_MODE(Chnl) (STM32_DMA_CR_CHSEL(Chnl) | DMA_PRIORITY_MEDIUM | STM32_DMA_CR_MSIZE_BYTE | STM32_DMA_CR_PSIZE_BYTE | STM32_DMA_CR_MINC | STM32_DMA_CR_DIR_P2M | STM32_DMA_CR_CIRC)
-#define UART_DMA_TX     STM32_DMA1_STREAM4
-#define UART_DMA_RX     STM32_DMA1_STREAM5
+#define UART_DMA_TX     STM32_DMA_STREAM_ID(1, 4)
+#define UART_DMA_RX     STM32_DMA_STREAM_ID(1, 5)
 #define UART_DMA_CHNL   0   // Dummy
 
 #if I2C1_ENABLED // ==== I2C ====
@@ -116,7 +125,7 @@
 #endif
 
 #if ADC_REQUIRED
-#define ADC_DMA         STM32_DMA1_STREAM1
+#define ADC_DMA         STM32_DMA_STREAM_ID(1, 1)
 #define ADC_DMA_MODE    STM32_DMA_CR_CHSEL(0) |   /* dummy */ \
                         DMA_PRIORITY_LOW | \
                         STM32_DMA_CR_MSIZE_HWORD | \
@@ -131,12 +140,17 @@
 #if 1 // ========================== USART ======================================
 #define PRINTF_FLOAT_EN FALSE
 #define UART_TXBUF_SZ   256
-#define UART_RXBUF_SZ   99
+#define UART_RXBUF_SZ   128
+#define CMD_BUF_SZ      128
+
+#define CMD_UART        USART1
 
 #define UARTS_CNT       1
 
 #define CMD_UART_PARAMS \
-    USART1, UART_GPIO, UART_TX_PIN, UART_GPIO, UART_RX_PIN, \
+    CMD_UART, UART_GPIO, UART_TX_PIN, UART_GPIO, UART_RX_PIN, \
     UART_DMA_TX, UART_DMA_RX, UART_DMA_TX_MODE(UART_DMA_CHNL), UART_DMA_RX_MODE(UART_DMA_CHNL)
 
 #endif
+
+#endif //BOARD_H__

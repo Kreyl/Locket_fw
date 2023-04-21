@@ -1,11 +1,12 @@
 /*
  * vibro.h
  *
- *  Created on: 26-04-2015 ã.
+ *  Created on: 26-04-2015 ï¿½.
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef VIBRO_H__
+#define VIBRO_H__
 
 #include "kl_lib.h"
 #include "ChunkTypes.h"
@@ -24,3 +25,6 @@ public:
     Vibro_t(PwmSetup_t APin) : BaseSequencer_t(), IPin(APin) {}
     void Init() { IPin.Init(); }
 };
+
+
+#endif //VIBRO_H__

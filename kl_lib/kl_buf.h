@@ -5,7 +5,8 @@
  *      Author: kreyl
  */
 
-#pragma once
+#ifndef KL_BUF_H__
+#define KL_BUF_H__
 
 #include "ch.h"
 #include "string.h" // for memcpy
@@ -15,8 +16,20 @@ enum AddRslt_t {addrOk, addrFail, addrSwitch};
 
 // Simple buffer
 struct Buf_t {
-    uint8_t *Ptr;
     uint32_t Length;
+    uint8_t *Ptr;
+};
+
+template <uint32_t MaxSz>
+struct BufSz_t {
+    uint32_t Length;
+    uint8_t Buf[MaxSz];
+};
+
+template <typename T, uint32_t MaxSz>
+struct BufTypeSz_t {
+    uint32_t Length;
+    T Buf[MaxSz];
 };
 
 #if 1 // ============================== Circular ===============================
@@ -167,7 +180,7 @@ public:
     inline uint32_t GetEmptyCount() { return Sz-IFullSlotsCount; }
     inline uint32_t GetFullCount()  { return IFullSlotsCount; }
     void Flush(uint32_t ALength) {
-        TRIM_VALUE(ALength, IFullSlotsCount);
+        LimitMaxValue(ALength, IFullSlotsCount);
         IFullSlotsCount -= ALength;
         uint32_t PartSz = (IBuf + Sz) - PRead;
         if(ALength >= PartSz) {
@@ -501,3 +514,5 @@ public:
 
 
 #endif
+
+#endif //KL_BUF_H__

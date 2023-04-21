@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef SIMPLESENSORS_H__
+#define SIMPLESENSORS_H__
 
 /*
  * Simple sensors are sensors with two logic states: Low and High.
@@ -34,3 +35,5 @@ namespace SimpleSensors {
     void Init();
     void Shutdown();
 };
+
+#endif //SIMPLESENSORS_H__

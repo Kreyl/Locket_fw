@@ -1,5 +1,5 @@
 /*
-    ChibiOS - Copyright (C) 2006..2015 Giovanni Di Sirio.
+    ChibiOS - Copyright (C) 2006..2018 Giovanni Di Sirio.
 
     This file is part of ChibiOS.
 
@@ -25,17 +25,41 @@
  * @{
  */
 
-#ifndef _CHCORE_V7M_H_
-#define _CHCORE_V7M_H_
+#ifndef CHCORE_V7M_H
+#define CHCORE_V7M_H
 
 /*===========================================================================*/
 /* Module constants.                                                         */
 /*===========================================================================*/
 
 /**
+ * @name    Port Capabilities and Constants
+ * @{
+ */
+/**
  * @brief   This port supports a realtime counter.
  */
 #define PORT_SUPPORTS_RT                TRUE
+
+/**
+ * @brief   Natural alignment constant.
+ * @note    It is the minimum alignment for pointer-size variables.
+ */
+#define PORT_NATURAL_ALIGN              sizeof (void *)
+
+/**
+ * @brief   Stack alignment constant.
+ * @note    It is the alignment required for the stack pointer.
+ */
+#define PORT_STACK_ALIGN                sizeof (stkalign_t)
+
+/**
+ * @brief   Working Areas alignment constant.
+ * @note    It is the alignment to be enforced for thread working areas.
+ */
+#define PORT_WORKING_AREA_ALIGN         (PORT_ENABLE_GUARD_PAGES == TRUE ?  \
+                                         32U : PORT_STACK_ALIGN)
+/** @} */
 
 /**
  * @brief   Disabled value for BASEPRI register.
@@ -45,6 +69,24 @@
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
 /*===========================================================================*/
+
+/**
+ * @brief   Enables stack overflow guard pages using MPU.
+ * @note    This option can only be enabled if also option
+ *          @p CH_DBG_ENABLE_STACK_CHECK is enabled.
+ * @note    The use of this option has an overhead of 32 bytes for each
+ *          thread.
+ */
+#if !defined(PORT_ENABLE_GUARD_PAGES) || defined(__DOXYGEN__)
+#define PORT_ENABLE_GUARD_PAGES         FALSE
+#endif
+
+/**
+ * @brief   MPU region to be used to stack guards.
+ */
+#if !defined(PORT_USE_MPU_REGION) || defined(__DOXYGEN__)
+#define PORT_USE_MPU_REGION             MPU_REGION_7
+#endif
 
 /**
  * @brief   Stack size for the system idle thread.
@@ -116,13 +158,6 @@
 #endif
 
 /**
- * @brief   NVIC VTOR initialization expression.
- */
-#if !defined(CORTEX_VTOR_INIT) || defined(__DOXYGEN__)
-#define CORTEX_VTOR_INIT                0x00000000U
-#endif
-
-/**
  * @brief   NVIC PRIGROUP initialization expression.
  * @details The default assigns all available priority bits as preemption
  *          priority with no sub-priority.
@@ -135,11 +170,37 @@
 /* Derived constants and error checks.                                       */
 /*===========================================================================*/
 
+#if !defined(_FROM_ASM_)
+/**
+ * @brief   MPU guard page size.
+ */
+#if (PORT_ENABLE_GUARD_PAGES == TRUE) || defined(__DOXYGEN__)
+  #if CH_DBG_ENABLE_STACK_CHECK == FALSE
+    #error "PORT_ENABLE_GUARD_PAGES requires CH_DBG_ENABLE_STACK_CHECK"
+  #endif
+  #if __MPU_PRESENT == 0
+    #error "MPU not present in current device"
+  #endif
+  #define PORT_GUARD_PAGE_SIZE          32U
+#else
+  #define PORT_GUARD_PAGE_SIZE          0U
+#endif
+#endif /* !defined(_FROM_ASM_) */
+
 /**
  * @name    Architecture and Compiler
  * @{
  */
 #if (CORTEX_MODEL == 3) || defined(__DOXYGEN__)
+
+  #if !defined(CH_CUSTOMER_LIC_PORT_CM3)
+    #error "CH_CUSTOMER_LIC_PORT_CM3 not defined"
+  #endif
+
+  #if CH_CUSTOMER_LIC_PORT_CM3 == FALSE
+    #error "ChibiOS Cortex-M3 port not licensed"
+  #endif
+
 /**
  * @brief   Macro defining the specific ARM architecture.
  */
@@ -153,25 +214,63 @@
 /**
  * @brief   Name of the architecture variant.
  */
-#define PORT_CORE_VARIANT_NAME          "Cortex-M3"
+#if (PORT_ENABLE_GUARD_PAGES == FALSE) || defined(__DOXYGEN__)
+  #define PORT_CORE_VARIANT_NAME        "Cortex-M3"
+#else
+  #define PORT_CORE_VARIANT_NAME        "Cortex-M3 (MPU)"
+#endif
 
 #elif (CORTEX_MODEL == 4)
-#define PORT_ARCHITECTURE_ARM_v7ME
-#define PORT_ARCHITECTURE_NAME          "ARMv7E-M"
-#if CORTEX_USE_FPU
-#define PORT_CORE_VARIANT_NAME          "Cortex-M4F"
-#else
-#define PORT_CORE_VARIANT_NAME          "Cortex-M4"
-#endif
+
+  #if !defined(CH_CUSTOMER_LIC_PORT_CM4)
+    #error "CH_CUSTOMER_LIC_PORT_CM4 not defined"
+  #endif
+
+  #if CH_CUSTOMER_LIC_PORT_CM4 == FALSE
+  #error "ChibiOS Cortex-M4 port not licensed"
+  #endif
+
+  #define PORT_ARCHITECTURE_ARM_v7ME
+  #define PORT_ARCHITECTURE_NAME        "ARMv7E-M"
+  #if CORTEX_USE_FPU
+    #if PORT_ENABLE_GUARD_PAGES == FALSE
+      #define PORT_CORE_VARIANT_NAME    "Cortex-M4F"
+    #else
+      #define PORT_CORE_VARIANT_NAME    "Cortex-M4F (MPU)"
+    #endif
+  #else
+    #if PORT_ENABLE_GUARD_PAGES == FALSE
+      #define PORT_CORE_VARIANT_NAME    "Cortex-M4"
+    #else
+      #define PORT_CORE_VARIANT_NAME    "Cortex-M4 (MPU)"
+    #endif
+  #endif
 
 #elif (CORTEX_MODEL == 7)
+
+  #if !defined(CH_CUSTOMER_LIC_PORT_CM7)
+    #error "CH_CUSTOMER_LIC_PORT_CM7 not defined"
+  #endif
+
+  #if CH_CUSTOMER_LIC_PORT_CM7 == FALSE
+    #error "ChibiOS Cortex-M7 port not licensed"
+  #endif
+
 #define PORT_ARCHITECTURE_ARM_v7ME
-#define PORT_ARCHITECTURE_NAME          "ARMv7E-M"
-#if CORTEX_USE_FPU
-#define PORT_CORE_VARIANT_NAME          "Cortex-M7F"
-#else
-#define PORT_CORE_VARIANT_NAME          "Cortex-M7"
-#endif
+  #define PORT_ARCHITECTURE_NAME        "ARMv7E-M"
+  #if CORTEX_USE_FPU
+    #if PORT_ENABLE_GUARD_PAGES == FALSE
+      #define PORT_CORE_VARIANT_NAME    "Cortex-M7F"
+    #else
+      #define PORT_CORE_VARIANT_NAME    "Cortex-M7F (MPU)"
+    #endif
+  #else
+    #if PORT_ENABLE_GUARD_PAGES == FALSE
+      #define PORT_CORE_VARIANT_NAME    "Cortex-M7"
+    #else
+      #define PORT_CORE_VARIANT_NAME    "Cortex-M7 (MPU)"
+    #endif
+  #endif
 #endif
 
 /**
@@ -290,22 +389,39 @@ struct port_intctx {
  * @details This code usually setup the context switching frame represented
  *          by an @p port_intctx structure.
  */
-#define PORT_SETUP_CONTEXT(tp, workspace, wsize, pf, arg) {                 \
-  (tp)->p_ctx.r13 = (struct port_intctx *)((uint8_t *)(workspace) +         \
-                                           (size_t)(wsize) -                \
-                                           sizeof(struct port_intctx));     \
-  (tp)->p_ctx.r13->r4 = (regarm_t)(pf);                                     \
-  (tp)->p_ctx.r13->r5 = (regarm_t)(arg);                                    \
-  (tp)->p_ctx.r13->lr = (regarm_t)_port_thread_start;                       \
+#define PORT_SETUP_CONTEXT(tp, wbase, wtop, pf, arg) {                      \
+  (tp)->ctx.sp = (struct port_intctx *)((uint8_t *)(wtop) -                 \
+                                        sizeof (struct port_intctx));       \
+  (tp)->ctx.sp->r4 = (regarm_t)(pf);                                        \
+  (tp)->ctx.sp->r5 = (regarm_t)(arg);                                       \
+  (tp)->ctx.sp->lr = (regarm_t)_port_thread_start;                          \
 }
 
 /**
  * @brief   Computes the thread working area global size.
  * @note    There is no need to perform alignments in this macro.
  */
-#define PORT_WA_SIZE(n) (sizeof(struct port_intctx) +                       \
-                         sizeof(struct port_extctx) +                       \
-                         ((size_t)(n)) + ((size_t)(PORT_INT_REQUIRED_STACK)))
+#define PORT_WA_SIZE(n) ((size_t)PORT_GUARD_PAGE_SIZE +                     \
+                         sizeof (struct port_intctx) +                      \
+                         sizeof (struct port_extctx) +                      \
+                         (size_t)(n) +                                      \
+                         (size_t)PORT_INT_REQUIRED_STACK)
+
+/**
+ * @brief   Static working area allocation.
+ * @details This macro is used to allocate a static thread working area
+ *          aligned as both position and size.
+ *
+ * @param[in] s         the name to be assigned to the stack array
+ * @param[in] n         the stack size to be assigned to the thread
+ */
+#if (PORT_ENABLE_GUARD_PAGES == FALSE) || defined(__DOXYGEN__)
+#define PORT_WORKING_AREA(s, n)                                             \
+  stkalign_t s[THD_WORKING_AREA_SIZE(n) / sizeof (stkalign_t)]
+#else
+#define PORT_WORKING_AREA(s, n)                                             \
+  ALIGNED_VAR(32) stkalign_t s[THD_WORKING_AREA_SIZE(n) / sizeof (stkalign_t)]
+#endif
 
 /**
  * @brief   IRQ prologue code.
@@ -326,14 +442,22 @@ struct port_intctx {
  * @note    @p id can be a function name or a vector number depending on the
  *          port implementation.
  */
+#ifdef __cplusplus
+#define PORT_IRQ_HANDLER(id) extern "C" void id(void)
+#else
 #define PORT_IRQ_HANDLER(id) void id(void)
+#endif
 
 /**
  * @brief   Fast IRQ handler function declaration.
  * @note    @p id can be a function name or a vector number depending on the
  *          port implementation.
  */
+#ifdef __cplusplus
+#define PORT_FAST_IRQ_HANDLER(id) extern "C" void id(void)
+#else
 #define PORT_FAST_IRQ_HANDLER(id) void id(void)
+#endif
 
 /**
  * @brief   Performs a context switch between two threads.
@@ -348,13 +472,23 @@ struct port_intctx {
 #if (CH_DBG_ENABLE_STACK_CHECK == FALSE) || defined(__DOXYGEN__)
 #define port_switch(ntp, otp) _port_switch(ntp, otp)
 #else
+#if PORT_ENABLE_GUARD_PAGES == FALSE
 #define port_switch(ntp, otp) {                                             \
   struct port_intctx *r13 = (struct port_intctx *)__get_PSP();              \
-  if ((stkalign_t *)(r13 - 1) < (otp)->p_stklimit) {                        \
+  if ((stkalign_t *)(r13 - 1) < (otp)->wabase) {                            \
     chSysHalt("stack overflow");                                            \
   }                                                                         \
   _port_switch(ntp, otp);                                                   \
 }
+#else
+#define port_switch(ntp, otp) {                                             \
+  _port_switch(ntp, otp);                                                   \
+                                                                            \
+  /* Setting up the guard page for the switched-in thread.*/                \
+    mpuSetRegionAddress(PORT_USE_MPU_REGION,                                \
+                        chThdGetSelfX()->wabase);                           \
+}
+#endif
 #endif
 
 /*===========================================================================*/
@@ -382,9 +516,6 @@ extern "C" {
  */
 static inline void port_init(void) {
 
-  /* Initialization of the vector table and priority related settings.*/
-  SCB->VTOR = CORTEX_VTOR_INIT;
-
   /* Initializing priority grouping.*/
   NVIC_SetPriorityGrouping(CORTEX_PRIGROUP_INIT);
 
@@ -400,6 +531,24 @@ static inline void port_init(void) {
   NVIC_SetPriority(SVCall_IRQn, CORTEX_PRIORITY_SVCALL);
 #endif
   NVIC_SetPriority(PendSV_IRQn, CORTEX_PRIORITY_PENDSV);
+
+#if PORT_ENABLE_GUARD_PAGES == TRUE
+  {
+    extern stkalign_t __main_thread_stack_base__;
+
+    /* Setting up the guard page on the main() function stack base
+       initially.*/
+    mpuConfigureRegion(PORT_USE_MPU_REGION,
+                       &__main_thread_stack_base__,
+                       MPU_RASR_ATTR_AP_NA_NA |
+                       MPU_RASR_ATTR_NON_CACHEABLE |
+                       MPU_RASR_SIZE_32 |
+                       MPU_RASR_ENABLE);
+
+    /* MPU is enabled.*/
+    mpuEnable(MPU_CTRL_PRIVDEFENA);
+  }
+#endif
 }
 
 /**
@@ -424,8 +573,8 @@ static inline syssts_t port_get_irq_status(void) {
  * @param[in] sts       the interrupt status word
  *
  * @return              The interrupt status.
- * @retvel false        the word specified a disabled interrupts status.
- * @retvel true         the word specified an enabled interrupts status.
+ * @retval false        the word specified a disabled interrupts status.
+ * @retval true         the word specified an enabled interrupts status.
  */
 static inline bool port_irq_enabled(syssts_t sts) {
 
@@ -572,6 +721,6 @@ static inline rtcnt_t port_rt_get_counter_value(void) {
 
 #endif /* !defined(_FROM_ASM_) */
 
-#endif /* _CHCORE_V7M_H_ */
+#endif /* CHCORE_V7M_H */
 
 /** @} */
