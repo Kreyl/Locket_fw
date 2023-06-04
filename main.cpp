@@ -101,14 +101,20 @@ int main(void) {
         // CC params
         ReadAndSetupMode();
         Printf("ID %u; %S\r", ID, PwrNames[PwrLvlId]);
-        CC.SetBitrate(CCBitrate100k);
         CC.SetPktSize(RPKT_LEN);
-        CC.SetChannel(0);
-        CC.SetTxPower(PwrTable[PwrLvlId]);
+        CC.DoIdleAfterTx();
+        CC.SetChannel(RCHNL_EACH_OTH);
+        CC.SetTxPower(CC_Pwr0dBm);
+//        CC.SetTxPower(PwrTable[PwrLvlId]);
+        CC.SetBitrate(CCBitrate100k);
         PktTx.ID = ID;
         PktTx.TheWord = 0xCA110FEA;
-        CC.Recalibrate();
-        CC.Transmit((uint8_t*)&PktTx, RPKT_LEN);
+        while(1) {
+            CC.Recalibrate();
+            CC.Transmit(&PktTx, RPKT_LEN);
+            Led.StartOrRestart(lsqTx);
+            chThdSleepMilliseconds(99);
+        }
     }
     else { // CC failure
         Led.Init();
