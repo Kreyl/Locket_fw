@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef COLOR_H__
+#define COLOR_H__
 
 #include "inttypes.h"
 #include <sys/cdefs.h>
@@ -431,3 +432,5 @@ struct ColorHSV_t {
 #define clRGBWCyan      ((Color_t){0, 255, 255,   0})
 #define clRGBWWhite     ((Color_t){0,   0,   0, 255})
 #endif
+
+#endif //COLOR_H__

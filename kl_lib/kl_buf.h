@@ -5,7 +5,8 @@
  *      Author: kreyl
  */
 
-#pragma once
+#ifndef KL_BUF_H__
+#define KL_BUF_H__
 
 #include "ch.h"
 #include "string.h" // for memcpy
@@ -501,3 +502,5 @@ public:
 
 
 #endif
+
+#endif //KL_BUF_H__

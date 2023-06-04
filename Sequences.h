@@ -1,11 +1,12 @@
 /*
  * Sequences.h
  *
- *  Created on: 09 ÿíâ. 2015 ã.
+ *  Created on: 09 ï¿½ï¿½ï¿½. 2015 ï¿½.
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef SEQUENCES_H__
+#define SEQUENCES_H__
 
 #include "ChunkTypes.h"
 
@@ -234,9 +235,8 @@ const LedRGBChunk_t lsqFailure[] = {
 };
 
 const LedRGBChunk_t lsqTx[] = {
-        {csSetup, 306, clYellow},
-        {csSetup, 306, clBlack},
-//        {csSetup, 0, {7,0,0}},
+        {csSetup, 99, clGreen},
+        {csSetup, 99, clBlack},
         {csEnd},
 };
 
@@ -502,3 +502,5 @@ const BaseChunk_t vsqMany[] = {
 };
 */
 #endif
+
+#endif //SEQUENCES_H__

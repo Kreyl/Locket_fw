@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef LED_H__
+#define LED_H__
 
 #include "hal.h"
 #include "color.h"
@@ -297,3 +298,5 @@ public:
     }
 };
 #endif
+
+#endif //LED_H__

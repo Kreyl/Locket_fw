@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef CHUNKTYPES_H__
+#define CHUNKTYPES_H__
 
 #include "color.h"
 #include "ch.h"
@@ -146,3 +147,5 @@ public:
     bool IsIdle() { return (IPStartChunk == nullptr and IPCurrentChunk == nullptr); }
 };
 #endif
+
+#endif //CHUNKTYPES_H__

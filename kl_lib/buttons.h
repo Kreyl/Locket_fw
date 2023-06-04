@@ -5,7 +5,8 @@
  *      Author: kreyl
  */
 
-#pragma once
+#ifndef BUTTONS_H__
+#define BUTTONS_H__
 
 #include "hal.h"
 #include "kl_lib.h"
@@ -76,3 +77,5 @@ struct BtnEvtInfo_t {
 
 PinSnsState_t GetBtnState(uint8_t BtnID);
 #endif
+
+#endif //BUTTONS_H__

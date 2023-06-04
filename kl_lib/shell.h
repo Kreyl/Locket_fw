@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef SHELL_H__
+#define SHELL_H__
 
 #include <cstring>
 #include <stdarg.h>
@@ -213,3 +214,5 @@ extern "C" {
 void PrintfC(const char *format, ...);
 //void PrintfCNow(const char *format, ...);
 }
+
+#endif //SHELL_H__

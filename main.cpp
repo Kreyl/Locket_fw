@@ -42,6 +42,11 @@ static const uint8_t PwrTable[12] = {
         CC_PwrPlus12dBm   // 11
 };
 
+static const char* PwrNames[12] = {
+        "-30dBm", "-27dBm", "-25dBm", "-20dBm", "-15dBm", "-10dBm", "-6dBm",
+        "0dBm", "+5dBm", "+7dBm", "+10dBm", "+12dBm",
+};
+
 uint8_t PwrLvlId = 0;
 rPkt_t PktTx;
 uint32_t Delay;
@@ -90,18 +95,20 @@ int main(void) {
 
     if(CC.Init() == retvOk) {
         if(!Sleep::WasInStandby()) { // Show CC is ok
-            Led.StartOrRestart(lsqStart);
+            Led.StartOrRestart(lsqTx);
             chThdSleepMilliseconds(999);
         }
         // CC params
+        ReadAndSetupMode();
+        Printf("ID %u; %S\r", ID, PwrNames[PwrLvlId]);
+        CC.SetBitrate(CCBitrate100k);
         CC.SetPktSize(RPKT_LEN);
         CC.SetChannel(0);
-        ReadAndSetupMode();
         CC.SetTxPower(PwrTable[PwrLvlId]);
         PktTx.ID = ID;
-        PktTx.TheWord = 0x5A110BE1;
+        PktTx.TheWord = 0xCA110FEA;
         CC.Recalibrate();
-        CC.Transmit(&PktTx, RPKT_LEN);
+        CC.Transmit((uint8_t*)&PktTx, RPKT_LEN);
     }
     else { // CC failure
         Led.Init();
@@ -123,11 +130,10 @@ __unused
 void ReadAndSetupMode() {
     uint8_t b = GetDipSwitch();
     // ==== Something has changed ====
-    Printf("Dip: 0x%02X\r", b);
+//    Printf("Dip: 0x%02X\r", b);
     // Select power
     PwrLvlId = b & 0b1111; // Remove high bits
     if(PwrLvlId > 11) PwrLvlId = 11;
-
 }
 
 void ReadEE() {
