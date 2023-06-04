@@ -52,7 +52,7 @@
 /**
  * @brief   OS Library version string.
  */
-#define CH_OSLIB_VERSION        "1.1.2"
+#define CH_OSLIB_VERSION        "1.1.0"
 
 /**
  * @brief   OS Library version major number.
@@ -67,7 +67,7 @@
 /**
  * @brief   OS Library version patch number.
  */
-#define CH_OSLIB_PATCH          2
+#define CH_OSLIB_PATCH          0
 /** @} */
 
 /*===========================================================================*/

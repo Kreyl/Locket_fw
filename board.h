@@ -3,7 +3,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "Lustra"
+#define APP_NAME            "QTest"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE

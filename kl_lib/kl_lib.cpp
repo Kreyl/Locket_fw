@@ -10,7 +10,6 @@
 #include <string.h>
 #include "MsgQ.h"
 #include <malloc.h>
-#include <string>
 
 #if 0 // ============================ General ==================================
 // To replace standard error handler in case of virtual methods implementation
@@ -71,23 +70,6 @@ void PrintMemoryInfo() {
             info.uordblks, info.fordblks, info.keepcost);
 }
 
-extern "C"
-caddr_t _sbrk(int incr) {
-    extern uint8_t __heap_base__;
-    extern uint8_t __heap_end__;
-
-    static uint8_t *current_end = &__heap_base__;
-    uint8_t *current_block_address = current_end;
-
-    incr = (incr + 3) & (~3);
-    if(current_end + incr > &__heap_end__) {
-        errno = ENOMEM;
-        return (caddr_t) -1;
-    }
-    current_end += incr;
-    return (caddr_t)current_block_address;
-}
-
 #if 1 // ============================ kl_string ================================
 __always_inline
 int kl_tolower(char c) {
@@ -106,35 +88,6 @@ int kl_strcasecmp(const char *s1, const char *s2) {
       if(*p1++ == '\0') break;
   }
   return result;
-}
-
-char* kl_strtok(register char* s, register const char* delim, register char**PLast) {
-    if(s == nullptr and (s = *PLast) == nullptr) return nullptr;
-    register char* spanp;
-    // Skip leading delimiters
-    cont:
-    register char c = *s++, sc;
-    for(spanp = (char*)delim; (sc = *spanp++) != 0;) {
-        if(c == sc) goto cont;
-    }
-
-    if(c == 0) {    // no non-delimiter characters left, but string ended
-        *PLast = nullptr;
-        return nullptr;
-    }
-    char* tok = s - 1;
-    while(true) {
-        c = *s++;
-        spanp = (char*)delim;
-        do {
-            if((sc = *spanp++) == c) {
-                if(c == 0) s = nullptr;
-                else *(s-1) = 0;
-                *PLast = s;
-                return tok;
-            }
-        } while (sc != 0);
-    }
 }
 #endif
 
@@ -279,11 +232,7 @@ void Timer_t::Init() const {
     else if(ITmr == TIM17)  { rccEnableTIM17(FALSE); }
 #endif
 #ifdef LPTIM1
-#if defined STM32F7XX
-    else if(ILPTim == LPTIM1)  { rccEnableAPB1(RCC_APB1ENR_LPTIM1EN, FALSE); }
-#else
     else if(ILPTim == LPTIM1)  { rccEnableAPB1R1(RCC_APB1ENR1_LPTIM1EN, FALSE); }
-#endif // MCU
 #endif
 #ifdef LPTIM2
     else if(ILPTim == LPTIM2)  { rccEnableAPB1R2(RCC_APB1ENR2_LPTIM2EN, FALSE); }
@@ -344,11 +293,7 @@ void Timer_t::Deinit() const {
     else if(ITmr == TIM17)  { rccDisableTIM17(); }
 #endif
 #ifdef LPTIM1
-#if defined STM32F7XX
-    else if(ILPTim == LPTIM1)  { rccDisableAPB1(RCC_APB1ENR_LPTIM1EN); }
-#else
     else if(ILPTim == LPTIM1)  { rccDisableAPB1R1(RCC_APB1ENR1_LPTIM1EN); }
-#endif // MCU
 #endif
 #ifdef LPTIM2
     else if(ILPTim == LPTIM2)  { rccDisableAPB1R2(RCC_APB1ENR2_LPTIM2EN); }
@@ -470,25 +415,17 @@ void PinOutputPWM_t::Init() const {
 void Timer_t::SetUpdateFrequencyChangingPrescaler(uint32_t FreqHz) const {
     // Figure out input timer freq
     uint32_t UpdFreqMax = Clk.GetTimInputFreq(ITmr) / (ITmr->ARR + 1);
-    uint32_t Psc = UpdFreqMax / FreqHz;
-    if(Psc != 0) Psc--;
+    uint32_t div = UpdFreqMax / FreqHz;
+    if(div != 0) div--;
 //    Uart.Printf("InputFreq=%u; UpdFreqMax=%u; div=%u; ARR=%u\r", InputFreq, UpdFreqMax, div, ITmr->ARR);
-    ITmr->PSC = Psc;
+    ITmr->PSC = div;
     ITmr->CNT = 0;  // Reset counter to start from scratch
 }
 
 void Timer_t::SetUpdateFrequencyChangingTopValue(uint32_t FreqHz) const {
-    uint32_t UpdFreqMax = Clk.GetTimInputFreq(ITmr) / (ITmr->PSC + 1);
-    uint32_t TopVal  = (UpdFreqMax / FreqHz);
-    if(TopVal != 0) TopVal--;
+    uint32_t TopVal  = (Clk.GetTimInputFreq(ITmr) / FreqHz) - 1;
+//    Uart.Printf("Topval = %u\r", TopVal);
     SetTopValue(TopVal);
-    ITmr->CNT = 0;  // Reset counter to start from scratch
-}
-
-void Timer_t::SetUpdateFrequencyChangingBoth(uint32_t FreqHz) const {
-    uint32_t Psc = (Clk.GetTimInputFreq(ITmr) / FreqHz) / 0x10000;
-    ITmr->PSC = Psc;
-    SetUpdateFrequencyChangingTopValue(FreqHz);
 }
 #endif
 
@@ -519,15 +456,15 @@ void chDbgPanic(const char *msg1) {
 }
 
 void PrintErrMsg(const char* S) {
-    CMD_UART->CR3 &= ~USART_CR3_DMAT;
+    USART1->CR3 &= ~USART_CR3_DMAT;
     while(*S != 0) {
 //        ITM_SendChar(*S++);
-#if defined STM32L1XX || defined STM32F2XX
-        while(!(CMD_UART->SR & USART_SR_TXE));
-        CMD_UART->DR = *S;
+#if defined STM32L1XX
+        while(!(USART1->SR & USART_SR_TXE));
+        USART1->DR = *S;
 #else
-        while(!(CMD_UART->ISR & USART_ISR_TXE));
-        CMD_UART->TDR = *S;
+        while(!(USART1->ISR & USART_ISR_TXE));
+        USART1->TDR = *S;
 #endif
         S++;
     }
@@ -553,7 +490,7 @@ void ClearPendingFlags() {
     FLASH->SR = FLASH_SR_EOP | FLASH_SR_PGAERR | FLASH_SR_WRPERR;
 #elif defined STM32L4XX
     FLASH->SR = FLASH_SR_EOP | FLASH_SR_PROGERR | FLASH_SR_WRPERR;
-#elif defined STM32F7XX
+#elif defined STM32F2XX
 
 #else
     FLASH->SR = FLASH_SR_EOP | FLASH_SR_PGERR | FLASH_SR_WRPRTERR;
@@ -593,8 +530,6 @@ static uint8_t GetStatus(void) {
     else if(FLASH->SR & FLASH_SR_WRPERR) return retvWriteProtect;
     else if(FLASH->SR & (uint32_t)0x1E00) return retvFail;
 #elif defined STM32F2XX
-
-#elif defined STM32F7XX
 
 #else
     else if(FLASH->SR & FLASH_SR_PGERR) return retvFail;
@@ -644,6 +579,8 @@ void UnlockFlash() {
 void LockFlash() {
 #if defined STM32L1XX
     FLASH->PECR |= FLASH_PECR_PRGLOCK;
+#elif defined STM32F2XX
+
 #else
     WaitForLastOperation(FLASH_ProgramTimeout);
     FLASH->CR |= FLASH_CR_LOCK;
@@ -678,7 +615,7 @@ uint8_t ErasePage(uint32_t PageAddress) {
         status = WaitForLastOperation(FLASH_EraseTimeout);
         FLASH->CR &= ~FLASH_CR_PER; // Disable the PageErase Bit
         chSysUnlock();
-#elif defined STM32F7XX
+#elif defined STM32F2XX
 
 #else
         FLASH->CR |= FLASH_CR_PER;
@@ -694,25 +631,18 @@ uint8_t ErasePage(uint32_t PageAddress) {
 }
 
 #if defined STM32L4XX
-uint8_t ProgramBuf32(uint32_t Address, uint32_t *PData, int32_t ASzBytes) {
-//    Printf("PrgBuf %X  %u\r", Address, ASzBytes); chThdSleepMilliseconds(45);
-    ASzBytes = 8 * ((ASzBytes + 7) / 8);
+uint8_t ProgramDWord(uint32_t Address, uint64_t Data) {
     uint8_t status = WaitForLastOperation(FLASH_ProgramTimeout);
     if(status == retvOk) {
         chSysLock();
         ClearErrFlags();
-        FLASH->ACR &= ~FLASH_ACR_DCEN;      // Deactivate the data cache to avoid data misbehavior
-        FLASH->CR |= FLASH_CR_PG;           // Enable flash writing
-        // Write data
-        while(ASzBytes > 0 and status == retvOk) {
-            // Write Word64
-            *(volatile uint32_t*)Address = *PData++;
-            Address += 4;
-            *(volatile uint32_t*)Address = *PData++;
-            Address += 4;
-            ASzBytes -= 8;
-            status = WaitForLastOperation(FLASH_ProgramTimeout);
-        }
+        // Deactivate the data cache to avoid data misbehavior
+        FLASH->ACR &= ~FLASH_ACR_DCEN;
+        // Program Dword
+        SET_BIT(FLASH->CR, FLASH_CR_PG);    // Enable flash writing
+        *(volatile uint32_t*)Address = (uint32_t)Data;
+        *(volatile uint32_t*)(Address + 4) = (uint32_t)(Data >> 32);
+        status = WaitForLastOperation(FLASH_ProgramTimeout);
         FLASH->CR &= ~FLASH_CR_PG;          // Disable flash writing
         // Flush the caches to be sure of the data consistency
         FLASH->ACR |= FLASH_ACR_ICRST;      // }
@@ -792,8 +722,6 @@ void UnlockOptionBytes() {
     FLASH->OPTKEYR = 0x24252627;
 #elif defined STM32F2XX
 
-#elif defined STM32F7XX
-
 #else
     UnlockFlash();
     FLASH->OPTKEYR = FLASH_OPTKEY1;
@@ -808,31 +736,32 @@ void LockOptionBytes() {
     FLASH->PECR |= FLASH_PECR_OPTLOCK;
 #elif defined STM32F2XX
 
-#elif defined STM32F7XX
-
 #else
     CLEAR_BIT(FLASH->CR, FLASH_CR_OPTWRE);
     LockFlash();
 #endif
 }
 
-void WriteOptionBytes(uint32_t OptReg) {
+void WriteOptionByteRDP(uint8_t Value) {
+    UnlockFlash();
     ClearPendingFlags();
+    UnlockOptionBytes();
     if(WaitForLastOperation(FLASH_ProgramTimeout) == retvOk) {
 #ifdef STM32L1XX
         uint32_t OptBytes = *(volatile uint32_t*)0x1FF80000;
         OptBytes &= 0xFF00FF00; // Clear RDP and nRDP
-        OptBytes |= OptReg;      // Write RDP
-        OptBytes |= (OptReg ^ 0xFF) << 16; // Write nRDP;
+        OptBytes |= Value;      // Write RDP
+        OptBytes |= (Value ^ 0xFF) << 16; // Write nRDP;
         *(volatile uint32_t*)0x1FF80000 = OptBytes;
         WaitForLastOperation(FLASH_ProgramTimeout);
 #elif defined STM32L4XX
+        uint32_t OptReg = FLASH->OPTR;
+        OptReg &= ~FLASH_OPTR_RDP_Msk;  // Clear RDP
+        OptReg |= Value;
         FLASH->OPTR = OptReg;
         FLASH->CR |= FLASH_CR_OPTSTRT;
         WaitForLastOperation(FLASH_ProgramTimeout);
 #elif defined STM32F2XX
-
-#elif defined STM32F7XX
 
 #else
         // Erase option bytes
@@ -842,32 +771,15 @@ void WriteOptionBytes(uint32_t OptReg) {
         CLEAR_BIT(FLASH->CR, FLASH_CR_OPTER);
         if(Rslt == retvOk) {
             SET_BIT(FLASH->CR, FLASH_CR_OPTPG); // Enable the Option Bytes Programming operation
-            OB->RDP = OptReg;
+            OB->RDP = Value;
             WaitForLastOperation(FLASH_ProgramTimeout);
             CLEAR_BIT(FLASH->CR, FLASH_CR_OPTPG); // Disable the Option Bytes Programming operation
         }
 #endif
     }
+    LockOptionBytes();
+    LockFlash();
 }
-
-#if defined FLASH_OPTR_BFB2
-void ToggleBootBankAndReset() {
-    uint32_t Optr = FLASH->OPTR;
-    // switch BFB bit and enable dualbank just in case
-    Optr = (Optr ^ FLASH_OPTR_BFB2) | FLASH_OPTR_DUALBANK;
-    Flash::LockFlash(); // Just in case if not locked
-    while(FLASH->SR & FLASH_SR_BSY);
-    Flash::UnlockFlash();
-    Flash::UnlockOptionBytes();
-    FLASH->OPTR = Optr;
-    FLASH->CR |= FLASH_CR_OPTSTRT;
-    while(FLASH->SR & FLASH_SR_BSY);
-    // Option byte loading requested. Will reset MCU.
-    FLASH->CR |= FLASH_CR_OBL_LAUNCH;
-    Flash::LockOptionBytes(); // Must never be here, but who knows.
-    Flash::LockFlash();
-}
-#endif
 
 // ==== Firmare lock ====
 bool FirmwareIsLocked() {
@@ -876,8 +788,6 @@ bool FirmwareIsLocked() {
 #elif defined STM32L1XX
     return (FLASH->OBR & 0xFF) != 0xAA;
 #elif defined STM32F2XX
-    return false;
-#elif defined STM32F7XX
     return false;
 #else
     return (FLASH->OBR & 0b0110);
@@ -906,16 +816,12 @@ void LockFirmware() {
         LockFlash();    // Will lock option bytes too
         WaitForLastOperation(FLASH_ProgramTimeout);
     }
-#elif defined STM32F0XX
-
 #else
-    WriteOptionBytes(0x1D); // Any value except 0xAA or 0xCC
+    WriteOptionByteRDP(0x1D); // Any value except 0xAA or 0xCC
     // Set the OBL_Launch bit to reset system and launch the option byte loading
 #ifdef STM32L1XX
     FLASH->PECR |= FLASH_PECR_OBL_LAUNCH;
 #elif defined STM32F2XX || defined STM32F1XX
-
-#elif defined STM32F7XX
 
 #else
     SET_BIT(FLASH->CR, FLASH_CR_OBL_LAUNCH);
@@ -947,7 +853,7 @@ void IwdgFrozeInStandby() {
 #endif
 
 // ==== Dualbank ====
-#if defined STM32L4XX
+#if defined STM32L476
 bool DualbankIsEnabled() {
     return (FLASH->OPTR & FLASH_OPTR_DUALBANK);
 }
@@ -2276,9 +2182,6 @@ void Clk_t::SetCoreClk(CoreClk_t CoreClk) {
     // Setup dividers
     switch(CoreClk) {
         case cclk8MHz:
-        case cclk12MHz:
-        case cclk64MHz:
-        case cclk80MHz:
             break;
         // Setup PLL (must be disabled first)
         case cclk16MHz:
@@ -2403,7 +2306,7 @@ void Clk_t::UpdateFreqValues() {
 void Clk_t::PrintFreqs() {
     Printf(
             "AHBFreq=%uMHz; APB1Freq=%uMHz; APB2Freq=%uMHz\r",
-            AHBFreqHz/1000000, APB1FreqHz/1000000, APB2FreqHz/1000000);
+            Clk.AHBFreqHz/1000000, Clk.APB1FreqHz/1000000, Clk.APB2FreqHz/1000000);
 }
 
 uint32_t Clk_t::GetTimInputFreq(TIM_TypeDef* ITmr) {
@@ -2470,7 +2373,7 @@ void Clk_t::SetupFlashLatency(uint8_t AHBClk_MHz, MCUVoltRange_t VoltRange) {
 }
 
 void Clk_t::SetCoreClk(CoreClk_t CoreClk) {
-    EnablePrefetch();
+    EnablePrefeth();
     // First, switch to MSI if clock src is not MSI
     if((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_MSI) {
         if(SwitchToMSI() != retvOk) return;
@@ -2478,7 +2381,7 @@ void Clk_t::SetCoreClk(CoreClk_t CoreClk) {
 
     // Disable PLL and SAI1, enable HSE
     DisablePLL();
-    DisablePllSai1();
+    DisableSai1();
     if(CoreClk >= cclk16MHz) {
         if(EnableHSE() != retvOk) return;
         SetVoltageRange(mvrHiPerf);
@@ -2492,37 +2395,37 @@ void Clk_t::SetCoreClk(CoreClk_t CoreClk) {
         case cclk16MHz:
             if(AHBFreqHz < (uint32_t)CoreClk) SetupFlashLatency(16, mvrHiPerf);
             // 12MHz / 1 = 12; 12 * 8 / 6 = 16
-            if(SetupPll(8, 6, 2) != retvOk) return;
+            if(SetupPllMulDiv(1, 8, 6, 2) != retvOk) return;
             SetupFlashLatency(16, mvrHiPerf);
             break;
         case cclk24MHz:
             if(AHBFreqHz < (uint32_t)CoreClk) SetupFlashLatency(24, mvrHiPerf);
             // 12MHz / 1 = 12; 12 * 8 / 4 = 24
-            if(SetupPll(8, 4, 2) != retvOk) return;
+            if(SetupPllMulDiv(1, 8, 4, 2) != retvOk) return;
             SetupFlashLatency(24, mvrHiPerf);
             break;
         case cclk48MHz:
             if(AHBFreqHz < (uint32_t)CoreClk) SetupFlashLatency(48, mvrHiPerf);
             // 12MHz / 1 = 12; 12 * 8 / 2 => 48
-            if(SetupPll(8, 2, 2) != retvOk) return;
+            if(SetupPllMulDiv(1, 8, 2, 2) != retvOk) return;
             SetupFlashLatency(48, mvrHiPerf);
             break;
         case cclk64MHz:
             if(AHBFreqHz < (uint32_t)CoreClk) SetupFlashLatency(64, mvrHiPerf);
             // 12MHz / 3 = 4; 4 * 32 / 2 => 64
-            if(SetupPll(32, 2, 2) != retvOk) return;
+            if(SetupPllMulDiv(3, 32, 2, 2) != retvOk) return;
             SetupFlashLatency(64, mvrHiPerf);
             break;
         case cclk72MHz:
             if(AHBFreqHz < (uint32_t)CoreClk) SetupFlashLatency(72, mvrHiPerf);
             // 12MHz / 1 = 12; 12 * 12 / 2 = 72
-            if(SetupPll(24, 4, 6) != retvOk) return;
+            if(SetupPllMulDiv(1, 24, 4, 6) != retvOk) return;
             SetupFlashLatency(72, mvrHiPerf);
             break;
         case cclk80MHz:
             if(AHBFreqHz < (uint32_t)CoreClk) SetupFlashLatency(80, mvrHiPerf);
             // 12MHz / 3 = 4; 4 * 40 / 2 = 80; * 24 / 2 = 48
-            if(SetupPll(40, 2, 2) != retvOk) return;
+            if(SetupPllMulDiv(3, 40, 2, 2) != retvOk) return;
             SetupFlashLatency(80, mvrHiPerf);
             break;
         default: break;
@@ -2531,7 +2434,7 @@ void Clk_t::SetCoreClk(CoreClk_t CoreClk) {
     if(CoreClk >= cclk16MHz) {
         SetupBusDividers(ahbDiv1, apbDiv1, apbDiv1);
         if(EnablePLL() == retvOk) {
-            EnablePllROut();
+            EnablePLLROut();
             SwitchToPLL();
         }
     }
@@ -2546,38 +2449,18 @@ void Clk_t::SetVoltageRange(MCUVoltRange_t VoltRange) {
     PWR->CR1 = tmp;
 }
 
-// M: [1; 8]
-uint8_t Clk_t::SetupM(uint32_t M) {
-    if(M < 1 or M > 8) return retvBadValue;
-    uint32_t tmp = RCC->PLLCFGR;
-    tmp &= ~RCC_PLLCFGR_PLLM;
-    tmp |= (M - 1) << 4;
-    RCC->PLLCFGR = tmp;
-    return retvOk;
-}
-
-void Clk_t::SetupPllSrc(PllSrc_t PllSrc) {
-    uint32_t tmp = RCC->PLLCFGR;
-    tmp &= ~RCC_PLLCFGR_PLLSRC;
-    tmp |= (uint32_t)PllSrc;
-    RCC->PLLCFGR = tmp;
-}
-
-PllSrc_t Clk_t::GetPllSrc() {
-    uint32_t tmp = RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC;
-    return (PllSrc_t)tmp;
-}
-
 // M: 1...8; N: 8...86; R: 2,4,6,8
-uint8_t Clk_t::SetupPll(uint32_t N, uint32_t R, uint32_t Q) {
-    if(!((N >= 8 and N <= 86) and (R == 2 or R == 4 or R == 6 or R == 8))) return retvBadValue;
+uint8_t Clk_t::SetupPllMulDiv(uint32_t M, uint32_t N, uint32_t R, uint32_t Q) {
+    if(!((M >= 1 and M <= 8) and (N >= 8 and N <= 86) and (R == 2 or R == 4 or R == 6 or R == 8))) return retvBadValue;
     if(RCC->CR & RCC_CR_PLLON) return retvBusy; // PLL must be disabled to change dividers
     R = (R / 2) - 1;    // 2,4,6,8 => 0,1,2,3
     Q = (Q / 2) - 1;    // 2,4,6,8 => 0,1,2,3
     uint32_t tmp = RCC->PLLCFGR;
     tmp &= ~(RCC_PLLCFGR_PLLR | RCC_PLLCFGR_PLLREN | RCC_PLLCFGR_PLLQ | RCC_PLLCFGR_PLLQEN |
-            RCC_PLLCFGR_PLLP | RCC_PLLCFGR_PLLPEN | RCC_PLLCFGR_PLLN);
-    tmp |=  (N << 8) |
+            RCC_PLLCFGR_PLLP | RCC_PLLCFGR_PLLPEN | RCC_PLLCFGR_PLLN | RCC_PLLCFGR_PLLM | RCC_PLLCFGR_PLLSRC);
+    tmp |= RCC_PLLCFGR_PLLSRC_HSE | // Use only HSE as src
+            ((M - 1) << 4) |
+            (N << 8) |
             (R << 25) |
             (Q << 21);
     RCC->PLLCFGR = tmp;
@@ -2592,25 +2475,48 @@ void Clk_t::SetupPllSai1(uint32_t N, uint32_t R, uint32_t Q, uint32_t P) {
     else SET_BIT(RCC->PLLSAI1CFGR, RCC_PLLSAI1CFGR_PLLSAI1P);
 }
 
-void Clk_t::SetupPllSai2(uint32_t N, uint32_t R, uint32_t P) {
-    MODIFY_REG(RCC->PLLSAI2CFGR, RCC_PLLSAI2CFGR_PLLSAI2N, N << 8);
-    MODIFY_REG(RCC->PLLSAI2CFGR, RCC_PLLSAI2CFGR_PLLSAI2R, ((R >> 1U) - 1U) << 25);
-    if(P == 7) CLEAR_BIT(RCC->PLLSAI2CFGR, RCC_PLLSAI2CFGR_PLLSAI2P);
-    else SET_BIT(RCC->PLLSAI2CFGR, RCC_PLLSAI2CFGR_PLLSAI2P);
-}
-
 void Clk_t::SetupSai1Qas48MhzSrc() {
-    uint32_t tmp = RCC->CCIPR;
-    tmp &= ~RCC_CCIPR_CLK48SEL;
-    tmp |= ((uint32_t)src48PllSai1Q) << 26;
-    RCC->CCIPR = tmp;
-}
+    // Get SAI input freq
+    uint32_t InputFreq, tmp;
+    uint32_t PllM = ((RCC->PLLCFGR & RCC_PLLCFGR_PLLM) >> 4) + 1;
+    uint32_t PllSrc = (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC);
+    PllM = ((RCC->PLLCFGR & RCC_PLLCFGR_PLLM) >> 4) + 1 ;
+    switch(PllSrc) {
+        case 0x02:  // HSI used as PLL clock source
+            InputFreq = (HSI_FREQ_HZ / PllM);
+            break;
+        case 0x03:  // HSE used as PLL clock source
+            InputFreq = (CRYSTAL_FREQ_HZ / PllM);
+            break;
+        default: {   // MSI used as PLL clock source
+            uint32_t MSIRange;
+            // Get MSI Range frequency
+            if((RCC->CR & RCC_CR_MSIRGSEL) == 0) tmp = (RCC->CSR & RCC_CSR_MSISRANGE) >> 8;  // MSISRANGE from RCC_CSR applies
+            else tmp = (RCC->CR & RCC_CR_MSIRANGE) >> 4;    // MSIRANGE from RCC_CR applies
+            MSIRange = MSIRangeTable[tmp];                  // MSI frequency range in Hz
+            // Calc freq
+            InputFreq = (MSIRange / PllM);
+        } break;
+    } // switch(PllSrc)
 
-void Clk_t::SetupPllQas48MhzSrc() {
-    uint32_t tmp = RCC->CCIPR;
-    tmp &= ~RCC_CCIPR_CLK48SEL;
-    tmp |= ((uint32_t)src48PllQ) << 26;
-    RCC->CCIPR = tmp;
+    // Setup Sai
+    DisableSai1();
+    switch(InputFreq) {
+        case 2000000:  SetupPllSai1(48, 2, 2, 7); break; // 2 * 48 / 2 = 48
+        case 3000000:  SetupPllSai1(32, 2, 2, 7); break; // 3 * 32 / 2 = 48
+        case 4000000:  SetupPllSai1(24, 2, 2, 7); break; // 4 * 24 / 2 = 48
+        case 12000000: SetupPllSai1( 8, 2, 2, 7); break; // 12 * 8 / 2 = 48
+        default: return;
+    }
+
+    if(EnableSai1() == retvOk) {
+        // Setup Sai1Q as 48MHz source
+        EnableSai1QOut(); // Enable 48MHz output
+        tmp = RCC->CCIPR;
+        tmp &= ~RCC_CCIPR_CLK48SEL;
+        tmp |= ((uint32_t)src48PllSai1Q) << 26;
+        RCC->CCIPR = tmp;
+    }
 }
 
 // ==== Enable/Disable ====
@@ -2650,39 +2556,22 @@ void Clk_t::DisablePLL() {
     while(RCC->CR & RCC_CR_PLLRDY); // Wait until ready
 }
 
-uint8_t Clk_t::EnablePllSai1() {
+uint8_t Clk_t::EnableSai1() {
     SET_BIT(RCC->CR, RCC_CR_PLLSAI1ON); // Enable SAI
     // Wait till PLLSAI1 is ready. May fail if PLL source disabled or not selected.
     uint32_t t = 45000;
     while(READ_BIT(RCC->CR, RCC_CR_PLLSAI1RDY) == 0) {
         if(t-- == 0) {
-            Printf("Sai1On Timeout %X\r", RCC->CR);
+            Printf("SaiOn Timeout %X\r", RCC->CR);
             return retvFail;
         }
     }
     return retvOk;
 }
 
-uint8_t Clk_t::EnablePllSai2() {
-    SET_BIT(RCC->CR, RCC_CR_PLLSAI2ON); // Enable SAI
-    // Wait till PLLSAI1 is ready. May fail if PLL source disabled or not selected.
-    uint32_t t = 45000;
-    while(READ_BIT(RCC->CR, RCC_CR_PLLSAI2RDY) == 0) {
-        if(t-- == 0) {
-            Printf("Sai2On Timeout %X\r", RCC->CR);
-            return retvFail;
-        }
-    }
-    return retvOk;
-}
-
-void Clk_t::DisablePllSai1() {
+void Clk_t::DisableSai1() {
     RCC->CR &= ~RCC_CR_PLLSAI1ON;
     while(RCC->CR & RCC_CR_PLLSAI1RDY); // Wait until ready
-}
-void Clk_t::DisablePllSai2() {
-    RCC->CR &= ~RCC_CR_PLLSAI2ON;
-    while(RCC->CR & RCC_CR_PLLSAI2RDY); // Wait until ready
 }
 
 uint8_t Clk_t::EnableMSI() {
@@ -2755,279 +2644,10 @@ uint32_t Clk_t::GetSaiClkHz() {
         }
         return FreqRslt;
     }
+#elif defined STM32
 
-#elif defined STM32F7XX
-const uint8_t AHBPrescTable[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9};
-const uint8_t APBPrescTable[8] = {0, 0, 0, 0, 1, 2, 3, 4};
 
-uint32_t Clk_t::GetSysClkHz() {
-    uint32_t ClkSwitch = (RCC->CFGR & RCC_CFGR_SWS) >> 2;  // System clock switch status
-    switch(ClkSwitch) {
-        case 0b00: return HSI_FREQ_HZ; break; // HSI
-        case 0b01: return CRYSTAL_FREQ_HZ; break;// HSE
-        case 0b10: { // PLL
-            /* PLL used as system clock source
-             * PLL_VCO = (CRYSTAL_FREQ_HZ or HSI_FREQ_HZ) / PLLM * PLLN
-             * SYSCLK = PLL_VCO / PLLP */
-            uint32_t PllSrc = (RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC);
-            uint32_t PllM = RCC->PLLCFGR & RCC_PLLCFGR_PLLM;
-            uint32_t PllVCO = (PllSrc == 0)? (HSI_FREQ_HZ / PllM) : (CRYSTAL_FREQ_HZ / PllM);
-            PllVCO *= ((RCC->PLLCFGR & RCC_PLLCFGR_PLLN) >> 6);
-            uint32_t PllP = (((RCC->PLLCFGR & RCC_PLLCFGR_PLLP) >> 16) + 1) * 2;
-            return PllVCO / PllP;
-        } break;
-        default: return 0; break;
-    } // switch
-}
-
-void Clk_t::UpdateFreqValues() {
-    // AHB freq
-    uint32_t tmp = AHBPrescTable[((RCC->CFGR & RCC_CFGR_HPRE) >> 4)];
-    AHBFreqHz = GetSysClkHz() >> tmp;
-    // APB freq
-    uint32_t APB1prs = (RCC->CFGR & RCC_CFGR_PPRE1) >> 10;
-    uint32_t APB2prs = (RCC->CFGR & RCC_CFGR_PPRE2) >> 13;
-    tmp = APBPrescTable[APB1prs];
-    APB1FreqHz = AHBFreqHz >> tmp;
-    tmp = APBPrescTable[APB2prs];
-    APB2FreqHz = AHBFreqHz >> tmp;
-
-    // ==== Update prescaler in System Timer ====
-    uint32_t Psc = (SYS_TIM_CLK / OSAL_ST_FREQUENCY) - 1;
-    TMR_DISABLE(STM32_ST_TIM);          // Stop counter
-    uint32_t Cnt = STM32_ST_TIM->CNT;   // Save current time
-    STM32_ST_TIM->PSC = Psc;
-    TMR_GENERATE_UPD(STM32_ST_TIM);
-    STM32_ST_TIM->CNT = Cnt;            // Restore time
-    TMR_ENABLE(STM32_ST_TIM);
-}
-
-uint32_t Clk_t::GetTimInputFreq(TIM_TypeDef* ITmr) {
-    uint32_t InputFreq = 0;
-    // APB2
-    if(ITmr == TIM1 or ITmr == TIM8 or ITmr == TIM9 or ITmr == TIM10 or ITmr == TIM11) {
-        uint32_t APB2prs = (RCC->CFGR & RCC_CFGR_PPRE2) >> 13;
-        if(RCC->DCKCFGR1 & RCC_DCKCFGR1_TIMPRE) {
-            if(APB2prs == 1 or APB2prs == 2 or APB2prs == 4) InputFreq = AHBFreqHz;
-            else InputFreq = Clk.APB2FreqHz * 4;
-        }
-        else {
-            if(APB2prs == 1) InputFreq = Clk.APB2FreqHz;
-            else InputFreq = Clk.APB2FreqHz * 2;
-        }
-    }
-    // APB1
-    else {
-        LPTIM_TypeDef* ILPTim = (LPTIM_TypeDef*)ITmr;
-        if(ILPTim == LPTIM1) {
-            InputFreq = Clk.APB1FreqHz; // Others clock options are not implemented
-        }
-        else { // not a LPTIM
-            uint32_t APB1prs = (RCC->CFGR & RCC_CFGR_PPRE1) >> 10;
-            if(RCC->DCKCFGR1 & RCC_DCKCFGR1_TIMPRE) {
-                if(APB1prs == 1 or APB1prs == 2 or APB1prs == 4) InputFreq = AHBFreqHz;
-                else InputFreq = Clk.APB1FreqHz * 4;
-            }
-            else {
-                if(APB1prs == 1) InputFreq = Clk.APB1FreqHz;
-                else InputFreq = Clk.APB1FreqHz * 2;
-            }
-        }
-    }
-    return InputFreq;
-}
-
-#if 1 // ==== Clock setup ====
-void Clk_t::SwitchToHSI() {
-    if(EnableHSI() != retvOk) return;
-    uint32_t tmp = RCC->CFGR;
-    tmp &= ~RCC_CFGR_SW;
-    tmp |= RCC_CFGR_SW_HSI;
-    RCC->CFGR = tmp;
-    while((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI); // Wait until ready
-}
-
-void Clk_t::SwitchToPLL() {
-    uint32_t tmp = RCC->CFGR;
-    tmp &= ~RCC_CFGR_SW;
-    tmp |= RCC_CFGR_SW_PLL;
-    RCC->CFGR = tmp;
-    while((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL); // Wait until ready
-}
-
-void Clk_t::SetCoreClk80MHz() {
-    EnablePrefetch();
-    // First, switch to HSI if clock src is not HSI
-    if((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) SwitchToHSI();
-    // Disable PLL and SAI, enable HSE
-    DisablePLL();
-    DisablePLLSai();
-    DisablePLLI2S();
-    if(EnableHSE() != retvOk) return;
-    SetupPllSrc(pllsrcHse);
-    SetVoltageScale(mvScale3);
-    // Setup dividers
-    if(AHBFreqHz < 80000000) SetupFlashLatency(80, 3300);
-    // 12MHz / 6 = 2; 2 * 160 / 4 = 80; Q and R are don't care
-    SetupPllMulDiv(6, 160, 4, 8, 2);
-    SetupFlashLatency(80, 3300);
-    // APB1 is 54MHz max, APB2 is 108MHz max
-    SetupBusDividers(ahbDiv1, apbDiv2, apbDiv1);
-    if(EnablePLL() == retvOk) SwitchToPLL();
-}
-
-// PLL_SAI output P used to produce 48MHz, it is selected as PLL48CLK
-void Clk_t::Setup48Mhz() {
-    // Get SAI input freq
-    uint32_t InputFreq;
-    uint32_t PllM = RCC->PLLCFGR & RCC_PLLCFGR_PLLM;
-    // 0 is HSI, 1 is HSE
-    if(RCC->PLLCFGR & RCC_PLLCFGR_PLLSRC) InputFreq = (CRYSTAL_FREQ_HZ / PllM);
-    else InputFreq = (HSI_FREQ_HZ / PllM);
-
-    // Setup PLLSai
-    DisablePLLSai();
-    switch(InputFreq) {
-        case 2000000:  SetupPllSai(96, 4, 8, 2); break; // 2 * 96 / 4 = 48
-        case 3000000:  SetupPllSai(32, 2, 2, 7); break; // 3 * 32 / 2 = 48
-        case 4000000:  SetupPllSai(24, 2, 2, 7); break; // 4 * 24 / 2 = 48
-        case 12000000: SetupPllSai( 8, 2, 2, 7); break; // 12 * 8 / 2 = 48
-        default: return;
-    }
-    // Setup Sai1P as 48MHz source
-    if(EnablePLLSai() == retvOk) {
-        RCC->DCKCFGR2 &= ~RCC_DCKCFGR2_SDMMC2SEL; // 48MHz selected as SDMMC2 clk
-        RCC->DCKCFGR2 &= ~RCC_DCKCFGR2_SDMMC1SEL; // 48MHz selected as SDMMC1 clk
-        RCC->DCKCFGR2 |=  RCC_DCKCFGR2_CK48MSEL;  // 48MHz clk from PLLSAI selected
-    }
-}
-
-// Scale3: f<=144Mhz; Scale2: 144<f<=169MHz; Scale1: 168<f<=216MHz
-void Clk_t::SetVoltageScale(MCUVoltScale_t VoltScale) {
-    uint32_t tmp = PWR->CR1;
-    tmp &= ~PWR_CR1_VOS;
-    tmp |= ((uint32_t)VoltScale) << 14;
-    PWR->CR1 = tmp;
-}
-
-static const uint32_t FlashLatencyTbl[4][10] = {
-        {30, 60, 90, 120, 150, 180, 210, 216}, // 2.7...3.6 V
-        {24, 48, 72, 96, 120, 144, 168, 192, 216}, // 2.4...2.7 V
-        {22, 44, 66, 88, 110, 132, 154, 176, 198, 216}, // 2.1...2.4 V
-        {20, 40, 60, 80, 100, 120, 140, 160, 180}, // 1.8...2.1 V
-};
-void Clk_t::SetupFlashLatency(uint8_t AHBClk_MHz, uint32_t MCUVoltage_mv) {
-    uint32_t VoltIndx;
-    if(MCUVoltage_mv < 2100) VoltIndx = 3;
-    else if(MCUVoltage_mv < 2400) VoltIndx = 2;
-    else if(MCUVoltage_mv < 2700) VoltIndx = 1;
-    else VoltIndx = 0;
-    // Iterate freqs
-    for(uint32_t i=0; i<10; i++) {
-        if(AHBClk_MHz <= FlashLatencyTbl[VoltIndx][i]) {
-            // Setup latency (which equals to i)
-            uint32_t tmp = FLASH->ACR & ~FLASH_ACR_LATENCY;
-            tmp |= i;
-            FLASH->ACR |= tmp;
-            return;
-        }
-    }
-}
-
-void Clk_t::SetupPllMulDiv(uint32_t M, uint32_t N, uint32_t P, uint32_t Q, uint32_t R) {
-    if(RCC->CR & RCC_CR_PLLON) return; // PLL must be disabled to change dividers
-    P = (P / 2) - 1;    // 2,4,6,8 => 0,1,2,3
-    uint32_t tmp = RCC->PLLCFGR;
-    tmp &= ~(RCC_PLLCFGR_PLLR | RCC_PLLCFGR_PLLQ | RCC_PLLCFGR_PLLP | RCC_PLLCFGR_PLLN | RCC_PLLCFGR_PLLM);
-    tmp |= (M << 0) | (N << 6) | (P << 16) | (Q << 24) | (R << 28);
-    RCC->PLLCFGR = tmp;
-}
-
-void Clk_t::SetupBusDividers(AHBDiv_t AHBDiv, APBDiv_t APB1Div, APBDiv_t APB2Div) {
-    uint32_t tmp = RCC->CFGR;
-    tmp &= ~(RCC_CFGR_HPRE | RCC_CFGR_PPRE1 | RCC_CFGR_PPRE2);  // Clear bits
-    tmp |= ((uint32_t)AHBDiv)  << 4;
-    tmp |= ((uint32_t)APB1Div) << 10;
-    tmp |= ((uint32_t)APB2Div) << 13;
-    RCC->CFGR = tmp;
-}
-
-void Clk_t::SetupPllSai(uint32_t N, uint32_t P, uint32_t Q, uint32_t R) {
-    uint32_t tmp = RCC->PLLSAICFGR;
-    tmp &= ~(RCC_PLLSAICFGR_PLLSAIR | RCC_PLLSAICFGR_PLLSAIQ | RCC_PLLSAICFGR_PLLSAIP | RCC_PLLSAICFGR_PLLSAIN);
-    P = (P / 2) - 1;    // 2,4,6,8 => 0,1,2,3
-    tmp |= (R << 28) | (Q << 24) | (P << 16) | (N << 6);
-    RCC->PLLSAICFGR = tmp;
-}
 #endif
-
-void Clk_t::PrintFreqs() {
-    Printf("AHBFreq=%uMHz; APB1Freq=%uMHz; APB2Freq=%uMHz\r",
-            AHBFreqHz/1000000, APB1FreqHz/1000000, APB2FreqHz/1000000);
-}
-
-#if 1 // ==== Enable/Disable ====
-uint8_t Clk_t::EnableHSI() {
-    RCC->CR |= RCC_CR_HSION;
-    // Wait until ready
-    uint32_t StartUpCounter=0;
-    do {
-        if(RCC->CR & RCC_CR_HSIRDY) return retvOk;
-        StartUpCounter++;
-    } while(StartUpCounter < CLK_STARTUP_TIMEOUT);
-    return retvTimeout;
-}
-
-uint8_t Clk_t::EnableHSE() {
-    RCC->CR |= RCC_CR_HSEON;    // Enable HSE
-    // Wait until ready
-    uint32_t StartupCounter=0;
-    do {
-        if(RCC->CR & RCC_CR_HSERDY) return retvOk;   // HSE is ready
-        StartupCounter++;
-    } while(StartupCounter < CLK_STARTUP_TIMEOUT);
-    return retvTimeout;
-}
-
-uint8_t Clk_t::EnablePLL() {
-    RCC->CR |= RCC_CR_PLLON;
-    // Wait until ready
-    uint32_t StartUpCounter=0;
-    do {
-        if(RCC->CR & RCC_CR_PLLRDY) return retvOk;   // PLL is ready
-        StartUpCounter++;
-    } while(StartUpCounter < CLK_STARTUP_TIMEOUT);
-    return retvTimeout;
-}
-
-uint8_t Clk_t::EnablePLLSai() {
-    RCC->CR |= RCC_CR_PLLSAION; // Enable SAI
-    // Wait till PLLSAI1 is ready. May fail if PLL source disabled or not selected.
-    uint32_t StartUpCounter=0;
-    do {
-        if(RCC->CR & RCC_CR_PLLSAIRDY) return retvOk;   // PLL is ready
-        StartUpCounter++;
-    } while(StartUpCounter < 45000);
-    Printf("SaiRdy Timeout %X\r", RCC->CR);
-    return retvTimeout;
-}
-
-void Clk_t::DisablePLL() {
-    RCC->CR &= ~RCC_CR_PLLON;
-    while(RCC->CR & RCC_CR_PLLRDY); // Wait until ready
-}
-
-void Clk_t::DisablePLLSai() {
-    RCC->CR &= ~RCC_CR_PLLSAION;
-    while(RCC->CR & RCC_CR_PLLSAIRDY); // Wait until ready
-}
-void Clk_t::DisablePLLI2S() {
-    RCC->CR &= ~RCC_CR_PLLI2SON;
-    while(RCC->CR & RCC_CR_PLLI2SRDY); // Wait until ready
-}
-#endif
-
-#endif // MCU
 
 #endif // Clocking
 
@@ -3042,15 +2662,6 @@ void Spi_t::Setup(BitOrder_t BitOrder, CPOL_t CPOL, CPHA_t CPHA,
 #ifdef SPI3
     else if (PSpi == SPI3) { rccEnableSPI3(FALSE); }
 #endif
-#ifdef SPI4
-    else if (PSpi == SPI4) { rccEnableSPI4(FALSE); }
-#endif
-#ifdef SPI5
-    else if (PSpi == SPI5) { rccEnableSPI5(FALSE); }
-#endif
-#ifdef SPI6
-    else if (PSpi == SPI6) { rccEnableSPI6(FALSE); }
-#endif
     // Mode: Master, NSS software controlled and is 1, 8bit, NoCRC, FullDuplex
     PSpi->CR1 = SPI_CR1_SSM | SPI_CR1_SSI | SPI_CR1_MSTR;
     if(BitOrder == boLSB) PSpi->CR1 |= SPI_CR1_LSBFIRST;    // MSB/LSB
@@ -3058,31 +2669,26 @@ void Spi_t::Setup(BitOrder_t BitOrder, CPOL_t CPOL, CPHA_t CPHA,
     if(CPHA == cphaSecondEdge) PSpi->CR1 |= SPI_CR1_CPHA;   // CPHA
     // Baudrate
     int32_t div;
-#if defined STM32L1XX || defined STM32F4XX || defined STM32F2XX || defined STM32L4XX
+#if defined STM32L1XX || defined STM32F4XX || defined STM32L4XX
     if(PSpi == SPI1) div = Clk.APB2FreqHz / Bitrate_Hz;
     else div = Clk.APB1FreqHz / Bitrate_Hz;
 #elif defined STM32F030 || defined STM32F0
     div = Clk.APBFreqHz / Bitrate_Hz;
-#elif defined STM32F7XX
-    if(PSpi == SPI2 or PSpi == SPI3) div = Clk.APB1FreqHz / Bitrate_Hz;
-    else div = Clk.APB2FreqHz / Bitrate_Hz;
-#else
-#error "SPI div not defined"
 #endif
     SpiClkDivider_t ClkDiv = sclkDiv2;
-    if     (div > 128) ClkDiv = sclkDiv256;
-    else if(div > 64) ClkDiv = sclkDiv128;
-    else if(div > 32) ClkDiv = sclkDiv64;
-    else if(div > 16) ClkDiv = sclkDiv32;
-    else if(div > 8)  ClkDiv = sclkDiv16;
-    else if(div > 4)  ClkDiv = sclkDiv8;
-    else if(div > 2)  ClkDiv = sclkDiv4;
+    if     (div >= 128) ClkDiv = sclkDiv256;
+    else if(div >= 64) ClkDiv = sclkDiv128;
+    else if(div >= 32) ClkDiv = sclkDiv64;
+    else if(div >= 16) ClkDiv = sclkDiv32;
+    else if(div >= 8)  ClkDiv = sclkDiv16;
+    else if(div >= 4)  ClkDiv = sclkDiv8;
+    else if(div >= 2)  ClkDiv = sclkDiv4;
     PSpi->CR1 |= ((uint16_t)ClkDiv) << 3;
     // Bit number
 #if defined STM32L1XX || defined STM32F10X_LD_VL || defined STM32F2XX || defined STM32F4XX
     if(BitNumber == bitn16) PSpi->CR1 |= SPI_CR1_DFF;
     PSpi->CR2 = 0;
-#elif defined STM32F030 || defined STM32F072xB || defined STM32L4XX || defined STM32F7XX
+#elif defined STM32F030 || defined STM32F072xB || defined STM32L4XX
     if(BitNumber == bitn16) PSpi->CR2 = (uint16_t)0b1111 << 8;  // 16 bit, RXNE generated when 16 bit is received
     else PSpi->CR2 = ((uint16_t)0b0111 << 8) | SPI_CR2_FRXTH;   // 8 bit, RXNE generated when 8 bit is received
 #endif
@@ -3096,15 +2702,6 @@ static ftVoidVoid Spi2RxIrqHandler = nullptr;
 #ifdef SPI3
 static ftVoidVoid Spi3RxIrqHandler = nullptr;
 #endif
-#ifdef SPI4
-static ftVoidVoid Spi4RxIrqHandler = nullptr;
-#endif
-#ifdef SPI5
-static ftVoidVoid Spi5RxIrqHandler = nullptr;
-#endif
-#ifdef SPI6
-static ftVoidVoid Spi6RxIrqHandler = nullptr;
-#endif
 
 void Spi_t::SetupRxIrqCallback(ftVoidVoid AIrqHandler) const {
     if(PSpi == SPI1) Spi1RxIrqHandler = AIrqHandler;
@@ -3113,15 +2710,6 @@ void Spi_t::SetupRxIrqCallback(ftVoidVoid AIrqHandler) const {
 #endif
 #ifdef SPI3
     else if(PSpi == SPI3) Spi3RxIrqHandler = AIrqHandler;
-#endif
-#ifdef SPI4
-    else if(PSpi == SPI4) Spi4RxIrqHandler = AIrqHandler;
-#endif
-#ifdef SPI5
-    else if(PSpi == SPI5) Spi5RxIrqHandler = AIrqHandler;
-#endif
-#ifdef SPI6
-    else if(PSpi == SPI6) Spi6RxIrqHandler = AIrqHandler;
 #endif
 }
 
