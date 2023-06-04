@@ -1,11 +1,12 @@
 /*
  * ChunkTypes.h
  *
- *  Created on: 08 ï¿½ï¿½ï¿½. 2015 ï¿½.
+ *  Created on: 08 ÿíâ. 2015 ã.
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef CHUNKTYPES_H__
+#define CHUNKTYPES_H__
 
 #include "color.h"
 #include "ch.h"
@@ -33,9 +34,6 @@ struct BaseChunk_t {
 struct LedRGBChunk_t {
     BaseChunk_Vars;
     Color_t Color;
-    LedRGBChunk_t(ChunkSort_t ASort, uint32_t AValue, Color_t AColor) : ChunkSort(ASort), Value(AValue), Color(AColor) {}
-    LedRGBChunk_t(ChunkSort_t ASort, uint32_t AValue) : ChunkSort(ASort), Value(AValue), Color(0,0,0) {}
-    LedRGBChunk_t(ChunkSort_t ASort) : ChunkSort(ASort), Value(0), Color(0,0,0) {}
 } __attribute__((packed));
 
 // HSV LED chunk
@@ -135,10 +133,6 @@ public:
         else StartOrRestart(PChunk);
     }
 
-    void StartIfIdle(const TChunk *PChunk) {
-        if(IsIdle()) StartOrRestart(PChunk);
-    }
-
     void Stop() {
         if(IPStartChunk != nullptr) {
             chSysLock();
@@ -153,3 +147,5 @@ public:
     bool IsIdle() { return (IPStartChunk == nullptr and IPCurrentChunk == nullptr); }
 };
 #endif
+
+#endif //CHUNKTYPES_H__

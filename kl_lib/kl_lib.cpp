@@ -1309,7 +1309,7 @@ uint8_t TryStrToFloat(char* S, float *POutput) {
 }; // namespace
 #endif
 
-#if 0 // ============================== IWDG ===================================
+#if 1 // =========================== IWDG ===========================
 namespace Iwdg {
 enum Pre_t {
     iwdgPre4 = 0x00,
@@ -1321,9 +1321,11 @@ enum Pre_t {
     iwdgPre256 = 0x06
 };
 
+#if defined STM32L4XX
 void DisableInDebug() {
     DBGMCU->APB1FZR1 |= DBGMCU_APB1FZR1_DBG_IWDG_STOP;
 }
+#endif
 
 static void Enable() { IWDG->KR = 0xCCCC; }
 static void EnableAccess() { IWDG->KR = 0x5555; }

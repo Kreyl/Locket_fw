@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef COLOR_H__
+#define COLOR_H__
 
 #include "inttypes.h"
 #include <sys/cdefs.h>
@@ -186,19 +187,19 @@ public:
         Delay2 = (Brt == AClr.Brt)? 0 : ClrCalcDelay(Brt, SmoothValue);
         return (Delay2 > Delay)? Delay2 : Delay;
     }
+//    void SetRGBWBrightness(Color_t &AClr, int32_t Brt) {
+//        R = SetSingleBrt(AClr.R, Brt);
+//        G = SetSingleBrt(AClr.G, Brt);
+//        B = SetSingleBrt(AClr.B, Brt);
+//        W = SetSingleBrt(AClr.W, Brt);
+//    }
+//    void SetRGBBrightness(Color_t &AClr, int32_t Brt) {
+//        R = SetSingleBrt(AClr.R, Brt);
+//        G = SetSingleBrt(AClr.G, Brt);
+//        B = SetSingleBrt(AClr.B, Brt);
+//    }
 
-    void SetRGBWBrightness(Color_t &AClr, int32_t Brt, const int32_t BrtMax) {
-        R = SetSingleBrt(AClr.R, Brt, BrtMax);
-        G = SetSingleBrt(AClr.G, Brt, BrtMax);
-        B = SetSingleBrt(AClr.B, Brt, BrtMax);
-        W = SetSingleBrt(AClr.W, Brt, BrtMax);
-    }
 
-    void SetRGBBrightness(Color_t &AClr, const int32_t ABrt, const int32_t BrtMax) {
-        R = SetSingleBrt(AClr.R, ABrt, BrtMax);
-        G = SetSingleBrt(AClr.G, ABrt, BrtMax);
-        B = SetSingleBrt(AClr.B, ABrt, BrtMax);
-    }
     void SetRGBBrightness(const int32_t ABrt, const int32_t BrtMax) {
         R = SetSingleBrt(R, ABrt, BrtMax);
         G = SetSingleBrt(G, ABrt, BrtMax);
@@ -431,3 +432,5 @@ struct ColorHSV_t {
 #define clRGBWCyan      ((Color_t){0, 255, 255,   0})
 #define clRGBWWhite     ((Color_t){0,   0,   0, 255})
 #endif
+
+#endif //COLOR_H__

@@ -1,13 +1,14 @@
-#pragma once
+#ifndef BOARD_H__
+#define BOARD_H__
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "QTest"
+#define APP_NAME            "Lustra"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      TRUE
-#define BUTTONS_ENABLED     TRUE
+#define BUTTONS_ENABLED     FALSE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
@@ -17,11 +18,7 @@
 // Freq of external crystal if any. Leave it here even if not used.
 #define CRYSTAL_FREQ_HZ     12000000
 
-// OS timer settings
-#define STM32_ST_IRQ_PRIORITY   2
-#define STM32_ST_USE_TIMER      2
-#define STM32_TIMCLK1           (Clk.APB1FreqHz)
-
+#define SYS_TIM_CLK         (Clk.APB1FreqHz)
 #define I2C1_ENABLED        PILL_ENABLED
 #define I2C_USE_SEMAPHORE   FALSE
 #define ADC_REQUIRED        FALSE
@@ -43,7 +40,6 @@
 #define BTN1_PIN        GPIOA, 0, pudPullDown
 #define BTN2_PIN        GPIOA, 1, pudPullDown
 #define BTN3_PIN        GPIOB, 8, pudPullDown
-#define BTN_CNT         3
 
 // Vibro
 #define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, 99 }
@@ -136,12 +132,12 @@
 #define UART_TXBUF_SZ   256
 #define UART_RXBUF_SZ   99
 
-#define CMD_UART        USART1
-
 #define UARTS_CNT       1
 
 #define CMD_UART_PARAMS \
-    CMD_UART, UART_GPIO, UART_TX_PIN, UART_GPIO, UART_RX_PIN, \
+    USART1, UART_GPIO, UART_TX_PIN, UART_GPIO, UART_RX_PIN, \
     UART_DMA_TX, UART_DMA_RX, UART_DMA_TX_MODE(UART_DMA_CHNL), UART_DMA_RX_MODE(UART_DMA_CHNL)
 
 #endif
+
+#endif //BOARD_H__
