@@ -5,7 +5,8 @@
  *      Author: layst
  */
 
-#pragma once
+#ifndef CONFIG_H__
+#define CONFIG_H__
 
 #include <vector>
 #include "ChunkTypes.h"
@@ -57,3 +58,5 @@ public:
 };
 
 extern Config_t Cfg;
+
+#endif //CONFIG_H__
