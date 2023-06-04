@@ -91,7 +91,7 @@ int main(void) {
         CC.DoIdleAfterTx();
         CC.SetChannel(RCHNL_EACH_OTH);
         CC.SetBitrate(CCBitrate100k);
-        CC.SetTxPower(CC_Pwr0dBm);
+        CC.SetTxPower(PwrTable[PwrLvlId]);
         // Transmit
         PktTx.ID = ID;
         PktTx.TheWord = 0xCA110FEA;
