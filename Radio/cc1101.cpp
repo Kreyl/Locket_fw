@@ -74,7 +74,7 @@ uint8_t cc1101_t::Init() {
     WriteRegister(CC_MCSM1, CC_MCSM1_VALUE);
 
     IGdo0.EnableIrq(IRQ_PRIO_HIGH);
-    Printf("CC init ok\r");
+//    Printf("CC init ok\r");
     return retvOk;
 }
 

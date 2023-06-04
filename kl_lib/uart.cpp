@@ -23,7 +23,7 @@
 #endif
 
 // Array of utilized UARTs to organize RX
-//static BaseUart_t* PUarts[UARTS_CNT];
+static BaseUart_t* PUarts[UARTS_CNT];
 #endif // Common and eternal
 
 #if 1 // ========================= Base UART ===================================
@@ -227,6 +227,20 @@ uint8_t BaseUart_t::IPutByteNow(uint8_t b) {
 #endif // TX
 
 #if 1 // ==== RX ====
+//static thread_reference_t RXThread = nullptr;
+//static THD_WORKING_AREA(waUartRxThread, 128);
+
+//__noreturn
+//static void UartRxThread(void *arg) {
+//    chRegSetThreadName("UartRx");
+//    while(true) {
+//        chThdSleepMilliseconds(UART_RX_POLLING_MS);
+//        // Iterate UARTs
+//        for(BaseUart_t* ptr : PUarts) {
+//            if(ptr != nullptr) ptr->ProcessByteIfReceived();
+//        } // for
+//    } // while true
+//}
 
 uint8_t BaseUart_t::GetByte(uint8_t *b) {
 #if defined STM32F2XX || defined STM32F4XX
@@ -358,6 +372,17 @@ void BaseUart_t::Init() {
     dmaStreamSetMode      (PDmaRx, Params->DmaModeRx);
     dmaStreamEnable       (PDmaRx);
     Params->Uart->CR1 |= USART_CR1_UE;    // Enable USART
+
+    // Prepare and start RX
+//    for(int i=0; i<UARTS_CNT; i++) {
+//        if(PUarts[i] == nullptr) {
+//            PUarts[i] = this;
+//            break;
+//        }
+//    }
+//    if(RXThread == nullptr) {
+//        RXThread = chThdCreateStatic(waUartRxThread, sizeof(waUartRxThread), NORMALPRIO, (tfunc_t)UartRxThread, NULL);
+//    }
 }
 
 void BaseUart_t::Shutdown() {

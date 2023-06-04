@@ -191,31 +191,96 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
-//const LedRGBChunk_t lsqModeTxStart[] = {
-//        {csSetup, 0, clYellow},
-//        {csWait, 207},
-//        {csSetup, 0, clBlack},
-//        {csWait, 207},
-//        {csSetup, 0, clYellow},
-//        {csWait, 207},
-//        {csSetup, 0, clBlack},
-//        {csEnd}
-//};
+#define SHOWTIME        270
+#define PAUSETIME       720
+#define SHORTPAUSETIME  72
 
-//const LedRGBChunk_t lsqTx[] {
-//        {csSetup, 0, clYellow},
-//        {csEnd}
-//};
+const LedRGBChunk_t lsqAri[] = {
+        {csSetup, 0, clBlue}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqKaesu[] = {
+        {csSetup, 0, clRed},   {csWait, SHOWTIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqNorth[] = {
+        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csEnd},
+};
+const LedRGBChunk_t lsqNorthStrong[] = {
+        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clWhite},  {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqSouth[] = {
+        {csSetup, 0, {128,0,255}}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},     {csWait, PAUSETIME},
+        {csEnd},
+};
+const LedRGBChunk_t lsqSouthStrong[] = {
+        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clWhite},   {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
+        {csEnd},
+};
+
+
+const LedRGBChunk_t lsqNorthCursed[] = {
+        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
+        {csSetup, 0, clRed},    {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csEnd},
+};
+const LedRGBChunk_t lsqSouthCursed[] = {
+        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clRed},     {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
+        {csEnd},
+};
+
+
+const LedRGBChunk_t lsqHidden[] = {
+        {csSetup, 0, clBlue},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
+        {csRepeat, 1},
+        {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqSilent[] = {
+        {csSetup, 0, {255, 90, 0}},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
+        {csRepeat, 1},
+        {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqVisible[] = {
+        {csSetup, 0, clGreen}, {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
+        {csRepeat, 1},
+        {csWait, PAUSETIME},
+        {csEnd},
+};
+
 
 const LedRGBChunk_t lsqStart[] = {
-        {csSetup, 0, clRed},
-        {csWait, 207},
-        {csSetup, 0, clGreen},
-        {csWait, 207},
-        {csSetup, 0, clBlue},
-        {csWait, 207},
-        {csSetup, 0, clBlack},
-//        {csSetup, 0, {0,7,0}},
+        {csSetup, 0, clRed},   {csWait, 450},
+        {csSetup, 0, clGreen}, {csWait, 450},
+        {csSetup, 0, clBlue},  {csWait, 450},
+//        {csSetup, 0, clBlack},
+        {csSetup, 0, {0,1,0}},
         {csEnd},
 };
 
@@ -234,41 +299,12 @@ const LedRGBChunk_t lsqFailure[] = {
         {csEnd}
 };
 
-const LedRGBChunk_t lsqTx[] = {
-        {csSetup, 0, {0,7,0}},
-        {csWait, 27},
-//        {csSetup, 99, clBlack},
-        {csSetup, 0, clBlack},
+const LedRGBChunk_t lsqBlink[] = {
+        {csSetup, 0, clGreen}, {csWait, 63},
+//        {csSetup, 0, clBlack},
+        {csSetup, 0, {0,1,0}},
         {csEnd},
 };
-
-const LedRGBChunk_t lsqRx[] = {
-        {csSetup, 180, clGreen},
-        {csWait, 999},
-//        {csSetup, 0, {0,7,0}},
-        {csSetup, 180, clBlack},
-        {csEnd},
-};
-
-// ==== Pill ====
-//const LedRGBChunk_t lsqPillCure[] = {
-//        {csSetup, 0, clGreen},
-//        {csWait, 999},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
-//const LedRGBChunk_t lsqPillPanacea[] = {
-//        {csSetup, 0, clWhite},
-//        {csWait, 999},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
-//const LedRGBChunk_t lsqPillBad[] = {
-//        {csSetup, 0, clRed},
-//        {csWait, 999},
-//        {csSetup, 0, clBlack},
-//        {csEnd},
-//};
 
 #endif
 
@@ -348,12 +384,12 @@ const BeepChunk_t bsqButton[] = {
 };
 const BeepChunk_t bsqBeepBeep[] = {
         {csSetup, BEEP_VOLUME, 1975},
-        {csWait, 54},
-        {csSetup, 0},
-        {csWait, 54},
+        {csWait, 99},
+        {csSetup, 0, 0},
+        {csWait, 99},
         {csSetup, BEEP_VOLUME, 1975},
-        {csWait, 54},
-        {csSetup, 0},
+        {csWait, 99},
+        {csSetup, 0, 0},
         {csEnd}
 };
 
@@ -425,40 +461,33 @@ const BaseChunk_t vsqBrrBrrBrr[] = {
         {csEnd}
 };
 
-// ==== Health ====
-const BaseChunk_t vsqIll[] = {
-        {csSetup, VIBRO_VOLUME},
+const BaseChunk_t vsqAttack[] = {
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csWait, 450},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 1008},
+        {csRepeat, 2},
         {csWait, 999},
-        {csSetup, 0},
-        {csWait, 3600},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
+        {csEnd}
 };
 
-const BaseChunk_t vsqDeath[] = {
-        {csSetup, VIBRO_VOLUME},
+const BaseChunk_t vsqRetreat[] = {
+        {csSetup, VIBRO_VOLUME}, {csWait, 360},
+        {csSetup, 0},            {csWait, 99},
+        {csSetup, VIBRO_VOLUME}, {csWait, 99},
+        {csSetup, 0},            {csWait, 720},
+        {csRepeat, 2},
         {csWait, 999},
-        {csSetup, 0},
-        {csWait, 4005},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
-};
-
-// Cataclysm
-const BaseChunk_t vsqCataclysm[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
-        {csSetup, 0},
-        {csWait, 999},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 99},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csGoto, 2}
+        {csEnd}
 };
 
 /*

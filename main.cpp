@@ -6,59 +6,42 @@
 #include "radio_lvl1.h"
 #include "kl_i2c.h"
 #include "kl_lib.h"
+#include "kl_buf.h"
 #include "MsgQ.h"
-#include "main.h"
+#include "SimpleSensors.h"
 
-#if 1 // ======================== Variables and defines ========================
+#include <vector>
+
 // Forever
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
 static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
 CmdUart_t Uart{&CmdUartParams};
 void OnCmd(Cmd_t *PCmd);
+LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+PinOutputPWM_t LedSingle {LED_B_PIN};
 
-static void ReadAndSetupMode();
+// EEAddresses
 #define EE_ADDR_ID       0
 #define EE_ADDR_DELAY    4
 
-cc1101_t CC(CC_Setup0);
-
-int32_t ID;
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
 void ReadEE();
 
-static const uint8_t PwrTable[12] = {
-        CC_PwrMinus30dBm, // 0
-        CC_PwrMinus27dBm, // 1
-        CC_PwrMinus25dBm, // 2
-        CC_PwrMinus20dBm, // 3
-        CC_PwrMinus15dBm, // 4
-        CC_PwrMinus10dBm, // 5
-        CC_PwrMinus6dBm,  // 6
-        CC_Pwr0dBm,       // 7
-        CC_PwrPlus5dBm,   // 8
-        CC_PwrPlus7dBm,   // 9
-        CC_PwrPlus10dBm,  // 10
-        CC_PwrPlus12dBm   // 11
-};
+#define ID_MIN                  1
+#define ID_MAX                  36
+#define ID_DEFAULT              ID_MIN
+
+cc1101_t CC(CC_Setup0);
+int32_t ID;
+uint8_t PwrLvlId = 0;
+rPkt_t PktTx;
+uint32_t Delay;
 
 static const char* PwrNames[12] = {
         "-30dBm", "-27dBm", "-25dBm", "-20dBm", "-15dBm", "-10dBm", "-6dBm",
         "0dBm", "+5dBm", "+7dBm", "+10dBm", "+12dBm",
 };
-
-uint8_t PwrLvlId = 0;
-rPkt_t PktTx;
-uint32_t Delay;
-
-// ==== Periphery ====
-Vibro_t Vibro {VIBRO_SETUP};
-#if BEEPER_ENABLED
-Beeper_t Beeper {BEEPER_PIN};
-#endif
-
-LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
-#endif
 
 int main(void) {
     // ==== Init Vcore & clock system ====
@@ -72,13 +55,17 @@ int main(void) {
     // ==== Init hardware ====
     Uart.Init();
     ReadEE();
-    if(!Sleep::WasInStandby()) {
+    if(Sleep::WasInStandby()) {
+        // Init only one channel of LED
+        LedSingle.Init();
+        LedSingle.SetFrequencyHz(0xFFFFFFFF);
+        LedSingle.Set(4);
+    }
+    else {
         Led.Init();
         Led.StartOrRestart(lsqStart);
         Printf("\r%S %S; ID=%u; Delay=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), ID, Delay);
         Clk.PrintFreqs();
-        Beeper.Init();
-        Beeper.StartOrRestart(bsqBeepBeep);
 
         // Try to receive Cmd by UART
         for(int i=0; i<27; i++) {
@@ -94,27 +81,22 @@ int main(void) {
     } // if WasInStandby
 
     if(CC.Init() == retvOk) {
-        if(!Sleep::WasInStandby()) { // Show CC is ok
-            Led.StartOrRestart(lsqTx);
-            chThdSleepMilliseconds(999);
-        }
-        // CC params
-        ReadAndSetupMode();
+        // Select power
+        uint8_t b = GetDipSwitch();
+        PwrLvlId = b & 0b1111; // Remove high bits
+        if(PwrLvlId > 11) PwrLvlId = 11;
         Printf("ID %u; %S\r", ID, PwrNames[PwrLvlId]);
+        // Setup CC
         CC.SetPktSize(RPKT_LEN);
         CC.DoIdleAfterTx();
         CC.SetChannel(RCHNL_EACH_OTH);
-        CC.SetTxPower(CC_Pwr0dBm);
-//        CC.SetTxPower(PwrTable[PwrLvlId]);
         CC.SetBitrate(CCBitrate100k);
+        CC.SetTxPower(CC_Pwr0dBm);
+        // Transmit
         PktTx.ID = ID;
         PktTx.TheWord = 0xCA110FEA;
-        while(1) {
-            CC.Recalibrate();
-            CC.Transmit(&PktTx, RPKT_LEN);
-            Led.StartOrRestart(lsqTx);
-            chThdSleepMilliseconds(99);
-        }
+        CC.Recalibrate();
+        CC.Transmit(&PktTx, RPKT_LEN);
     }
     else { // CC failure
         Led.Init();
@@ -130,16 +112,6 @@ int main(void) {
     chSysUnlock();
 
     while(true); // Will never be here
-}
-
-__unused
-void ReadAndSetupMode() {
-    uint8_t b = GetDipSwitch();
-    // ==== Something has changed ====
-//    Printf("Dip: 0x%02X\r", b);
-    // Select power
-    PwrLvlId = b & 0b1111; // Remove high bits
-    if(PwrLvlId > 11) PwrLvlId = 11;
 }
 
 void ReadEE() {
@@ -184,12 +156,7 @@ uint8_t SetDelay(int32_t NewDelay) {
 void Ack(int32_t Result) { Printf("Ack %d\r\n", Result); }
 
 void OnCmd(Cmd_t *PCmd) {
-    __attribute__((unused)) int32_t dw32 = 0;  // May be unused in some configurations
-//    Uart.Printf("%S\r", PCmd->Name);
-    // Handle command
-    if(PCmd->NameIs("Ping")) {
-        Ack(retvOk);
-    }
+    if(PCmd->NameIs("Ping")) Ack(retvOk);
     else if(PCmd->NameIs("Version")) Printf("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
 
     else if(PCmd->NameIs("GetID")) Printf("ID %u\r", ID);

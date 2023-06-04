@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <sys/cdefs.h>
 #include "EvtMsgIDs.h"
+#include "cmsis_gcc.h"
 
 // ==== Build time ====
 // Define symbol BUILD_TIME in main.cpp options with value ${current_date}.
