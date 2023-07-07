@@ -1,23 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <project>
-	<configuration id="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.10126040" name="Debug">
+	<configuration id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.599061191" name="Debug">
 		<extension point="org.eclipse.cdt.core.LanguageSettingsProvider">
 			<provider copy-of="extension" id="org.eclipse.cdt.ui.UserLanguageSettingsProvider"/>
 			<provider-reference id="org.eclipse.cdt.core.ReferencedProjectsLanguageSettingsProvider" ref="shared-provider"/>
 			<provider-reference id="org.eclipse.cdt.managedbuilder.core.MBSLanguageSettingsProvider" ref="shared-provider"/>
-			<provider copy-of="extension" id="org.eclipse.cdt.managedbuilder.core.GCCBuildCommandParser"/>
-			<provider class="com.st.stm32cube.ide.mcu.toolchain.armnone.setup.CrossBuiltinSpecsDetector" console="false" env-hash="-541405006135643863" id="com.st.stm32cube.ide.mcu.toolchain.armnone.setup.CrossBuiltinSpecsDetector" keep-relative-paths="false" name="MCU ARM GCC Built-in Compiler Settings" parameter="${COMMAND} ${FLAGS} -E -P -v -dD &quot;${INPUTS}&quot;" prefer-non-shared="true">
+			<provider class="org.eclipse.cdt.managedbuilder.language.settings.providers.GCCBuiltinSpecsDetector" console="false" env-hash="966607748080511713" id="org.eclipse.embedcdt.managedbuild.cross.arm.core.GCCBuiltinSpecsDetector" keep-relative-paths="false" name="CDT Arm Cross GCC Built-in Compiler Settings" parameter="${COMMAND} ${FLAGS} ${cross_toolchain_flags} -E -P -v -dD &quot;${INPUTS}&quot;" prefer-non-shared="true">
 				<language-scope id="org.eclipse.cdt.core.gcc"/>
 				<language-scope id="org.eclipse.cdt.core.g++"/>
 			</provider>
 		</extension>
 	</configuration>
-	<configuration id="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.release.1595816814" name="Release">
+	<configuration id="ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.889313925" name="Release">
 		<extension point="org.eclipse.cdt.core.LanguageSettingsProvider">
 			<provider copy-of="extension" id="org.eclipse.cdt.ui.UserLanguageSettingsProvider"/>
 			<provider-reference id="org.eclipse.cdt.core.ReferencedProjectsLanguageSettingsProvider" ref="shared-provider"/>
 			<provider-reference id="org.eclipse.cdt.managedbuilder.core.MBSLanguageSettingsProvider" ref="shared-provider"/>
-			<provider class="com.st.stm32cube.ide.mcu.toolchain.armnone.setup.CrossBuiltinSpecsDetector" console="false" env-hash="-541405006135643863" id="com.st.stm32cube.ide.mcu.toolchain.armnone.setup.CrossBuiltinSpecsDetector" keep-relative-paths="false" name="MCU ARM GCC Built-in Compiler Settings" parameter="${COMMAND} ${FLAGS} -E -P -v -dD &quot;${INPUTS}&quot;" prefer-non-shared="true">
+			<provider class="org.eclipse.cdt.managedbuilder.language.settings.providers.GCCBuiltinSpecsDetector" console="false" env-hash="896404999602913263" id="org.eclipse.embedcdt.managedbuild.cross.arm.core.GCCBuiltinSpecsDetector" keep-relative-paths="false" name="CDT Arm Cross GCC Built-in Compiler Settings" parameter="${COMMAND} ${FLAGS} ${cross_toolchain_flags} -E -P -v -dD &quot;${INPUTS}&quot;" prefer-non-shared="true">
 				<language-scope id="org.eclipse.cdt.core.gcc"/>
 				<language-scope id="org.eclipse.cdt.core.g++"/>
 			</provider>

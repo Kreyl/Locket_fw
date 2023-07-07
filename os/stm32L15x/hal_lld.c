@@ -32,7 +32,6 @@
  * @notapi
  */
 void hal_lld_init(void) {
-
   /* Reset of all peripherals.
      Note, GPIOs are not reset because initialized before this point in
      board files.*/

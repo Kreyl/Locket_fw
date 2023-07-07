@@ -20,7 +20,7 @@ uint8_t cc1101_t::Init() {
     AlterFunc_t CC_AF;
     if(ISpi.PSpi == SPI1 or ISpi.PSpi == SPI2) CC_AF = AF5;
     else CC_AF = AF6;
-#elif defined STM32F030 || defined STM32F0 ||defined STM32F1XX
+#elif defined STM32F030 || defined STM32F0
 #define CC_AF   AF0
 #endif
     PinSetupOut      ((GPIO_TypeDef*)CSGpio, Cs,   omPushPull);
@@ -28,7 +28,6 @@ uint8_t cc1101_t::Init() {
     PinSetupAlterFunc((GPIO_TypeDef*)SpiGpio, Miso, omPushPull, pudNone, CC_AF);
     PinSetupAlterFunc((GPIO_TypeDef*)SpiGpio, Mosi, omPushPull, pudNone, CC_AF);
     IGdo0.Init(ttFalling);
-
     CsHi();
     // ==== SPI ====
     // MSB first, master, ClkLowIdle, FirstEdge, Baudrate no more than 6.5MHz
@@ -85,11 +84,6 @@ void cc1101_t::PowerOff() {
     EnterPwrDown();
 }
 
-void cc1101_t::PrintStateI() {
-    GetStatus();
-    PrintfI("0x%02X\r", IState);
-}
-
 void cc1101_t::SetChannel(uint8_t AChannel) {
     while(IState != CC_STB_IDLE) EnterIdle();   // CC must be in IDLE mode
     WriteRegister(CC_CHANNR, AChannel);         // Now set channel
@@ -102,46 +96,10 @@ void cc1101_t::SetBitrate(const CCRegValue_t* BRSetup) {
     }
 }
 
-void cc1101_t::TransmitAsyncX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback) {
-    EnterTX();
-#if CC_CCA_MODE != 0
-    // if prev state == RX, ClearChannelCheck is applied.
-    if(IState == CC_STB_RX) {
-        DELAY_LOOP_34uS(); // Wait >30 us
-        GetStatus();
-        if(IState != CC_STB_TX) return; // TX not entered
-    }
-#endif
-    ICallback = Callback;
-    WriteTX(Ptr, Len);
-}
-
-void cc1101_t::TransmitCcaX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback) {
-    GetStatus();
-    if(IState != CC_STB_RX) {
-        EnterRX(); // if prev state == RX, ClearChannelCheck is applied.
-        DELAY_LOOP_144uS(); // 100...150 uS for 250kBaud
-    }
-    EnterTX();
-    DELAY_LOOP_34uS(); // Wait >30 us
-    GetStatus();
-    if(IState == CC_STB_TX) { // TX entered
-        ICallback = Callback;
-        WriteTX(Ptr, Len);
-    }
-    else CC.EnterIdle();
-}
-
-void cc1101_t::TransmitAsyncX(uint8_t *Ptr, uint8_t Len) {
-    EnterTX();  // Start transmission of preamble while writing FIFO
-    WriteTX(Ptr, Len);
-}
-
-void cc1101_t::Transmit(uint8_t *Ptr, uint8_t Len) {
+void cc1101_t::Transmit(void *Ptr, uint8_t Len) {
     EnterTX();  // Start transmission of preamble while writing FIFO
     chSysLock();
     ICallback = nullptr;
-    WriteTX(Ptr, Len);
     WriteTX((uint8_t*)Ptr, Len);
     // Enter TX and wait IRQ
     chThdSuspendS(&ThdRef); // Wait IRQ
@@ -149,11 +107,11 @@ void cc1101_t::Transmit(uint8_t *Ptr, uint8_t Len) {
 }
 
 // Enter RX mode and wait reception for Timeout_ms.
-uint8_t cc1101_t::Receive(uint32_t Timeout_ms, uint8_t *Ptr, uint8_t Len, int8_t *PRssi) {
+uint8_t cc1101_t::Receive(uint32_t Timeout_ms, void *Ptr, uint8_t Len, int8_t *PRssi) {
     return Receive_st(TIME_MS2I(Timeout_ms), Ptr, Len, PRssi);
 }
 
-uint8_t cc1101_t::Receive_st(sysinterval_t Timeout_st, uint8_t *Ptr, uint8_t Len, int8_t *PRssi) {
+uint8_t cc1101_t::Receive_st(sysinterval_t Timeout_st, void *Ptr, uint8_t Len, int8_t *PRssi) {
     FlushRxFIFO();
     chSysLock();
     EnterRX();
@@ -167,21 +125,10 @@ uint8_t cc1101_t::Receive_st(sysinterval_t Timeout_st, uint8_t *Ptr, uint8_t Len
     else return ReadFIFO(Ptr, PRssi, Len);
 }
 
-void cc1101_t::ReceiveAsyncI(ftVoidVoid Callback) {
-    GetStatus();
-    if(IState != CC_STB_RX) { // Not in RX
-        EnterIdle();
-        FlushRxFIFO();
-        EnterRX();
-    }
-    ICallback = Callback;
-}
-
-/*
 void cc1101_t::ReceiveAsync(ftVoidVoid Callback) {
     chSysLock();
     GetStatus();
-    if(IState != CC_STB_RX) { // Not in RX
+    if((IState & 0x70) != 0x10) { // Not in RX
         EnterIdle();
         FlushRxFIFO();
         EnterRX();
@@ -190,13 +137,13 @@ void cc1101_t::ReceiveAsync(ftVoidVoid Callback) {
     chSysUnlock();
 }
 
-uint8_t cc1101_t::RxCcaTx_st(uint8_t *PtrTx, uint8_t Len,  int8_t *PRssi) {
+uint8_t cc1101_t::RxCcaTx_st(void *PtrTx, uint8_t Len,  int8_t *PRssi) {
     chSysLock();
     ICallback = nullptr;
     // Enter RX if not yet
     GetStatus();
 //    PrintfI("S1: %X\r", IState);
-    if(IState != CC_STB_RX) { // Not in RX
+    if((IState & 0x70) != 0x10) { // Not in RX
         EnterRX();
         chThdSleepS(TIME_US2I(117)); // 100...150 uS for 250kBaud
     }
@@ -205,7 +152,7 @@ uint8_t cc1101_t::RxCcaTx_st(uint8_t *PtrTx, uint8_t Len,  int8_t *PRssi) {
     chThdSleepS(TIME_US2I(108));
     GetStatus();
 //    PrintfI("S2: %X\r", IState);
-    if(IState != CC_STB_TX) { // Tx entered
+    if((IState & 0x70) == 0x20) { // Tx entered
         WriteTX((uint8_t*)PtrTx, Len);
         chThdSuspendS(&ThdRef); // Wait IRQ
         chSysUnlock();          // Will be here when IRQ fires
@@ -217,12 +164,12 @@ uint8_t cc1101_t::RxCcaTx_st(uint8_t *PtrTx, uint8_t Len,  int8_t *PRssi) {
     }
 }
 
-uint8_t cc1101_t::RxIfNotYet_st(sysinterval_t RxTimeout_st, uint8_t *PtrRx, uint8_t Len,  int8_t *PRssi) {
+uint8_t cc1101_t::RxIfNotYet_st(sysinterval_t RxTimeout_st, void *PtrRx, uint8_t Len,  int8_t *PRssi) {
     // Enter RX if not yet
     chSysLock();
     GetStatus();
 //    PrintfI("S3: %X\r", IState);
-    if(IState != CC_STB_RX) { // Not in RX
+    if((IState & 0x70) != 0x10) { // Not in RX
         EnterIdle();
         FlushRxFIFO();
         EnterRX();
@@ -234,7 +181,7 @@ uint8_t cc1101_t::RxIfNotYet_st(sysinterval_t RxTimeout_st, uint8_t *PtrRx, uint
         return ReadFIFO(PtrRx, PRssi, Len);
     }
 }
-*/
+
 // Return RSSI in dBm
 int8_t cc1101_t::RSSI_dBm(uint8_t ARawRSSI) {
     int16_t RSSI = ARawRSSI;
@@ -251,7 +198,7 @@ uint8_t cc1101_t::ReadRegister (uint8_t ARegAddr, uint8_t *PData) {
         CsHi();
         return retvFail;
     }
-    IState = ISpi.ReadWriteByte(ARegAddr | CC_READ_FLAG) & 0b01110000; // Transmit header byte
+    IState = ISpi.ReadWriteByte(ARegAddr | CC_READ_FLAG);    // Transmit header byte
     *PData = ISpi.ReadWriteByte(0);                 // Read reply
     CsHi();                                         // End transmission
     return retvOk;
@@ -297,11 +244,11 @@ uint8_t cc1101_t::WriteTX(uint8_t* Ptr, uint8_t Length) {
     return retvOk;
 }
 
-uint8_t cc1101_t::ReadFIFO(uint8_t *p, int8_t *PRssi, uint8_t Len) {
-    uint8_t b;
+uint8_t cc1101_t::ReadFIFO(void *Ptr, int8_t *PRssi, uint8_t Len) {
+    uint8_t b, *p = (uint8_t*)Ptr;
      // Check if received successfully
      if(ReadRegister(CC_PKTSTATUS, &b) != retvOk) return retvFail;
-//     PrintfI("PktSt: %02X\r", b);
+//     Printf("PktSt: %X\r", b);
      if(b & 0x80) {  // CRC OK
          // Read FIFO
          CsLo();
@@ -327,10 +274,9 @@ uint8_t cc1101_t::ReadFIFO(uint8_t *p, int8_t *PRssi, uint8_t Len) {
 #endif
 
 void cc1101_t::IIrqHandler() {
-//    PrintfI("i %X\r", ICallback);
     if(ICallback != nullptr) {
         ICallback();
-//        ICallback = nullptr;
+        ICallback = nullptr;
     }
     else chThdResumeI(&ThdRef, MSG_OK);  // NotNull check performed inside chThdResumeI
 }

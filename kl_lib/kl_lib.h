@@ -5,8 +5,8 @@
  *      Author: kreyl
  */
 
-#ifndef KL_LIB_H__
-#define KL_LIB_H__
+#ifndef KL_LIB_H_
+#define KL_LIB_H_
 
 #include "ch.h"
 #include "hal.h"
@@ -384,6 +384,8 @@ namespace BackupSpc {
         PWR->CR |= PWR_CR_DBP;
 #elif defined STM32L4XX || defined STM32F7XX
         PWR->CR1 |= PWR_CR1_DBP;
+#elif defined STM32F0XX
+        PWR->CR |= PWR_CR_DBP;
 #endif
     }
 
@@ -392,11 +394,13 @@ namespace BackupSpc {
         PWR->CR &= ~PWR_CR_DBP;
 #elif defined STM32L4XX || defined STM32F7XX
         PWR->CR1 &= ~PWR_CR1_DBP;
+#elif defined STM32F0XX
+        PWR->CR |= PWR_CR_DBP;
 #endif
     }
 
     static inline void Reset() {
-#if defined STM32L4XX || defined STM32F7XX
+#if defined STM32L4XX || defined STM32F7XX || defined STM32F0XX
         RCC->BDCR |=  RCC_BDCR_BDRST;
         RCC->BDCR &= ~RCC_BDCR_BDRST;
 #endif
@@ -466,14 +470,14 @@ static inline void ClearWakeupFlag() { RTC->ISR &= ~RTC_ISR_WUTF; }
 #endif
 
 static inline void SetClkSrcLSE() {
-#if defined STM32L4XX || defined STM32F7XX
+#if defined STM32L4XX || defined STM32F7XX || defined STM32F0XX
     RCC->BDCR &= ~RCC_BDCR_RTCSEL;  // Clear bits
     RCC->BDCR |=  0b01UL << 8;
 #endif
 }
 
 static inline void EnableClk() {
-#if defined STM32L4XX || defined STM32F7XX
+#if defined STM32L4XX || defined STM32F7XX || defined STM32F0XX
     RCC->BDCR |= RCC_BDCR_RTCEN;
 #endif
 }
@@ -547,6 +551,11 @@ public:
     void SetCCR2(uint32_t AValue) const { ITmr->CCR2 = AValue; }
     void SetCCR3(uint32_t AValue) const { ITmr->CCR3 = AValue; }
     void SetCCR4(uint32_t AValue) const { ITmr->CCR4 = AValue; }
+
+    uint32_t GetCCR1() const { return ITmr->CCR1; }
+    uint32_t GetCCR2() const { return ITmr->CCR2; }
+    uint32_t GetCCR3() const { return ITmr->CCR3; }
+    uint32_t GetCCR4() const { return ITmr->CCR4; }
 
     // Master/Slave
     void SetTriggerInput(TmrTrigInput_t TrgInput) const {
@@ -740,7 +749,7 @@ __always_inline
 static void PinSetHi(GPIO_TypeDef *PGpio, uint32_t APin) { PGpio->BSRR = 1 << APin; }
 __always_inline
 static void PinSetLo(GPIO_TypeDef *PGpio, uint32_t APin) { PGpio->BSRR = 1 << (APin + 16);  }
-#elif defined STM32F0XX || defined STM32F1XX || defined STM32L4XX || defined STM32F103xE
+#elif defined STM32F0XX || defined STM32F10X_LD_VL || defined STM32L4XX || defined STM32F103xE
 __always_inline
 static void PinSetHi(GPIO_TypeDef *PGpio, uint32_t APin) { PGpio->BSRR = 1 << APin; }
 __always_inline
@@ -1381,7 +1390,7 @@ static inline void ClearStandbyFlag()  { PWR->SCR |= PWR_SCR_CSBF; }
 static inline void ClearWUFFlags()     { PWR->SCR |= 0x1F; }
 #else
 static inline void EnterStandby() {
-#if defined STM32F0XX || defined STM32L4XX || defined STM32F2XX || defined STM32F7XX || defined STM32F1XX
+#if defined STM32F0XX || defined STM32L4XX || defined STM32F2XX || defined STM32F7XX
     SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
 #else
     SCB->SCR |= SCB_SCR_SLEEPDEEP;
@@ -1398,13 +1407,11 @@ static inline void EnterStandby() {
     __WFI();
 }
 
-#if defined STM32F2XX || defined STM32F1XX
+#if defined STM32F2XX
 static inline void EnableWakeupPin()  { PWR->CSR |=  PWR_CSR_EWUP; }
 static inline void DisableWakeupPin() { PWR->CSR &= ~PWR_CSR_EWUP; }
-static inline bool WasInStandby() { return (PWR->CSR & PWR_CSR_SBF); }
-static inline bool WakeUpOccured() { return (PWR->CSR & PWR_CSR_WUF); }
-static inline void ClearStandbyFlag() { PWR->CR |= PWR_CR_CSBF; }
-static inline void ClearWakeupFlag() { PWR->CR |= PWR_CR_CWUF; }
+#elif defined STM32F1XX
+// Not implemented
 #elif defined STM32F7XX
 
 #else
@@ -1412,6 +1419,8 @@ static inline void EnableWakeup1Pin()  { PWR->CSR |=  PWR_CSR_EWUP1; }
 static inline void DisableWakeup1Pin() { PWR->CSR &= ~PWR_CSR_EWUP1; }
 static inline void EnableWakeup2Pin()  { PWR->CSR |=  PWR_CSR_EWUP2; }
 static inline void DisableWakeup2Pin() { PWR->CSR &= ~PWR_CSR_EWUP2; }
+static inline void EnableWakeup4Pin()  { PWR->CSR |=  PWR_CSR_EWUP4; }
+static inline void DisableWakeup4Pin() { PWR->CSR &= ~PWR_CSR_EWUP4; }
 static inline bool WasInStandby() { return (PWR->CSR & PWR_CSR_SBF); }
 static inline void ClearStandbyFlag() { PWR->CR |= PWR_CR_CSBF; }
 #endif
@@ -2341,4 +2350,4 @@ extern Clk_t Clk;
 
 #endif // Clocking
 
-#endif //KL_LIB_H__
+#endif // KL_LIB_H_

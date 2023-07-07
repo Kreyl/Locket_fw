@@ -18,60 +18,22 @@
 */
 
 /**
- * @file    chcustomer.h
- * @brief   Customer-related info.
+ * @file    chcore_timer.h
+ * @brief   System timer header file.
  *
- * @addtogroup chibios_customer
- * @details This module incapsulates licensee information, this is only
- *          meaningful for commercial licenses. It is a stub for public
- *          releases.
+ * @addtogroup ARMCMx_TIMER
  * @{
  */
 
-#ifndef CHCUSTOMER_H
-#define CHCUSTOMER_H
+#ifndef CHCORE_TIMER_H
+#define CHCORE_TIMER_H
+
+/* This is the only header in the HAL designed to be include-able alone.*/
+#include "hal_st.h"
 
 /*===========================================================================*/
 /* Module constants.                                                         */
 /*===========================================================================*/
-
-/**
- * @brief   Customer readable identifier.
- */
-#define CH_CUSTOMER_ID_STRING               "Santa, North Pole"
-
-/**
- * @brief   Customer code.
- */
-#define CH_CUSTOMER_ID_CODE                 "xxxx-yyyy"
-
-/**
- * @brief   Current license.
- * @note    This setting is reserved to the copyright owner.
- * @note    Changing this setting invalidates the license.
- * @note    The license statement in the source headers is valid, applicable
- *          and binding regardless this setting.
- */
-#define CH_LICENSE                          CH_LICENSE_GPL
-
-/**
- * @name    Licensed Products
- * @{
- */
-#define CH_CUSTOMER_LIC_RT                  TRUE
-#define CH_CUSTOMER_LIC_NIL                 TRUE
-#define CH_CUSTOMER_LIC_OSLIB               TRUE
-#define CH_CUSTOMER_LIC_EX                  TRUE
-#define CH_CUSTOMER_LIC_PORT_CM0            TRUE
-#define CH_CUSTOMER_LIC_PORT_CM3            TRUE
-#define CH_CUSTOMER_LIC_PORT_CM4            TRUE
-#define CH_CUSTOMER_LIC_PORT_CM7            TRUE
-#define CH_CUSTOMER_LIC_PORT_ARM79          TRUE
-#define CH_CUSTOMER_LIC_PORT_E200Z0         TRUE
-#define CH_CUSTOMER_LIC_PORT_E200Z2         TRUE
-#define CH_CUSTOMER_LIC_PORT_E200Z3         TRUE
-#define CH_CUSTOMER_LIC_PORT_E200Z4         TRUE
-/** @} */
 
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
@@ -97,6 +59,66 @@
 /* Module inline functions.                                                  */
 /*===========================================================================*/
 
-#endif /* CHCUSTOMER_H */
+/**
+ * @brief   Starts the alarm.
+ * @note    Makes sure that no spurious alarms are triggered after
+ *          this call.
+ *
+ * @param[in] time      the time to be set for the first alarm
+ *
+ * @notapi
+ */
+static inline void port_timer_start_alarm(systime_t time) {
+
+  stStartAlarm(time);
+}
+
+/**
+ * @brief   Stops the alarm interrupt.
+ *
+ * @notapi
+ */
+static inline void port_timer_stop_alarm(void) {
+
+  stStopAlarm();
+}
+
+/**
+ * @brief   Sets the alarm time.
+ *
+ * @param[in] time      the time to be set for the next alarm
+ *
+ * @notapi
+ */
+static inline void port_timer_set_alarm(systime_t time) {
+
+  stSetAlarm(time);
+}
+
+/**
+ * @brief   Returns the system time.
+ *
+ * @return              The system time.
+ *
+ * @notapi
+ */
+static inline systime_t port_timer_get_time(void) {
+
+  return stGetCounter();
+}
+
+/**
+ * @brief   Returns the current alarm time.
+ *
+ * @return              The currently set alarm time.
+ *
+ * @notapi
+ */
+static inline systime_t port_timer_get_alarm(void) {
+
+  return stGetAlarm();
+}
+
+#endif /* CHCORE_TIMER_H */
 
 /** @} */

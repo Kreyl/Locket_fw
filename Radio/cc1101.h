@@ -5,8 +5,7 @@
  *      Author: g.kruglov
  */
 
-#ifndef CC1101_H__
-#define CC1101_H__
+#pragma once
 
 #include <inttypes.h>
 #include "kl_lib.h"
@@ -25,7 +24,7 @@ private:
     const PinIrq_t IGdo0;
     uint8_t IState; // Inner CC state, returned as first byte
     thread_reference_t ThdRef;
-    volatile ftVoidVoid ICallback = nullptr;
+    ftVoidVoid ICallback = nullptr;
     // Pins
     uint8_t BusyWait() {
         for(uint32_t i=0; i<CC_BUSYWAIT_TIMEOUT; i++) {
@@ -58,39 +57,32 @@ public:
     void SetPktSize(uint8_t ASize) { WriteRegister(CC_PKTLEN, ASize); }
     void SetBitrate(const CCRegValue_t* BRSetup);
     // State change
-    void TransmitAsyncX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback);
-    void TransmitCcaX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback);
-    void TransmitAsyncX(uint8_t *Ptr, uint8_t Len);
-    void Transmit(uint8_t *Ptr, uint8_t Len);
-    uint8_t Receive(uint32_t Timeout_ms, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
-    uint8_t Receive_st(sysinterval_t Timeout_st, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
+    void Transmit(void *Ptr, uint8_t Len);
+    uint8_t Receive(uint32_t Timeout_ms, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
+    uint8_t Receive_st(sysinterval_t Timeout_st, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
     void ReceiveAsync(ftVoidVoid Callback);
-    void ReceiveAsyncI(ftVoidVoid Callback);
 
-    uint8_t RxCcaTx_st(uint8_t *PtrTx, uint8_t Len,  int8_t *PRssi=nullptr);
-    uint8_t RxIfNotYet_st(sysinterval_t RxTimeout_st, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
+    uint8_t RxCcaTx_st(void *PtrTx, uint8_t Len,  int8_t *PRssi=nullptr);
+    uint8_t RxIfNotYet_st(sysinterval_t RxTimeout_st, void *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
 
     void PowerOff();
     uint8_t Recalibrate() {
-        do {
+        while(IState != CC_STB_IDLE) {
             if(EnterIdle() != retvOk) return retvFail;
-        } while(IState != CC_STB_IDLE);
+        }
         if(WriteStrobe(CC_SCAL) != retvOk) return retvFail;
         do {
             GetStatus();
         } while(IState != CC_STB_IDLE);
         return retvOk;
     }
-
-    void PrintStateI();
-
     // Setup
-    void DoRxAfterRxAndRxAfterTx()   { WriteRegister(CC_MCSM1, (CC_MCSM1_VALUE | 0x0F)); }
-    void DoRxAfterRxAndIdleAfterTx() { WriteRegister(CC_MCSM1, ((CC_MCSM1_VALUE | 0x0C) & 0xFC)); }
+//    void DoRxAfterRxAndRxAfterTx()   { WriteRegister(CC_MCSM1, (CC_MCSM1_VALUE | 0x0F)); }
+//    void DoRxAfterRxAndIdleAfterTx() { WriteRegister(CC_MCSM1, ((CC_MCSM1_VALUE | 0x0C) & 0xFC)); }
     void DoRxAfterTx()   { WriteRegister(CC_MCSM1, (CC_MCSM1_VALUE | 0x03)); }
     void DoIdleAfterTx() { WriteRegister(CC_MCSM1, CC_MCSM1_VALUE); }
 
-    uint8_t ReadFIFO(uint8_t *p, int8_t *PRssi, uint8_t Len);
+    uint8_t ReadFIFO(void *Ptr, int8_t *PRssi, uint8_t Len);
 
     void IIrqHandler();
 
@@ -104,8 +96,3 @@ public:
         IGdo0(AGd0Gpio, AGdo0, pudNone, CCIrqHandler),
         IState(0), ThdRef(nullptr) {}
 };
-
-#define DELAY_LOOP_34uS()       { for(volatile uint32_t i=0; i<12; i++); } // 12 leads to 34us @ 4MHz sys clk
-#define DELAY_LOOP_144uS()      { for(volatile uint32_t i=0; i<54; i++); } // 54 leads to 144us @ 4MHz sys clk
-
-#endif //CC1101_H__

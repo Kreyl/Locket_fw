@@ -1,9 +1,9 @@
 #include "board.h"
 #include "led.h"
-#include "Sequences.h"
-#include "cc1101.h"
-#include "kl_lib.h"
 #include "vibro.h"
+#include "Sequences.h"
+#include "kl_lib.h"
+#include "cc1101.h"
 
 #if 1 // ======================== Variables and defines ========================
 // Forever
@@ -15,8 +15,13 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t Vibro {VIBRO_SETUP};
 #endif
 
-struct rPkt_t {
+union rPkt_t {
     uint32_t DW32[2];
+    struct {
+        uint32_t Sign = 0xCa110fEa;
+        uint8_t R, G, B;
+        uint8_t BtnIndx = 0xFF;
+    } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {
         DW32[0] = Right.DW32[0];
         DW32[1] = Right.DW32[1];
@@ -25,11 +30,23 @@ struct rPkt_t {
 } __attribute__ ((__packed__));
 
 rPkt_t PktTx;
-#define RPKT_LEN    sizeof(PktTx)
+#define RPKT_LEN    sizeof(rPkt_t)
 
 cc1101_t CC(CC_Setup0);
 
+void SleepNow(uint32_t Delay) {
+    chSysLock();
+    Iwdg::InitAndStart(Delay);
+    Sleep::EnterStandby();
+    chSysUnlock();
+}
+
 int main(void) {
+    // Check if no btn pressed
+    PinSetupInput(BTN1_PIN, pudPullDown);
+    PinSetupInput(BTN2_PIN, pudPullDown);
+    if(Sleep::WasInStandby() and PinIsLo(BTN1_PIN) and PinIsLo(BTN2_PIN)) SleepNow(450); // no btn, sleep no long
+
     // ==== Init Vcore & clock system ====
     SetupVCore(vcore1V2);
     Clk.SetMSI4MHz();
@@ -42,47 +59,44 @@ int main(void) {
 
     // ==== Init hardware ====
     Uart.Init();
-    Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
-    Clk.PrintFreqs();
-    Led.Init();
+    Vibro.Init();
+//    if(!Sleep::WasInStandby()) {
+        Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
+        Clk.PrintFreqs();
+//    }
 
     if(CC.Init() == retvOk) {
-        if(!Sleep::WasInStandby()) { // indicate powering on
-            Led.StartOrRestart(lsqStart);
-            chThdSleepMilliseconds(999);
+        if(Sleep::WasInStandby()) {
+            // Vibrate accordingly
+            if(PinIsHi(BTN1_PIN)) Vibro.StartOrRestart(vsqBrr);
+            else if(PinIsHi(BTN2_PIN)) Vibro.StartOrRestart(vsqBrrBrr);
+            // CC set params
+            CC.SetPktSize(RPKT_LEN);
+            CC.SetChannel(7); // Same as RX
+            CC.SetTxPower(CC_PwrPlus5dBm);
+            CC.SetBitrate(CCBitrate100k);
+            // Transmit what needed
+            while(PinIsHi(BTN1_PIN) or PinIsHi(BTN2_PIN)) {
+                PktTx.BtnIndx = PinIsHi(BTN1_PIN)? 0 : 1;
+                CC.Recalibrate();
+                CC.Transmit(&PktTx, RPKT_LEN);
+            }
+            CC.EnterPwrDown();
+            SleepNow(270); // To repeat transmission soon
         }
-        Vibro.Init();
-        // CC params
-        CC.SetPktSize(RPKT_LEN);
-        CC.SetChannel(0);
-        CC.SetTxPower(CC_PwrPlus5dBm);
-        CC.SetBitrate(CCBitrate100k);
-        PktTx.DW32[0] = 0xCA115EA1;
-        PktTx.DW32[1] = 0x0BE17C11;
-        // Init button
-        PinSetupInput(BTN1_PIN, pudPullDown);
-        chThdSleepMilliseconds(18);
-        while(PinIsHi(BTN1_PIN)) { // Button is pressed
-            Led.StartOrContinue(lsqTX);
-            Vibro.StartOrContinue(vsqBrr);
-            CC.Recalibrate();
-            CC.Transmit((uint8_t*)&PktTx, RPKT_LEN);
+        else { // indicate powering on
+            Led.Init();
+            Led.StartOrRestart(lsqStart);
+            Vibro.StartOrRestart(vsqBrrBrr);
+            chThdSleepMilliseconds(999);
+            CC.EnterPwrDown();
+            SleepNow(270);
         }
     }
     else { // CC failure
         Led.Init();
         Led.StartOrRestart(lsqFailure);
-        chThdSleepMilliseconds(999);
+        chThdSleepMilliseconds(207);
+        SleepNow(2700);
     }
-
-    // Enter sleep
-    CC.EnterPwrDown();
-    Printf("Enter sleep\r");
-    chThdSleepMilliseconds(45);
-    chSysLock();
-    Sleep::EnableWakeup1Pin();
-    Sleep::EnterStandby();
-    chSysUnlock();
-
-    while(true); // Will never be here
 }

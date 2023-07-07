@@ -41,7 +41,6 @@
 #define HAL_LLD_H
 
 #include "stm32_registry.h"
-#include "mcuconf.h"
 
 /*===========================================================================*/
 /* Driver constants.                                                         */
@@ -81,21 +80,21 @@
 #endif
 /** @} */
 
-
-/*===========================================================================*/
-/* Driver pre-compile time settings.                                         */
-/*===========================================================================*/
-
 /**
- * @name    Configuration options
+ * @name    Internal clock sources
  * @{
  */
+#define STM32_HSICLK            16000000    /**< High speed internal clock. */
+#define STM32_LSICLK            38000       /**< Low speed internal clock.  */
+/** @} */
+
 /**
  * @brief   Disables the PWR/RCC initialization in the HAL.
  */
 #if !defined(STM32_NO_INIT) || defined(__DOXYGEN__)
 #define STM32_NO_INIT               FALSE
 #endif
+
 
 /*
  * Configuration-related checks.
@@ -104,9 +103,6 @@
 #error "Using a wrong mcuconf.h file, STM32L1xx_MCUCONF not defined"
 #endif
 
-/*===========================================================================*/
-/* External declarations.                                                    */
-/*===========================================================================*/
 
 /* Various helpers.*/
 #include "nvic.h"
@@ -114,7 +110,6 @@
 #include "mpu_v7m.h"
 #include "stm32_isr.h"
 #include "stm32_dma.h"
-#include "stm32_exti.h"
 #include "stm32_rcc.h"
 
 #ifdef __cplusplus
