@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BOARD_H__
+#define BOARD_H__
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
@@ -146,3 +147,5 @@
     UART_DMA_TX, UART_DMA_RX, UART_DMA_TX_MODE(UART_DMA_CHNL), UART_DMA_RX_MODE(UART_DMA_CHNL)
 
 #endif
+
+#endif //BOARD_H__

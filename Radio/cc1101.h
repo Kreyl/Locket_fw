@@ -5,7 +5,8 @@
  *      Author: g.kruglov
  */
 
-#pragma once
+#ifndef CC1101_H__
+#define CC1101_H__
 
 #include <inttypes.h>
 #include "kl_lib.h"
@@ -116,3 +117,5 @@ public:
 
 #define DELAY_LOOP_34uS()       { for(volatile uint32_t i=0; i<12; i++); } // 12 leads to 34us @ 4MHz sys clk
 #define DELAY_LOOP_144uS()      { for(volatile uint32_t i=0; i<54; i++); } // 54 leads to 144us @ 4MHz sys clk
+
+#endif //CC1101_H__

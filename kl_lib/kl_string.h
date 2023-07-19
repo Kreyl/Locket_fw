@@ -5,10 +5,13 @@
  *      Author: layst
  */
 
-#pragma once
+#ifndef KL_STRING_H__
+#define KL_STRING_H__
 
 int kl_strcasecmp(const char *s1, const char *s2);
 char* kl_strtok(char* s, const char* delim, char**PLast);
 int kl_sscanf(const char* s, const char* format, ...);
 int kl_strlen(const char* s);
 
+
+#endif //KL_STRING_H__

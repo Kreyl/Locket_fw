@@ -5,7 +5,8 @@
  *      Author: layst
  */
 
-#pragma once
+#ifndef CONFIG_H__
+#define CONFIG_H__
 
 #define ID_BAD                  (-1)
 #define ID_MIN                  0
@@ -32,3 +33,5 @@ public:
 };
 
 extern Config_t Cfg;
+
+#endif //CONFIG_H__

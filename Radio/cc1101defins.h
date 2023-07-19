@@ -5,7 +5,8 @@
  * Created on 3 Март 2010 г., 11:08
  */
 
-#pragma once
+#ifndef CC1101DEFINS_H__
+#define CC1101DEFINS_H__
 
 #include <inttypes.h>
 
@@ -165,3 +166,5 @@ static const char* CC_PwrToString(uint8_t APwr) {
 // FIFO
 #define CC_FIFO     0x3F
 
+
+#endif //CC1101DEFINS_H__
