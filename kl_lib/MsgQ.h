@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef MSGQ_H__
+#define MSGQ_H__
 
 #include <inttypes.h>
 #include "ch.h"
@@ -175,3 +176,5 @@ public:
     } // Switch
  */
 extern EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
+
+#endif //MSGQ_H__

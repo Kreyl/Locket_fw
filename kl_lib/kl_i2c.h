@@ -1,4 +1,5 @@
-#pragma once
+#ifndef KL_I2C_H__
+#define KL_I2C_H__
 
 #include "kl_lib.h"
 #include "board.h"
@@ -125,3 +126,5 @@ public:
 
 extern i2c_t i2c1, i2c2, i2c3;
 #endif
+
+#endif //KL_I2C_H__

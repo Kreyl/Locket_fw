@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef BEEPER_H__
+#define BEEPER_H__
 
 #include "ChunkTypes.h"
 #include "kl_lib.h"
@@ -29,3 +30,5 @@ public:
     }
     void Off() { IPin.Set(0); }
 };
+
+#endif //BEEPER_H__

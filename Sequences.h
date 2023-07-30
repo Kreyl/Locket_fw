@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef SEQUENCES_H__
+#define SEQUENCES_H__
 
 #include "ChunkTypes.h"
 
@@ -450,3 +451,5 @@ const BaseChunk_t vsqMany[] = {
 };
 */
 #endif
+
+#endif //SEQUENCES_H__

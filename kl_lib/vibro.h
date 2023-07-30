@@ -5,7 +5,8 @@
  *      Author: Kreyl
  */
 
-#pragma once
+#ifndef VIBRO_H__
+#define VIBRO_H__
 
 #include "kl_lib.h"
 #include "ChunkTypes.h"
@@ -25,3 +26,5 @@ public:
     void Init() { IPin.Init(); }
 };
 
+
+#endif //VIBRO_H__

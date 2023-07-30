@@ -5,7 +5,8 @@
  *      Author: g.kruglov
  */
 
-#pragma once
+#ifndef PILL_H__
+#define PILL_H__
 
 #include "color.h"
 
@@ -23,3 +24,5 @@ struct Pill_t {
 } __attribute__ ((__packed__));
 #define PILL_SZ     sizeof(Pill_t)
 #define PILL_SZ32   (sizeof(Pill_t) / sizeof(int32_t))
+
+#endif //PILL_H__

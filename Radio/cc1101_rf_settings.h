@@ -5,7 +5,8 @@
  * Created on 7 Март 2010 г., 12:42
  */
 
-#pragma once
+#ifndef CC1101_RF_SETTINGS_H__
+#define CC1101_RF_SETTINGS_H__
 
 // All this is for 27.0 MHz crystal, and for 868 MHz carrier
 
@@ -258,3 +259,5 @@ static const CCRegValue_t CCBitrate500k[CC_BRSETUP_CNT] = {
 // Rare use settings
 #define CC_SYNC1_VALUE      0xD3
 #define CC_SYNC0_VALUE      0x91
+
+#endif //CC1101_RF_SETTINGS_H__

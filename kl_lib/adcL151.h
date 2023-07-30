@@ -5,7 +5,8 @@
  *      Author: kreyl
  */
 
-#pragma once
+#ifndef ADCL151_H__
+#define ADCL151_H__
 
 #include "kl_lib.h"
 #include "board.h"
@@ -79,3 +80,5 @@ public:
 
 extern Adc_t Adc;
 #endif // ADC_REQUIRED
+
+#endif //ADCL151_H__

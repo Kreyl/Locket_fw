@@ -3,7 +3,8 @@
  *
  */
 
-#pragma once
+#ifndef PINSNSSETTINGS_H__
+#define PINSNSSETTINGS_H__
 
 #include "SimpleSensors.h"
 
@@ -26,3 +27,5 @@ const PinSns_t PinSns[] = {
 #define PIN_SNS_CNT     countof(PinSns)
 
 #endif  // if enabled
+
+#endif //PINSNSSETTINGS_H__
