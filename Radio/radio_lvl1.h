@@ -15,22 +15,6 @@
 #include "uart.h"
 #include "MsgQ.h"
 
-__unused
-static const uint8_t PwrTable[12] = {
-        CC_PwrMinus30dBm, // 0
-        CC_PwrMinus27dBm, // 1
-        CC_PwrMinus25dBm, // 2
-        CC_PwrMinus20dBm, // 3
-        CC_PwrMinus15dBm, // 4
-        CC_PwrMinus10dBm, // 5
-        CC_PwrMinus6dBm,  // 6
-        CC_Pwr0dBm,       // 7
-        CC_PwrPlus5dBm,   // 8
-        CC_PwrPlus7dBm,   // 9
-        CC_PwrPlus10dBm,  // 10
-        CC_PwrPlus12dBm   // 11
-};
-
 #if 1 // =========================== Pkt_t =====================================
 union rPkt_t {
     uint32_t DW32[2];
@@ -59,7 +43,7 @@ union rPkt_t {
 
 // Feel-Each-Other related
 #define RCYCLE_CNT              5U
-#define RSLOT_CNT               54U // There is 45 devices in system
+#define RSLOT_CNT               54U
 #define SCYCLES_TO_KEEP_TIMESRC 4U  // After that amount of supercycles, TimeSrcID become self ID
 
 // Timings: based on (27MHz/192) clock of CC, divided by 4 with prescaler

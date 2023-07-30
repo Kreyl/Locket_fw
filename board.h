@@ -3,7 +3,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "Zalex22"
+#define APP_NAME            "FeelEachOther"
 
 #ifndef TRUE
 #define TRUE    1
