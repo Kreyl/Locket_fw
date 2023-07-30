@@ -85,7 +85,7 @@ void ProcessButtons(PinSnsState_t *BtnState, uint32_t Len) {
 
 #if BTN_DOUBLE_CLICK
             // Check if same button pressed within timeframe
-            if(IsWaitingSecondClick and FirstClickID == i and chVTTimeElapsedSinceX(DoubleClickTimer) < (MS2ST(BTN_DOUBLECLICK_DELAY_MS))) {
+            if(IsWaitingSecondClick and FirstClickID == i and chVTTimeElapsedSinceX(DoubleClickTimer) < (TIME_MS2I(BTN_DOUBLECLICK_DELAY_MS))) {
                 AddEvtToQueue(beDoubleClick, i);
                 IsWaitingSecondClick = false;
             }
@@ -98,7 +98,7 @@ void ProcessButtons(PinSnsState_t *BtnState, uint32_t Len) {
 #endif
 
 // Single key pressed, no combo
-#if BTN_SHORTPRESS && !BTN_DOUBLE_CLICK
+#if BTN_SHORTPRESS && !BTN_DOUBLE_CLICK && !BTN_LONGPRESS
             AddEvtToQueue(beShortPress, i);  // Add single keypress
 #endif
 
@@ -113,8 +113,8 @@ void ProcessButtons(PinSnsState_t *BtnState, uint32_t Len) {
         } // if press
 #endif
 
-#if 1 // ==== Button Release ====
-#if BTN_COMBO || BTN_RELEASE || BTN_LONG_COMBO
+// ==== Button Release ====
+#if BTN_COMBO || BTN_RELEASE || BTN_LONG_COMBO || (BTN_SHORTPRESS && BTN_LONGPRESS)
         else if(BtnState[i] == BTN_RELEASING_STATE) {
 #if BTN_COMBO || BTN_LONG_COMBO // Check if combo completely released
             if(IsCombo) {
@@ -130,16 +130,20 @@ void ProcessButtons(PinSnsState_t *BtnState, uint32_t Len) {
 #endif
                 return; // do not send release evt (if enabled)
             } // if combo
-#endif
+#endif // BTN_COMBO || BTN_LONG_COMBO
+
 #if BTN_RELEASE // Send evt if not combo and not longpress
 #if BTN_LONGPRESS
             if(!IsLongPress[i])
 #endif
                 AddEvtToQueue(beRelease, i);
+#endif // BTN_RELEASE
+
+#if BTN_SHORTPRESS && BTN_LONGPRESS
+            if(!IsLongPress[i]) AddEvtToQueue(beShortPress, i);  // Add single keypress
 #endif
         }
-#endif // if combo or release
-#endif
+#endif //BTN_COMBO || BTN_RELEASE || BTN_LONG_COMBO || (BTN_SHORTPRESS && BTN_LONGPRESS)
 
 #if 1 // ==== Holddown ====
 #if BTN_LONGPRESS || BTN_REPEAT || BTN_LONG_COMBO
@@ -151,7 +155,7 @@ void ProcessButtons(PinSnsState_t *BtnState, uint32_t Len) {
 #endif
             ) {
 //                Uart.Printf("Elapsed %u\r", chVTTimeElapsedSinceX(LongPressTimer));
-                if(chVTTimeElapsedSinceX(LongPressTimer) >= MS2ST(BTN_LONGPRESS_DELAY_MS)) {
+                if(chVTTimeElapsedSinceX(LongPressTimer) >= TIME_MS2I(BTN_LONGPRESS_DELAY_MS)) {
                     IsLongPress[i] = true;
                     AddEvtToQueue(beLongPress, i);
                 }
@@ -160,7 +164,7 @@ void ProcessButtons(PinSnsState_t *BtnState, uint32_t Len) {
 
 #if BTN_LONG_COMBO
             if(IsCombo and !IsLongCombo) {
-                if(chVTTimeElapsedSinceX(LongComboTimer) >= TIME_MS2I(BTN_LONGPRESS_DELAY_MS)) {
+                if(chVTTimeElapsedSinceX(LongComboTimer) >= MS2ST(BTN_LONGPRESS_DELAY_MS)) {
                     IsLongCombo = true;
                     BtnEvtInfo_t IEvt;
                     IEvt.BtnCnt = 0;

@@ -1,16 +1,18 @@
 /*
  * color.h
  *
- *  Created on: 05 апр. 2014 г.
+ *  Created on: 05 пїЅпїЅпїЅ. 2014 пїЅ.
  *      Author: Kreyl
  */
 
 #pragma once
 
+#include "kl_lib.h"
 #include "inttypes.h"
 #include <sys/cdefs.h>
-#include "shell.h"
 #include <stdlib.h> // for random
+
+void Printf(const char *format, ...);
 
 struct ColorHSV_t;
 
@@ -19,7 +21,7 @@ struct ColorHSV_t;
 #define RANDOM_CLR_BRT      255
 
 // Mixing two colors
-#define ClrMix(C, B, L)     ((C * L + B * (255 - L)) / 255)
+#define ClrMix(Fore, Back, Weight)     ((Fore * Weight + Back * (255 - Weight)) / 255)
 
 __attribute__((__always_inline__))
 static inline int32_t Abs32(int32_t w) { return (w < 0)? -w : w; }
@@ -37,7 +39,7 @@ static inline int32_t CalcSmooth_st_from_ms(int32_t Duration_ms) {
 struct Color_t {
 private:
     __always_inline
-    inline uint8_t SetSingleBrt(int32_t v, const int32_t Brt, const int32_t BrtMax) {
+    uint8_t SetSingleBrt(int32_t v, const int32_t Brt, const int32_t BrtMax) {
         if(v > 0) {
             v = (v * Brt) / BrtMax;
             if(v == 0) v = 1;
@@ -157,11 +159,18 @@ public:
         rslt |= ((uint16_t)B) >> 3;
         return rslt;
     }
-    // Mixage
-    void BeMixOf(const Color_t &Fore, const Color_t &Back, uint32_t ABrt) {
-        R = ClrMix(Fore.R, Back.R, ABrt);
-        G = ClrMix(Fore.G, Back.G, ABrt);
-        B = ClrMix(Fore.B, Back.B, ABrt);
+    // ==== Mixage ====
+    // Weight = 0: result is Back; Weight = 255: result is Fore; otherwise result is mix
+    void MixwWeight(const Color_t &Fore, const Color_t &Back, uint32_t Weight) {
+        R = ClrMix(Fore.R, Back.R, Weight);
+        G = ClrMix(Fore.G, Back.G, Weight);
+        B = ClrMix(Fore.B, Back.B, Weight);
+    }
+    // Weight = 0: not changed; Weight = 255: result is Fore; otherwise result is mix
+    void MixwWeight(const Color_t &Fore, uint32_t Weight) {
+        R = ClrMix(Fore.R, R, Weight);
+        G = ClrMix(Fore.G, G, Weight);
+        B = ClrMix(Fore.B, B, Weight);
     }
     void MixWith(const Color_t &Clr) {
         if(Clr.Brt == 0) return;    // Alien is off, no changes with us
@@ -186,19 +195,19 @@ public:
         Delay2 = (Brt == AClr.Brt)? 0 : ClrCalcDelay(Brt, SmoothValue);
         return (Delay2 > Delay)? Delay2 : Delay;
     }
-//    void SetRGBWBrightness(Color_t &AClr, int32_t Brt) {
-//        R = SetSingleBrt(AClr.R, Brt);
-//        G = SetSingleBrt(AClr.G, Brt);
-//        B = SetSingleBrt(AClr.B, Brt);
-//        W = SetSingleBrt(AClr.W, Brt);
-//    }
-//    void SetRGBBrightness(Color_t &AClr, int32_t Brt) {
-//        R = SetSingleBrt(AClr.R, Brt);
-//        G = SetSingleBrt(AClr.G, Brt);
-//        B = SetSingleBrt(AClr.B, Brt);
-//    }
 
+    void SetRGBWBrightness(Color_t &AClr, int32_t Brt, const int32_t BrtMax) {
+        R = SetSingleBrt(AClr.R, Brt, BrtMax);
+        G = SetSingleBrt(AClr.G, Brt, BrtMax);
+        B = SetSingleBrt(AClr.B, Brt, BrtMax);
+        W = SetSingleBrt(AClr.W, Brt, BrtMax);
+    }
 
+    void SetRGBBrightness(Color_t &AClr, const int32_t ABrt, const int32_t BrtMax) {
+        R = SetSingleBrt(AClr.R, ABrt, BrtMax);
+        G = SetSingleBrt(AClr.G, ABrt, BrtMax);
+        B = SetSingleBrt(AClr.B, ABrt, BrtMax);
+    }
     void SetRGBBrightness(const int32_t ABrt, const int32_t BrtMax) {
         R = SetSingleBrt(R, ABrt, BrtMax);
         G = SetSingleBrt(G, ABrt, BrtMax);
@@ -306,12 +315,49 @@ struct ColorHSV_t {
     };
 
     void Adjust(const ColorHSV_t &Target) {
-        if     (H < Target.H) H++;
-        else if(H > Target.H) H--;
-        if     (S < Target.S) S++;
+        int16_t dH = Target.H - H;
+        uint16_t sH = ABS(dH);
+        if (sH > 180) sH = 360 - sH;
+        // Change H
+        if      ((0<dH and dH<=180) or -180>dH) {
+            if (H >= 360-1) H = 0;
+            else H++;
+        }
+        else if ((0>dH and dH>=-180) or 180<dH) {
+            if (H == 0) H = 360-1;
+            else H--;
+        }
+        // Change S
+        if     (S < Target.S and sH <= Target.S-S) S++;
         else if(S > Target.S) S--;
-        if     (V < Target.V) V++;
+        // Change V
+        if     (V < Target.V and sH <= Target.V-V) V++;
         else if(V > Target.V) V--;
+//        Printf(" Adjust dH %i (%u %u)\t sH %u\t sS %i (%u %u)\t sV %i (%u %u)\r", dH, H, Target.H, sH, Target.S-S, S, Target.S, Target.V-V, V, Target.V);
+    }
+
+    // Weight = 0: result is Back; Weight = 255: result is Fore; otherwise result is mix
+    void MixwWeight(const ColorHSV_t &Fore, const ColorHSV_t &Back, uint32_t Weight) {
+        uint8_t R, G, B;
+        uint8_t ForeR, ForeG, ForeB;
+        uint8_t BackR, BackG, BackB;
+        Fore.ToRGB(&ForeR, &ForeG, &ForeB);
+        Back.ToRGB(&BackR, &BackG, &BackB);
+        R = ClrMix(ForeR, BackR, Weight);
+        G = ClrMix(ForeG, BackG, Weight);
+        B = ClrMix(ForeB, BackB, Weight);
+        FromRGB(R, G, B);
+    }
+    // Weight = 0: not changed; Weight = 255: result is Fore; otherwise result is mix
+    void MixwWeight(const ColorHSV_t &Fore, uint32_t Weight) {
+        uint8_t R, G, B;
+        uint8_t ForeR, ForeG, ForeB;
+        ToRGB(&R, &G, &B);
+        Fore.ToRGB(&ForeR, &ForeG, &ForeB);
+        R = ClrMix(ForeR, R, Weight);
+        G = ClrMix(ForeG, G, Weight);
+        B = ClrMix(ForeB, B, Weight);
+        FromRGB(R, G, B);
     }
 
     uint32_t DelayToNextAdj(const ColorHSV_t &Target, uint32_t SmoothValue) {

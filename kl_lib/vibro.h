@@ -1,7 +1,7 @@
 /*
  * vibro.h
  *
- *  Created on: 26-04-2015 ã.
+ *  Created on: 26-04-2015 ï¿½.
  *      Author: Kreyl
  */
 
@@ -24,3 +24,4 @@ public:
     Vibro_t(PwmSetup_t APin) : BaseSequencer_t(), IPin(APin) {}
     void Init() { IPin.Init(); }
 };
+
