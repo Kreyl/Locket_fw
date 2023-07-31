@@ -269,6 +269,7 @@ private:
     uint32_t Cnt;
 public:
     void Add(T Value) {
+        if(Cnt >= Sz) return;
         for(uint32_t i=0; i<Cnt; i++) {
             if(IBuf[i] == Value) return;   // do not add what exists
         }

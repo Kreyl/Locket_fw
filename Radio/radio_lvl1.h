@@ -42,93 +42,26 @@ union rPkt_t {
 #define RCHNL_EACH_OTH          2
 
 // Feel-Each-Other related
-#define RCYCLE_CNT              5U
-#define RSLOT_CNT               54U
-#define SCYCLES_TO_KEEP_TIMESRC 4U  // After that amount of supercycles, TimeSrcID become self ID
-
-// Timings: based on (27MHz/192) clock of CC, divided by 4 with prescaler
-#define RTIM_PRESCALER          2U  // From excel
-#define TIMESLOT_DUR_TICKS      108U // From excel
-#define CYCLE_DUR_TICKS         (TIMESLOT_DUR_TICKS * RSLOT_CNT)
-#define SUPERCYCLE_DUR_TICKS    (CYCLE_DUR_TICKS * RCYCLE_CNT)
-#if SUPERCYCLE_DUR_TICKS >= 0xFFFF
-#error "Too long supercycle"
-#endif
-#define ZERO_ID_INCREMENT       3U // [0;100) -> [3;103) to process start of zero cycle calibration delay
-#define HOPS_CNT_MAX            4U // do not adjust time if too many hops. Required to avoid eternal loops adjustment.
-// Experimental values
-#define TX_DUR_TICS             53U // Experimental value to sync time scale
+#define CYCLE_CNT               5U
+#define SLOT_CNT                36U
+#define SLOT_DURATION_MS        4U
+#define MIN_SLEEP_DURATION_MS   18UL
+#define CHECK_RXTABLE_PERIOD_SC 3UL // Check RxTable every 3 SuperCycle
 
 #endif
 
-#if 1 // ============================= RX Table ================================
-struct rPayload_t {
-    int32_t Cnt = 0; // Count of packets with this ID
-    int32_t Rssi;
-} __attribute__ ((__packed__));
-
-#define RXTABLE_SZ              RSLOT_CNT
-
-// RxTable must be cleared during processing
-class RxTable_t {
-private:
-    rPayload_t IBuf[RXTABLE_SZ];
-public:
-    void AddPktI(rPkt_t *pPkt) {
-        if(pPkt->ID < RXTABLE_SZ) {
-            IBuf[pPkt->ID].Rssi += pPkt->Rssi;
-            IBuf[pPkt->ID].Cnt++;
-        }
-    }
-
-    void CleanUp() {
-        for(auto &v : IBuf) {
-            v.Cnt = 0;
-            v.Rssi = 0;
-        }
-    }
-
-    rPayload_t& operator[](const int32_t Indx) {
-        return IBuf[Indx];
-    }
-
-    void Print() {
-        Printf("RxTable\r");
-        for(uint32_t i=0; i<RXTABLE_SZ; i++) {
-            if(IBuf[i].Cnt) Printf("ID: %u; Cnt: %u; Rssi: %d\r", i, IBuf[i].Cnt, IBuf[i].Rssi);
-        }
-    }
-};
-#endif
+#define RXTABLE_SZ          4UL
 
 class rLevel1_t {
 private:
-    RxTable_t RxTable1, RxTable2, *RxTableW = &RxTable1;
+    void TryToReceive(uint32_t RxDuration);
+    void TryToSleep(uint32_t SleepDuration);
+    void AddPktToRxTableI(rPkt_t *pPkt) { IdBuf.Add(pPkt->ID); }
 public:
-    uint8_t TxPower;
-
-    void AddPktToRxTableI(rPkt_t *pPkt) { RxTableW->AddPktI(pPkt); }
-
-    RxTable_t& GetRxTable() {
-        chSysLock();
-        RxTable_t* RxTableR;
-        // Switch tables
-        if(RxTableW == &RxTable1) {
-            RxTableW = &RxTable2;
-            RxTableR = &RxTable1;
-        }
-        else {
-            RxTableW = &RxTable1;
-            RxTableR = &RxTable2;
-        }
-        chSysUnlock();
-        return *RxTableR;
-    }
-
+    CountingBuf_t<uint8_t, RXTABLE_SZ> IdBuf;
     uint8_t Init();
-
     // Inner use
-    void ITask();
+    void TaskFeelEachOther();
 };
 
 extern rLevel1_t Radio;
