@@ -20,7 +20,6 @@ static void OnCmd(Shell_t *PShell);
 Config_t Cfg;
 
 static void ReadAndSetupMode();
-extern uint32_t SupercyclesCntToCheckRxTable;
 
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
@@ -61,8 +60,6 @@ void CheckRxTable() {
         }
     }
     Tbl.CleanUp();
-    if(Cnt <= 2) SupercyclesCntToCheckRxTable = 4;
-    else SupercyclesCntToCheckRxTable = 6;
 }
 
 int main(void) {
