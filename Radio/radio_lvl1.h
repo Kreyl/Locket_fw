@@ -16,6 +16,7 @@
 #include "MsgQ.h"
 
 #if 1 // =========================== Pkt_t =====================================
+#pragma pack(push, 1)
 union rPkt_t {
     uint32_t DW32[2];
     struct {
@@ -26,13 +27,14 @@ union rPkt_t {
         // Payload
         int8_t Rssi; // Will be set after RX. Transmitting is useless, but who cares.
         uint16_t Salt;
-    } __attribute__((__packed__));
+    };
     rPkt_t& operator = (const rPkt_t &Right) {
         DW32[0] = Right.DW32[0];
         DW32[1] = Right.DW32[1];
         return *this;
     }
-} __attribute__ ((__packed__));
+};
+#pragma pack(pop)
 #endif
 
 #define RPKT_LEN    sizeof(rPkt_t)
