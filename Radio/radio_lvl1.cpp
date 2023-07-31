@@ -99,7 +99,8 @@ static void rLvl1Thread(void *arg) {
         SuperCycleCnt++;
         if(SuperCycleCnt >= CHECK_RXTABLE_PERIOD_SC) {
             SuperCycleCnt = 0;
-            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdCheckRxTable));
+            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdCheckRxTable, Radio.IdBuf.GetCount()));
+            Radio.IdBuf.Clear();
         }
     } // while true
 }

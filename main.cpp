@@ -41,27 +41,6 @@ LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
 #endif
 
-void CheckRxTable() {
-    uint32_t Cnt = 0;
-    int32_t Rssi1 = -111, Rssi2 = -111;
-    RxTable_t &Tbl = Radio.GetRxTable();
-    for(uint32_t i=0; i<RXTABLE_SZ; i++) {
-        if(Tbl[i].Cnt) {
-            int32_t Rssi = Tbl[i].Rssi / Tbl[i].Cnt;
-//            Printf("ID: %u; Rssi: %d\r", i, Rssi);
-//            if(Rssi > RSSI_TO_SHOW) {
-//                Cnt++;
-//                if(Rssi > Rssi2) Rssi2 = Rssi;
-//                if(Rssi2 > Rssi1) { // Switch Rssi1 and Rssi2
-//                    Rssi2 = Rssi1;
-//                    Rssi1 = Rssi;
-//                }
-//            }
-        }
-    }
-    Tbl.CleanUp();
-}
-
 int main(void) {
     // ==== Init Vcore & clock system ====
     SetupVCore(vcore1V2);
@@ -123,9 +102,15 @@ void ITask() {
                 ReadAndSetupMode();
                 break;
 
-            case evtIdCheckRxTable:
-                CheckRxTable();
-                break;
+            case evtIdCheckRxTable: {
+                uint32_t Cnt = Msg.Value;
+                switch(Cnt) {
+                    case 0: break; // Noone near
+                    case 1: Vibro.StartOrContinue(vsqBrr); break;
+                    case 2: Vibro.StartOrContinue(vsqBrrBrr); break;
+                    default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
+                }
+            } break;
 
 #if BUTTONS_ENABLED
             case evtIdButtons:
