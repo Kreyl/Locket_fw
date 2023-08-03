@@ -10,7 +10,7 @@
 
 #define ID_BAD                  (-1)
 #define ID_MIN                  1
-#define ID_MAX                  11
+#define ID_MAX                  36
 #define ID_DEFAULT              ID_MIN
 
 #define SUPERCYCLES_2CHECK_RXTBL    4

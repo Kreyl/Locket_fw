@@ -207,11 +207,9 @@ const LedRGBChunk_t lsqTransmitter[] = {
 };
 
 const LedRGBChunk_t lsqStart[] = {
-        {csSetup, 0, clRed},   {csWait, 207},
-        {csSetup, 0, clGreen}, {csWait, 207},
-        {csSetup, 0, clBlue},  {csWait, 207},
-//        {csSetup, 0, clBlack},
-        {csSetup, 0, {0,1,0}},
+        {csSetup, 270, clMagenta},
+        {csWait, 207},
+        {csSetup, 270, {0,0,1}},
         {csEnd},
 };
 

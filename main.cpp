@@ -80,14 +80,15 @@ int main(void) {
 #endif
 
     // ==== Radio ====
-    if(Radio.Init() != retvOk) {
-        Led.StartOrRestart(lsqFailure);
-        chThdSleepMilliseconds(1008);
+    if(Radio.Init() == retvOk) {
+        Led.StartOrRestart(lsqStart);
+        Vibro.StartOrRestart(vsqBrrBrr);
     }
+    else Led.StartOrRestart(lsqFailure);
+    chThdSleepMilliseconds(1008);
 
     ReadAndSetupMode();
     TmrEverySecond.StartOrRestart();
-    Vibro.StartOrRestart(vsqBrrBrr);
 
     // Main cycle
     ITask();
@@ -139,9 +140,6 @@ void ReadAndSetupMode() {
     // ==== Something has changed ====
     Printf("Dip: 0x%02X; ", b);
     OldDipSettings = b;
-    // Reset everything
-    Vibro.Stop();
-    Led.Stop();
     // Select power
     b &= 0b1111; // Remove high bits = group 5678
     Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
