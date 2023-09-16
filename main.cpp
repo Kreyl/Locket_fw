@@ -76,7 +76,7 @@ int main(void) {
             CC.SetBitrate(CCBitrate100k);
             // Transmit what needed
             while(PinIsHi(BTN1_PIN) or PinIsHi(BTN2_PIN)) {
-                PktTx.BtnIndx = PinIsHi(BTN1_PIN)? 0 : 1;
+                PktTx.Indx = PinIsHi(BTN1_PIN)? 0 : 1;
                 CC.Recalibrate();
                 CC.Transmit(&PktTx, RPKT_LEN);
             }
