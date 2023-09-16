@@ -9,14 +9,9 @@
 #include "cc1101.h"
 #include "uart.h"
 
-#include "led.h"
-#include "Sequences.h"
-#include "Config.h"
-
-
 cc1101_t CC(CC_Setup0);
 
-#define DBG_PINS
+//#define DBG_PINS
 
 #ifdef DBG_PINS
 #define DBG_GPIO1   GPIOB
@@ -33,8 +28,7 @@ cc1101_t CC(CC_Setup0);
 #endif
 
 rLevel1_t Radio;
-int8_t Rssi;
-extern LedRGBwPower_t Led;
+bool MustTx();
 
 #if 1 // ================================ Task =================================
 static THD_WORKING_AREA(warLvl1Thread, 256);
@@ -44,29 +38,19 @@ static void rLvl1Thread(void *arg) {
     Radio.ITask();
 }
 
-//#define TEST_STATION
-
 __noreturn
 void rLevel1_t::ITask() {
     while(true) {
-        CC.Recalibrate();
-#ifdef TEST_STATION
-        uint8_t Rslt = CC.Receive(270, &PktRx, RPKT_LEN, &Rssi);
-        if(Rslt == retvOk) {
-            PktTx.Rssi = Rssi;
+        if(MustTx()) {
+            PktTx.TheWord = RPKT_SALT;
+            CC.Recalibrate();
             CC.Transmit(&PktTx, RPKT_LEN);
-            Printf("Rssi: our= %d; their=%d\r", Rssi, PktRx.Rssi);
-            Led.StartOrRestart(lsqBlink);
+            chThdSleepMilliseconds(18);
         }
-#else
-        CC.Transmit(&PktTx, RPKT_LEN);
-        uint8_t Rslt = CC.Receive(270, &PktRx, RPKT_LEN, &Rssi);
-        if(Rslt == retvOk) {
-            Printf("Rssi: our= %d; their=%d\r", Rssi, PktRx.Rssi);
-            Led.StartOrRestart(lsqBlink);
+        else {
+            CC.PowerOff();
+            chThdSleepMilliseconds(360);
         }
-        chThdSleepMilliseconds(630);
-#endif
     } // while true
 }
 #endif // task
@@ -78,12 +62,11 @@ uint8_t rLevel1_t::Init() {
     PinSetupOut(DBG_GPIO2, DBG_PIN2, omPushPull);
 #endif
 
-    RMsgQ.Init();
     if(CC.Init() == retvOk) {
         CC.SetPktSize(RPKT_LEN);
         CC.DoIdleAfterTx();
-        CC.SetChannel(RCHNL_EACH_OTH);
-        CC.SetTxPower(CC_Pwr0dBm);
+        CC.SetChannel(7);
+        CC.SetTxPower(CC_PwrPlus5dBm);
         CC.SetBitrate(CCBitrate100k);
 //        CC.EnterPwrDown();
 

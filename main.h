@@ -8,10 +8,13 @@
 #ifndef MAIN_H__
 #define MAIN_H__
 
-#define ID_MIN                  1
-#define ID_MAX                  36
-#define ID_DEFAULT              ID_MIN
-extern int32_t ID;
-
+// WhatToTx
+#define TX_NONE     0
+#define TX_OFF      1
+#define TX_ON       2
+#define TX_MODE_0   3
+#define TX_MODE_1   4
+#define TX_MODE_2   5
+#define TX_MODE_3   6
 
 #endif //MAIN_H__

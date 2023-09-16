@@ -13,7 +13,7 @@
 #if BUTTONS_ENABLED
 
 #if BTN_GETSTATE_REQUIRED
-static PinSnsState_t IBtnState[BUTTONS_CNT];
+static PinSnsState_t IBtnState[BUTTONS_CNT] = {pssNone};
 PinSnsState_t GetBtnState(uint8_t BtnID) {
     if(BtnID > BUTTONS_CNT) return pssNone;
     else return IBtnState[BtnID];

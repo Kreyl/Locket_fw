@@ -3,12 +3,12 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "QTest"
+#define APP_NAME            "TxManyBtns"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
-#define BEEPER_ENABLED      TRUE
-#define BUTTONS_ENABLED     FALSE
+#define BEEPER_ENABLED      FALSE
+#define BUTTONS_ENABLED     TRUE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
