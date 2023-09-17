@@ -9,12 +9,12 @@
 #define MAIN_H__
 
 // WhatToTx
-#define TX_NONE     0
-#define TX_OFF      1
-#define TX_ON       2
-#define TX_MODE_0   3
-#define TX_MODE_1   4
-#define TX_MODE_2   5
-#define TX_MODE_3   6
+#define V_NONE      0
+#define V_OFF       1
+#define V_ON        2
+#define V_MODE_0    0
+#define V_MODE_1    1
+#define V_MODE_2    2
+#define V_MODE_3    3
 
 #endif //MAIN_H__

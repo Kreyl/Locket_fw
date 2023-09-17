@@ -75,7 +75,8 @@ static const uint8_t PwrTable[12] = {
 union rPkt_t {
     uint32_t DW32[2];
     struct {
-        int32_t Indx = 0;
+        uint16_t OnOff = 0;
+        uint16_t EffIndx = 0;
         uint32_t TheWord;
     } __attribute__((__packed__));
     rPkt_t& operator = (const rPkt_t &Right) {

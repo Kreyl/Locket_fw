@@ -23,9 +23,6 @@ static void OnCmd(Shell_t *PShell);
 // ==== Periphery ====
 Vibro_t Vibro {VIBRO_SETUP};
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
-
-bool IsOn = true;
-int32_t ModeToTx = TX_MODE_0;
 #endif
 
 int main(void) {
@@ -58,21 +55,18 @@ void ITask() {
             case evtIdButtons:
 //                Printf("Btn %u %u\r", Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
                 if(Msg.BtnEvtInfo.BtnID == 0) {
-                    IsOn = !IsOn;
-                    Radio.PktTx.Indx = IsOn? TX_ON : TX_OFF;
+                    Radio.PktTx.OnOff = (Radio.PktTx.OnOff == V_ON)? V_OFF : V_ON;
                 }
                 else if(Msg.BtnEvtInfo.BtnID == 1) {
-                    ModeToTx++;
-                    if(ModeToTx > TX_MODE_3) ModeToTx = TX_MODE_0;
-                    Radio.PktTx.Indx = ModeToTx;
+                    Radio.PktTx.OnOff = V_ON;
+                    Radio.PktTx.EffIndx = (Radio.PktTx.EffIndx >= V_MODE_3)? V_MODE_0 : Radio.PktTx.EffIndx+1;
                 }
                 else if(Msg.BtnEvtInfo.BtnID == 2) {
-                    ModeToTx--;
-                    if(ModeToTx < TX_MODE_0) ModeToTx = TX_MODE_3;
-                    Radio.PktTx.Indx = ModeToTx;
+                    Radio.PktTx.OnOff = V_ON;
+                    Radio.PktTx.EffIndx = (Radio.PktTx.EffIndx <= V_MODE_0)? V_MODE_3 : Radio.PktTx.EffIndx-1;
                 }
                 Vibro.StartOrRestart(vsqBrr);
-                Printf("Tx: %d\r", Radio.PktTx.Indx);
+                Printf("Tx: %d %d\r", Radio.PktTx.OnOff, Radio.PktTx.EffIndx);
                 break;
 
             case evtIdShellCmd:
