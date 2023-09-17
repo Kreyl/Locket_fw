@@ -71,7 +71,7 @@ int main(void) {
             else if(PinIsHi(BTN2_PIN)) Vibro.StartOrRestart(vsqBrrBrr);
             // CC set params
             CC.SetPktSize(RPKT_LEN);
-            CC.SetChannel(7); // Same as RX
+            CC.SetChannel(0); // Same as RX
             CC.SetTxPower(CC_PwrPlus5dBm);
             CC.SetBitrate(CCBitrate100k);
             // Transmit what needed
