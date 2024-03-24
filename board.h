@@ -3,7 +3,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "TxByBtn"
+#define APP_NAME            "ConceptOfGoodness"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
