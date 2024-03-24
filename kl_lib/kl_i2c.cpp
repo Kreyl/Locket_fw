@@ -30,7 +30,7 @@
 static const i2cParams_t I2C1Params = {
         I2C1,
         I2C1_GPIO, I2C1_SCL, I2C1_SDA,
-        I2C_BAUDRATE_HZ,
+        I2C1_BAUDRATE,
         I2C1_DMA_TX,
         I2C1_DMA_RX,
         I2C_DMATX_MODE(I2C1_DMA_CHNL),

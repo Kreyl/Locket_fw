@@ -2,6 +2,7 @@
 #define KL_I2C_H__
 
 #include "kl_lib.h"
+#include "board.h"
 
 #if defined STM32L1XX || defined STM32F2XX || defined STM32F4XX
 struct i2cParams_t {
