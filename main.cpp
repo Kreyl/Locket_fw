@@ -204,7 +204,7 @@ uint8_t ISetID(int32_t NewID) {
 //    }
 //    else {
 //        Printf("EE error: %u\r", rslt);
-//        return retvFail;
+        return retvFail;
 //    }
 }
 #endif

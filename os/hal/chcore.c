@@ -18,86 +18,37 @@
 */
 
 /**
- * @file    chversion.h
- * @brief   Version Module macros and structures.
+ * @file    ARMCMx/chcore.c
+ * @brief   ARM Cortex-Mx port code.
  *
- * @addtogroup chibios_version
- * @details This module contains information about the ChibiOS release, it
- *          is common to all subsystems.
+ * @addtogroup ARMCMx_CORE
  * @{
  */
 
-#ifndef CHVERSION_H
-#define CHVERSION_H
+#include "ch.h"
 
 /*===========================================================================*/
-/* Module constants.                                                         */
-/*===========================================================================*/
-
-/**
- * @brief   ChibiOS product identification macro.
- */
-#define _CHIBIOS_
-
-/**
- * @brief   Stable release flag.
- */
-#define CH_VERSION_STABLE       1
-
-/**
- * @name    ChibiOS version identification
- * @{
- */
-/**
- * @brief   ChibiOS version string.
- */
-#define CH_VERSION              "19.1.3"
-
-/**
- * @brief   ChibiOS version release year.
- */
-#define CH_VERSION_YEAR         19
-
-/**
- * @brief   ChibiOS version release month.
- */
-#define CH_VERSION_MONTH        1
-
-/**
- * @brief   ChibiOS version patch number.
- */
-#define CH_VERSION_PATCH        3
-
-/**
- * @brief   ChibiOS version nickname.
- */
-#define CH_VERSION_NICKNAME     "Maiori"
-/** @} */
-
-/*===========================================================================*/
-/* Module pre-compile time settings.                                         */
+/* Module local definitions.                                                 */
 /*===========================================================================*/
 
 /*===========================================================================*/
-/* Derived constants and error checks.                                       */
+/* Module exported variables.                                                */
 /*===========================================================================*/
 
 /*===========================================================================*/
-/* Module data structures and types.                                         */
+/* Module local types.                                                       */
 /*===========================================================================*/
 
 /*===========================================================================*/
-/* Module macros.                                                            */
+/* Module local variables.                                                   */
 /*===========================================================================*/
 
 /*===========================================================================*/
-/* External declarations.                                                    */
+/* Module local functions.                                                   */
 /*===========================================================================*/
 
 /*===========================================================================*/
-/* Module inline functions.                                                  */
+/* Module exported functions.                                                */
 /*===========================================================================*/
-
-#endif /* CHVERSION_H */
 
 /** @} */
