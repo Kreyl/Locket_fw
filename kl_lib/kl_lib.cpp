@@ -72,7 +72,7 @@ void PrintMemoryInfo() {
 }
 
 extern "C"
-char* _sbrk(int incr) {
+void* _sbrk(int incr) {
     extern uint8_t __heap_base__;
     extern uint8_t __heap_end__;
 
@@ -82,10 +82,10 @@ char* _sbrk(int incr) {
     incr = (incr + 3) & (~3);
     if(current_end + incr > &__heap_end__) {
         errno = ENOMEM;
-        return (char*) -1;
+        return (void*) -1;
     }
     current_end += incr;
-    return (char*)current_block_address;
+    return (void*)current_block_address;
 }
 
 #ifdef DMA_MEM2MEM

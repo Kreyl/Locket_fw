@@ -191,35 +191,113 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
-#define SHOWTIME        45
-#define SMOOTHVAL       7
+#define SHOWTIME        270
+#define PAUSETIME       720
+#define SHORTPAUSETIME  72
 
-const LedRGBChunk_t lsqObserver[] = {
-        {csSetup, SMOOTHVAL, clGreen},
-        {csSetup, SMOOTHVAL, clBlack},
+const LedRGBChunk_t lsqAri[] = {
+        {csSetup, 0, clBlue}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
 
-const LedRGBChunk_t lsqTransmitter[] = {
-        {csSetup, SMOOTHVAL, clRed},
-        {csSetup, SMOOTHVAL, clBlack},
+const LedRGBChunk_t lsqKaesu[] = {
+        {csSetup, 0, clRed},   {csWait, SHOWTIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
+
+const LedRGBChunk_t lsqNorth[] = {
+        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csEnd},
+};
+const LedRGBChunk_t lsqNorthStrong[] = {
+        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clWhite},  {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqSouth[] = {
+        {csSetup, 0, {128,0,255}}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},     {csWait, PAUSETIME},
+        {csEnd},
+};
+const LedRGBChunk_t lsqSouthStrong[] = {
+        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clWhite},   {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
+        {csEnd},
+};
+
+
+const LedRGBChunk_t lsqNorthCursed[] = {
+        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
+        {csSetup, 0, clRed},    {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csEnd},
+};
+const LedRGBChunk_t lsqSouthCursed[] = {
+        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clRed},     {csWait, SHOWTIME},
+        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
+        {csEnd},
+};
+
+
+const LedRGBChunk_t lsqHidden[] = {
+        {csSetup, 0, clBlue},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
+        {csRepeat, 1},
+        {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqSilent[] = {
+        {csSetup, 0, {255, 90, 0}},  {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
+        {csRepeat, 1},
+        {csWait, PAUSETIME},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqVisible[] = {
+        {csSetup, 0, clGreen}, {csWait, SHORTPAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
+        {csRepeat, 1},
+        {csWait, PAUSETIME},
+        {csEnd},
+};
+
 
 const LedRGBChunk_t lsqStart[] = {
-        {csSetup, 270, clMagenta},
-        {csWait, 207},
-        {csSetup, 270, {0,0,1}},
+        {csSetup, 0, clRed},   {csWait, 450},
+        {csSetup, 0, clGreen}, {csWait, 450},
+        {csSetup, 0, clBlue},  {csWait, 450},
+//        {csSetup, 0, clBlack},
+        {csSetup, 0, {0,1,0}},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqFailure[] = {
         {csSetup, 0, clRed},
-        {csWait, 99},
+        {csWait, 45},
         {csSetup, 0, clBlack},
-        {csWait, 99},
-        {csRepeat, 4},
+        {csWait, 45},
+        {csRepeat, 1},
         {csEnd}
+};
+
+const LedRGBChunk_t lsqBlink[] = {
+        {csSetup, 0, clGreen}, {csWait, 63},
+//        {csSetup, 0, clBlack},
+        {csSetup, 0, {0,1,0}},
+        {csEnd},
 };
 
 #endif
@@ -246,7 +324,7 @@ const LedSmoothChunk_t lsqEnterIdle[] = {
 
 #endif
 
-#if 0 // ============================= Beeper ==================================
+#if 1 // ============================= Beeper ==================================
 #define BEEP_VOLUME     2   // Maximum 10
 
 #if 1 // ==== Notes ====
@@ -300,12 +378,12 @@ const BeepChunk_t bsqButton[] = {
 };
 const BeepChunk_t bsqBeepBeep[] = {
         {csSetup, BEEP_VOLUME, 1975},
-        {csWait, 54},
-        {csSetup, 0},
-        {csWait, 54},
+        {csWait, 99},
+        {csSetup, 0, 0},
+        {csWait, 99},
         {csSetup, BEEP_VOLUME, 1975},
-        {csWait, 54},
-        {csSetup, 0},
+        {csWait, 99},
+        {csSetup, 0, 0},
         {csEnd}
 };
 
