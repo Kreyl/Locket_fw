@@ -22,7 +22,8 @@ void ReadIDfromEE();
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t Vibro { VIBRO_SETUP };
-#endif
+
+static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
 
 void SleepNow(uint32_t Delay) {
     chSysLock();
@@ -30,14 +31,32 @@ void SleepNow(uint32_t Delay) {
     Sleep::EnterStandby();
     chSysUnlock();
 }
+#endif
+
+#if 1 // =============================== App ===================================
+enum class DevType {Player, Master, PlaceOfPower} dev_type = DevType::Player;
+
+class Player_t {
+private:
+
+public:
+    int32_t goodness;
+    const int32_t kgoodness_bottom = 0, kgoodness_red = 7200, kgoodness_yellow = 14400, kgoodness_top = 21600;
+
+    void OnSecond() {
+        if(goodness > 0) goodness--;
+        if(goodness
+    }
+
+    void Reset() {
+        goodness = kgoodness_top;
+    }
+} player;
+
+
+#endif
 
 int main(void) {
-    // Check if no btn pressed
-    PinSetupInput(BTN1_PIN, pudPullDown);
-    PinSetupInput(BTN2_PIN, pudPullDown);
-    if(Sleep::WasInStandby() and PinIsLo(BTN1_PIN) and PinIsLo(BTN2_PIN))
-        SleepNow(450); // no btn, sleep no long
-
     // ==== Init Vcore & clock system ====
     SetupVCore(vcore1V2);
     Clk.SetMSI4MHz();
@@ -54,6 +73,8 @@ int main(void) {
     Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
 
+    TmrEverySecond.StartOrRestart();
+
     // Main cycle
     ITask();
 }
@@ -65,6 +86,7 @@ void ITask() {
         switch(Msg.ID) {
             case evtIdEverySecond:
                 ReadAndSetupMode();
+                player.OnSecond();
                 break;
 
             case evtIdCheckRxTable: {
