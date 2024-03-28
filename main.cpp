@@ -141,7 +141,7 @@ void ReadAndSetupMode() {
     OldDipSettings = b;
     // Select power
     b &= 0b1111; // Remove high bits = group 5678
-    Cfg.TxPower = (b > 11) ? CC_PwrPlus12dBm : PwrTable[b];
+    Dev.tx_power = (b > 11) ? CC_PwrPlus12dBm : PwrTable[b];
     Printf("Pwr: %S\r", CC_PwrToString(Cfg.TxPower));
 }
 
