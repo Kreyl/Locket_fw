@@ -1,7 +1,7 @@
 <map version="freeplane 1.11.5">
 <!--To view this file, download free mind mapping software Freeplane from https://www.freeplane.org -->
 <node TEXT="Pavia" FOLDED="false" ID="ID_1723255651" CREATED="1283093380553" MODIFIED="1710789519696"><hook NAME="MapStyle">
-    <properties fit_to_viewport="false;" associatedTemplateLocation="template:/KL_standard-1.6.mm"/>
+    <properties associatedTemplateLocation="template:/KL_standard-1.6.mm" fit_to_viewport="false;"/>
 
 <map_styles>
 <stylenode LOCALIZED_TEXT="styles.root_node" STYLE="oval" UNIFORM_SHAPE="true" VGAP_QUANTITY="24 pt">
@@ -80,6 +80,9 @@
 <node TEXT="Святоместо" ID="ID_1162338896" CREATED="1710790074037" MODIFIED="1710790080679">
 <node TEXT="Люстра" ID="ID_1263628871" CREATED="1710790155617" MODIFIED="1710790161625"/>
 </node>
+</node>
+<node TEXT="Количество" POSITION="bottom_or_right" ID="ID_1977736911" CREATED="1711657184322" MODIFIED="1711657187961">
+<node TEXT="50" OBJECT="java.lang.Long|50" ID="ID_206069245" CREATED="1711657188994" MODIFIED="1711657190524"/>
 </node>
 </node>
 </map>

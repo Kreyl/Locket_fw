@@ -5,7 +5,8 @@
  *      Author: g.kruglov
  */
 
-#pragma once
+#ifndef CC1101_H__
+#define CC1101_H__
 
 #include <inttypes.h>
 #include "kl_lib.h"
@@ -26,32 +27,32 @@ private:
     thread_reference_t ThdRef;
     volatile ftVoidVoid ICallback = nullptr;
     // Pins
-    uint8_t BusyWait() {
+    retv BusyWait() {
         for(uint32_t i=0; i<CC_BUSYWAIT_TIMEOUT; i++) {
-            if(PinIsLo(SpiGpio, Miso)) return retvOk;
+            if(PinIsLo(SpiGpio, Miso)) return retv::Ok;
         }
-        return retvFail;
+        return retv::Fail;
     }
     void CsHi() { PinSetHi((GPIO_TypeDef*)CSGpio, Cs); }
     void CsLo() { PinSetLo((GPIO_TypeDef*)CSGpio, Cs); }
     // General
     int8_t RSSI_dBm(uint8_t ARawRSSI);
     // Registers and buffers
-    uint8_t WriteRegister(const uint8_t Addr, const uint8_t AData);
-    uint8_t ReadRegister(const uint8_t Addr, uint8_t *PData);
-    uint8_t WriteStrobe(uint8_t AStrobe);
-    uint8_t WriteTX(uint8_t* Ptr, uint8_t Length);
+    retv WriteRegister(const uint8_t Addr, const uint8_t AData);
+    retv ReadRegister(const uint8_t Addr, uint8_t *PData);
+    retv WriteStrobe(uint8_t AStrobe);
+    retv WriteTX(uint8_t* Ptr, uint8_t Length);
     // Strobes
-    uint8_t Reset()       { return WriteStrobe(CC_SRES); }
-    uint8_t EnterTX()     { return WriteStrobe(CC_STX);  }
-    uint8_t EnterRX()     { return WriteStrobe(CC_SRX);  }
-    uint8_t FlushRxFIFO() { return WriteStrobe(CC_SFRX); }
-    uint8_t FlushTxFIFO() { return WriteStrobe(CC_SFTX); }
-    uint8_t GetStatus()   { return WriteStrobe(CC_SNOP); }
+    retv Reset()       { return WriteStrobe(CC_SRES); }
+    retv EnterTX()     { return WriteStrobe(CC_STX);  }
+    retv EnterRX()     { return WriteStrobe(CC_SRX);  }
+    retv FlushRxFIFO() { return WriteStrobe(CC_SFRX); }
+    retv FlushTxFIFO() { return WriteStrobe(CC_SFTX); }
+    retv GetStatus()   { return WriteStrobe(CC_SNOP); }
 public:
-    uint8_t Init();
-    uint8_t EnterIdle()    { return WriteStrobe(CC_SIDLE); }
-    uint8_t EnterPwrDown() { return WriteStrobe(CC_SPWD);  }
+    retv Init();
+    retv EnterIdle()    { return WriteStrobe(CC_SIDLE); }
+    retv EnterPwrDown() { return WriteStrobe(CC_SPWD);  }
     void SetChannel(uint8_t AChannel);
     void SetTxPower(uint8_t APwr)  { WriteRegister(CC_PATABLE, APwr); }
     void SetPktSize(uint8_t ASize) { WriteRegister(CC_PKTLEN, ASize); }
@@ -61,8 +62,8 @@ public:
     void TransmitCcaX(uint8_t *Ptr, uint8_t Len, ftVoidVoid Callback);
     void TransmitAsyncX(uint8_t *Ptr, uint8_t Len);
     void Transmit(uint8_t *Ptr, uint8_t Len);
-    uint8_t Receive(uint32_t Timeout_ms, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
-    uint8_t Receive_st(sysinterval_t Timeout_st, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
+    retv Receive(uint32_t Timeout_ms, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
+    retv Receive_st(sysinterval_t Timeout_st, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
     void ReceiveAsync(ftVoidVoid Callback);
     void ReceiveAsyncI(ftVoidVoid Callback);
 
@@ -70,22 +71,17 @@ public:
     uint8_t RxIfNotYet_st(sysinterval_t RxTimeout_st, uint8_t *Ptr, uint8_t Len,  int8_t *PRssi=nullptr);
 
     void PowerOff();
-    uint8_t Recalibrate() {
+    retv Recalibrate() {
         do {
-            if(EnterIdle() != retvOk) return retvFail;
+            if(EnterIdle() != retv::Ok) return retv::Fail;
         } while(IState != CC_STB_IDLE);
-        if(WriteStrobe(CC_SCAL) != retvOk) return retvFail;
+        if(WriteStrobe(CC_SCAL) != retv::Ok) return retv::Fail;
         do {
             GetStatus();
         } while(IState != CC_STB_IDLE);
-        return retvOk;
+        return retv::Ok;
     }
 
-    uint8_t GetPktStatus() {
-        uint8_t Rslt;
-        ReadRegister(CC_PKTSTATUS, &Rslt);
-        return Rslt;
-    }
     void PrintStateI();
 
     // Setup
@@ -94,7 +90,7 @@ public:
     void DoRxAfterTx()   { WriteRegister(CC_MCSM1, (CC_MCSM1_VALUE | 0x03)); }
     void DoIdleAfterTx() { WriteRegister(CC_MCSM1, CC_MCSM1_VALUE); }
 
-    uint8_t ReadFIFO(uint8_t *p, int8_t *PRssi, uint8_t Len);
+    retv ReadFIFO(uint8_t *p, int8_t *PRssi, uint8_t Len);
 
     void IIrqHandler();
 
@@ -111,3 +107,5 @@ public:
 
 #define DELAY_LOOP_34uS()       { for(volatile uint32_t i=0; i<12; i++); } // 12 leads to 34us @ 4MHz sys clk
 #define DELAY_LOOP_144uS()      { for(volatile uint32_t i=0; i<54; i++); } // 54 leads to 144us @ 4MHz sys clk
+
+#endif //CC1101_H__

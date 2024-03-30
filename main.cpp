@@ -3,8 +3,8 @@
 #include "vibro.h"
 #include "Sequences.h"
 #include "kl_lib.h"
-#include "cc1101.h"
-#include "app.h"
+#include "radio_lvl1.h"
+#include "Config.h"
 
 #if 1 // ======================== Variables and defines ========================
 // Forever
@@ -13,18 +13,18 @@ static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
 CmdUart_t Uart { &CmdUartParams };
 static void ITask();
 static void OnCmd(Shell_t *PShell);
-static void ReadAndSetupMode();
+static retv ReadAndSetupMode();
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
-static uint8_t ISetID(int32_t NewID);
+static retv ISetID(int32_t NewID);
 void ReadIDfromEE();
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t Vibro { VIBRO_SETUP };
 
-static TmrKL_t TmrEverySecond {TIME_MS2I(1000), evtIdEverySecond, tktPeriodic};
+static TmrKL_t TmrEverySecond {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
 
 void SleepNow(uint32_t Delay) {
     chSysLock();
@@ -33,31 +33,49 @@ void SleepNow(uint32_t Delay) {
     chSysUnlock();
 }
 
-Dev_t Dev;
+Config_t cfg;
 #endif
 
-#if 0 // =============================== App ===================================
-enum class DevType {Player, Master, PlaceOfPower} dev_type = DevType::Player;
-
-class Player_t {
-private:
-
-public:
-    int32_t goodness;
-    const int32_t kgoodness_bottom = 0, kgoodness_red = 7200, kgoodness_yellow = 14400, kgoodness_top = 21600;
-
-    void OnSecond() {
-        if(goodness > 0) goodness--;
-        if(goodness
-    }
-
-    void Reset() {
-        goodness = kgoodness_top;
-    }
-} player;
-
-
-#endif
+static void ProcessRxTbl(RxTable_t &tbl) {
+    // === Analyze table ===
+    uint32_t witch_cnt = 0;
+    bool saint_place_is_near = false, witch_place_is_near = false;
+    for(uint32_t i=0; i<tbl.cnt; i++) {
+        // If Saint Place is near - indicate it and go out
+        if(tbl[i].type == (uint8_t)DevType::SaintPlace) {
+            saint_place_is_near = true;
+            break;
+        }
+        else if(tbl[i].type == (uint8_t)DevType::WitchPlace) witch_place_is_near = true;
+        else witch_cnt++;  // witch is here!
+    } // for
+    // === Indicate ===
+    if(saint_place_is_near) Led.StartOrRestart(lsqSaintPlace); // ...and do no more
+    else {
+        // Present witches
+        switch(witch_cnt) {
+            case 0:
+                break; // Noone near
+            case 1:
+                Led.StartOrRestart(lsqWitch);
+                Vibro.StartOrContinue(vsqBrr);
+                break;
+            case 2:
+                Led.StartOrRestart(lsqWitch);
+                Vibro.StartOrContinue(vsqBrrBrr);
+                break;
+            default:
+                Led.StartOrRestart(lsqWitch);
+                Vibro.StartOrContinue(vsqBrrBrrBrr);
+                break;
+        } // switch
+        // Present witch place if any
+        if(witch_place_is_near) {
+            Led.SetNextSequence(lsqWitchPlace);
+            Vibro.SetNextSequence(vsqLongBrr);
+        }
+    } // else
+}
 
 int main(void) {
     // ==== Init Vcore & clock system ====
@@ -70,12 +88,21 @@ int main(void) {
     EvtQMain.Init();
     // ==== Init hardware ====
     Uart.Init();
-    Vibro.Init();
     Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
 
-    ReadAndSetupMode();
+    Led.Init();
+    Vibro.Init();
 
+    // ==== Radio ====
+    if(radio::Init() == retv::Ok) {
+        Led.StartOrRestart(lsqStart);
+        Vibro.StartOrRestart(vsqBrrBrr);
+    }
+    else Led.StartOrRestart(lsqFailure);
+    chThdSleepMilliseconds(1008);
+
+    ReadAndSetupMode();
     TmrEverySecond.StartOrRestart();
 
     // Main cycle
@@ -86,29 +113,13 @@ __noreturn
 void ITask() {
     while(true) {
         EvtMsg_t Msg = EvtQMain.Fetch(TIME_INFINITE);
-        switch(Msg.ID) {
-            case evtIdEverySecond:
-                ReadAndSetupMode();
+        switch(Msg.id) {
+            case EvtId::EverySecond:
+                if(ReadAndSetupMode() == retv::New) chThdSleepMilliseconds(810);
 //                player.OnSecond();
                 break;
 
-            case evtIdCheckRxTable: {
-                uint32_t Cnt = Msg.Value;
-                switch(Cnt) {
-                    case 0:
-                        break; // Noone near
-                    case 1:
-                        Vibro.StartOrContinue(vsqBrr);
-                        break;
-                    case 2:
-                        Vibro.StartOrContinue(vsqBrrBrr);
-                        break;
-                    default:
-                        Vibro.StartOrContinue(vsqBrrBrrBrr);
-                        break;
-                }
-            }
-                break;
+            case EvtId::CheckRxTable: ProcessRxTbl(*(RxTable_t*)Msg.ptr); break;
 
 #if BUTTONS_ENABLED
         case evtIdButtons:
@@ -120,29 +131,48 @@ void ITask() {
 #if ADC_REQUIRED
         case evtIdAdcRslt: Printf("Battery: %u mV\r", Adc.GetVDAmV(Adc.GetResultMedian(0))); break;
 #endif
-            case evtIdShellCmd:
-                OnCmd((Shell_t*) Msg.Ptr);
-                ((Shell_t*) Msg.Ptr)->SignalCmdProcessed();
+            case EvtId::ShellCmd:
+                OnCmd((Shell_t*) Msg.ptr);
+                ((Shell_t*) Msg.ptr)->SignalCmdProcessed();
                 break;
             default:
-                Printf("Unhandled Msg %u\r", Msg.ID);
+                Printf("Unhandled Msg %u\r", Msg.id);
                 break;
         } // Switch
     } // while true
 } // ITask()
 
 __unused
-void ReadAndSetupMode() {
+retv ReadAndSetupMode() {
     static uint32_t OldDipSettings = 0xFFFF;
-    uint8_t b = GetDipSwitch();
-    if(b == OldDipSettings) return;
+    uint32_t dw = GetDipSwitch();
+    if(dw == OldDipSettings) return retv::NoChanges;
     // Something has changed
-    Printf("Dip: 0x%02X; ", b);
-    OldDipSettings = b;
+    Printf("Dip: 0x%02X; ", dw);
+    OldDipSettings = dw;
+    // Select dev type
+    uint32_t bits = (dw >> 6) & 0b11UL;
+    if(bits == 1) cfg.type = DevType::SaintPlace;
+    else if(bits == 2) cfg.type = DevType::WitchPlace;
+    else cfg.type = DevType::Witch; // 0 or 3
     // Select power
-    b &= 0b1111; // Remove high bits = group 5678
-    Dev.tx_power = (b > 11) ? CC_PwrPlus12dBm : PwrTable[b];
-    Printf("Pwr: %S\r", CC_PwrToString(Cfg.TxPower));
+    bits = dw & 0b1111; // Remove high bits = group 5678
+    cfg.tx_power = (dw > 11) ? CC_PwrPlus12dBm : PwrTable[bits];
+    // Print settings
+    if(cfg.type == DevType::SaintPlace) {
+        Led.StartOrRestart(lsqSaintPlace);
+        Printf("Type: SaintPlace; ");
+    }
+    else if(cfg.type == DevType::WitchPlace) {
+        Led.StartOrRestart(lsqWitchPlace);
+        Printf("Type: WitchPlace; ");
+    }
+    else {
+        Led.StartOrRestart(lsqWitch);
+        Printf("Type: Witch; ");
+    }
+    Printf("Pwr: %S\r", CC_PwrToString(cfg.tx_power));
+    return retv::New;
 }
 
 #if 1 // ================= Command processing ====================
@@ -161,11 +191,11 @@ else if(PCmd->NameIs("GetBat")) Adc.StartMeasurement();
 
     else if(PCmd->NameIs("SetID")) {
         int32_t FID = 0;
-        if(PCmd->GetNext<int32_t>(&FID) != retvOk) {
+        if(PCmd->GetNext<int32_t>(&FID) != retv::Ok) {
             PShell->CmdError();
             return;
         }
-        if(ISetID(FID) == retvOk)
+        if(ISetID(FID) == retv::Ok)
             PShell->Ok();
         else PShell->Failure();
     }
@@ -219,7 +249,7 @@ void ReadIDfromEE() {
 //    }
 }
 
-uint8_t ISetID(int32_t NewID) {
+retv ISetID(int32_t NewID) {
 //    if(NewID < ID_MIN or NewID > ID_MAX) return retvFail;
 //    uint8_t rslt = EE::Write32(EE_ADDR_DEVICE_ID, NewID);
 //    if(rslt == retvOk) {
@@ -229,7 +259,7 @@ uint8_t ISetID(int32_t NewID) {
 //    }
 //    else {
 //        Printf("EE error: %u\r", rslt);
-        return retvFail;
+        return retv::Fail;
 //    }
 }
 #endif

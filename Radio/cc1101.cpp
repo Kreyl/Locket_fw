@@ -14,7 +14,7 @@ extern cc1101_t CC;
 
 void CCIrqHandler() { CC.IIrqHandler(); }
 
-uint8_t cc1101_t::Init() {
+retv cc1101_t::Init() {
     // ==== GPIO ====
 #if defined STM32L1XX || defined STM32F4XX || defined STM32L4XX || defined STM32F2XX
     AlterFunc_t CC_AF;
@@ -35,26 +35,26 @@ uint8_t cc1101_t::Init() {
     ISpi.Setup(boMSB, cpolIdleLow, cphaFirstEdge, CC_MAX_BAUDRATE_HZ);
     ISpi.Enable();
     // ==== Init CC ====
-    if(Reset() != retvOk) {
+    if(Reset() != retv::Ok) {
         ISpi.Disable();
         Printf("CC Rst Fail\r");
-        return retvFail;
+        return retv::Fail;
     }
     // Check if Write/Read ok
-    if(WriteRegister(CC_PKTLEN, 7) != retvOk) {
+    if(WriteRegister(CC_PKTLEN, 7) != retv::Ok) {
         Printf("CC W Fail\r");
-        return retvFail;
+        return retv::Fail;
     }
     uint8_t b = 0;
-    if(ReadRegister(CC_PKTLEN, &b) == retvOk) {
+    if(ReadRegister(CC_PKTLEN, &b) == retv::Ok) {
         if(b != 7) {
             Printf("CC R/W Fail; rpl=%u\r", b);
-            return retvFail;
+            return retv::Fail;
         }
     }
     else {
         Printf("CC R Fail\r");
-        return retvFail;
+        return retv::Fail;
     }
     // Proceed with init
     FlushRxFIFO();
@@ -76,7 +76,7 @@ uint8_t cc1101_t::Init() {
 
     IGdo0.EnableIrq(IRQ_PRIO_HIGH);
     Printf("CC init ok\r");
-    return retvOk;
+    return retv::Ok;
 }
 
 #if 1 // ======================= TX, RX, freq and power ========================
@@ -149,11 +149,11 @@ void cc1101_t::Transmit(uint8_t *Ptr, uint8_t Len) {
 }
 
 // Enter RX mode and wait reception for Timeout_ms.
-uint8_t cc1101_t::Receive(uint32_t Timeout_ms, uint8_t *Ptr, uint8_t Len, int8_t *PRssi) {
+retv cc1101_t::Receive(uint32_t Timeout_ms, uint8_t *Ptr, uint8_t Len, int8_t *PRssi) {
     return Receive_st(TIME_MS2I(Timeout_ms), Ptr, Len, PRssi);
 }
 
-uint8_t cc1101_t::Receive_st(sysinterval_t Timeout_st, uint8_t *Ptr, uint8_t Len, int8_t *PRssi) {
+retv cc1101_t::Receive_st(sysinterval_t Timeout_st, uint8_t *Ptr, uint8_t Len, int8_t *PRssi) {
     FlushRxFIFO();
     chSysLock();
     EnterRX();
@@ -162,7 +162,7 @@ uint8_t cc1101_t::Receive_st(sysinterval_t Timeout_st, uint8_t *Ptr, uint8_t Len
 
     if(Rslt == MSG_TIMEOUT) {   // Nothing received, timeout occured
         EnterIdle();            // Get out of RX mode
-        return retvTimeout;
+        return retv::Timeout;
     }
     else return ReadFIFO(Ptr, PRssi, Len);
 }
@@ -209,11 +209,11 @@ uint8_t cc1101_t::RxCcaTx_st(uint8_t *PtrTx, uint8_t Len,  int8_t *PRssi) {
         WriteTX((uint8_t*)PtrTx, Len);
         chThdSuspendS(&ThdRef); // Wait IRQ
         chSysUnlock();          // Will be here when IRQ fires
-        return retvOk;
+        return retv::Ok;
     }
     else {
         chSysUnlock();
-        return retvFail;
+        return retv::Fail;
     }
 }
 
@@ -229,7 +229,7 @@ uint8_t cc1101_t::RxIfNotYet_st(sysinterval_t RxTimeout_st, uint8_t *PtrRx, uint
     }
     msg_t Rslt = chThdSuspendTimeoutS(&ThdRef, RxTimeout_st); // Wait IRQ
     chSysUnlock();
-    if(Rslt == MSG_TIMEOUT) return retvFail; // No IRQ occured
+    if(Rslt == MSG_TIMEOUT) return retv::Fail; // No IRQ occured
     else { // IRQ fired
         return ReadFIFO(PtrRx, PRssi, Len);
     }
@@ -245,45 +245,45 @@ int8_t cc1101_t::RSSI_dBm(uint8_t ARawRSSI) {
 #endif
 
 #if 1 // ======================== Registers & Strobes ==========================
-uint8_t cc1101_t::ReadRegister (uint8_t ARegAddr, uint8_t *PData) {
+retv cc1101_t::ReadRegister (uint8_t ARegAddr, uint8_t *PData) {
     CsLo();                     // Start transmission
-    if(BusyWait() != retvOk) {  // Wait for chip to become ready
+    if(BusyWait() != retv::Ok) {  // Wait for chip to become ready
         CsHi();
-        return retvFail;
+        return retv::Fail;
     }
     IState = ISpi.ReadWriteByte(ARegAddr | CC_READ_FLAG) & 0b01110000; // Transmit header byte
     *PData = ISpi.ReadWriteByte(0);                 // Read reply
     CsHi();                                         // End transmission
-    return retvOk;
+    return retv::Ok;
 }
-uint8_t cc1101_t::WriteRegister (uint8_t ARegAddr, uint8_t AData) {
+retv cc1101_t::WriteRegister (uint8_t ARegAddr, uint8_t AData) {
     CsLo();                     // Start transmission
-    if(BusyWait() != retvOk) {      // Wait for chip to become ready
+    if(BusyWait() != retv::Ok) {      // Wait for chip to become ready
         CsHi();
-        return retvFail;
+        return retv::Fail;
     }
     ISpi.ReadWriteByte(ARegAddr);   // Transmit header byte
     ISpi.ReadWriteByte(AData);      // Write data
     CsHi();                         // End transmission
-    return retvOk;
+    return retv::Ok;
 }
-uint8_t cc1101_t::WriteStrobe (uint8_t AStrobe) {
+retv cc1101_t::WriteStrobe (uint8_t AStrobe) {
     CsLo();                     // Start transmission
-    if(BusyWait() != retvOk) {  // Wait for chip to become ready
+    if(BusyWait() != retv::Ok) {  // Wait for chip to become ready
         CsHi();
-        return retvFail;
+        return retv::Fail;
     }
     IState = ISpi.ReadWriteByte(AStrobe);   // Write strobe
     CsHi();                                 // End transmission
     IState &= 0b01110000;                   // Mask needed bits
-    return retvOk;
+    return retv::Ok;
 }
 
-uint8_t cc1101_t::WriteTX(uint8_t* Ptr, uint8_t Length) {
+retv cc1101_t::WriteTX(uint8_t* Ptr, uint8_t Length) {
     CsLo();                                                     // Start transmission
-    if(BusyWait() != retvOk) { // Wait for chip to become ready
+    if(BusyWait() != retv::Ok) { // Wait for chip to become ready
         CsHi();
-        return retvFail;
+        return retv::Fail;
     }
     ISpi.ReadWriteByte(CC_FIFO|CC_WRITE_FLAG|CC_BURST_FLAG);    // Address with write & burst flags
 //    Printf("TX: ");
@@ -294,20 +294,20 @@ uint8_t cc1101_t::WriteTX(uint8_t* Ptr, uint8_t Length) {
     }
     CsHi();    // End transmission
 //    Printf("\r");
-    return retvOk;
+    return retv::Ok;
 }
 
-uint8_t cc1101_t::ReadFIFO(uint8_t *p, int8_t *PRssi, uint8_t Len) {
+retv cc1101_t::ReadFIFO(uint8_t *p, int8_t *PRssi, uint8_t Len) {
     uint8_t b;
      // Check if received successfully
-     if(ReadRegister(CC_PKTSTATUS, &b) != retvOk) return retvFail;
+     if(ReadRegister(CC_PKTSTATUS, &b) != retv::Ok) return retv::Fail;
 //     PrintfI("PktSt: %02X\r", b);
      if(b & 0x80) {  // CRC OK
          // Read FIFO
          CsLo();
-         if(BusyWait() != retvOk) { // Wait for chip to become ready
+         if(BusyWait() != retv::Ok) { // Wait for chip to become ready
              CsHi();
-             return retvFail;
+             return retv::Fail;
          }
          ISpi.ReadWriteByte(CC_FIFO|CC_READ_FLAG|CC_BURST_FLAG); // Address with read & burst flags
          for(uint8_t i=0; i<Len; i++) { // Read bytes
@@ -320,9 +320,9 @@ uint8_t cc1101_t::ReadFIFO(uint8_t *p, int8_t *PRssi, uint8_t Len) {
          ISpi.ReadWriteByte(0);     // LQI
          CsHi();                    // End transmission
          if(PRssi != nullptr) *PRssi = RSSI_dBm(b);
-         return retvOk;
+         return retv::Ok;
      }
-     else return retvFail;
+     else return retv::Fail;
 }
 #endif
 

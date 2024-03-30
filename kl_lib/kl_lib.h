@@ -14,6 +14,7 @@
 #include <sys/cdefs.h>
 #include "EvtMsgIDs.h"
 #include "chversion.h"
+#include "types.h"
 
 // ==== Build time ====
 // Define symbol BUILD_TIME in main.cpp options with value ${current_date}.
@@ -67,35 +68,6 @@
 #define FALSE   0
 #endif
 
-// Return values
-#define retvOk              0
-#define retvFail            1
-#define retvTimeout         2
-#define retvBusy            3
-#define retvInProgress      4
-#define retvCmdError        5
-#define retvCmdUnknown      6
-#define retvBadValue        7
-#define retvNew             8
-#define retvSame            9
-#define retvLast            10
-#define retvEmpty           11
-#define retvOverflow        12
-#define retvNotANumber      13
-#define retvWriteProtect    14
-#define retvWriteError      15
-#define retvEndOfFile       16
-#define retvNotFound        17
-#define retvBadState        18
-#define retvDisconnected    19
-#define retvCollision       20
-#define retvCRCError        21
-#define retvNACK            22
-#define retvNoAnswer        23
-#define retvOutOfMemory     24
-#define retvNotAuthorised   25
-#define retvNoChanges       26
-
 // Binary semaphores
 #define NOT_TAKEN       false
 #define TAKEN           true
@@ -103,7 +75,6 @@
 enum BitOrder_t {boMSB, boLSB};
 enum LowHigh_t  {Low, High};
 enum RiseFall_t {rfRising, rfFalling, rfNone, rfBoth};
-enum Inverted_t {invNotInverted, invInverted};
 enum PinOutMode_t {omPushPull = 0, omOpenDrain = 1};
 enum BitNumber_t {bitn8, bitn16, bitn32};
 enum EnableDisable_t {Enable, Disable};
@@ -225,11 +196,11 @@ uint32_t ArrToU32AsBE(uint8_t *PArr);
 //void ReverseByteOrder16(int16_t *p);
 #define ReverseByteOrder16(p)   (p) = __REV16(p)
 #define ReverseByteOrder32(p)   (p) = __REV(p)
-uint8_t TryStrToUInt32(char* S, uint32_t *POutput);
-uint8_t TryStrToInt32(char* S, int32_t *POutput);
+retv TryStrToUInt32(char* S, uint32_t *POutput);
+retv TryStrToInt32(char* S, int32_t *POutput);
 uint16_t BuildUint16(uint8_t Lo, uint8_t Hi);
 uint32_t BuildUint32(uint8_t Lo, uint8_t MidLo, uint8_t MidHi, uint8_t Hi);
-uint8_t TryStrToFloat(char* S, float *POutput);
+retv TryStrToFloat(char* S, float *POutput);
 }; // namespace
 #endif
 
@@ -293,7 +264,7 @@ private:
     virtual_timer_t Tmr;
     void StartI();
     sysinterval_t Period;
-    EvtMsgId_t EvtId;
+    EvtId evt_id;
     TmrKLType_t TmrType;
     void IIrqHandler();
 public:
@@ -320,11 +291,11 @@ public:
     void SetNewPeriod_ms(uint32_t NewPeriod) { Period = TIME_MS2I(NewPeriod); }
     void SetNewPeriod_s(uint32_t NewPeriod) { Period = TIME_S2I(NewPeriod); }
 
-    TmrKL_t(sysinterval_t APeriod, EvtMsgId_t AEvtId, TmrKLType_t AType) :
-        Period(APeriod), EvtId(AEvtId), TmrType(AType) {}
+    TmrKL_t(sysinterval_t APeriod, EvtId AEvtId, TmrKLType_t AType) :
+        Period(APeriod), evt_id(AEvtId), TmrType(AType) {}
     // Dummy period is set
-    TmrKL_t(EvtMsgId_t AEvtId, TmrKLType_t AType) :
-            Period(TIME_S2I(9)), EvtId(AEvtId), TmrType(AType) {}
+    TmrKL_t(EvtId AEvtId, TmrKLType_t AType) :
+            Period(TIME_S2I(9)), evt_id(AEvtId), TmrType(AType) {}
 };
 #endif
 
@@ -1556,15 +1527,15 @@ void LockFlash();
 void UnlockOptionBytes();
 void LockOptionBytes();
 
-uint8_t WaitForLastOperation(systime_t Timeout_st);
+retv WaitForLastOperation(systime_t Timeout_st);
 void ClearPendingFlags();
-uint8_t ErasePage(uint32_t PageAddress);
+retv ErasePage(uint32_t PageAddress);
 
 #if defined STM32L4XX
 uint8_t ProgramBuf32(uint32_t Address, uint32_t *PData, int32_t ASzBytes);
 #else
-uint8_t ProgramWord(uint32_t Address, uint32_t Data);
-uint8_t ProgramBuf(void *PData, uint32_t ByteSz, uint32_t Addr);
+retv ProgramWord(uint32_t Address, uint32_t Data);
+retv ProgramBuf(void *PData, uint32_t ByteSz, uint32_t Addr);
 #endif
 
 void WriteOptionBytes(uint32_t Value);
@@ -1591,9 +1562,9 @@ void DisableSleepInReset();
 #if defined STM32L1XX // =================== Internal EEPROM ===================
 namespace EE {
     uint32_t Read32(uint32_t Addr);
-    uint8_t Write32(uint32_t Addr, uint32_t W);
+    retv Write32(uint32_t Addr, uint32_t W);
     void ReadBuf(void *PDst, uint32_t Sz, uint32_t Addr);
-    uint8_t WriteBuf(void *PSrc, uint32_t Sz, uint32_t Addr);
+    retv WriteBuf(void *PSrc, uint32_t Sz, uint32_t Addr);
 };
 #endif
 
@@ -1649,21 +1620,21 @@ enum APBDiv_t {apbDiv1=0b000, apbDiv2=0b100, apbDiv4=0b101, apbDiv8=0b110, apbDi
 
 class Clk_t {
 private:
-    uint8_t EnablePLL();
-    uint8_t EnableMSI();
+    retv EnablePLL();
+    retv EnableMSI();
 public:
     // Frequency values
     uint32_t AHBFreqHz;     // HCLK: AHB Bus, Core, Memory, DMA; 32 MHz max
     uint32_t APB1FreqHz;    // PCLK1: APB1 Bus clock; 32 MHz max
     uint32_t APB2FreqHz;    // PCLK2: APB2 Bus clock; 32 MHz max
     // SysClk switching
-    uint8_t SwitchToHSI();
-    uint8_t SwitchToHSE();
-    uint8_t SwitchToPLL();
-    uint8_t SwitchToMSI();
+    retv SwitchToHSI();
+    retv SwitchToHSE();
+    retv SwitchToPLL();
+    retv SwitchToMSI();
     void DisableHSE() { RCC->CR &= ~RCC_CR_HSEON; }
-    uint8_t EnableHSI();
-    uint8_t EnableHSE();
+    retv EnableHSI();
+    retv EnableHSE();
     void DisableHSI() { RCC->CR &= ~RCC_CR_HSION; }
     void DisablePLL() { RCC->CR &= ~RCC_CR_PLLON; }
     void DisableMSI() { RCC->CR &= ~RCC_CR_MSION; }
@@ -1674,7 +1645,7 @@ public:
         RCC->ICSCR = tmp;
     }
     void SetupBusDividers(AHBDiv_t AHBDiv, APBDiv_t APB1Div, APBDiv_t APB2Div);
-    uint8_t SetupPLLDividers(PllMul_t PllMul, PllDiv_t PllDiv);
+    retv SetupPLLDividers(PllMul_t PllMul, PllDiv_t PllDiv);
     void SetupPLLSrc(PllSrc_t Src) {
         if(Src == pllSrcHSI16) RCC->CFGR &= ~RCC_CFGR_PLLSRC;
         else RCC->CFGR |= RCC_CFGR_PLLSRC;

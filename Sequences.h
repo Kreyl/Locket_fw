@@ -195,82 +195,20 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #define PAUSETIME       720
 #define SHORTPAUSETIME  72
 
-const LedRGBChunk_t lsqAri[] = {
-        {csSetup, 0, clBlue}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+// DevType indication
+const LedRGBChunk_t lsqWitch[] = {
+        {csSetup, 0, clBlue}, {csWait, PAUSETIME},
+        {csSetup, 0, clBlack},
         {csEnd},
 };
-
-const LedRGBChunk_t lsqKaesu[] = {
-        {csSetup, 0, clRed},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+const LedRGBChunk_t lsqSaintPlace[] = {
+        {csSetup, 0, clRed}, {csWait, PAUSETIME},
+        {csSetup, 0, clBlack},
         {csEnd},
 };
-
-const LedRGBChunk_t lsqNorth[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
-        {csEnd},
-};
-const LedRGBChunk_t lsqNorthStrong[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clWhite},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
-        {csEnd},
-};
-
-const LedRGBChunk_t lsqSouth[] = {
-        {csSetup, 0, {128,0,255}}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},     {csWait, PAUSETIME},
-        {csEnd},
-};
-const LedRGBChunk_t lsqSouthStrong[] = {
-        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clWhite},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
-        {csEnd},
-};
-
-
-const LedRGBChunk_t lsqNorthCursed[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clRed},    {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
-        {csEnd},
-};
-const LedRGBChunk_t lsqSouthCursed[] = {
-        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clRed},     {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
-        {csEnd},
-};
-
-
-const LedRGBChunk_t lsqHidden[] = {
-        {csSetup, 0, clBlue},  {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
-        {csRepeat, 1},
-        {csWait, PAUSETIME},
-        {csEnd},
-};
-
-const LedRGBChunk_t lsqSilent[] = {
-        {csSetup, 0, {255, 90, 0}},  {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
-        {csRepeat, 1},
-        {csWait, PAUSETIME},
-        {csEnd},
-};
-
-const LedRGBChunk_t lsqVisible[] = {
-        {csSetup, 0, clGreen}, {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
-        {csRepeat, 1},
-        {csWait, PAUSETIME},
+const LedRGBChunk_t lsqWitchPlace[] = {
+        {csSetup, 0, clGreen}, {csWait, PAUSETIME},
+        {csSetup, 0, clBlack},
         {csEnd},
 };
 
@@ -417,6 +355,7 @@ const BeepChunk_t bsqBeepPillBad[] = {
 #define VIBRO_VOLUME    100  // 1 to 100
 
 #define VIBRO_SHORT_MS          99
+#define VIBRO_LONG_MS           207
 #define VIBRO_REPEAT_PERIOD     1008
 
 const BaseChunk_t vsqBrr[] = {
@@ -455,77 +394,14 @@ const BaseChunk_t vsqBrrBrrBrr[] = {
         {csEnd}
 };
 
-const BaseChunk_t vsqAttack[] = {
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 99},
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 99},
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 99},
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 99},
-        {csWait, 450},
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 99},
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 1008},
-        {csRepeat, 2},
-        {csWait, 999},
+
+const BaseChunk_t vsqLongBrr[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_LONG_MS},
+        {csSetup, 0},
+        {csWait, VIBRO_REPEAT_PERIOD},
         {csEnd}
 };
-
-const BaseChunk_t vsqRetreat[] = {
-        {csSetup, VIBRO_VOLUME}, {csWait, 360},
-        {csSetup, 0},            {csWait, 99},
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 720},
-        {csRepeat, 2},
-        {csWait, 999},
-        {csEnd}
-};
-
-/*
-const BaseChunk_t vsqError[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
-        {csSetup, 0},
-        {csEnd}
-};
-
-const BaseChunk_t vsqSingle[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 1800},
-        {csGoto, 0}
-};
-const BaseChunk_t vsqPair[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 99},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 1350},
-        {csGoto, 0}
-};
-const BaseChunk_t vsqMany[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 99},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 99},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 1008},
-        {csGoto, 0}
-};
-*/
 #endif
 
 #endif //SEQUENCES_H__
