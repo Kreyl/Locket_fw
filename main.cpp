@@ -19,7 +19,7 @@ static retv ReadAndSetupMode();
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
 static retv ISetID(int32_t NewID);
-void ReadIDfromEE();
+static void ReadIDfromEE();
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t Vibro { VIBRO_SETUP };
@@ -88,7 +88,8 @@ int main(void) {
     EvtQMain.Init();
     // ==== Init hardware ====
     Uart.Init();
-    Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
+    ReadIDfromEE();
+    Printf("\r%S %S; ID: %u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), cfg.id);
     Clk.PrintFreqs();
 
     Led.Init();
@@ -190,13 +191,12 @@ else if(PCmd->NameIs("GetBat")) Adc.StartMeasurement();
 #endif
 
     else if(PCmd->NameIs("SetID")) {
-        int32_t FID = 0;
-        if(PCmd->GetNext<int32_t>(&FID) != retv::Ok) {
+        int32_t new_id = 0;
+        if(PCmd->GetNext<int32_t>(&new_id) != retv::Ok) {
             PShell->CmdError();
             return;
         }
-        if(ISetID(FID) == retv::Ok)
-            PShell->Ok();
+        if(ISetID(new_id) == retv::Ok) PShell->Ok();
         else PShell->Failure();
     }
 
@@ -242,25 +242,25 @@ else if(PCmd->NameIs("Pill")) {
 
 #if 1 // =========================== ID management =============================
 void ReadIDfromEE() {
-//    Cfg.ID = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
-//    if(Cfg.ID < ID_MIN or Cfg.ID > ID_MAX) {
-//        Printf("\rUsing default ID\r");
-//        Cfg.ID = ID_DEFAULT;
-//    }
+    cfg.id = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
+    if(cfg.id < ID_MIN or cfg.id > ID_MAX) {
+        Printf("\rUsing default ID\r");
+        cfg.id = ID_DEFAULT;
+    }
 }
 
-retv ISetID(int32_t NewID) {
-//    if(NewID < ID_MIN or NewID > ID_MAX) return retvFail;
-//    uint8_t rslt = EE::Write32(EE_ADDR_DEVICE_ID, NewID);
-//    if(rslt == retvOk) {
-//        Cfg.ID = NewID;
-//        Printf("New ID: %u\r", Cfg.ID);
-//        return retvOk;
-//    }
-//    else {
-//        Printf("EE error: %u\r", rslt);
+retv ISetID(int32_t new_id) {
+    if(new_id < ID_MIN or new_id > ID_MAX) return retv::BadValue;
+    retv rslt = EE::Write32(EE_ADDR_DEVICE_ID, new_id);
+    if(rslt == retv::Ok) {
+        cfg.id = new_id;
+        Printf("New ID: %u\r", new_id);
+        return retv::Ok;
+    }
+    else {
+        Printf("EE error: %u\r", rslt);
         return retv::Fail;
-//    }
+    }
 }
 #endif
 
