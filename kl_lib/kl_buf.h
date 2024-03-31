@@ -10,7 +10,7 @@
 
 #include "ch.h"
 #include "string.h" // for memcpy
-#include <kl_lib.h>
+#include "kl_lib.h"
 
 enum AddRslt_t {addrOk, addrFail, addrSwitch};
 

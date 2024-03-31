@@ -21,7 +21,7 @@ static uint8_t GetDipSwitch();
 static retv ISetID(int32_t NewID);
 static void ReadIDfromEE();
 
-LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+LedRGBwPower_t<3> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t Vibro { VIBRO_SETUP };
 
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
@@ -36,7 +36,16 @@ void SleepNow(uint32_t Delay) {
 Config_t cfg;
 #endif
 
+static void ShowSelfTypeWhenIdle() {
+    switch(cfg.type) {
+        case DevType::Witch:      Led.StartOrAddToQueue(lsqSelfTypeWitch); break;
+        case DevType::SaintPlace: Led.StartOrAddToQueue(lsqSelfTypeSaintPlace); break;
+        case DevType::WitchPlace: Led.StartOrAddToQueue(lsqSelfTypeWitchPlace); break;
+    }
+}
+
 static void ProcessRxTbl(RxTable_t &tbl) {
+    if(cfg.type != DevType::Witch) return; // Only witches can feel
     // === Analyze table ===
     uint32_t witch_cnt = 0;
     bool saint_place_is_near = false, witch_place_is_near = false;
@@ -71,10 +80,12 @@ static void ProcessRxTbl(RxTable_t &tbl) {
         } // switch
         // Present witch place if any
         if(witch_place_is_near) {
-            Led.SetNextSequence(lsqWitchPlace);
-            Vibro.SetNextSequence(vsqLongBrr);
+            Led.StartOrAddToQueue(lsqWitchPlace);
+            Vibro.StartOrAddToQueue(vsqLongBrr);
         }
     } // else
+    // Present self
+    ShowSelfTypeWhenIdle();
 }
 
 int main(void) {
@@ -104,6 +115,7 @@ int main(void) {
     chThdSleepMilliseconds(1008);
 
     ReadAndSetupMode();
+    ShowSelfTypeWhenIdle();
     TmrEverySecond.StartOrRestart();
 
     // Main cycle

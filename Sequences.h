@@ -192,26 +192,36 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
 #define SHOWTIME        270
-#define PAUSETIME       720
+#define PAUSETIME       180
 #define SHORTPAUSETIME  72
 
 // DevType indication
 const LedRGBChunk_t lsqWitch[] = {
-        {csSetup, 0, clBlue}, {csWait, PAUSETIME},
-        {csSetup, 0, clBlack},
+        {csSetup, 0, clBlue},  {csWait, PAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
 const LedRGBChunk_t lsqSaintPlace[] = {
-        {csSetup, 0, clRed}, {csWait, PAUSETIME},
-        {csSetup, 0, clBlack},
+        {csSetup, 0, clRed},   {csWait, PAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
 const LedRGBChunk_t lsqWitchPlace[] = {
         {csSetup, 0, clGreen}, {csWait, PAUSETIME},
-        {csSetup, 0, clBlack},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
 
+
+const LedRGBChunk_t lsqSelfTypeWitch[] = {
+        {csSetup, 0, {0, 0, 1} }, {csEnd},
+};
+const LedRGBChunk_t lsqSelfTypeSaintPlace[] = {
+        {csSetup, 0, {1, 0, 0} }, {csEnd},
+};
+const LedRGBChunk_t lsqSelfTypeWitchPlace[] = {
+        {csSetup, 0, {0, 1, 0} }, {csEnd},
+};
 
 const LedRGBChunk_t lsqStart[] = {
         {csSetup, 0, clRed},   {csWait, 450},
