@@ -366,7 +366,7 @@ const BeepChunk_t bsqBeepPillBad[] = {
 
 #define VIBRO_SHORT_MS          99
 #define VIBRO_LONG_MS           207
-#define VIBRO_REPEAT_PERIOD     1008
+#define VIBRO_REPEAT_PERIOD     360
 
 const BaseChunk_t vsqBrr[] = {
         {csSetup, VIBRO_VOLUME},

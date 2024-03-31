@@ -110,9 +110,7 @@ static void rLvl1Thread(void *arg) {
     } // while true
 }
 
-namespace radio {
-
-retv Init() {
+retv RadioInit() {
 #ifdef DBG_PINS
     PinSetupOut(DBG_GPIO1, DBG_PIN1, omPushPull);
     PinSetupOut(DBG_GPIO2, DBG_PIN2, omPushPull);
@@ -129,5 +127,3 @@ retv Init() {
     }
     else return retv::Fail;
 }
-
-} // namespace

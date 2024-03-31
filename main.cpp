@@ -22,7 +22,7 @@ static retv ISetID(int32_t NewID);
 static void ReadIDfromEE();
 
 LedRGBwPower_t<3> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
-Vibro_t Vibro { VIBRO_SETUP };
+Vibro_t<3> Vibro { VIBRO_SETUP };
 
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
 
@@ -44,6 +44,8 @@ static void ShowSelfTypeWhenIdle() {
     }
 }
 
+
+//#define VIBRO_EN    TRUE
 static void ProcessRxTbl(RxTable_t &tbl) {
     if(cfg.type != DevType::Witch) return; // Only witches can feel
     // === Analyze table ===
@@ -63,25 +65,25 @@ static void ProcessRxTbl(RxTable_t &tbl) {
     else {
         // Present witches
         switch(witch_cnt) {
-            case 0:
-                break; // Noone near
-            case 1:
-                Led.StartOrRestart(lsqWitch);
-                Vibro.StartOrContinue(vsqBrr);
-                break;
-            case 2:
-                Led.StartOrRestart(lsqWitch);
-                Vibro.StartOrContinue(vsqBrrBrr);
-                break;
-            default:
-                Led.StartOrRestart(lsqWitch);
-                Vibro.StartOrContinue(vsqBrrBrrBrr);
-                break;
+            case 0:  break; // Noone near
+            case 1:  Led.StartOrRestart(lsqWitch); break;
+            case 2:  Led.StartOrRestart(lsqWitch); break;
+            default: Led.StartOrRestart(lsqWitch); break;
         } // switch
+#if VIBRO_EN
+        switch(witch_cnt) {
+            case 0:  break; // Noone near
+            case 1:  Vibro.StartOrContinue(vsqBrr); break;
+            case 2:  Vibro.StartOrContinue(vsqBrrBrr); break;
+            default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
+        } // switch
+#endif
         // Present witch place if any
         if(witch_place_is_near) {
             Led.StartOrAddToQueue(lsqWitchPlace);
+#if VIBRO_EN
             Vibro.StartOrAddToQueue(vsqLongBrr);
+#endif
         }
     } // else
     // Present self
@@ -107,7 +109,7 @@ int main(void) {
     Vibro.Init();
 
     // ==== Radio ====
-    if(radio::Init() == retv::Ok) {
+    if(RadioInit() == retv::Ok) {
         Led.StartOrRestart(lsqStart);
         Vibro.StartOrRestart(vsqBrrBrr);
     }
@@ -170,7 +172,7 @@ retv ReadAndSetupMode() {
     else cfg.type = DevType::Witch; // 0 or 3
     // Select power
     bits = dw & 0b1111; // Remove high bits = group 5678
-    cfg.tx_power = (dw > 11) ? CC_PwrPlus12dBm : PwrTable[bits];
+    cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : PwrTable[bits];
     // Print settings
     if(cfg.type == DevType::SaintPlace) {
         Led.StartOrRestart(lsqSaintPlace);
@@ -185,6 +187,7 @@ retv ReadAndSetupMode() {
         Printf("Type: Witch; ");
     }
     Printf("Pwr: %S\r", CC_PwrToString(cfg.tx_power));
+    ShowSelfTypeWhenIdle();
     return retv::New;
 }
 

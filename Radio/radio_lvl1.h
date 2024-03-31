@@ -37,10 +37,14 @@ struct rPkt_t {
 // Feel-Each-Other related
 #define CYCLE_CNT               5U
 #define SLOT_CNT                54U
-#define SLOT_DURATION_MS        2U
+#define SLOT_DURATION_MS        3U
 #define MIN_SLEEP_DURATION_MS   18UL
-#define CHECK_RXTABLE_PERIOD_SC 3UL // Check RxTable every 3 SuperCycle
-
+#define CHECK_RXTABLE_PERIOD_SC 4UL // Check RxTable every N SuperCycles
+/*
+ * CYCLE_DUR = SLOT_DUR(3ms) * SLOT_CNT(54) = 162ms
+ * SUPERCYCLE_DUR = CYCLE_DUR * CYCLE_CNT(5) = 810ms
+ * CHECK_PERIOD = SUPERCYCLE_DUR * CHECK_RXTABLE_PERIOD_SC(4) = 3240ms
+ */
 #endif
 
 #if 1 // ============================= RX Table ================================
@@ -112,10 +116,6 @@ public:
 };
 #endif
 
-namespace radio {
-
-retv Init();
-
-} // namespace
+retv RadioInit();
 
 #endif //RADIO_LVL1_H__
