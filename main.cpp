@@ -45,7 +45,7 @@ static void ShowSelfTypeWhenIdle() {
 }
 
 
-//#define VIBRO_EN    TRUE
+#define VIBRO_EN    TRUE
 static void ProcessRxTbl(RxTable_t &tbl) {
     if(cfg.type != DevType::Witch) return; // Only witches can feel
     // === Analyze table ===
@@ -110,7 +110,7 @@ int main(void) {
 
     // ==== Radio ====
     if(RadioInit() == retv::Ok) {
-        Led.StartOrRestart(lsqStart);
+//        Led.StartOrRestart(lsqStart);
         Vibro.StartOrRestart(vsqBrrBrr);
     }
     else Led.StartOrRestart(lsqFailure);

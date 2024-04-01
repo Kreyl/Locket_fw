@@ -42,7 +42,7 @@ static inline void TryToReceive(uint32_t rx_duration_ms) {
         retv rx_rslt = CC.Receive_st(time_left_st, (uint8_t*)&pkt_rx, RPKT_LEN, &pkt_rx.rssi);
         DBG2_CLR();
         if(rx_rslt == retv::Ok) {
-//            Printf("t=%d; Rssi=%d\r", PktRx.Type, PktRx.Rssi);
+//            Printf("%u %d; %d\r", pkt_rx.id, pkt_rx.type, pkt_rx.rssi);
             curr_tbl->AddOrReplaceExistingPkt(pkt_rx);
         }
         // Check if rx more or get out
