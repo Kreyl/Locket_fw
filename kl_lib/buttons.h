@@ -32,7 +32,7 @@
 // Select required events etc.
 #define BTN_SHORTPRESS              TRUE    // beShortPress evt
 #define BTN_RELEASE                 FALSE
-#define BTN_LONGPRESS               TRUE    // Send LongPress evt
+#define BTN_LONGPRESS               FALSE    // Send LongPress evt
 #define BTN_REPEAT                  FALSE   // Send Repeat evt
 #define BTN_COMBO                   FALSE    // Allow combo
 #define BTN_LONG_COMBO              FALSE    // Allow longpress combo
@@ -66,12 +66,12 @@
 // BtnEvent: contains info about event type, count of participating btns and array with btn IDs
 enum BtnEvt_t {beShortPress, beLongPress, beRelease, beRepeat, beCombo, beLongCombo, beDoubleClick};
 struct BtnEvtInfo_t {
-    BtnEvt_t Type;
+    BtnEvt_t type;
 #if BTN_COMBO || BTN_LONG_COMBO
     uint8_t BtnCnt;
-    uint8_t BtnID[BUTTONS_CNT];
+    uint8_t btn_indx[BUTTONS_CNT];
 #elif BUTTONS_CNT != 1
-    uint8_t BtnID;
+    uint8_t btn_indx;
 #endif
 } __packed;
 

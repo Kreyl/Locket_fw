@@ -201,19 +201,19 @@ void ProcessButtons(PinSnsState_t *BtnState, uint32_t Len) {
 
 __unused
 void AddEvtToQueue(BtnEvtInfo_t &Evt) {
-    EvtMsg_t Msg(evtIdButtons);
-    Msg.BtnEvtInfo = Evt;
+    EvtMsg_t Msg(EvtId::Buttons);
+    Msg.btn_info = Evt;
     EvtQMain.SendNowOrExit(Msg);
 }
 
 void AddEvtToQueue(BtnEvt_t AType, uint8_t KeyIndx) {
-    EvtMsg_t Msg(evtIdButtons);
-    Msg.BtnEvtInfo.Type = AType;
+    EvtMsg_t Msg(EvtId::Buttons);
+    Msg.btn_info.type = AType;
 #if BTN_COMBO || BTN_LONG_COMBO
     Msg.BtnEvtInfo.BtnCnt = 1;
     Msg.BtnEvtInfo.BtnID[0] = KeyIndx;
 #elif BUTTONS_CNT != 1
-    Msg.BtnEvtInfo.BtnID = KeyIndx;
+    Msg.btn_info.btn_indx = KeyIndx;
 #endif
     EvtQMain.SendNowOrExit(Msg);
 }

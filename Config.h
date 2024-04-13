@@ -27,6 +27,7 @@ public:
     DevType type = DevType::Witch;
     int32_t id = ID_MIN;
     uint8_t tx_power = 0;
+    int32_t novibro_time_left_s = 0;
 };
 
 extern Config_t cfg;

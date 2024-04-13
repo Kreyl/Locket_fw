@@ -44,8 +44,6 @@ static void ShowSelfTypeWhenIdle() {
     }
 }
 
-
-#define VIBRO_EN    TRUE
 static void ProcessRxTbl(RxTable_t &tbl) {
     if(cfg.type != DevType::Witch) return; // Only witches can feel
     // === Analyze table ===
@@ -66,24 +64,23 @@ static void ProcessRxTbl(RxTable_t &tbl) {
         // Present witches
         switch(witch_cnt) {
             case 0:  break; // Noone near
-            case 1:  Led.StartOrRestart(lsqWitch); break;
-            case 2:  Led.StartOrRestart(lsqWitch); break;
-            default: Led.StartOrRestart(lsqWitch); break;
+            case 1:  Led.StartOrRestart(lsqWitch1); break;
+            case 2:  Led.StartOrRestart(lsqWitch2); break;
+            default: Led.StartOrRestart(lsqWitchMany); break;
         } // switch
-#if VIBRO_EN
-        switch(witch_cnt) {
-            case 0:  break; // Noone near
-            case 1:  Vibro.StartOrContinue(vsqBrr); break;
-            case 2:  Vibro.StartOrContinue(vsqBrrBrr); break;
-            default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
-        } // switch
-#endif
+        if(cfg.novibro_time_left_s == 0) {
+            switch(witch_cnt) {
+                case 0:  break; // Noone near
+                case 1:  Vibro.StartOrContinue(vsqBrr); break;
+                case 2:  Vibro.StartOrContinue(vsqBrrBrr); break;
+                default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
+            } // switch
+        }
         // Present witch place if any
         if(witch_place_is_near) {
             Led.StartOrAddToQueue(lsqWitchPlace);
-#if VIBRO_EN
-            Vibro.StartOrAddToQueue(vsqLongBrr);
-#endif
+            // WitchPlace Vibro disabled
+//            if(cfg.novibro_time_left_s == 0) Vibro.StartOrAddToQueue(vsqLongBrr);
         }
     } // else
     // Present self
@@ -113,8 +110,10 @@ int main(void) {
 //        Led.StartOrRestart(lsqStart);
         Vibro.StartOrRestart(vsqBrrBrr);
     }
-    else Led.StartOrRestart(lsqFailure);
-    chThdSleepMilliseconds(1008);
+    else {
+        Led.StartOrRestart(lsqFailure);
+        chThdSleepMilliseconds(1008);
+    }
 
     ReadAndSetupMode();
     ShowSelfTypeWhenIdle();
@@ -131,16 +130,20 @@ void ITask() {
         switch(Msg.id) {
             case EvtId::EverySecond:
                 if(ReadAndSetupMode() == retv::New) chThdSleepMilliseconds(810);
-//                player.OnSecond();
+                if(cfg.novibro_time_left_s > 0) cfg.novibro_time_left_s--;
                 break;
 
             case EvtId::CheckRxTable: ProcessRxTbl(*(RxTable_t*)Msg.ptr); break;
 
 #if BUTTONS_ENABLED
-        case evtIdButtons:
-            Printf("Btn %u %u\r", Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
-            if(Cfg.IsAriKaesu()) ProcessButtonsAriKaesu(Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
-            else ProcessButtonsOthers(Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
+        case EvtId::Buttons:
+            Printf("Btn %u %u\r", Msg.btn_info.btn_indx, Msg.btn_info.type);
+            if(cfg.novibro_time_left_s == 0) {
+                cfg.novibro_time_left_s = 18; // XXX
+
+            }
+            else cfg.novibro_time_left_s = 0;
+
             break;
 #endif
 #if ADC_REQUIRED
@@ -183,7 +186,7 @@ retv ReadAndSetupMode() {
         Printf("Type: WitchPlace; ");
     }
     else {
-        Led.StartOrRestart(lsqWitch);
+        Led.StartOrRestart(lsqWitch1);
         Printf("Type: Witch; ");
     }
     Printf("Pwr: %S\r", CC_PwrToString(cfg.tx_power));

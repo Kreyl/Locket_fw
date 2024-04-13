@@ -196,11 +196,26 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #define SHORTPAUSETIME  72
 
 // DevType indication
-const LedRGBChunk_t lsqWitch[] = {
+const LedRGBChunk_t lsqWitch1[] = {
         {csSetup, 0, clBlue},  {csWait, PAUSETIME},
         {csSetup, 0, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
+
+const LedRGBChunk_t lsqWitch2[] = {
+        {csSetup, 0, clBlue},  {csWait, PAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csRepeat, 1},
+        {csEnd},
+};
+
+const LedRGBChunk_t lsqWitchMany[] = {
+        {csSetup, 0, clBlue},  {csWait, PAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csRepeat, 2},
+        {csEnd},
+};
+
 const LedRGBChunk_t lsqSaintPlace[] = {
         {csSetup, 0, clRed},   {csWait, PAUSETIME},
         {csSetup, 0, clBlack}, {csWait, PAUSETIME},
