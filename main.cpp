@@ -29,7 +29,7 @@ static uint8_t GetDipSwitch();
 void ReadEE();
 
 #define ID_MIN                  1
-#define ID_MAX                  36
+#define ID_MAX                  254
 #define ID_DEFAULT              ID_MIN
 
 cc1101_t CC(CC_Setup0);
