@@ -29,7 +29,7 @@ cc1101_t CC(CC_Setup0);
 
 static rPkt_t pkt_rx, pkt_tx;
 static uint32_t supercycle_cnt = 0;
-static RxTable_t tbl1, tbl2, *curr_tbl = &tbl1;
+static RxTable tbl1, tbl2, *curr_tbl = &tbl1;
 static uint8_t tx_power;
 
 static inline void TryToReceive(uint32_t rx_duration_ms) {

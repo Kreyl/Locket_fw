@@ -50,7 +50,7 @@ struct rPkt_t {
 #if 1 // ============================= RX Table ================================
 #define RXTABLE_SZ              50U // 50 devices total
 #define RXT_PKT_REQUIRED        TRUE
-class RxTable_t {
+class RxTable {
 private:
 #if RXT_PKT_REQUIRED
     rPkt_t ibuf[RXTABLE_SZ];

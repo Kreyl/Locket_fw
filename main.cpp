@@ -33,18 +33,21 @@ void SleepNow(uint32_t Delay) {
     chSysUnlock();
 }
 
-Config_t cfg;
+Config cfg;
 #endif
 
 static void ShowSelfTypeWhenIdle() {
     switch(cfg.type) {
-        case DevType::Witch:      Led.StartOrAddToQueue(lsqSelfTypeWitch); break;
+        case DevType::Witch:
+            if(cfg.VibroEnabled()) Led.StartOrAddToQueue(lsqSelfTypeWitch);
+            else  Led.StartOrAddToQueue(lsqSelfTypeWitchNoVibro);
+            break;
         case DevType::SaintPlace: Led.StartOrAddToQueue(lsqSelfTypeSaintPlace); break;
         case DevType::WitchPlace: Led.StartOrAddToQueue(lsqSelfTypeWitchPlace); break;
     }
 }
 
-static void ProcessRxTbl(RxTable_t &tbl) {
+static void ProcessRxTbl(RxTable &tbl) {
     if(cfg.type != DevType::Witch) return; // Only witches can feel
     // === Analyze table ===
     uint32_t witch_cnt = 0;
@@ -68,7 +71,7 @@ static void ProcessRxTbl(RxTable_t &tbl) {
             case 2:  Led.StartOrRestart(lsqWitch2); break;
             default: Led.StartOrRestart(lsqWitchMany); break;
         } // switch
-        if(cfg.novibro_time_left_s == 0) {
+        if(cfg.VibroEnabled()) {
             switch(witch_cnt) {
                 case 0:  break; // Noone near
                 case 1:  Vibro.StartOrContinue(vsqBrr); break;
@@ -79,8 +82,6 @@ static void ProcessRxTbl(RxTable_t &tbl) {
         // Present witch place if any
         if(witch_place_is_near) {
             Led.StartOrAddToQueue(lsqWitchPlace);
-            // WitchPlace Vibro disabled
-//            if(cfg.novibro_time_left_s == 0) Vibro.StartOrAddToQueue(vsqLongBrr);
         }
     } // else
     // Present self
@@ -105,11 +106,7 @@ int main(void) {
     Led.Init();
     Vibro.Init();
 
-    // ==== Radio ====
-    if(RadioInit() == retv::Ok) {
-//        Led.StartOrRestart(lsqStart);
-        Vibro.StartOrRestart(vsqBrrBrr);
-    }
+    if(RadioInit() == retv::Ok) Vibro.StartOrRestart(vsqBrrBrr);
     else {
         Led.StartOrRestart(lsqFailure);
         chThdSleepMilliseconds(1008);
@@ -118,9 +115,21 @@ int main(void) {
     ReadAndSetupMode();
     ShowSelfTypeWhenIdle();
     TmrEverySecond.StartOrRestart();
+    SimpleSensors::Init();
 
     // Main cycle
     ITask();
+}
+
+static void SetupAndShowBrightness() {
+    uint8_t v = Config::kBrtTable[cfg.brt_indx];
+    lsqWitch1[0].Color.B = v;
+    lsqWitch2[0].Color.B = v;
+    lsqWitchMany[0].Color.B = v;
+    lsqSaintPlace[0].Color.R = v;
+    lsqWitchPlace[0].Color.G = v;
+    Led.StartOrRestart(lsqWitch1);
+    ShowSelfTypeWhenIdle();
 }
 
 __noreturn
@@ -130,20 +139,38 @@ void ITask() {
         switch(Msg.id) {
             case EvtId::EverySecond:
                 if(ReadAndSetupMode() == retv::New) chThdSleepMilliseconds(810);
-                if(cfg.novibro_time_left_s > 0) cfg.novibro_time_left_s--;
+                // Process disabled vibro if it is disabled
+                if(cfg.novibro_time_left_s > 0) {
+                    cfg.novibro_time_left_s--;
+                    if(cfg.novibro_time_left_s == 0) ShowSelfTypeWhenIdle(); // Indicate changed vibro state
+                }
                 break;
 
-            case EvtId::CheckRxTable: ProcessRxTbl(*(RxTable_t*)Msg.ptr); break;
+            case EvtId::CheckRxTable: ProcessRxTbl(*(RxTable*)Msg.ptr); break;
 
 #if BUTTONS_ENABLED
         case EvtId::Buttons:
             Printf("Btn %u %u\r", Msg.btn_info.btn_indx, Msg.btn_info.type);
-            if(cfg.novibro_time_left_s == 0) {
-                cfg.novibro_time_left_s = 18; // XXX
-
-            }
-            else cfg.novibro_time_left_s = 0;
-
+            switch(Msg.btn_info.btn_indx) {
+                case 0: // Vibro on/off
+                    if(cfg.VibroEnabled()) cfg.DisableVibro();
+                    else cfg.EnableVibro();
+                    ShowSelfTypeWhenIdle(); // Indicate vibro state
+                    break;
+                case 1: // Increase brt
+                    if(cfg.brt_indx < Config::kBrtCnt - 1) {
+                        cfg.brt_indx++;
+                        SetupAndShowBrightness();
+                    }
+                    break;
+                case 2: // Decrease brt
+                    if(cfg.brt_indx > 0) {
+                        cfg.brt_indx--;
+                        SetupAndShowBrightness();
+                    }
+                    break;
+                default: break;
+            } // switch
             break;
 #endif
 #if ADC_REQUIRED
@@ -151,7 +178,7 @@ void ITask() {
 #endif
             case EvtId::ShellCmd:
                 OnCmd((Shell_t*) Msg.ptr);
-                ((Shell_t*) Msg.ptr)->SignalCmdProcessed();
+                ((Shell_t*)Msg.ptr)->SignalCmdProcessed();
                 break;
             default:
                 Printf("Unhandled Msg %u\r", Msg.id);
@@ -261,14 +288,14 @@ else if(PCmd->NameIs("Pill")) {
 #if 1 // =========================== ID management =============================
 void ReadIDfromEE() {
     cfg.id = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
-    if(cfg.id < ID_MIN or cfg.id > ID_MAX) {
+    if(cfg.id < Config::kIdMin or cfg.id > Config::kIdMax) {
         Printf("\rUsing default ID\r");
-        cfg.id = ID_DEFAULT;
+        cfg.id = Config::kIdDefault;
     }
 }
 
 retv ISetID(int32_t new_id) {
-    if(new_id < ID_MIN or new_id > ID_MAX) return retv::BadValue;
+    if(new_id < Config::kIdMin or new_id > Config::kIdMax) return retv::BadValue;
     retv rslt = EE::Write32(EE_ADDR_DEVICE_ID, new_id);
     if(rslt == retv::Ok) {
         cfg.id = new_id;
