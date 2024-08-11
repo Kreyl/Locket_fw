@@ -121,6 +121,9 @@ void ITask() {
 #if BUTTONS_ENABLED
             case evtIdButtons:
                 Printf("Btn %u %u\r", Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
+                if(Msg.BtnEvtInfo.BtnID == 0) Led.StartOrRestart(lsqBlinkRed);
+                else if(Msg.BtnEvtInfo.BtnID == 1) Led.StartOrRestart(lsqBlinkGreen);
+                else if(Msg.BtnEvtInfo.BtnID == 2) Led.StartOrRestart(lsqBlinkBlue);
                 break;
 #endif
 
