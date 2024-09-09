@@ -1,7 +1,7 @@
 /*
  * beeper.h
  *
- *  Created on: 22 марта 2015 г.
+ *  Created on: 22 пїЅпїЅпїЅпїЅпїЅ 2015 пїЅ.
  *      Author: Kreyl
  */
 
@@ -11,24 +11,25 @@
 #include "ChunkTypes.h"
 #include "kl_lib.h"
 
-class Beeper_t : public BaseSequencer_t<BeepChunk_t> {
+template <uint32_t que_len = 0>
+class Beeper_t : public BaseSequencer_t<BeepChunk_t, que_len> {
 private:
-    const PinOutputPWM_t IPin;
-    void ISwitchOff() { IPin.Set(0); }
+    const PinOutputPWM_t ipin;
+    void ISwitchOff() { ipin.Set(0); }
     SequencerLoopTask_t ISetup() {
-        IPin.SetFrequencyHz(IPCurrentChunk->Freq_Hz);
-        IPin.Set(IPCurrentChunk->Volume);
-        IPCurrentChunk++;   // Always goto next
+        ipin.SetFrequencyHz(ipcurrent_chunk->Freq_Hz);
+        ipin.Set(ipcurrent_chunk->Volume);
+        ipcurrent_chunk++;   // Always goto next
         return sltProceed;  // Always proceed
     }
 public:
-    Beeper_t(const PwmSetup_t APinSetup) : BaseSequencer_t(), IPin(APinSetup) {}
-    void Init() { IPin.Init(); }
+    Beeper_t(const PwmSetup_t APinSetup) : BaseSequencer_t<BaseChunk_t, que_len>(), ipin(APinSetup) {}
+    void Init() { ipin.Init(); }
     void Beep(uint32_t Freq_Hz, uint8_t Volume) {
-        IPin.SetFrequencyHz(Freq_Hz);
-        IPin.Set(Volume);
+        ipin.SetFrequencyHz(Freq_Hz);
+        ipin.Set(Volume);
     }
-    void Off() { IPin.Set(0); }
+    void Off() { ipin.Set(0); }
 };
 
 #endif //BEEPER_H__

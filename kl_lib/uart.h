@@ -57,8 +57,8 @@ struct UartParams_t {
 // ==== Base class ====
 class BaseUart_t {
 protected:
-    const stm32_dma_stream_t *PDmaTx;
-    const stm32_dma_stream_t *PDmaRx;
+    const stm32_dma_stream_t *PDmaTx = nullptr;
+    const stm32_dma_stream_t *PDmaRx = nullptr;
     const UartParams_t *Params;
 #if UART_USE_DMA
     char TXBuf[UART_TXBUF_SZ];
@@ -72,8 +72,8 @@ protected:
 protected:
     bool RxProcessed = true;
     void SignalRxProcessed();
-    uint8_t IPutByte(uint8_t b);
-    uint8_t IPutByteNow(uint8_t b);
+    retv IPutByte(uint8_t b);
+    retv IPutByteNow(uint8_t b);
     void IStartTransmissionIfNotYet();
     virtual void IOnTxEnd() = 0;
     // ==== Constructor ====
@@ -101,13 +101,13 @@ public:
 #if UART_USE_DMA
     void IRQDmaTxHandler();
 #endif
-    uint8_t GetByte(uint8_t *b);
+    retv GetByte(uint8_t *b);
 };
 
 class CmdUart_t : public BaseUart_t, public PrintfHelper_t, public Shell_t {
 private:
     void IOnTxEnd() {} // Dummy
-    uint8_t IPutChar(char c) { return IPutByte(c);  }
+    retv IPutChar(char c) { return IPutByte(c);  }
     void IStartTransmissionIfNotYet() { BaseUart_t::IStartTransmissionIfNotYet(); }
     void Print(const char *format, ...) {
         va_list args;
@@ -154,7 +154,7 @@ private:
     uint32_t Cnt;
     bool Started = false;
     char IString[CMD_BUF_SZ];
-    uint8_t Parse();
+    retv Parse();
 public:
     union {
         uint64_t __Align;
@@ -174,7 +174,7 @@ public:
 class ModbusUart485_t : public BaseUart_t, public PrintfHelper_t {
 private:
     PinOutput_t PinTxRx;
-    uint8_t IPutChar(char c) { return IPutByte(c);  }
+    retv IPutChar(char c) { return IPutByte(c);  }
     void IStartTransmissionIfNotYet() {
         PinTxRx.SetHi();
         BaseUart_t::IStartTransmissionIfNotYet();

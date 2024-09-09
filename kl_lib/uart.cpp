@@ -194,12 +194,12 @@ void BaseUart_t::ISendViaDMA() {
     }
 }
 
-uint8_t BaseUart_t::IPutByte(uint8_t b) {
-    if(IFullSlotsCount >= UART_TXBUF_SZ) return retvOverflow;
+retv BaseUart_t::IPutByte(uint8_t b) {
+    if(IFullSlotsCount >= UART_TXBUF_SZ) return retv::Overflow;
     *PWrite++ = b;
     if(PWrite >= &TXBuf[UART_TXBUF_SZ]) PWrite = TXBuf;   // Circulate buffer
     IFullSlotsCount++;
-    return retvOk;
+    return retv::Ok;
 }
 
 void BaseUart_t::IStartTransmissionIfNotYet() {
@@ -212,7 +212,7 @@ uint8_t Uart_t::IPutChar(char c) {
 void Uart_t::IStartTransmissionIfNotYet() { }
 #endif
 
-uint8_t BaseUart_t::IPutByteNow(uint8_t b) {
+retv BaseUart_t::IPutByteNow(uint8_t b) {
 #if defined STM32L1XX || defined STM32F2XX || defined STM32F4XX || defined STM32F10X_LD_VL
     while(!(Params->Uart->SR & USART_SR_TXE));
     Params->Uart->UART_TX_REG = b;
@@ -222,27 +222,27 @@ uint8_t BaseUart_t::IPutByteNow(uint8_t b) {
     Params->Uart->UART_TX_REG = b;
     while(!(Params->Uart->ISR & USART_ISR_TXE));
 #endif
-    return retvOk;
+    return retv::Ok;
 }
 #endif // TX
 
 #if 1 // ==== RX ====
-//static thread_reference_t RXThread = nullptr;
-//static THD_WORKING_AREA(waUartRxThread, 128);
+static thread_reference_t RXThread = nullptr;
+static THD_WORKING_AREA(waUartRxThread, 128);
 
-//__noreturn
-//static void UartRxThread(void *arg) {
-//    chRegSetThreadName("UartRx");
-//    while(true) {
-//        chThdSleepMilliseconds(UART_RX_POLLING_MS);
-//        // Iterate UARTs
-//        for(BaseUart_t* ptr : PUarts) {
-//            if(ptr != nullptr) ptr->ProcessByteIfReceived();
-//        } // for
-//    } // while true
-//}
+__noreturn
+static void UartRxThread(void *arg) {
+    chRegSetThreadName("UartRx");
+    while(true) {
+        chThdSleepMilliseconds(UART_RX_POLLING_MS);
+        // Iterate UARTs
+        for(BaseUart_t* ptr : PUarts) {
+            if(ptr != nullptr) ptr->ProcessByteIfReceived();
+        } // for
+    } // while true
+}
 
-uint8_t BaseUart_t::GetByte(uint8_t *b) {
+retv BaseUart_t::GetByte(uint8_t *b) {
 #if defined STM32F2XX || defined STM32F4XX
     int32_t WIndx = UART_RXBUF_SZ - Params->PDmaRx->stream->NDTR;
 #else
@@ -250,10 +250,10 @@ uint8_t BaseUart_t::GetByte(uint8_t *b) {
 #endif
     int32_t BytesCnt = WIndx - RIndx;
     if(BytesCnt < 0) BytesCnt += UART_RXBUF_SZ;
-    if(BytesCnt == 0) return retvEmpty;
+    if(BytesCnt == 0) return retv::Empty;
     *b = IRxBuf[RIndx++];
     if(RIndx >= UART_RXBUF_SZ) RIndx = 0;
-    return retvOk;
+    return retv::Ok;
 }
 #endif // RX
 
@@ -374,15 +374,15 @@ void BaseUart_t::Init() {
     Params->Uart->CR1 |= USART_CR1_UE;    // Enable USART
 
     // Prepare and start RX
-//    for(int i=0; i<UARTS_CNT; i++) {
-//        if(PUarts[i] == nullptr) {
-//            PUarts[i] = this;
-//            break;
-//        }
-//    }
-//    if(RXThread == nullptr) {
-//        RXThread = chThdCreateStatic(waUartRxThread, sizeof(waUartRxThread), NORMALPRIO, (tfunc_t)UartRxThread, NULL);
-//    }
+    for(int i=0; i<UARTS_CNT; i++) {
+        if(PUarts[i] == nullptr) {
+            PUarts[i] = this;
+            break;
+        }
+    }
+    if(RXThread == nullptr) {
+        RXThread = chThdCreateStatic(waUartRxThread, sizeof(waUartRxThread), NORMALPRIO, (tfunc_t)UartRxThread, NULL);
+    }
 }
 
 void BaseUart_t::Shutdown() {
@@ -434,10 +434,10 @@ void BaseUart_t::SignalRxProcessed() {
 void CmdUart_t::ProcessByteIfReceived() {
     if(!RxProcessed) return;
     uint8_t b;
-    while(GetByte(&b) == retvOk) {
+    while(GetByte(&b) == retv::Ok) {
         if(Cmd.PutChar(b) == pdrNewCmd) {
             RxProcessed = false;
-            evt_q_main.SendNowOrExit(EvtMsg_t(evtIdShellCmd, (Shell_t*)this));
+            EvtQMain.SendNowOrExit(EvtMsg_t(EvtId::ShellCmd, (Shell_t*)this));
         } // if new cmd
     } // while get byte
 //    PrintfI("e\r");
@@ -457,7 +457,7 @@ ProcessDataResult_t ModbusCmd_t::PutChar(char c) {
         if(Cnt >= 6) { // if not too short
             IString[Cnt] = 0; // End of string
             Cnt = 0;
-            if(Parse() == retvOk) return pdrNewCmd;
+            if(Parse() == retv::Ok) return pdrNewCmd;
         }
     }
     // Some other char
@@ -472,35 +472,35 @@ ProcessDataResult_t ModbusCmd_t::PutChar(char c) {
     return pdrProceed;
 }
 
-uint8_t CharToByte(char c, uint8_t *PRslt) {
-    if(c >= '0' and c <= '9') { *PRslt = (c - '0'); return retvOk; }
-    else if(c >= 'A' and c <= 'F') { *PRslt = (0xA + c - 'A'); return retvOk; }
-    else if(c >= 'a' and c <= 'f') { *PRslt = (0xA + c - 'a'); return retvOk; }
-    else return retvFail;
+retv CharToByte(char c, uint8_t *PRslt) {
+    if(c >= '0' and c <= '9') { *PRslt = (c - '0'); return retv::Ok; }
+    else if(c >= 'A' and c <= 'F') { *PRslt = (0xA + c - 'A'); return retv::Ok; }
+    else if(c >= 'a' and c <= 'f') { *PRslt = (0xA + c - 'a'); return retv::Ok; }
+    else return retv::Fail;
 }
 
-uint8_t TwoCharsToByte(char c1, char c2, uint8_t *PRslt) {
+retv TwoCharsToByte(char c1, char c2, uint8_t *PRslt) {
     uint8_t b1, b2;
-    if(CharToByte(c1, &b1) != retvOk) return retvFail;
-    if(CharToByte(c2, &b2) != retvOk) return retvFail;
+    if(CharToByte(c1, &b1) != retv::Ok) return retv::Fail;
+    if(CharToByte(c2, &b2) != retv::Ok) return retv::Fail;
     b1 <<= 4;
     b1 |= b2;
     *PRslt = b1;
-    return retvOk;
+    return retv::Ok;
 }
 
-uint8_t ModbusCmd_t::Parse() {
+retv ModbusCmd_t::Parse() {
     // Addr
-    if(TwoCharsToByte(IString[0], IString[1], &Addr) != retvOk) return retvFail;
+    if(TwoCharsToByte(IString[0], IString[1], &Addr) != retv::Ok) return retv::Fail;
     // Function
-    if(TwoCharsToByte(IString[2], IString[3], &Function) != retvOk) return retvFail;
+    if(TwoCharsToByte(IString[2], IString[3], &Function) != retv::Ok) return retv::Fail;
     // Data
     char* p = &IString[4];
     uint8_t LRC = Addr + Function;
     DataCnt = 0;
     while(true) {
         uint8_t b;
-        if(TwoCharsToByte(p[0], p[1], &b) != retvOk) break; // End of string
+        if(TwoCharsToByte(p[0], p[1], &b) != retv::Ok) break; // End of string
         Data[DataCnt++] = b;
         LRC += b;
         p += 2;
@@ -508,15 +508,15 @@ uint8_t ModbusCmd_t::Parse() {
     // Check LRC
     if(LRC == 0) {
         DataCnt--; // Remove last LRC byte
-        return retvOk;
+        return retv::Ok;
     }
-    else return retvFail;
+    else return retv::Fail;
 }
 
 void ModbusUart485_t::ProcessByteIfReceived() {
     if(!RxProcessed) return;
     uint8_t b;
-    while(GetByte(&b) == retvOk) {
+    while(GetByte(&b) == retv::Ok) {
         if(Cmd.PutChar(b) == pdrNewCmd) {
             RxProcessed = false;
 //            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdModbusCmd));
@@ -579,10 +579,10 @@ void ByteUart_t::IRxTask() {
     // Iterate received bytes
 //    Printf("1\r");
     uint8_t b;
-    while(GetByte(&b) == retvOk) {
+    while(GetByte(&b) == retv::Ok) {
         if(Cmd.PutChar(b) == pdrNewCmd) {
             EvtMsg_t Msg(evtIdByteCmd, (ByteShell_t*)this);
-            CmdProcessInProgress = (evt_q_main.SendNowOrExit(Msg) == retvOk);
+            CmdProcessInProgress = (EvtQMain.SendNowOrExit(Msg) == retv::Ok);
         }
     }
 }

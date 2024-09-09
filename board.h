@@ -3,7 +3,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "Lustra"
+#define APP_NAME            "RxOnly"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
@@ -17,6 +17,11 @@
 
 // Freq of external crystal if any. Leave it here even if not used.
 #define CRYSTAL_FREQ_HZ     12000000
+
+// OS timer settings
+#define STM32_ST_IRQ_PRIORITY   8
+#define STM32_ST_USE_TIMER      2
+#define STM32_TIMCLK1           (Clk.APB1FreqHz)
 
 #define SYS_TIM_CLK         (Clk.APB1FreqHz)
 #define I2C1_ENABLED        PILL_ENABLED
@@ -37,9 +42,9 @@
 #define LED_R_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
 
 // Buttons
-#define BTN1_PIN        GPIOA, 0, pudPullDown
-#define BTN2_PIN        GPIOA, 1, pudPullDown
-#define BTN3_PIN        GPIOB, 8, pudPullDown
+#define BTN1_PIN        GPIOA, 0
+#define BTN2_PIN        GPIOA, 1
+#define BTN3_PIN        GPIOB, 8
 
 // Vibro
 #define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, 99 }
@@ -130,7 +135,10 @@
 #if 1 // ========================== USART ======================================
 #define PRINTF_FLOAT_EN FALSE
 #define UART_TXBUF_SZ   256
-#define UART_RXBUF_SZ   99
+#define UART_RXBUF_SZ   128
+#define CMD_BUF_SZ      128
+
+#define CMD_UART        USART1
 
 #define UARTS_CNT       1
 
