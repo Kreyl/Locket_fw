@@ -1,7 +1,7 @@
 /*
  * ChunkTypes.h
  *
- *  Created on: 08 ÿíâ. 2015 ã.
+ *  Created on: 08 ï¿½ï¿½ï¿½. 2015 ï¿½.
  *      Author: Kreyl
  */
 
@@ -90,13 +90,13 @@ protected:
 
                 case csGoto:
                     IPCurrentChunk = IPStartChunk + IPCurrentChunk->ChunkToJumpTo;
-                    if(IEvtMsg.ID != evtIdNone) EvtQMain.SendNowOrExitI(IEvtMsg);
+                    if(IEvtMsg.ID != evtIdNone) evt_q_main.SendNowOrExitI(IEvtMsg);
                     SetupDelay(1);
                     return;
                     break;
 
                 case csEnd:
-                    if(IEvtMsg.ID != evtIdNone) EvtQMain.SendNowOrExitI(IEvtMsg);
+                    if(IEvtMsg.ID != evtIdNone) evt_q_main.SendNowOrExitI(IEvtMsg);
                     IPStartChunk = nullptr;
                     IPCurrentChunk = nullptr;
                     return;

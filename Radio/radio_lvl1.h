@@ -73,8 +73,8 @@ static const uint8_t PwrTable[12] = {
 
 #if 1 // =========================== Pkt_t =====================================
 struct rPkt_t {
-    uint32_t TheWord;
-    uint8_t ID;
+    uint32_t the_word;
+    uint8_t id;
 } __attribute__ ((__packed__));
 #endif
 
@@ -116,7 +116,7 @@ public:
     void AddOrReplaceExistingPkt(rPkt_t &APkt) {
         chSysLock();
         for(uint32_t i=0; i<Cnt; i++) {
-            if((IBuf[i].ID == APkt.ID) and (IBuf[i].RCmd == APkt.RCmd)) {
+            if((IBuf[i].id == APkt.id) and (IBuf[i].RCmd == APkt.RCmd)) {
                 if(IBuf[i].Rssi < APkt.Rssi) IBuf[i] = APkt; // Replace with newer pkt if RSSI is stronger
                 chSysUnlock();
                 return;
@@ -130,9 +130,9 @@ public:
         chSysUnlock();
     }
 
-    uint8_t GetPktByID(uint8_t ID, rPkt_t *ptr) {
+    uint8_t GetPktByID(uint8_t id, rPkt_t *ptr) {
         for(uint32_t i=0; i<Cnt; i++) {
-            if(IBuf[i].ID == ID) {
+            if(IBuf[i].id == id) {
                 *ptr = IBuf[i];
                 return retvOk;
             }
@@ -140,9 +140,9 @@ public:
         return retvFail;
     }
 
-    bool IDPresents(uint8_t ID) {
+    bool IDPresents(uint8_t id) {
         for(uint32_t i=0; i<Cnt; i++) {
-            if(IBuf[i].ID == ID) return true;
+            if(IBuf[i].id == id) return true;
         }
         return false;
     }
@@ -151,12 +151,12 @@ public:
         return IBuf[Indx];
     }
 #else
-    void AddId(uint8_t ID) {
+    void AddId(uint8_t id) {
         if(Cnt >= RXTABLE_SZ) return;   // Buffer is full, nothing to do here
         for(uint32_t i=0; i<Cnt; i++) {
-            if(IdBuf[i] == ID) return;
+            if(IdBuf[i] == id) return;
         }
-        IdBuf[Cnt] = ID;
+        IdBuf[Cnt] = id;
         Cnt++;
     }
 

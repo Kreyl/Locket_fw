@@ -439,7 +439,7 @@ void TmrKLCallback(void *p) {
 
 void TmrKL_t::IIrqHandler() {    // Call it inside callback
     EvtMsg_t Msg(EvtId);
-    EvtQMain.SendNowOrExitI(Msg);
+    evt_q_main.SendNowOrExitI(Msg);
     if(TmrType == tktPeriodic) StartI();
 }
 #endif

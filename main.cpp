@@ -13,32 +13,29 @@
 #include <vector>
 
 // Forever
-EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
-static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
-CmdUart_t Uart{&CmdUartParams};
-void OnCmd(Cmd_t *PCmd);
+EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> evt_q_main;
+static const UartParams_t kCmdUartParams(115200, CMD_UART_PARAMS);
+CmdUart_t dbg_uart{&kCmdUartParams};
+void OnCmd(Cmd_t *pcmd);
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 PinOutputPWM_t LedSingle {LED_B_PIN};
 
-// EEAddresses
-#define EE_ADDR_ID       0
-#define EE_ADDR_DELAY    4
+// IDs
+const uint8_t kIdMin = 1, kIdMax = 254;
+// EE Addresses
+const uint32_t kEeAddrId = 0, kEeAddrDelay = 4;
 
-static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
+static const PinInputSetup_t kDipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
 void ReadEE();
 
-#define ID_MIN                  1
-#define ID_MAX                  254
-#define ID_DEFAULT              ID_MIN
-
 cc1101_t CC(CC_Setup0);
-int32_t ID;
-uint8_t PwrLvlId = 0;
-rPkt_t PktTx;
-uint32_t Delay;
+int32_t id;
+uint8_t pwr_lvl_id = 0;
+rPkt_t pkt_tx;
+uint32_t delay;
 
-static const char* PwrNames[12] = {
+static const char* kPwrNames[12] = {
         "-30dBm", "-27dBm", "-25dBm", "-20dBm", "-15dBm", "-10dBm", "-6dBm",
         "0dBm", "+5dBm", "+7dBm", "+10dBm", "+12dBm",
 };
@@ -53,7 +50,7 @@ int main(void) {
     chSysInit();
 
     // ==== Init hardware ====
-    Uart.Init();
+    dbg_uart.Init();
     ReadEE();
     if(Sleep::WasInStandby()) {
         // Init only one channel of LED
@@ -64,16 +61,16 @@ int main(void) {
     else {
         Led.Init();
         Led.StartOrRestart(lsqStart);
-        Printf("\r%S %S; ID=%u; Delay=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), ID, Delay);
+        Printf("\r%S %S; id=%u; delay=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), id, delay);
         Clk.PrintFreqs();
 
         // Try to receive Cmd by UART
         for(int i=0; i<27; i++) {
             chThdSleepMilliseconds(99);
             uint8_t b;
-            while(Uart.GetByte(&b) == retvOk) {
-                if(Uart.Cmd.PutChar(b) == pdrNewCmd) {
-                    OnCmd(&Uart.Cmd);
+            while(dbg_uart.GetByte(&b) == retvOk) {
+                if(dbg_uart.Cmd.PutChar(b) == pdrNewCmd) {
+                    OnCmd(&dbg_uart.Cmd);
                     i = 0;
                 }
             } // while get byte
@@ -83,20 +80,20 @@ int main(void) {
     if(CC.Init() == retvOk) {
         // Select power
         uint8_t b = GetDipSwitch();
-        PwrLvlId = b & 0b1111; // Remove high bits
-        if(PwrLvlId > 11) PwrLvlId = 11;
-        Printf("ID %u; %S\r", ID, PwrNames[PwrLvlId]);
+        pwr_lvl_id = b & 0b1111; // Remove high bits
+        if(pwr_lvl_id > 11) pwr_lvl_id = 11;
+        Printf("id %u; %S\r", id, kPwrNames[pwr_lvl_id]);
         // Setup CC
         CC.SetPktSize(RPKT_LEN);
         CC.DoIdleAfterTx();
         CC.SetChannel(RCHNL_EACH_OTH);
         CC.SetBitrate(CCBitrate100k);
-        CC.SetTxPower(PwrTable[PwrLvlId]);
+        CC.SetTxPower(PwrTable[pwr_lvl_id]);
         // Transmit
-        PktTx.ID = ID;
-        PktTx.TheWord = 0xCA110FEA;
+        pkt_tx.id = id;
+        pkt_tx.the_word = 0xCA110FEA;
         CC.Recalibrate();
-        CC.Transmit(&PktTx, RPKT_LEN);
+        CC.Transmit(&pkt_tx, RPKT_LEN);
     }
     else { // CC failure
         Led.Init();
@@ -107,7 +104,7 @@ int main(void) {
     // Enter sleep
     CC.EnterPwrDown();
     chSysLock();
-    Iwdg::InitAndStart(Delay);
+    Iwdg::InitAndStart(delay);
     Sleep::EnterStandby();
     chSysUnlock();
 
@@ -115,23 +112,23 @@ int main(void) {
 }
 
 void ReadEE() {
-    ID = EE::Read32(EE_ADDR_ID);  // Read device ID
-    if(ID < ID_MIN or ID > ID_MAX) {
-        Printf("\rUsing default ID\r");
-        ID = ID_DEFAULT;
+    id = EE::Read32(kEeAddrId);  // Read device id
+    if(id < kIdMin or id > kIdMax) {
+        Printf("\rUsing default id\r");
+        id = kIdMin;
     }
 
-    Delay = EE::Read32(EE_ADDR_DELAY);
-    if(Delay < 4 or Delay > 306000) {
-        Printf("\rUsing default Delay\r");
-        Delay = 162;
+    delay = EE::Read32(kEeAddrDelay);
+    if(delay < 4 or delay > 306000) {
+        Printf("\rUsing default delay\r");
+        delay = 162;
     }
 }
 
 uint8_t SetID(int32_t NewID) {
-    uint8_t rslt = EE::Write32(EE_ADDR_ID, NewID);
+    uint8_t rslt = EE::Write32(kEeAddrId, NewID);
     if(rslt == retvOk) {
-        ID = NewID;
+        id = NewID;
         return retvOk;
     }
     else {
@@ -141,9 +138,9 @@ uint8_t SetID(int32_t NewID) {
 }
 
 uint8_t SetDelay(int32_t NewDelay) {
-    uint8_t rslt = EE::Write32(EE_ADDR_DELAY, NewDelay);
+    uint8_t rslt = EE::Write32(kEeAddrDelay, NewDelay);
     if(rslt == retvOk) {
-        Delay = NewDelay;
+        delay = NewDelay;
         return retvOk;
     }
     else {
@@ -155,23 +152,23 @@ uint8_t SetDelay(int32_t NewDelay) {
 #if 1 // ================= Command processing ====================
 void Ack(int32_t Result) { Printf("Ack %d\r\n", Result); }
 
-void OnCmd(Cmd_t *PCmd) {
-    if(PCmd->NameIs("Ping")) Ack(retvOk);
-    else if(PCmd->NameIs("Version")) Printf("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
+void OnCmd(Cmd_t *pcmd) {
+    if(pcmd->NameIs("Ping")) Ack(retvOk);
+    else if(pcmd->NameIs("Version")) Printf("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
 
-    else if(PCmd->NameIs("GetID")) Printf("ID %u\r", ID);
+    else if(pcmd->NameIs("GetID")) Printf("id %u\r", id);
 
-    else if(PCmd->NameIs("SetID")) {
+    else if(pcmd->NameIs("SetID")) {
         int32_t NewID;
-        if(PCmd->GetNext<int32_t>(&NewID) != retvOk) { Ack(retvCmdError); return; }
+        if(pcmd->GetNext<int32_t>(&NewID) != retvOk) { Ack(retvCmdError); return; }
         Ack(SetID(NewID));
     }
 
-    else if(PCmd->NameIs("GetDelay")) Printf("Delay %u\r", Delay);
+    else if(pcmd->NameIs("GetDelay")) Printf("delay %u\r", delay);
 
-    else if(PCmd->NameIs("SetDelay")) {
+    else if(pcmd->NameIs("SetDelay")) {
         int32_t NewDelay;
-        if(PCmd->GetNext<int32_t>(&NewDelay) != retvOk) { Ack(retvCmdError); return; }
+        if(pcmd->GetNext<int32_t>(&NewDelay) != retvOk) { Ack(retvCmdError); return; }
         Ack(SetDelay(NewDelay));
     }
 
@@ -182,10 +179,10 @@ void OnCmd(Cmd_t *PCmd) {
 // ====== DIP switch ======
 uint8_t GetDipSwitch() {
     uint8_t Rslt = 0;
-    for(int i=0; i<DIP_SW_CNT; i++) PinSetupInput(DipSwPin[i].PGpio, DipSwPin[i].Pin, DipSwPin[i].PullUpDown);
+    for(int i=0; i<DIP_SW_CNT; i++) PinSetupInput(kDipSwPin[i].PGpio, kDipSwPin[i].Pin, kDipSwPin[i].PullUpDown);
     for(int i=0; i<DIP_SW_CNT; i++) {
-        if(!PinIsHi(DipSwPin[i].PGpio, DipSwPin[i].Pin)) Rslt |= (1 << i);
-        PinSetupAnalog(DipSwPin[i].PGpio, DipSwPin[i].Pin);
+        if(!PinIsHi(kDipSwPin[i].PGpio, kDipSwPin[i].Pin)) Rslt |= (1 << i);
+        PinSetupAnalog(kDipSwPin[i].PGpio, kDipSwPin[i].Pin);
     }
     return Rslt;
 }

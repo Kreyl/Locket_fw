@@ -437,7 +437,7 @@ void CmdUart_t::ProcessByteIfReceived() {
     while(GetByte(&b) == retvOk) {
         if(Cmd.PutChar(b) == pdrNewCmd) {
             RxProcessed = false;
-            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdShellCmd, (Shell_t*)this));
+            evt_q_main.SendNowOrExit(EvtMsg_t(evtIdShellCmd, (Shell_t*)this));
         } // if new cmd
     } // while get byte
 //    PrintfI("e\r");
@@ -582,7 +582,7 @@ void ByteUart_t::IRxTask() {
     while(GetByte(&b) == retvOk) {
         if(Cmd.PutChar(b) == pdrNewCmd) {
             EvtMsg_t Msg(evtIdByteCmd, (ByteShell_t*)this);
-            CmdProcessInProgress = (EvtQMain.SendNowOrExit(Msg) == retvOk);
+            CmdProcessInProgress = (evt_q_main.SendNowOrExit(Msg) == retvOk);
         }
     }
 }

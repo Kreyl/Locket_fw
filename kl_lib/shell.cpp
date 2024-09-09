@@ -1,20 +1,20 @@
 /*
  * shell.cpp
  *
- *  Created on: 21 апр. 2017 г.
+ *  Created on: 21 пїЅпїЅпїЅ. 2017 пїЅ.
  *      Author: Kreyl
  */
 
 #include "shell.h"
 #include "uart.h"
 
-extern CmdUart_t Uart;
+extern CmdUart_t dbg_uart;
 
 void Printf(const char *format, ...) {
     va_list args;
     va_start(args, format);
     chSysLock();
-    Uart.IVsPrintf(format, args);
+    dbg_uart.IVsPrintf(format, args);
     chSysUnlock();
     va_end(args);
 }
@@ -31,19 +31,19 @@ void Printf(CmdUart_t &AUart, const char *format, ...) {
 void PrintfI(const char *format, ...) {
     va_list args;
     va_start(args, format);
-    Uart.IVsPrintf(format, args);
+    dbg_uart.IVsPrintf(format, args);
     va_end(args);
 }
 
 void PrintfEOL() {
-    Uart.PrintEOL();
+    dbg_uart.PrintEOL();
 }
 
 extern "C" {
 void PrintfC(const char *format, ...) {
     va_list args;
     va_start(args, format);
-    Uart.IVsPrintf(format, args);
+    dbg_uart.IVsPrintf(format, args);
     va_end(args);
 }
 } // exern C
