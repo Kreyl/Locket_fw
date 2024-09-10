@@ -20,10 +20,8 @@
 #if 1 // =========================== Pkt_t =====================================
 #pragma pack(push, 1)
 struct rPkt_t {
-    uint32_t salt = 0xCa110fEa;
-    uint16_t id; // Required to distinct packets from same src
-    uint8_t type;
-    int8_t rssi; // Will be set after RX. Transmitting is useless, but who cares.
+    uint32_t the_word;
+    uint8_t id;
 };
 #pragma pack(pop)
 #endif
@@ -32,7 +30,7 @@ struct rPkt_t {
 
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
-#define RCHNL_EACH_OTH          0
+#define RCHNL_EACH_OTH          7
 
 // Feel-Each-Other related
 #define CYCLE_CNT               5U
@@ -102,17 +100,6 @@ public:
 #if RXT_PKT_REQUIRED
     rPkt_t& operator [](uint32_t indx) { return ibuf[indx]; }
 #endif
-
-    void Print() {
-        Printf("RxTable cnt: %u\r", cnt);
-        for(uint32_t i=0; i<cnt; i++) {
-#if RXT_PKT_REQUIRED
-            Printf("ID: %u; type: %u\r", ibuf[i].id, ibuf[i].type);
-#else
-            Printf("ID: %u\r", IdBuf[i]);
-#endif
-        }
-    }
 };
 #endif
 

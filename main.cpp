@@ -11,7 +11,7 @@
 // Forever
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
 static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
-CmdUart_t Uart { &CmdUartParams };
+CmdUart_t dbg_uart { &CmdUartParams };
 static void ITask();
 static void OnCmd(Shell_t *PShell);
 static retv ReadAndSetupMode();
@@ -19,8 +19,8 @@ static retv ReadAndSetupMode();
 #define EE_ADDR_DEVICE_ID       0
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
-static retv ISetID(int32_t NewID);
-static void ReadIDfromEE();
+//static retv ISetID(int32_t NewID);
+//static void ReadIDfromEE();
 
 LedRGBwPower_t<3> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t<3> Vibro { VIBRO_SETUP };
@@ -70,23 +70,26 @@ int main(void) {
     chSysInit();
     EvtQMain.Init();
     // ==== Init hardware ====
-    Uart.Init();
-    ReadIDfromEE();
+    dbg_uart.Init();
+//    ReadIDfromEE();
     Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
     Clk.PrintFreqs();
 
     Led.Init();
     Vibro.Init();
+    beeper.Init();
 
-    if(RadioInit() == retv::Ok) Vibro.StartOrRestart(vsqBrrBrr);
-    else {
-        Led.StartOrRestart(lsqFailure);
-        chThdSleepMilliseconds(1008);
+    if(RadioInit() == retv::Ok) {
+        Led.StartOrRestart(lsqStart);
+        Vibro.StartOrRestart(vsqBrrBrr);
+        beeper.StartOrContinue(bsqBeepBeep);
     }
+    else Led.StartOrRestart(lsqFailure);
+    chThdSleepMilliseconds(1008);
 
     ReadAndSetupMode();
     TmrEverySecond.StartOrRestart();
-    SimpleSensors::Init();
+//    SimpleSensors::Init();
 
     // Main cycle
     ITask();
@@ -165,7 +168,7 @@ retv ReadAndSetupMode() {
     }
     if(cfg.do_beep) {
         Printf("DoBeep");
-        beeper.s
+        beeper.StartOrRestart(bsqBeepBeep);
     }
     if(!cfg.do_vibro and !cfg.do_blink and !cfg.do_beep) Printf("Do Nothing");
     PrintfEOL();

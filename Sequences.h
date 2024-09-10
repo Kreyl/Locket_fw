@@ -197,20 +197,20 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 
 // Aliens
 LedRGBChunk_t lsqWitch1[] = {
-        {csSetup, 0, clBlue},  {csWait, PAUSETIME},
+        {csSetup, 0, clGreen},  {csWait, PAUSETIME},
         {csSetup, 0, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
 
 LedRGBChunk_t lsqWitch2[] = {
-        {csSetup, 0, clBlue},  {csWait, PAUSETIME},
+        {csSetup, 0, clGreen},  {csWait, PAUSETIME},
         {csSetup, 0, clBlack}, {csWait, PAUSETIME},
         {csRepeat, 1},
         {csEnd},
 };
 
 LedRGBChunk_t lsqWitchMany[] = {
-        {csSetup, 0, clBlue},  {csWait, PAUSETIME},
+        {csSetup, 0, clGreen},  {csWait, PAUSETIME},
         {csSetup, 0, clBlack}, {csWait, PAUSETIME},
         {csRepeat, 2},
         {csEnd},
@@ -343,7 +343,27 @@ const BeepChunk_t bsqButton[] = {
         {csSetup, 0},
         {csEnd}
 };
+const BeepChunk_t bsqBeep[] = {
+        {csSetup, BEEP_VOLUME, 1975},
+        {csWait, 99},
+        {csSetup, 0, 0},
+        {csEnd}
+};
 const BeepChunk_t bsqBeepBeep[] = {
+        {csSetup, BEEP_VOLUME, 1975},
+        {csWait, 99},
+        {csSetup, 0, 0},
+        {csWait, 99},
+        {csSetup, BEEP_VOLUME, 1975},
+        {csWait, 99},
+        {csSetup, 0, 0},
+        {csEnd}
+};
+const BeepChunk_t bsqBeepBeepBeep[] = {
+        {csSetup, BEEP_VOLUME, 1975},
+        {csWait, 99},
+        {csSetup, 0, 0},
+        {csWait, 99},
         {csSetup, BEEP_VOLUME, 1975},
         {csWait, 99},
         {csSetup, 0, 0},
