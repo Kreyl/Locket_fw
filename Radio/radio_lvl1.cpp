@@ -37,18 +37,15 @@ static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
         for(int i=0; i<4; i++) {
-            chThdSleepMilliseconds(72);
-            sysinterval_t total_duration_st = TIME_MS2I(720);
+            chThdSleepMilliseconds(720);
+            sysinterval_t total_duration_st = TIME_MS2I(450);
             sysinterval_t start_time_st = chVTGetSystemTimeX();
             sysinterval_t time_left_st = total_duration_st;
             int8_t rssi;
-//            CC.Recalibrate();
+            CC.Recalibrate();
             while(true) {
-                Printf("r");
                 DBG2_SET();
-                CC.Recalibrate();
                 retv rx_rslt = CC.Receive_st(time_left_st, (uint8_t*)&pkt_rx, RPKT_LEN, &rssi);
-                Printf("e");
                 DBG2_CLR();
                 if(rx_rslt == retv::Ok) {
                     Printf("%u %d\r", pkt_rx.id, rssi);
@@ -81,7 +78,7 @@ retv RadioInit() {
     if(CC.Init() == retv::Ok) {
         CC.SetPktSize(RPKT_LEN);
         CC.DoIdleAfterTx();
-        CC.SetChannel(0);
+        CC.SetChannel(7);
         CC.SetBitrate(CCBitrate100k);
         CC.SetTxPower(CC_Pwr0dBm);
         // Thread

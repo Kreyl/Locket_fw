@@ -192,26 +192,26 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
 #define SHOWTIME        270
-#define PAUSETIME       180
+#define PAUSETIME       90
 #define SHORTPAUSETIME  72
 
 // Aliens
 LedRGBChunk_t lsqWitch1[] = {
         {csSetup, 0, clGreen},  {csWait, PAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, {0, 1, 0}}, {csWait, PAUSETIME},
         {csEnd},
 };
 
 LedRGBChunk_t lsqWitch2[] = {
         {csSetup, 0, clGreen},  {csWait, PAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, {0, 1, 0}}, {csWait, PAUSETIME},
         {csRepeat, 1},
         {csEnd},
 };
 
 LedRGBChunk_t lsqWitchMany[] = {
         {csSetup, 0, clGreen},  {csWait, PAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, {0, 1, 0}}, {csWait, PAUSETIME},
         {csRepeat, 2},
         {csEnd},
 };
