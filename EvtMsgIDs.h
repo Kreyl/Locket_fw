@@ -1,28 +1,28 @@
 /*
  * EvtMsgIDs.h
  *
- *  Created on: 21 апр. 2017 г.
+ *  Created on: 21 пїЅпїЅпїЅ. 2017 пїЅ.
  *      Author: Kreyl
  */
 
 #ifndef EVTMSGIDS_H__
 #define EVTMSGIDS_H__
 
-enum EvtMsgId_t {
-    evtIdNone = 0, // Always
+enum class EvtId : uint8_t {
+    None = 0, // Always
 
     // Pretending to eternity
-    evtIdShellCmd,
-    evtIdEverySecond,
-    evtIdAdcRslt,
+    ShellCmd,
+    EverySecond,
+    AdcRslt,
 
-    evtIdLedSeqDone,
-    evtIdVibroSeqDone,
+    LedSeqDone,
+    VibroSeqDone,
 
     // Not eternal
-    evtIdButtons,
-    evtIdRadioCmd,
-    evtIdCheckRxTable,
+    Buttons,
+    RadioCmd,
+    CheckRxTable,
 };
 
 #endif //EVTMSGIDS_H__

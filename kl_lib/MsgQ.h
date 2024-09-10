@@ -50,33 +50,33 @@ EvtMsgQ_t<RMsg_t, RMSG_Q_LEN> MsgQ;
 #define EMSG_DATA16_CNT     3   // ID + 3x2bytes = 7
 
 union EvtMsg_t {
-    uint32_t DWord[2];
+    uint32_t dword[2];
     struct {
         union {
-            void* Ptr;
+            void* ptr;
             struct {
-                int32_t Value;
-                uint8_t ValueID;
+                int32_t value;
+                uint8_t value_id;
             } __attribute__((__packed__));
 //            uint8_t b[EMSG_DATA8_CNT];
 //            uint16_t w16[EMSG_DATA16_CNT];
 #if BUTTONS_ENABLED
-            BtnEvtInfo_t BtnEvtInfo;
+            BtnEvtInfo_t btn_info;
 #endif
         } __attribute__((__packed__));
-        uint8_t ID;
+        EvtId id;
     } __attribute__((__packed__));
 
     EvtMsg_t& operator = (const EvtMsg_t &Right) {
-        DWord[0] = Right.DWord[0];
-        DWord[1] = Right.DWord[1];
+        dword[0] = Right.dword[0];
+        dword[1] = Right.dword[1];
         return *this;
     }
-    EvtMsg_t() : Ptr(nullptr), ID(0) {}
-    EvtMsg_t(uint8_t AID) : ID(AID) {}
-    EvtMsg_t(uint8_t AID, void *APtr) : Ptr(APtr), ID(AID) {}
-    EvtMsg_t(uint8_t AID, int32_t AValue) : Value(AValue), ID(AID) {}
-    EvtMsg_t(uint8_t AID, uint8_t AValueID, int32_t AValue) : Value(AValue), ValueID(AValueID), ID(AID) {}
+    EvtMsg_t() : ptr(nullptr), id(EvtId::None) {}
+    EvtMsg_t(EvtId AID) : ptr(nullptr), id(AID) {}
+    EvtMsg_t(EvtId AID, void *APtr) : ptr(APtr), id(AID) {}
+    EvtMsg_t(EvtId AID, int32_t AValue) : value(AValue), id(AID) {}
+    EvtMsg_t(EvtId AID, uint8_t AValueID, int32_t AValue) : value(AValue), value_id(AValueID), id(AID) {}
 } __attribute__((__packed__));
 
 
@@ -119,18 +119,18 @@ public:
 
     /* Posts a message into a mailbox.
      * The function returns a timeout condition if the queue is full */
-    uint8_t SendNowOrExitI(const T &Msg) {
-        if(chSemGetCounterI(&EmptySem) <= (cnt_t)0) return retvTimeout; // Q is full
+    retv SendNowOrExitI(const T &Msg) {
+        if(chSemGetCounterI(&EmptySem) <= (cnt_t)0) return retv::Timeout; // Q is full
         chSemFastWaitI(&EmptySem);
         *WritePtr++ = Msg;
         if(WritePtr >= &IBuf[Sz]) WritePtr = IBuf;  // Circulate pointer
         chSemSignalI(&FullSem);
-        return retvOk;
+        return retv::Ok;
     }
 
-    uint8_t SendNowOrExit(const T &Msg) {
+    retv SendNowOrExit(const T &Msg) {
         chSysLock();
-        uint8_t Rslt = SendNowOrExitI(Msg);
+        retv Rslt = SendNowOrExitI(Msg);
         chSchRescheduleS();
         chSysUnlock();
         return Rslt;
@@ -139,7 +139,7 @@ public:
     /* Posts a message into a mailbox.
      * The invoking thread waits until a empty slot in the mailbox becomes available
      * or the specified time runs out. */
-    uint8_t SendWaitingAbility(const T &Msg, systime_t timeout) {
+    retv SendWaitingAbility(const T &Msg, systime_t timeout) {
         chSysLock();
         msg_t rdymsg = chSemWaitTimeoutS(&EmptySem, timeout);
         if(rdymsg == MSG_OK) {
@@ -149,9 +149,9 @@ public:
             chSchRescheduleS();
         }
         chSysUnlock();
-        if(rdymsg == MSG_TIMEOUT) return retvTimeout;
-        else if(rdymsg == MSG_OK) return retvOk;
-        else return retvFail;
+        if(rdymsg == MSG_TIMEOUT) return retv::Timeout;
+        else if(rdymsg == MSG_OK) return retv::Ok;
+        else return retv::Fail;
     }
 
     uint32_t GetFullCnt() {

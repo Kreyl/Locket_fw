@@ -2,6 +2,7 @@
 #define KL_I2C_H__
 
 #include "kl_lib.h"
+#include "board.h"
 
 #if defined STM32L1XX || defined STM32F2XX || defined STM32F4XX
 struct i2cParams_t {
@@ -18,7 +19,7 @@ struct i2cParams_t {
 class i2c_t {
 private:
     const i2cParams_t *PParams;
-    const stm32_dma_stream_t *PDmaTx, *PDmaRx;
+    const stm32_dma_stream_t *PDmaTx=nullptr, *PDmaRx=nullptr;
     void IReset();
     void SendStart()     { PParams->pi2c->CR1 |= I2C_CR1_START; }
     void SendStop()      { PParams->pi2c->CR1 |= I2C_CR1_STOP; }
@@ -33,14 +34,14 @@ private:
     void SendData(uint8_t b) { PParams->pi2c->DR = b; }
     uint8_t ReceiveData() { return PParams->pi2c->DR; }
     // Flags operations
-    uint8_t IBusyWait();
-    uint8_t WaitEv5();
-    uint8_t WaitEv6();
-    uint8_t WaitEv8();
-    uint8_t WaitAck();
-    uint8_t WaitRx();
-    uint8_t WaitStop();
-    uint8_t WaitBTF();
+    retv IBusyWait();
+    retv WaitEv5();
+    retv WaitEv6();
+    retv WaitEv8();
+    retv WaitAck();
+    retv WaitRx();
+    retv WaitStop();
+    retv WaitBTF();
 #if I2C_USE_SEMAPHORE
     binary_semaphore_t BSemaphore;
 #endif
@@ -55,10 +56,10 @@ public:
         Standby();
         Resume();
     }
-    uint8_t CheckAddress(uint32_t Addr);
-    uint8_t Write     (uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1);
-    uint8_t WriteRead (uint8_t Addr, uint8_t *WPtr,  uint8_t WLength,  uint8_t *RPtr, uint8_t RLength);
-    uint8_t WriteWrite(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1, uint8_t *WPtr2, uint8_t WLength2);
+    retv CheckAddress(uint32_t Addr);
+    retv Write     (uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1);
+    retv WriteRead (uint8_t Addr, uint8_t *WPtr,  uint8_t WLength,  uint8_t *RPtr, uint8_t RLength);
+    retv WriteWrite(uint8_t Addr, uint8_t *WPtr1, uint8_t WLength1, uint8_t *WPtr2, uint8_t WLength2);
     i2c_t(const i2cParams_t *APParams) : PParams(APParams),
                 Error(false), ThdRef(nullptr) {}
 };

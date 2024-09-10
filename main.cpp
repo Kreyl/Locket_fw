@@ -1,7 +1,6 @@
 #include "board.h"
 #include "led.h"
 #include "vibro.h"
-#include "beeper.h"
 #include "Sequences.h"
 #include "radio_lvl1.h"
 #include "kl_i2c.h"
@@ -20,8 +19,8 @@ void OnCmd(Cmd_t *pcmd);
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 PinOutputPWM_t LedSingle {LED_B_PIN};
 
-// IDs
-const uint8_t kIdMin = 1, kIdMax = 254;
+// IDs and channel
+const uint8_t kIdMin = 1, kIdMax = 254, kRadioChnl = 7;
 // EE Addresses
 const uint32_t kEeAddrId = 0, kEeAddrDelay = 4;
 
@@ -61,14 +60,15 @@ int main(void) {
     else {
         Led.Init();
         Led.StartOrRestart(lsqStart);
-        Printf("\r%S %S; id=%u; delay=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), id, delay);
+        Printf("\r%S %S; id=%u; ch=%u; delay=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME),
+                id, kRadioChnl, delay);
         Clk.PrintFreqs();
 
         // Try to receive Cmd by UART
         for(int i=0; i<27; i++) {
             chThdSleepMilliseconds(99);
             uint8_t b;
-            while(dbg_uart.GetByte(&b) == retvOk) {
+            while(dbg_uart.GetByte(&b) == retv::Ok) {
                 if(dbg_uart.Cmd.PutChar(b) == pdrNewCmd) {
                     OnCmd(&dbg_uart.Cmd);
                     i = 0;
@@ -77,7 +77,7 @@ int main(void) {
         } // for
     } // if WasInStandby
 
-    if(CC.Init() == retvOk) {
+    if(CC.Init() == retv::Ok) {
         // Select power
         uint8_t b = GetDipSwitch();
         pwr_lvl_id = b & 0b1111; // Remove high bits
@@ -86,14 +86,14 @@ int main(void) {
         // Setup CC
         CC.SetPktSize(RPKT_LEN);
         CC.DoIdleAfterTx();
-        CC.SetChannel(RCHNL_EACH_OTH);
+        CC.SetChannel(kRadioChnl);
         CC.SetBitrate(CCBitrate100k);
         CC.SetTxPower(PwrTable[pwr_lvl_id]);
         // Transmit
         pkt_tx.id = id;
         pkt_tx.the_word = 0xCA110FEA;
         CC.Recalibrate();
-        CC.Transmit(&pkt_tx, RPKT_LEN);
+        CC.Transmit(reinterpret_cast<uint8_t*>(&pkt_tx), RPKT_LEN);
     }
     else { // CC failure
         Led.Init();
@@ -125,27 +125,27 @@ void ReadEE() {
     }
 }
 
-uint8_t SetID(int32_t NewID) {
-    uint8_t rslt = EE::Write32(kEeAddrId, NewID);
-    if(rslt == retvOk) {
+retv SetID(int32_t NewID) {
+    retv rslt = EE::Write32(kEeAddrId, NewID);
+    if(rslt == retv::Ok) {
         id = NewID;
-        return retvOk;
+        return retv::Ok;
     }
     else {
         Printf("EE error: %u\r", rslt);
-        return retvFail;
+        return retv::Fail;
     }
 }
 
-uint8_t SetDelay(int32_t NewDelay) {
-    uint8_t rslt = EE::Write32(kEeAddrDelay, NewDelay);
-    if(rslt == retvOk) {
+retv SetDelay(int32_t NewDelay) {
+    retv rslt = EE::Write32(kEeAddrDelay, NewDelay);
+    if(rslt == retv::Ok) {
         delay = NewDelay;
-        return retvOk;
+        return retv::Ok;
     }
     else {
         Printf("EE error: %u\r", rslt);
-        return retvFail;
+        return retv::Fail;
     }
 }
 
@@ -153,26 +153,28 @@ uint8_t SetDelay(int32_t NewDelay) {
 void Ack(int32_t Result) { Printf("Ack %d\r\n", Result); }
 
 void OnCmd(Cmd_t *pcmd) {
-    if(pcmd->NameIs("Ping")) Ack(retvOk);
+    if(pcmd->NameIs("Ping")) dbg_uart.Ok();
     else if(pcmd->NameIs("Version")) Printf("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
 
     else if(pcmd->NameIs("GetID")) Printf("id %u\r", id);
 
     else if(pcmd->NameIs("SetID")) {
         int32_t NewID;
-        if(pcmd->GetNext<int32_t>(&NewID) != retvOk) { Ack(retvCmdError); return; }
-        Ack(SetID(NewID));
+        if(pcmd->GetNext<int32_t>(&NewID) != retv::Ok) { dbg_uart.CmdError(); return; }
+        if(SetID(NewID) == retv::Ok) dbg_uart.Ok();
+        else dbg_uart.Failure();
     }
 
     else if(pcmd->NameIs("GetDelay")) Printf("delay %u\r", delay);
 
     else if(pcmd->NameIs("SetDelay")) {
         int32_t NewDelay;
-        if(pcmd->GetNext<int32_t>(&NewDelay) != retvOk) { Ack(retvCmdError); return; }
-        Ack(SetDelay(NewDelay));
+        if(pcmd->GetNext<int32_t>(&NewDelay) != retv::Ok) { dbg_uart.CmdError(); return; }
+        if(SetDelay(NewDelay) == retv::Ok) dbg_uart.Ok();
+        else dbg_uart.Failure();
     }
 
-    else Ack(retvCmdUnknown);
+    else dbg_uart.CmdUnknown();
 }
 #endif
 

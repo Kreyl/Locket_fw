@@ -55,22 +55,6 @@ static inline void Lvl250ToLvl1000(uint16_t *PLvl) {
 
 #endif
 
-__unused
-static const uint8_t PwrTable[12] = {
-        CC_PwrMinus30dBm, // 0
-        CC_PwrMinus27dBm, // 1
-        CC_PwrMinus25dBm, // 2
-        CC_PwrMinus20dBm, // 3
-        CC_PwrMinus15dBm, // 4
-        CC_PwrMinus10dBm, // 5
-        CC_PwrMinus6dBm,  // 6
-        CC_Pwr0dBm,       // 7
-        CC_PwrPlus5dBm,   // 8
-        CC_PwrPlus7dBm,   // 9
-        CC_PwrPlus10dBm,  // 10
-        CC_PwrPlus12dBm   // 11
-};
-
 #if 1 // =========================== Pkt_t =====================================
 struct rPkt_t {
     uint32_t the_word;
@@ -81,11 +65,6 @@ struct rPkt_t {
 #define RPKT_LEN    sizeof(rPkt_t)
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
-#define RCHNL_EACH_OTH  7
-#define RCHNL_FAR       0
-
-#define TX_PWR_FAR      CC_PwrPlus10dBm
-
 // Feel-Each-Other related
 #define RCYCLE_CNT              5
 #define FAR_CYCLE_INDX          (RCYCLE_CNT - 1)
