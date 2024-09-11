@@ -192,7 +192,7 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
 #define SHOWTIME        270
-#define PAUSETIME       90
+#define PAUSETIME       180
 #define SHORTPAUSETIME  72
 
 // Aliens

@@ -47,8 +47,8 @@ static void rLvl1Thread(void *arg) {
                 DBG2_SET();
                 retv rx_rslt = CC.Receive_st(time_left_st, (uint8_t*)&pkt_rx, RPKT_LEN, &rssi);
                 DBG2_CLR();
-                if(rx_rslt == retv::Ok) {
-                    Printf("%u %d\r", pkt_rx.id, rssi);
+                if(rx_rslt == retv::Ok and pkt_rx.the_word == 0xCa110fEa) {
+//                    Printf("%u %d\r", pkt_rx.id, rssi);
                     curr_tbl->AddOrReplaceExistingPkt(pkt_rx);
                 }
                 // Check if rx more or get out
