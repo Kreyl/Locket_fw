@@ -3,7 +3,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "WanderingGhost"
+#define APP_NAME            "7Mengirs"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
