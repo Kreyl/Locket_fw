@@ -1,20 +1,22 @@
 /*
  * shell.cpp
  *
- *  Created on: 21 апр. 2017 г.
+ *  Created on: 21 пїЅпїЅпїЅ. 2017 пїЅ.
  *      Author: Kreyl
  */
 
+#include <stdarg.h>
 #include "shell.h"
 #include "uart.h"
 
-extern CmdUart_t Uart;
+
+extern CmdUart_t dbg_uart;
 
 void Printf(const char *format, ...) {
     va_list args;
     va_start(args, format);
     chSysLock();
-    Uart.IVsPrintf(format, args);
+    dbg_uart.IVsPrintf(format, args);
     chSysUnlock();
     va_end(args);
 }
@@ -31,19 +33,19 @@ void Printf(CmdUart_t &AUart, const char *format, ...) {
 void PrintfI(const char *format, ...) {
     va_list args;
     va_start(args, format);
-    Uart.IVsPrintf(format, args);
+    dbg_uart.IVsPrintf(format, args);
     va_end(args);
 }
 
 void PrintfEOL() {
-    Uart.PrintEOL();
+    dbg_uart.PrintEOL();
 }
 
 extern "C" {
 void PrintfC(const char *format, ...) {
     va_list args;
     va_start(args, format);
-    Uart.IVsPrintf(format, args);
+    dbg_uart.IVsPrintf(format, args);
     va_end(args);
 }
 } // exern C
@@ -52,9 +54,9 @@ void PrintfC(const char *format, ...) {
 class PrintToBuf_t : public PrintfHelper_t {
 public:
     char *S;
-    uint8_t IPutChar(char c) {
+    retv IPutChar(char c) {
         *S++ = c;
-        return retvOk;
+        return retv::Ok;
     }
     void IStartTransmissionIfNotYet() {}
 };
@@ -74,18 +76,18 @@ char* PrintfToBuf(char* PBuf, const char *format, ...) {
 void ByteShell_t::Reply(uint8_t CmdCode, uint32_t Len, uint8_t *PData) {
 //    Printf("BSendCmd %X; %u; %A\r", CmdCode, Len, PData, Len, ' ');
     // Send StartOfCmd
-    if(IPutChar('#') != retvOk) return;
+    if(IPutChar('#') != retv::Ok) return;
     // Send command code
-    if(IPutChar(HalfByte2Char(CmdCode >> 4)) != retvOk) return;
-    if(IPutChar(HalfByte2Char(CmdCode)) != retvOk) return;
+    if(IPutChar(HalfByte2Char(CmdCode >> 4)) != retv::Ok) return;
+    if(IPutChar(HalfByte2Char(CmdCode)) != retv::Ok) return;
     // Send data
     for(uint32_t i=0; i<Len; i++) {
-        if(IPutChar(HalfByte2Char((*PData) >> 4)) != retvOk) return;
-        if(IPutChar(HalfByte2Char(*PData++)) != retvOk) return;
+        if(IPutChar(HalfByte2Char((*PData) >> 4)) != retv::Ok) return;
+        if(IPutChar(HalfByte2Char(*PData++)) != retv::Ok) return;
     }
     // Send EOL
-    if(IPutChar('\r') != retvOk) return;
-    if(IPutChar('\n') != retvOk) return;
+    if(IPutChar('\r') != retv::Ok) return;
+    if(IPutChar('\n') != retv::Ok) return;
     IStartTransmissionIfNotYet();
 }
 #endif
@@ -111,7 +113,7 @@ void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
         c = *fmt++;
         if(c == 0) goto End;
         if(c != '%') {  // Not %
-            if(IPutChar(c) != retvOk) goto End;
+            if(IPutChar(c) != retv::Ok) goto End;
             else continue;
         }
 
@@ -146,23 +148,23 @@ void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
         // Command decoding
         switch(c) {
             case 'c':
-                if(IPutChar(va_arg(args, int)) != retvOk) goto End;
+                if(IPutChar(va_arg(args, int)) != retv::Ok) goto End;
                 break;
 
             case 's':
             case 'S': {
                 char *s = va_arg(args, char*);
                 while(*s != 0) {
-                    if(IPutChar(*s++) != retvOk) goto End;
+                    if(IPutChar(*s++) != retv::Ok) goto End;
                 }
             }
             break;
 
             case 'X':
-                if(IPutUint(va_arg(args, uint32_t), 16, width, filler) != retvOk) goto End;
+                if(IPutUint(va_arg(args, uint32_t), 16, width, filler) != retv::Ok) goto End;
                 break;
             case 'u':
-                if(IPutUint(va_arg(args, uint32_t), 10, width, filler) != retvOk) goto End;
+                if(IPutUint(va_arg(args, uint32_t), 10, width, filler) != retv::Ok) goto End;
                 break;
 
             case 'd':
@@ -170,10 +172,10 @@ void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
             {
                 int32_t n = va_arg(args, int32_t);
                 if(n < 0) {
-                    if(IPutChar('-') != retvOk) goto End;
+                    if(IPutChar('-') != retv::Ok) goto End;
                     n = -n;
                 }
-                if(IPutUint(n, 10, width, filler) != retvOk) goto End;
+                if(IPutUint(n, 10, width, filler) != retv::Ok) goto End;
             }
             break;
 
@@ -181,18 +183,18 @@ void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
             case 'f': {
                 float f = (float)va_arg(args, double);
                 if (f < 0) {
-                    if(IPutChar('-') != retvOk) goto End;
+                    if(IPutChar('-') != retv::Ok) goto End;
                     f = -f;
                 }
                 int32_t n;
                 if((precision == 0) || (precision > FLOAT_PRECISION)) precision = FLOAT_PRECISION;
                 n = (int32_t)f;
-                if(IPutUint(n, 10, width, filler) != retvOk) goto End;
-                if(IPutChar('.') != retvOk) goto End;
+                if(IPutUint(n, 10, width, filler) != retv::Ok) goto End;
+                if(IPutChar('.') != retv::Ok) goto End;
                 filler = '0';
                 width = precision;
                 n = (long)((f - n) * power10Table[precision - 1]);
-                if(IPutUint(n, 10, width, filler) != retvOk) goto End;
+                if(IPutUint(n, 10, width, filler) != retv::Ok) goto End;
             } break;
 #endif
 
@@ -204,14 +206,14 @@ void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
                 width = 2;          // } 01 02 0A etc.; not 1 2 A
                 for(int32_t i = 0; i < n; i++) {
                     if((i > 0) && (Delimiter != 0)) { // do not place delimiter before or after array
-                        if(IPutChar((char)Delimiter) != retvOk) goto End;
+                        if(IPutChar((char)Delimiter) != retv::Ok) goto End;
                     }
-                    if(IPutUint(arr[i], 16, width, filler) != retvOk) goto End;
+                    if(IPutUint(arr[i], 16, width, filler) != retv::Ok) goto End;
                 }
             } break;
 
             case '%':
-                if(IPutChar('%') != retvOk) goto End;
+                if(IPutChar('%') != retv::Ok) goto End;
                 break;
         } // switch
     } // while
@@ -219,7 +221,7 @@ void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
     IStartTransmissionIfNotYet();
 }
 
-uint8_t PrintfHelper_t::IPutUint(uint32_t n, uint32_t base, uint32_t width, char filler) {
+retv PrintfHelper_t::IPutUint(uint32_t n, uint32_t base, uint32_t width, char filler) {
     char digits[10];
     uint32_t len = 0;
     // Place digits to buffer
@@ -230,11 +232,11 @@ uint8_t PrintfHelper_t::IPutUint(uint32_t n, uint32_t base, uint32_t width, char
     } while(n > 0);
     // Add padding
     for(uint32_t i = len; i < width; i++) {
-        if(IPutChar(filler) != retvOk) return retvOverflow;
+        if(IPutChar(filler) != retv::Ok) return retv::Overflow;
     }
     // Print digits
     while(len > 0) {
-        if(IPutChar(digits[--len]) != retvOk) return retvOverflow;
+        if(IPutChar(digits[--len]) != retv::Ok) return retv::Overflow;
     }
-    return retvOk;
+    return retv::Ok;
 } // IPutUint

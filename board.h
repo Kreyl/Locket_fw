@@ -18,7 +18,11 @@
 // Freq of external crystal if any. Leave it here even if not used.
 #define CRYSTAL_FREQ_HZ     12000000
 
-#define SYS_TIM_CLK         (Clk.APB1FreqHz)
+// OS timer settings
+#define STM32_ST_IRQ_PRIORITY   8
+#define STM32_ST_USE_TIMER      2
+#define STM32_TIMCLK1           (Clk.APB1FreqHz)
+
 #define I2C1_ENABLED        PILL_ENABLED
 #define I2C_USE_SEMAPHORE   FALSE
 #define ADC_REQUIRED        FALSE
@@ -130,7 +134,10 @@
 #if 1 // ========================== USART ======================================
 #define PRINTF_FLOAT_EN FALSE
 #define UART_TXBUF_SZ   256
-#define UART_RXBUF_SZ   99
+#define UART_RXBUF_SZ   128
+#define CMD_BUF_SZ      128
+
+#define CMD_UART        USART1
 
 #define UARTS_CNT       1
 

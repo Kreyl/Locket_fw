@@ -40,7 +40,7 @@
 #define BTN_GETSTATE_REQUIRED       FALSE
 
 #define BTN_REPEAT_PERIOD_MS        180
-#define BTN_LONGPRESS_DELAY_MS      999
+#define BTN_LONGPRESS_DELAY_MS      1710
 #define BTN_DELAY_BEFORE_REPEAT_MS  450
 #define BTN_DOUBLECLICK_DELAY_MS    500
 
@@ -66,12 +66,12 @@
 // BtnEvent: contains info about event type, count of participating btns and array with btn IDs
 enum BtnEvt_t {beShortPress, beLongPress, beRelease, beRepeat, beCombo, beLongCombo, beDoubleClick};
 struct BtnEvtInfo_t {
-    BtnEvt_t Type;
+    BtnEvt_t type;
 #if BTN_COMBO || BTN_LONG_COMBO
     uint8_t BtnCnt;
-    uint8_t BtnID[BUTTONS_CNT];
+    uint8_t btn_indx[BUTTONS_CNT];
 #elif BUTTONS_CNT != 1
-    uint8_t BtnID;
+    uint8_t btn_indx;
 #endif
 } __packed;
 

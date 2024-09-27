@@ -9,27 +9,25 @@
 // Forever
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
 static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
-CmdUart_t Uart{&CmdUartParams};
+CmdUart_t dbg_uart{&CmdUartParams};
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t Vibro {VIBRO_SETUP};
 #endif
 
-union rPkt_t {
-    uint32_t DW32[2];
-    struct {
-        uint32_t salt;
-        uint32_t H;
-    };
-    rPkt_t& operator = (const rPkt_t &Right) {
-        DW32[0] = Right.DW32[0];
-        DW32[1] = Right.DW32[1];
-        return *this;
-    }
+struct rPkt {
+    uint32_t indx = 0; // 0 is all off, [1; 7] are colors
+    uint32_t salt = 0;
 } __attribute__ ((__packed__));
 
-rPkt_t pkt_tx;
-#define RPKT_LEN    sizeof(rPkt_t)
+rPkt pkt_tx;
+inline const uint8_t krPktSz = sizeof(rPkt);
+
+inline const uint32_t kSleepDuration = 450UL;
+
+const Color_t colors[8] = { {0,0,0},
+        {4,0,0}, {3,3,0}, {0,4,0}, {0,3,3}, {0,0,4}, {3,0,3}, {3,3,3}
+};
 
 cc1101_t CC(CC_Setup0);
 
@@ -46,7 +44,7 @@ int main(void) {
     PinSetupInput(BTN2_PIN, pudPullDown);
     PinSetupInput(BTN3_PIN, pudPullDown);
     // Check if no btn: sleep no long
-    if(Sleep::WasInStandby() and PinIsLo(BTN1_PIN) and PinIsLo(BTN2_PIN) and PinIsLo(BTN3_PIN)) SleepNow(450);
+    if(Sleep::WasInStandby() and PinIsLo(BTN1_PIN) and PinIsLo(BTN2_PIN) and PinIsLo(BTN3_PIN)) SleepNow(kSleepDuration);
 
     // ==== Init Vcore & clock system ====
     SetupVCore(vcore1V2);
@@ -59,53 +57,55 @@ int main(void) {
     EvtQMain.Init();
 
     // ==== Init hardware ====
-    Uart.Init();
+    dbg_uart.Init();
     Vibro.Init();
     Led.Init();
-//    if(!Sleep::WasInStandby()) {
-        Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
-        Clk.PrintFreqs();
-//    }
+    BackupSpc::EnableAccess();
+    Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
+    Clk.PrintFreqs();
 
-    if(CC.Init() == retvOk) {
+    pkt_tx.indx = BackupSpc::ReadRegister(0);
+    if(pkt_tx.indx > 7) pkt_tx.indx = 0;
+
+    if(CC.Init() == retv::Ok) {
         pkt_tx.salt = 0xCa110fEa;
         if(Sleep::WasInStandby()) {
             // Vibrate accordingly
             if(PinIsHi(BTN1_PIN)) {
                 Vibro.StartOrRestart(vsqBrr);
-                pkt_tx.H = 0;
-                Led.SetColor(clRed);
+                if(pkt_tx.indx < 7) pkt_tx.indx++;
             }
             else if(PinIsHi(BTN2_PIN)) {
                 Vibro.StartOrRestart(vsqBrrBrr);
-                pkt_tx.H = 120;
-                Led.SetColor(clGreen);
+                if(pkt_tx.indx > 0) pkt_tx.indx--;
             }
             else if(PinIsHi(BTN3_PIN)) {
                 Vibro.StartOrRestart(vsqBrrBrrBrr);
-                pkt_tx.H = 240;
-                Led.SetColor(clBlue);
+                pkt_tx.indx = 0;
             }
+            BackupSpc::WriteRegister(0, pkt_tx.indx);
+            Printf("indx=%u\r", pkt_tx.indx);
+            Led.SetColor(colors[pkt_tx.indx]);
             // CC set params
-            CC.SetPktSize(RPKT_LEN);
-            CC.SetChannel(0); // Same as RX
+            CC.SetPktSize(krPktSz);
+            CC.SetChannel(4); // Same as RX
             CC.SetTxPower(CC_PwrPlus5dBm);
             CC.SetBitrate(CCBitrate100k);
             // Transmit what needed
             while(PinIsHi(BTN1_PIN) or PinIsHi(BTN2_PIN) or PinIsHi(BTN3_PIN)) {
                 CC.Recalibrate();
-                CC.Transmit(&pkt_tx, RPKT_LEN);
+                CC.Transmit(reinterpret_cast<uint8_t*>(&pkt_tx), krPktSz);
                 chThdSleepMilliseconds(7);
             }
             CC.EnterPwrDown();
-            SleepNow(270); // To repeat transmission soon
+            SleepNow(kSleepDuration); // To repeat transmission soon
         }
         else { // indicate powering on
             Led.StartOrRestart(lsqStart);
             Vibro.StartOrRestart(vsqBrrBrr);
             chThdSleepMilliseconds(999);
             CC.EnterPwrDown();
-            SleepNow(270);
+            SleepNow(kSleepDuration);
         }
     }
     else { // CC failure

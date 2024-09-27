@@ -18,61 +18,22 @@
 */
 
 /**
- * @file    chversion.h
- * @brief   Version Module macros and structures.
+ * @file    chcore_timer.h
+ * @brief   System timer header file.
  *
- * @addtogroup chibios_version
- * @details This module contains information about the ChibiOS release, it
- *          is common to all subsystems.
+ * @addtogroup ARMCMx_TIMER
  * @{
  */
 
-#ifndef CHVERSION_H
-#define CHVERSION_H
+#ifndef CHCORE_TIMER_H
+#define CHCORE_TIMER_H
+
+/* This is the only header in the HAL designed to be include-able alone.*/
+#include "hal_st.h"
 
 /*===========================================================================*/
 /* Module constants.                                                         */
 /*===========================================================================*/
-
-/**
- * @brief   ChibiOS product identification macro.
- */
-#define _CHIBIOS_
-
-/**
- * @brief   Stable release flag.
- */
-#define CH_VERSION_STABLE       1
-
-/**
- * @name    ChibiOS version identification
- * @{
- */
-/**
- * @brief   ChibiOS version string.
- */
-#define CH_VERSION              "19.1.3"
-
-/**
- * @brief   ChibiOS version release year.
- */
-#define CH_VERSION_YEAR         19
-
-/**
- * @brief   ChibiOS version release month.
- */
-#define CH_VERSION_MONTH        1
-
-/**
- * @brief   ChibiOS version patch number.
- */
-#define CH_VERSION_PATCH        3
-
-/**
- * @brief   ChibiOS version nickname.
- */
-#define CH_VERSION_NICKNAME     "Maiori"
-/** @} */
 
 /*===========================================================================*/
 /* Module pre-compile time settings.                                         */
@@ -98,6 +59,66 @@
 /* Module inline functions.                                                  */
 /*===========================================================================*/
 
-#endif /* CHVERSION_H */
+/**
+ * @brief   Starts the alarm.
+ * @note    Makes sure that no spurious alarms are triggered after
+ *          this call.
+ *
+ * @param[in] time      the time to be set for the first alarm
+ *
+ * @notapi
+ */
+static inline void port_timer_start_alarm(systime_t time) {
+
+  stStartAlarm(time);
+}
+
+/**
+ * @brief   Stops the alarm interrupt.
+ *
+ * @notapi
+ */
+static inline void port_timer_stop_alarm(void) {
+
+  stStopAlarm();
+}
+
+/**
+ * @brief   Sets the alarm time.
+ *
+ * @param[in] time      the time to be set for the next alarm
+ *
+ * @notapi
+ */
+static inline void port_timer_set_alarm(systime_t time) {
+
+  stSetAlarm(time);
+}
+
+/**
+ * @brief   Returns the system time.
+ *
+ * @return              The system time.
+ *
+ * @notapi
+ */
+static inline systime_t port_timer_get_time(void) {
+
+  return stGetCounter();
+}
+
+/**
+ * @brief   Returns the current alarm time.
+ *
+ * @return              The currently set alarm time.
+ *
+ * @notapi
+ */
+static inline systime_t port_timer_get_alarm(void) {
+
+  return stGetAlarm();
+}
+
+#endif /* CHCORE_TIMER_H */
 
 /** @} */
