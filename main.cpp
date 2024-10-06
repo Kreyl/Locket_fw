@@ -21,7 +21,7 @@ PinOutputPWM_t LedSingle {LED_B_PIN};
 
 // IDs and channel
 const uint8_t kRadioChnl = 2;
-const uint8_t kLedBrt = 4;
+const uint8_t kLedBrt = 255;
 // EE Addresses
 const uint32_t kEeAddrDelay = 4;
 
@@ -52,15 +52,26 @@ int main(void) {
     dbg_uart.Init();
     Led.Init();
     ReadEE();
+    uint8_t b = GetDipSwitch();
+    // Select power
+    pwr_lvl_id = b & 0b1111; // Remove high bits
+    if(pwr_lvl_id > 11) pwr_lvl_id = 11;
+    // Get id
+    pkt_tx.id = (b >> 6) & 0b11;
+    switch(pkt_tx.id) {
+        case 0: Led.SetColor({kLedBrt, 0,       0}); break;
+        case 1: Led.SetColor({0,       kLedBrt, 0}); break;
+        case 2: Led.SetColor({0,       0,       kLedBrt}); break;
+        case 3: Led.SetColor({kLedBrt, kLedBrt, 0}); break;
+    }
+    // Receive cmd after power-on
     if(!Sleep::WasInStandby()) {
-        Led.StartOrRestart(lsqStart);
-        Printf("\r%S %S; ch=%u; delay=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME),
-                kRadioChnl, delay);
+        Printf("\r%S %S; ch=%u; delay=%u; id=%u\r", APP_NAME,
+                XSTRINGIFY(BUILD_TIME), kRadioChnl, delay, pkt_tx.id);
         Clk.PrintFreqs();
         // Try to receive Cmd by UART
         for(int i=0; i<27; i++) {
             chThdSleepMilliseconds(99);
-            uint8_t b;
             while(dbg_uart.GetByte(&b) == retv::Ok) {
                 if(dbg_uart.Cmd.PutChar(b) == pdrNewCmd) {
                     OnCmd(&dbg_uart.Cmd);
@@ -71,19 +82,7 @@ int main(void) {
     } // if WasInStandby
 
     if(CC.Init() == retv::Ok) {
-        // Select power
-        uint8_t b = GetDipSwitch();
-        pwr_lvl_id = b & 0b1111; // Remove high bits
-        if(pwr_lvl_id > 11) pwr_lvl_id = 11;
-        // Get id
-        pkt_tx.id = (b >> 6) & 0b11;
-        switch(pkt_tx.id) {
-            case 0: Led.SetColor({kLedBrt, 0,       0}); break;
-            case 1: Led.SetColor({0,       kLedBrt, 0}); break;
-            case 2: Led.SetColor({0,       0,       kLedBrt}); break;
-            case 3: Led.SetColor({kLedBrt, kLedBrt, 0}); break;
-        }
-        Printf("id %u; %S\r", pkt_tx.id, kPwrNames[pwr_lvl_id]);
+        if(Sleep::WasInStandby()) Printf("id %u; %S\r", pkt_tx.id, kPwrNames[pwr_lvl_id]);
         // Setup CC
         CC.SetPktSize(RPKT_LEN);
         CC.DoIdleAfterTx();
@@ -96,7 +95,6 @@ int main(void) {
         CC.Transmit(reinterpret_cast<uint8_t*>(&pkt_tx), RPKT_LEN);
     }
     else { // CC failure
-        Led.Init();
         Led.StartOrRestart(lsqFailure);
         chThdSleepMilliseconds(999);
     }

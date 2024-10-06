@@ -279,8 +279,8 @@ const LedRGBChunk_t lsqStart[] = {
         {csSetup, 0, clRed},   {csWait, 450},
         {csSetup, 0, clGreen}, {csWait, 450},
         {csSetup, 0, clBlue},  {csWait, 450},
-//        {csSetup, 0, clBlack},
-        {csSetup, 0, {0,1,0}},
+        {csSetup, 0, clBlack},
+//        {csSetup, 0, {0,1,0}},
         {csEnd},
 };
 
