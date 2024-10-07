@@ -15,9 +15,11 @@
 Adc_t Adc;
 const uint8_t AdcChannels[ADC_CHANNEL_CNT] = ADC_CHANNELS;
 static const stm32_dma_stream_t *PAdcDma = nullptr;
-
-#ifdef ADC_PERIODIC_MEASUREMENT
+#if defined ADC_MODE_PERIODIC_MEASUREMENT || defined  ADC_MODE_SYNC_MEASUREMENT
 static thread_reference_t ThdRef;
+#endif
+
+#ifdef ADC_MODE_PERIODIC_MEASUREMENT
 static THD_WORKING_AREA(waAdcThread, 128);
 __noreturn
 static void AdcThread(void *arg) {
@@ -56,9 +58,9 @@ void AdcRdyIrq(void *p, uint32_t flags) {
     Clk.DisableHSI();
 #endif
     chSysLockFromISR();
-#ifdef ADC_PERIODIC_MEASUREMENT
+#if defined ADC_MODE_PERIODIC_MEASUREMENT || defined ADC_MODE_SYNC_MEASUREMENT
     chThdResumeI(&ThdRef, MSG_OK); // Wake thread
-#elif defined ADC_MEASURE_BY_REQUEST
+#elif defined ADC_MODE_MEASURE_BY_REQUEST
     EvtQMain.SendNowOrExitI(EvtMsg_t(evtIdAdcRslt));
 #endif
     chSysUnlockFromISR();
@@ -80,8 +82,7 @@ void Adc_t::Init() {
     PAdcDma = dmaStreamAlloc(ADC_DMA, IRQ_PRIO_LOW, AdcRdyIrq, NULL);
     dmaStreamSetPeripheral(PAdcDma, &ADC1->DR);
     dmaStreamSetMode      (PAdcDma, ADC_DMA_MODE);
-
-#ifdef ADC_PERIODIC_MEASUREMENT // ==== Thread ====
+#ifdef ADC_MODE_PERIODIC_MEASUREMENT // ==== Thread ====
     chThdCreateStatic(waAdcThread, sizeof(waAdcThread), NORMALPRIO, (tfunc_t)AdcThread, NULL);
 #endif
 }
@@ -151,6 +152,25 @@ void Adc_t::StartMeasurement() {
     ADC1->CR1 = ADC_CR1_SCAN;               // Mode = scan
     ADC1->CR2 = ADC_CR2_DMA | ADC_CR2_ADON; // Enable DMA, enable ADC
     StartConversion();
+}
+
+void Adc_t::StartMeasurementAndWaitCompletion() {
+#ifdef ADC_EN_AND_DIS_HSI
+    Clk.EnableHSI();
+#endif
+    // DMA
+    dmaStreamSetMemory0(PAdcDma, IBuf);
+    dmaStreamSetTransactionSize(PAdcDma, ADC_SEQ_LEN);
+    dmaStreamSetMode(PAdcDma, ADC_DMA_MODE);
+    dmaStreamEnable(PAdcDma);
+    // ADC
+    ADC1->CR1 = ADC_CR1_SCAN;               // Mode = scan
+    ADC1->CR2 = ADC_CR2_DMA | ADC_CR2_ADON; // Enable DMA, enable ADC
+    chSysLock();
+    ThdRef = chThdGetSelfX();
+    StartConversion();
+    chThdSleepS(TIME_INFINITE); // Will be waken by IRQ
+    chSysUnlock();
 }
 
 uint32_t Adc_t::GetResultAverage(uint8_t AChannel) {
