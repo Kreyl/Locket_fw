@@ -42,6 +42,7 @@ Beeper_t Beeper {BEEPER_PIN};
 #endif
 
 LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+bool be_test_station;
 
 // ==== Timers ====
 static TmrKL_t TmrEverySecond {TIME_MS2I(540), evtIdEverySecond, tktPeriodic};
@@ -151,6 +152,8 @@ void ReadAndSetupMode() {
     Vibro.Stop();
     Led.Stop();
     // Select self type
+    be_test_station = b & 0x80;
+    if(be_test_station) Printf("Test Station\r");
     // Select power
 //    b &= 0b1111; // Remove high bits
 //    Printf("Type: %u; Pwr: %u\r", Type, b);

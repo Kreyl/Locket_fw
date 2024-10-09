@@ -35,6 +35,7 @@ cc1101_t CC(CC_Setup0);
 rLevel1_t Radio;
 int8_t Rssi;
 extern LedRGBwPower_t Led;
+extern bool be_test_station;
 
 #if 1 // ================================ Task =================================
 static THD_WORKING_AREA(warLvl1Thread, 256);
@@ -44,29 +45,28 @@ static void rLvl1Thread(void *arg) {
     Radio.ITask();
 }
 
-//#define TEST_STATION
-
 __noreturn
 void rLevel1_t::ITask() {
     while(true) {
         CC.Recalibrate();
-#ifdef TEST_STATION
-        uint8_t Rslt = CC.Receive(270, &PktRx, RPKT_LEN, &Rssi);
-        if(Rslt == retvOk) {
-            PktTx.Rssi = Rssi;
+        if(be_test_station) {
+            uint8_t Rslt = CC.Receive(270, &PktRx, RPKT_LEN, &Rssi);
+            if(Rslt == retvOk) {
+                PktTx.Rssi = Rssi;
+                CC.Transmit(&PktTx, RPKT_LEN);
+                Printf("Rssi: our= %d; their=%d\r", Rssi, PktRx.Rssi);
+                Led.StartOrRestart(lsqBlink);
+            }
+        }
+        else {
             CC.Transmit(&PktTx, RPKT_LEN);
-            Printf("Rssi: our= %d; their=%d\r", Rssi, PktRx.Rssi);
-            Led.StartOrRestart(lsqBlink);
+            uint8_t Rslt = CC.Receive(270, &PktRx, RPKT_LEN, &Rssi);
+            if(Rslt == retvOk) {
+                Printf("Rssi: our= %d; their=%d\r", Rssi, PktRx.Rssi);
+                Led.StartOrRestart(lsqBlink);
+            }
+            chThdSleepMilliseconds(630);
         }
-#else
-        CC.Transmit(&PktTx, RPKT_LEN);
-        uint8_t Rslt = CC.Receive(270, &PktRx, RPKT_LEN, &Rssi);
-        if(Rslt == retvOk) {
-            Printf("Rssi: our= %d; their=%d\r", Rssi, PktRx.Rssi);
-            Led.StartOrRestart(lsqBlink);
-        }
-        chThdSleepMilliseconds(630);
-#endif
     } // while true
 }
 #endif // task
