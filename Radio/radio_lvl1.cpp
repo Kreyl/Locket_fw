@@ -11,7 +11,7 @@
 
 cc1101_t CC(CC_Setup0);
 
-#define DBG_PINS
+//#define DBG_PINS
 
 #ifdef DBG_PINS
 #define DBG_GPIO1   GPIOB
@@ -38,9 +38,7 @@ static inline void TryToReceive(uint32_t rx_duration_ms) {
     sysinterval_t time_left_st = total_duration_st;
     CC.Recalibrate();
     while(true) {
-        DBG2_SET();
         retv rx_rslt = CC.Receive_st(time_left_st, (uint8_t*)&pkt_rx, RPKT_LEN, &pkt_rx.rssi);
-        DBG2_CLR();
         if(rx_rslt == retv::Ok) {
 //            Printf("%u %d; %d\r", pkt_rx.id, pkt_rx.type, pkt_rx.rssi);
             curr_tbl->AddOrReplaceExistingPkt(pkt_rx);
@@ -69,7 +67,7 @@ static inline void TaskFeelEachOther() {
         }
         // ==== TX ====
         pkt_tx.id = cfg.id;
-        pkt_tx.type = (uint8_t)cfg.type;
+        pkt_tx.type = 18; // Just something
         DBG1_SET();
         CC.Recalibrate();
         CC.Transmit((uint8_t*)&pkt_tx, RPKT_LEN);
@@ -99,13 +97,11 @@ static void rLvl1Thread(void *arg) {
         supercycle_cnt++;
         if(supercycle_cnt >= CHECK_RXTABLE_PERIOD_SC) {
             supercycle_cnt = 0;
-            if(curr_tbl->cnt != 0) { // Report and switch table if not empty
-                chSysLock();
-                EvtQMain.SendNowOrExitI(EvtMsg_t(EvtId::CheckRxTable, (void*)curr_tbl));
-                curr_tbl = (curr_tbl == &tbl1)? &tbl2 : &tbl1;
-                curr_tbl->Clear();
-                chSysUnlock();
-            }
+            chSysLock();
+            EvtQMain.SendNowOrExitI(EvtMsg_t(EvtId::CheckRxTable, (void*)curr_tbl));
+            curr_tbl = (curr_tbl == &tbl1)? &tbl2 : &tbl1;
+            curr_tbl->Clear();
+            chSysUnlock();
         }
     } // while true
 }
@@ -118,7 +114,7 @@ retv RadioInit() {
 
     if(CC.Init() == retv::Ok) {
         CC.SetPktSize(RPKT_LEN);
-        CC.SetChannel(RCHNL_EACH_OTH);
+        CC.SetChannel(3);
         CC.SetTxPower(cfg.tx_power);
         CC.SetBitrate(CCBitrate500k);
         // Thread

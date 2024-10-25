@@ -195,50 +195,19 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #define PAUSETIME       180
 #define SHORTPAUSETIME  72
 
-// Aliens
-LedRGBChunk_t lsqWitch1[] = {
-        {csSetup, 0, clBlue},  {csWait, PAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+LedRGBChunk_t lsqAlone[] = {
+        {csSetup, 360, clRed},  
         {csEnd},
 };
 
-LedRGBChunk_t lsqWitch2[] = {
-        {csSetup, 0, clBlue},  {csWait, PAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
-        {csRepeat, 1},
+LedRGBChunk_t lsqTwoOfUs[] = {
+        {csSetup, 360, clGreen},  
         {csEnd},
 };
 
-LedRGBChunk_t lsqWitchMany[] = {
-        {csSetup, 0, clBlue},  {csWait, PAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
-        {csRepeat, 2},
+LedRGBChunk_t lsqManyOfUs[] = {
+        {csSetup, 360, clBlue},  
         {csEnd},
-};
-
-LedRGBChunk_t lsqSaintPlace[] = {
-        {csSetup, 0, clRed},   {csWait, PAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
-        {csEnd},
-};
-LedRGBChunk_t lsqWitchPlace[] = {
-        {csSetup, 0, clGreen}, {csWait, PAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
-        {csEnd},
-};
-
-// Self
-const LedRGBChunk_t lsqSelfTypeWitch[] = {
-        {csSetup, 0, {0, 0, 1} }, {csEnd},
-};
-const LedRGBChunk_t lsqSelfTypeWitchNoVibro[] = {
-        {csSetup, 0, {1, 1, 0} }, {csEnd},
-};
-const LedRGBChunk_t lsqSelfTypeSaintPlace[] = {
-        {csSetup, 0, {1, 0, 0} }, {csEnd},
-};
-const LedRGBChunk_t lsqSelfTypeWitchPlace[] = {
-        {csSetup, 0, {0, 1, 0} }, {csEnd},
 };
 
 

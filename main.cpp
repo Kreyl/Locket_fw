@@ -25,6 +25,7 @@ LedRGBwPower_t<3> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t<3> Vibro { VIBRO_SETUP };
 
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
+uint32_t seconds = 0, start_time = 0;
 
 void SleepNow(uint32_t Delay) {
     chSysLock();
@@ -36,56 +37,53 @@ void SleepNow(uint32_t Delay) {
 Config cfg;
 #endif
 
-static void ShowSelfTypeWhenIdle() {
-    switch(cfg.type) {
-        case DevType::Witch:
-            if(cfg.VibroEnabled()) Led.StartOrAddToQueue(lsqSelfTypeWitch);
-            else  Led.StartOrAddToQueue(lsqSelfTypeWitchNoVibro);
-            break;
-        case DevType::SaintPlace: Led.StartOrAddToQueue(lsqSelfTypeSaintPlace); break;
-        case DevType::WitchPlace: Led.StartOrAddToQueue(lsqSelfTypeWitchPlace); break;
+/* Alone: empty table or aliens are too far
+ * Two: tbl.cnt >= 1 and
+ */
+
+void ShowAlone() {
+    Led.StartOrRestart(lsqAlone);
+    if((seconds - start_time) >= 20) {
+        start_time = seconds;
+        Vibro.StartOrRestart(vsqBrr);
     }
 }
 
+void ShowTwo() {
+    Led.StartOrRestart(lsqTwoOfUs);
+    if((seconds - start_time) >= 15) {
+        start_time = seconds;
+        Vibro.StartOrRestart(vsqBrrBrr);
+    }
+}
+
+void ShowMany() {
+    Led.StartOrRestart(lsqManyOfUs);
+    if((seconds - start_time) >= 2) {
+        start_time = seconds;
+        Vibro.StartOrRestart(vsqBrrBrrBrr);
+    }
+}
+
+int32_t tresholds[16] = {
+        -100, -97, -94, -91, -88, -85, -82, -79,
+        -76, -73, -70, -67, -64, -61, -58, -55,
+};
+int32_t rssi_close = -72;
+
 static void ProcessRxTbl(RxTable &tbl) {
-    if(cfg.type != DevType::Witch) return; // Only witches can feel
-    // === Analyze table ===
-    uint32_t witch_cnt = 0;
-    bool saint_place_is_near = false, witch_place_is_near = false;
-    for(uint32_t i=0; i<tbl.cnt; i++) {
-        // If Saint Place is near - indicate it and go out
-        if(tbl[i].type == (uint8_t)DevType::SaintPlace) {
-            saint_place_is_near = true;
-            break;
-        }
-        else if(tbl[i].type == (uint8_t)DevType::WitchPlace) witch_place_is_near = true;
-        else witch_cnt++;  // witch is here!
-    } // for
-    // === Indicate ===
-    if(saint_place_is_near) Led.StartOrRestart(lsqSaintPlace); // ...and do no more
-    else {
-        // Present witches
-        switch(witch_cnt) {
-            case 0:  break; // Noone near
-            case 1:  Led.StartOrRestart(lsqWitch1); break;
-            case 2:  Led.StartOrRestart(lsqWitch2); break;
-            default: Led.StartOrRestart(lsqWitchMany); break;
-        } // switch
-        if(cfg.VibroEnabled()) {
-            switch(witch_cnt) {
-                case 0:  break; // Noone near
-                case 1:  Vibro.StartOrContinue(vsqBrr); break;
-                case 2:  Vibro.StartOrContinue(vsqBrrBrr); break;
-                default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
-            } // switch
-        }
-        // Present witch place if any
-        if(witch_place_is_near) {
-            Led.StartOrAddToQueue(lsqWitchPlace);
-        }
-    } // else
-    // Present self
-    ShowSelfTypeWhenIdle();
+    if(tbl.cnt == 0) ShowAlone(); // Noone near
+    else if(tbl.cnt == 1) {       // Maybe one is near, check rssi
+        Printf("RSSI 1: %d\r", tbl[0].rssi);
+        ShowTwo(); // Too far
+    }
+    else { // Three (or more, hehe)
+        int32_t rssi1 = tbl[0].rssi, rssi2 = tbl[1].rssi;
+        Printf("RSSI 1: %d; RSSI 2: %d\r", rssi1, rssi2);
+        if(rssi1 > rssi_close and rssi2 > rssi_close) ShowMany(); // Both are close
+        else ShowTwo(); // Both
+
+    }
 }
 
 int main(void) {
@@ -113,23 +111,9 @@ int main(void) {
     }
 
     ReadAndSetupMode();
-    ShowSelfTypeWhenIdle();
     TmrEverySecond.StartOrRestart();
-    SimpleSensors::Init();
-
     // Main cycle
     ITask();
-}
-
-static void SetupAndShowBrightness() {
-    uint8_t v = Config::kBrtTable[cfg.brt_indx];
-    lsqWitch1[0].Color.B = v;
-    lsqWitch2[0].Color.B = v;
-    lsqWitchMany[0].Color.B = v;
-    lsqSaintPlace[0].Color.R = v;
-    lsqWitchPlace[0].Color.G = v;
-    Led.StartOrRestart(lsqWitch1);
-    ShowSelfTypeWhenIdle();
 }
 
 __noreturn
@@ -139,11 +123,7 @@ void ITask() {
         switch(Msg.id) {
             case EvtId::EverySecond:
                 if(ReadAndSetupMode() == retv::New) chThdSleepMilliseconds(810);
-                // Process disabled vibro if it is disabled
-                if(cfg.novibro_time_left_s > 0) {
-                    cfg.novibro_time_left_s--;
-                    if(cfg.novibro_time_left_s == 0) ShowSelfTypeWhenIdle(); // Indicate changed vibro state
-                }
+                seconds++;
                 break;
 
             case EvtId::CheckRxTable: ProcessRxTbl(*(RxTable*)Msg.ptr); break;
@@ -195,29 +175,15 @@ retv ReadAndSetupMode() {
     // Something has changed
     Printf("Dip: 0x%02X; ", dw);
     OldDipSettings = dw;
-    // Select dev type
-    uint32_t bits = (dw >> 6) & 0b11UL;
-    if(bits == 1) cfg.type = DevType::SaintPlace;
-    else if(bits == 2) cfg.type = DevType::WitchPlace;
-    else cfg.type = DevType::Witch; // 0 or 3
+    // Select rssi threshold
+    uint32_t bits = (dw >> 4) & 0b1111UL;
+    rssi_close = tresholds[bits];
+    Printf("threshold: %d\r", rssi_close);
     // Select power
     bits = dw & 0b1111; // Remove high bits = group 5678
     cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : PwrTable[bits];
     // Print settings
-    if(cfg.type == DevType::SaintPlace) {
-        Led.StartOrRestart(lsqSaintPlace);
-        Printf("Type: SaintPlace; ");
-    }
-    else if(cfg.type == DevType::WitchPlace) {
-        Led.StartOrRestart(lsqWitchPlace);
-        Printf("Type: WitchPlace; ");
-    }
-    else {
-        Led.StartOrRestart(lsqWitch1);
-        Printf("Type: Witch; ");
-    }
     Printf("Pwr: %S\r", CC_PwrToString(cfg.tx_power));
-    ShowSelfTypeWhenIdle();
     return retv::New;
 }
 
