@@ -3,7 +3,14 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "PiecesOfSoul"
+#define APP_NAME            "SeidheLike"
+
+#ifndef TRUE
+#define TRUE                1
+#endif
+#ifndef FALSE
+#define FALSE               0
+#endif
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE

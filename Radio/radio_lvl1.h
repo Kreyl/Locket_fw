@@ -22,7 +22,7 @@
 struct rPkt_t {
     uint32_t salt = 0xCa110fEa;
     uint16_t id; // Required to distinct packets from same src
-    uint8_t type;
+    uint8_t btn;
     int8_t rssi; // Will be set after RX. Transmitting is useless, but who cares.
 };
 #pragma pack(pop)
@@ -107,7 +107,7 @@ public:
         Printf("RxTable cnt: %u\r", cnt);
         for(uint32_t i=0; i<cnt; i++) {
 #if RXT_PKT_REQUIRED
-            Printf("ID: %u; type: %u\r", ibuf[i].id, ibuf[i].type);
+            Printf("ID: %u; type: %u\r", ibuf[i].id, ibuf[i].btn);
 #else
             Printf("ID: %u\r", IdBuf[i]);
 #endif

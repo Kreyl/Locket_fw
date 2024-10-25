@@ -25,7 +25,6 @@ LedRGBwPower_t<3> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t<3> Vibro { VIBRO_SETUP };
 
 static TmrKL_t TmrEverySecond {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
-uint32_t seconds = 0, start_time = 0;
 
 void SleepNow(uint32_t Delay) {
     chSysLock();
@@ -37,54 +36,6 @@ void SleepNow(uint32_t Delay) {
 Config cfg;
 #endif
 
-/* Alone: empty table or aliens are too far
- * Two: tbl.cnt >= 1 and
- */
-
-void ShowAlone() {
-    Led.StartOrRestart(lsqAlone);
-    if((seconds - start_time) >= 20) {
-        start_time = seconds;
-        Vibro.StartOrRestart(vsqBrr);
-    }
-}
-
-void ShowTwo() {
-    Led.StartOrRestart(lsqTwoOfUs);
-    if((seconds - start_time) >= 15) {
-        start_time = seconds;
-        Vibro.StartOrRestart(vsqBrrBrr);
-    }
-}
-
-void ShowMany() {
-    Led.StartOrRestart(lsqManyOfUs);
-    if((seconds - start_time) >= 2) {
-        start_time = seconds;
-        Vibro.StartOrRestart(vsqBrrBrrBrr);
-    }
-}
-
-int32_t tresholds[16] = {
-        -100, -97, -94, -91, -88, -85, -82, -79,
-        -76, -73, -70, -67, -64, -61, -58, -55,
-};
-int32_t rssi_close = -72;
-
-static void ProcessRxTbl(RxTable &tbl) {
-    if(tbl.cnt == 0) ShowAlone(); // Noone near
-    else if(tbl.cnt == 1) {       // Maybe one is near, check rssi
-        Printf("RSSI 1: %d\r", tbl[0].rssi);
-        ShowTwo(); // Too far
-    }
-    else { // Three (or more, hehe)
-        int32_t rssi1 = tbl[0].rssi, rssi2 = tbl[1].rssi;
-        Printf("RSSI 1: %d; RSSI 2: %d\r", rssi1, rssi2);
-        if(rssi1 > rssi_close and rssi2 > rssi_close) ShowMany(); // Both are close
-        else ShowTwo(); // Both
-
-    }
-}
 
 int main(void) {
     // ==== Init Vcore & clock system ====
@@ -103,6 +54,10 @@ int main(void) {
 
     Led.Init();
     Vibro.Init();
+
+    PinSetupInput(BTN1_PIN, pudPullDown);
+    PinSetupInput(BTN2_PIN, pudPullDown);
+    PinSetupInput(BTN3_PIN, pudPullDown);
 
     if(RadioInit() == retv::Ok) Vibro.StartOrRestart(vsqBrrBrr);
     else {
@@ -123,10 +78,16 @@ void ITask() {
         switch(Msg.id) {
             case EvtId::EverySecond:
                 if(ReadAndSetupMode() == retv::New) chThdSleepMilliseconds(810);
-                seconds++;
                 break;
 
-            case EvtId::CheckRxTable: ProcessRxTbl(*(RxTable*)Msg.ptr); break;
+            // case EvtId::CheckRxTable: ProcessRxTbl(*(RxTable*)Msg.ptr); break;
+
+            case EvtId::RadioCmd:
+                if(Msg.value == 1) Vibro.StartOrContinue(vsqBrr);
+                else if(Msg.value == 2) Vibro.StartOrContinue(vsqBrrBrr);
+                else Vibro.StartOrContinue(vsqBrrBrrBrr);
+                break;
+
 
 #if BUTTONS_ENABLED
         case EvtId::Buttons:
@@ -176,9 +137,7 @@ retv ReadAndSetupMode() {
     Printf("Dip: 0x%02X; ", dw);
     OldDipSettings = dw;
     // Select rssi threshold
-    uint32_t bits = (dw >> 4) & 0b1111UL;
-    rssi_close = tresholds[bits];
-    Printf("threshold: %d\r", rssi_close);
+    uint32_t bits;
     // Select power
     bits = dw & 0b1111; // Remove high bits = group 5678
     cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : PwrTable[bits];

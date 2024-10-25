@@ -32,6 +32,8 @@ static uint32_t supercycle_cnt = 0;
 static RxTable tbl1, tbl2, *curr_tbl = &tbl1;
 static uint8_t tx_power;
 
+extern bool BtnIsPressed();
+
 static inline void TryToReceive(uint32_t rx_duration_ms) {
     sysinterval_t total_duration_st = TIME_MS2I(rx_duration_ms);
     sysinterval_t start_time_st = chVTGetSystemTimeX();
@@ -56,52 +58,37 @@ static inline void TryToSleep(uint32_t sleep_duration_ms) {
     chThdSleepMilliseconds(sleep_duration_ms);
 }
 
-static inline void TaskFeelEachOther() {
-    for(uint32_t cycle_n=0; cycle_n < CYCLE_CNT; cycle_n++) {   // Iterate cycles
-        uint32_t tx_slot = Random::Generate(0, (SLOT_CNT-1)); // Decide when to transmit
-        // If TX slot is not zero: receive in zero cycle, sleep in non-zero cycle
-        if(tx_slot != 0) {
-            uint32_t time_before_tx = tx_slot * SLOT_DURATION_MS;
-            if(cycle_n == 0) TryToReceive(time_before_tx);
-            else TryToSleep(time_before_tx);
-        }
-        // ==== TX ====
-        pkt_tx.id = cfg.id;
-        pkt_tx.type = 18; // Just something
-        DBG1_SET();
-        CC.Recalibrate();
-        CC.Transmit((uint8_t*)&pkt_tx, RPKT_LEN);
-        DBG1_CLR();
-
-        // If TX slot is not last: receive in zero cycle, sleep in non-zero cycle
-        if(tx_slot != (SLOT_CNT-1)) {
-            uint32_t time_after_tx = ((SLOT_CNT-1) - tx_slot) * SLOT_DURATION_MS;
-            if(cycle_n == 0) TryToReceive(time_after_tx);
-            else TryToSleep(time_after_tx);
-        }
-    } // for
-}
-
 static THD_WORKING_AREA(warLvl1Thread, 256);
 __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
-        TaskFeelEachOther();
         // Set new tx pwr if changed
         if(tx_power != cfg.tx_power) {
             tx_power = cfg.tx_power;
             CC.SetTxPower(tx_power);
         }
-        // Is it time to check?
-        supercycle_cnt++;
-        if(supercycle_cnt >= CHECK_RXTABLE_PERIOD_SC) {
-            supercycle_cnt = 0;
-            chSysLock();
-            EvtQMain.SendNowOrExitI(EvtMsg_t(EvtId::CheckRxTable, (void*)curr_tbl));
-            curr_tbl = (curr_tbl == &tbl1)? &tbl2 : &tbl1;
-            curr_tbl->Clear();
-            chSysUnlock();
+        // Is it time to tx?
+        if(PinIsHi(BTN1_PIN)) pkt_tx.btn = 1;
+        else if(PinIsHi(BTN2_PIN)) pkt_tx.btn = 2;
+        else if(PinIsHi(BTN3_PIN)) pkt_tx.btn = 3;
+        else pkt_tx.btn = 0;
+
+        if(pkt_tx.btn != 0) {
+            pkt_tx.id = cfg.id;
+            pkt_tx.salt = 0xCa110fEa;
+            CC.Recalibrate();
+            CC.Transmit((uint8_t*)&pkt_tx, RPKT_LEN);
+            chThdSleepMilliseconds(72);
+        }
+        else {
+            CC.Recalibrate();
+            retv rx_rslt = CC.Receive_st(72, (uint8_t*)&pkt_rx, RPKT_LEN, &pkt_rx.rssi);
+            if(rx_rslt == retv::Ok) {
+                Printf("%u %d; %d\r", pkt_rx.id, pkt_rx.btn, pkt_rx.rssi);
+                EvtQMain.SendNowOrExit(EvtMsg_t(EvtId::RadioCmd, pkt_rx.btn));
+            }
+            chThdSleepMilliseconds(36);
         }
     } // while true
 }
@@ -114,9 +101,9 @@ retv RadioInit() {
 
     if(CC.Init() == retv::Ok) {
         CC.SetPktSize(RPKT_LEN);
-        CC.SetChannel(3);
+        CC.SetChannel(9);
         CC.SetTxPower(cfg.tx_power);
-        CC.SetBitrate(CCBitrate500k);
+        CC.SetBitrate(CCBitrate100k);
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return retv::Ok;
