@@ -47,40 +47,41 @@ LedRGBChunk_t lsqOff[] = { {csSetup, 450, clBlack},  {csEnd} };
 
 class RxTable {
 private:
-    struct IdRssi {
-        uint32_t adding_cycle = 0;
-        int32_t rssi = -207;
-    };
-    static const uint32_t kIdCnt = 4;
-    IdRssi ids[kIdCnt];
-    uint32_t curr_cycle = 0;
+    static const uint32_t kTableSz = 7;
+    rPkt_t rcvd[kTableSz];
+    uint32_t icnt = 0;
     bool led_is_initialyzed = false;
 public:
-    static const uint32_t kMaxCycleCnt = 9;
-
-    void AddId(uint8_t aid, int8_t rssi) {
-        if(aid >= kIdCnt) return;
-        ids[aid].rssi = rssi;
-        ids[aid].adding_cycle = curr_cycle;
+    void Add(rPkt_t &apkt) {
+        // Check if such uniq ID already exists
+        for(uint32_t i=0; i<icnt; i++) {
+            if(rcvd[i].uniq_id == apkt.uniq_id) {
+                if(rcvd[i].rssi < apkt.rssi) rcvd[i] = apkt; // Replace with newer pkt if RSSI is stronger
+                return;
+            }
+        }
+        // Uniq ID not found
+        if(icnt < kTableSz) {
+            rcvd[icnt] = apkt;
+            icnt++;
+        }
     }
 
     retv Process() {
+        if(icnt == 0) return retv::NotFound;
         // Find max rssi
-        int32_t max_rssi = -180, id_max = -1;
-        for(int32_t i=0; i<kIdCnt; i++) {
-            uint32_t diff = curr_cycle - ids[i].adding_cycle;
-            if(diff > kMaxCycleCnt) continue;
-            if(ids[i].rssi > max_rssi) {
-                max_rssi = ids[i].rssi;
-                id_max = i;
+        int32_t max_rssi = -360, indx_max = 0;
+        for(int32_t i=0; i<icnt; i++) {
+            if(rcvd[i].rssi > max_rssi) {
+                max_rssi = rcvd[i].rssi;
+                indx_max = i;
             }
         }
-        if(id_max == -1) return retv::NotFound;
         // Setup color
-        switch(id_max) {
-            case 0: lsqOn[0].Color = clRed;   break;
-            case 1: lsqOn[0].Color = clGreen; break;
-            case 2: lsqOn[0].Color = clBlue;  break;
+        switch(rcvd[indx_max].type) {
+            case 0: lsqOn[0].Color = clRed;    break;
+            case 1: lsqOn[0].Color = clGreen;  break;
+            case 2: lsqOn[0].Color = clBlue;   break;
             case 3: lsqOn[0].Color = clYellow; break;
         }
         if(!led_is_initialyzed) {
@@ -88,10 +89,9 @@ public:
             Led.Init();
         }
         Led.StartOrContinue(lsqOn);
+        icnt = 0; // Reset table
         return retv::Ok;
     }
-
-    void IncCycle() { curr_cycle++; }
 } rx_table;
 
 int main(void) {
@@ -110,12 +110,14 @@ int main(void) {
     bool mode_rx = b & 0b10000;
     if(!mode_rx) { // Read TX params
         Led.Init();
+        // Get uniq ID
+        rpkt.uniq_id = GetUniqID3();
         // Select power
         pwr_lvl_id = b & 0b1111; // Remove high bits
         if(pwr_lvl_id > 11) pwr_lvl_id = 11;
-        // Get id
-        rpkt.id = (b >> 6) & 0b11;
-        switch(rpkt.id) {
+        // Get type
+        rpkt.type = (b >> 6) & 0b11;
+        switch(rpkt.type) {
             case 0: Led.SetColor({kLedBrt, 0,       0}); break;
             case 1: Led.SetColor({0,       kLedBrt, 0}); break;
             case 2: Led.SetColor({0,       0,       kLedBrt}); break;
@@ -123,9 +125,9 @@ int main(void) {
         }
     }
 
-    if(Sleep::WasInStandby()) {
+    if(Sleep::WasInStandby()) { // Was in Standby => woke. No need to speak long.
         if(mode_rx) Printf("RX\r");
-        else Printf("TX id %u; %S\r", rpkt.id, kPwrNames[pwr_lvl_id]);
+        else Printf("TX uniq=0x%X; type=%u; %S\r", rpkt.uniq_id, rpkt.type, kPwrNames[pwr_lvl_id]);
     }
     // Not in standby => just powered on
     else {
@@ -135,8 +137,8 @@ int main(void) {
             Printf("\r%S RX %S; ch=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), kRadioChnl);
         }
         else { // mode tx
-            Printf("\r%S %S; ch=%u; period=%u; id=%u\r", APP_NAME,
-                XSTRINGIFY(BUILD_TIME), kRadioChnl, tx_period, rpkt.id);
+            Printf("\r%S %S; ch=%u; period=%u; type=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME),
+                kRadioChnl, tx_period, rpkt.type);
         }
         Clk.PrintFreqs();
         // Measure battery
@@ -168,15 +170,16 @@ int main(void) {
         CC.SetTxPower(PwrTable[pwr_lvl_id]);
 #if 1 // =================== RX =====================
         if(mode_rx) {
-            int8_t rssi;
             while(true) {
                 CC.Recalibrate();
                 // Receive for rx_receive_dur ms
                 systime_t start = chVTGetSystemTimeX();
                 while(chVTTimeElapsedSinceX(start) < TIME_MS2I(rx_receive_dur)) {
+                    int8_t rssi;
                     if(CC.Receive(rx_receive_dur, reinterpret_cast<uint8_t*>(&rpkt), RPKT_LEN, &rssi) == retv::Ok) {
-                        Printf("id=%d; Rssi=%d\r", rpkt.id, rssi);
-                        if(rpkt.the_word == kTheWord) rx_table.AddId(rpkt.id, rssi);
+                        Printf("type=%d; Rssi=%d\r", rpkt.type, rssi);
+                        rpkt.rssi = rssi;
+                        rx_table.Add(rpkt);
                     }
                 } // RX done
 
@@ -186,13 +189,11 @@ int main(void) {
                 }
                 // When LED is active, let CC sleep for what left from cycle duration
                 chThdSleepMilliseconds(rx_cycle_duration - rx_receive_dur);
-                rx_table.IncCycle();
             } // while true
         }
 #endif
 #if 1 // ===================== TX ====================
         else { // Transmit
-            rpkt.the_word = kTheWord;
             CC.Recalibrate();
             CC.Transmit(reinterpret_cast<uint8_t*>(&rpkt), RPKT_LEN);
         }

@@ -3,7 +3,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "LustraWithID"
+#define APP_NAME            "RxTxWUniq"
 
 #ifndef TRUE
 #define TRUE 1
