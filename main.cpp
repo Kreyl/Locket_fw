@@ -50,7 +50,7 @@ static TmrKL_t TmrEverySecond {TIME_MS2I(540), evtIdEverySecond, tktPeriodic};
 static uint32_t TimeS;
 #endif
 
-int main(void) {
+void main(void) {
     // ==== Init Vcore & clock system ====
     SetupVCore(vcore1V5);
     Clk.SetMSI4MHz();

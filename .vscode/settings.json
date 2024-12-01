@@ -1,0 +1,35 @@
+{
+    "C_Cpp.default.intelliSenseMode": "gcc-arm",
+    //"C_Cpp.default.configurationProvider": "",
+    "cortex-debug.gdbPath": "C:/YaStudio/arm-none-eabi-gcc/bin/arm-none-eabi-gdb.exe",
+    "cortex-debug.enableTelemetry": false,
+    "cortex-debug.armToolchainPath": "C:/YaStudio/arm-none-eabi-gcc/bin",
+    "cortex-debug.armToolchainPrefix": "arm-none-eabi",
+    "cortex-debug.openocdPath": "C:/YaStudio/OpenOCD/bin/openocd.exe",
+    "cortex-debug.variableUseNaturalFormat": true, // False is hex, true is decimal
+    "debug.onTaskErrors": "abort",
+    "terminal.integrated.env.windows": {
+        "PATH": "C:/YaStudio/arm-none-eabi-gcc/bin;C:/YaStudio/build-tools;C:/YaStudio/OpenOCD;C:/YaStudio/OpenOCD/bin"
+    },
+    "files.associations": {
+        "random": "cpp"
+    },
+    "VsCodeTaskButtons.showCounter": false,
+    "VsCodeTaskButtons.tasks": [
+        {
+            "label": "🛠️ Build Release",
+            "task": "Build Release",
+            "tooltip": "🛠️ Start the \"build\" task"
+        },
+        {
+            "label": "🧹 Clean Release",
+            "task": "Clean Release",
+            "tooltip": "🧹 Start a \"clean\" task"
+        },
+        {
+            "label": "🔥Flash Release",
+            "task": "Flash Release",
+            "tooltip": "Start the \"flash\" task"
+        }
+    ],
+}
