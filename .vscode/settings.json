@@ -14,7 +14,11 @@
         "random": "cpp",
         "new": "cpp",
         "cstddef": "cpp",
-        "cstdint": "cpp"
+        "cstdint": "cpp",
+        "vector": "cpp",
+        "initializer_list": "cpp",
+        "cmath": "cpp",
+        "memory_resource": "cpp"
     },
     // TODO Highlight
     "todohighlight.isEnable": true,
@@ -55,10 +59,10 @@
             "isWholeLine": false
         },
         {
-            "text": "WARNING:", 
+            "text": "WARNING:",
             "before": {
                 "contentText": "⚠️" // adds text before the highlight
-            }, 
+            },
             "after": {
                 "contentText": "⚠️" // adds text after the highlight
             },
@@ -104,7 +108,7 @@
         "border": "1px solid #eee",
         "borderRadius": "2px",
         "isWholeLine": false,
-        //other styling properties goes here ... 
+        //other styling properties goes here ...
     },
     "todohighlight.include": [
         "**/*.h",

@@ -35,9 +35,11 @@ struct rPkt_t {
 #define RCHNL_EACH_OTH          0
 
 // Feel-Each-Other related
-#define CYCLE_CNT               5U
+#define CYCLE_CNT               4U
 #define SLOT_CNT                54U
-#define SLOT_DURATION_MS        3U
+// #define SLOT_DURATION_MS        3U // for 500kBit/s
+// #define SLOT_DURATION_MS        5U // for 250kBit/s
+#define SLOT_DURATION_MS        5U // for 100kBit/s
 #define MIN_SLEEP_DURATION_MS   18UL
 #define CHECK_RXTABLE_PERIOD_SC 4UL // Check RxTable every N SuperCycles
 /*

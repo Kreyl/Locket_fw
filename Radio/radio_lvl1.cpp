@@ -120,7 +120,9 @@ retv RadioInit() {
         CC.SetPktSize(RPKT_LEN);
         CC.SetChannel(RCHNL_EACH_OTH);
         CC.SetTxPower(cfg.tx_power);
-        CC.SetBitrate(CCBitrate500k);
+        // CC.SetBitrate(CCBitrate500k);
+        // CC.SetBitrate(CCBitrate250k);
+        CC.SetBitrate(CCBitrate100k);
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return retv::Ok;

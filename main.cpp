@@ -8,6 +8,7 @@
 
 #if 1 // ======================== Variables and defines ========================
 // Forever
+extern const char *kBuildTime, *kBuildCfgName;
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
 static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
 CmdUart_t Uart { &CmdUartParams };
@@ -88,7 +89,7 @@ static void ProcessRxTbl(RxTable &tbl) {
     ShowSelfTypeWhenIdle();
 }
 
-int main(void) {
+void main(void) {
     // ==== Init Vcore & clock system ====
     SetupVCore(vcore1V2);
     Clk.SetMSI4MHz();
@@ -100,7 +101,7 @@ int main(void) {
     // ==== Init hardware ====
     Uart.Init();
     ReadIDfromEE();
-    Printf("\r%S %S; ID: %u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), cfg.id);
+    Printf("\r%S %S; ID: %u\r", APP_NAME, kBuildTime, cfg.id);
     Clk.PrintFreqs();
 
     Led.Init();
