@@ -12,17 +12,18 @@
 #include "ChunkTypes.h"
 #include "board.h"
 
-class Vibro_t : public BaseSequencer_t<BaseChunk_t> {
+template <uint32_t que_len = 0>
+class Vibro_t : public BaseSequencer_t<BaseChunk_t, que_len> {
 private:
     const PinOutputPWM_t IPin;
     void ISwitchOff() { IPin.Set(0); }
     SequencerLoopTask_t ISetup() {
-        IPin.Set(IPCurrentChunk->Volume);
-        IPCurrentChunk++;   // Always goto next
+        IPin.Set(this->curr_chunk->Volume);
+        this->curr_chunk++;   // Always goto next
         return sltProceed;  // Always proceed
     }
 public:
-    Vibro_t(PwmSetup_t APin) : BaseSequencer_t(), IPin(APin) {}
+    Vibro_t(PwmSetup_t APin) : BaseSequencer_t<BaseChunk_t, que_len>(), IPin(APin) {}
     void Init() { IPin.Init(); }
 };
 

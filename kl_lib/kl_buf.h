@@ -10,7 +10,7 @@
 
 #include "ch.h"
 #include "string.h" // for memcpy
-#include <kl_lib.h>
+#include "kl_lib.h"
 
 enum AddRslt_t {addrOk, addrFail, addrSwitch};
 
@@ -58,7 +58,7 @@ public:
         return Cnt; // return how many items were written
     }
 
-    uint8_t PutMany(T *p, uint32_t Length) {
+    retv PutMany(T *p, uint32_t Length) {
         if(GetEmptyCount() >= Length) {    // check if Buffer overflow
             IFullSlotsCount += Length;     // 'Length' slots will be occupied
             uint32_t PartSz = (IBuf + Sz) - PWrite;  // Data from PWrite to right bound
@@ -71,24 +71,24 @@ public:
             memcpy(PWrite, p, Length * sizeof(T));
             PWrite += Length;
             if(PWrite >= (IBuf + Sz)) PWrite = IBuf; // Circulate pointer
-            return retvOk;
+            return retv::Ok;
         }
-        else return retvOverflow;
+        else return retv::Overflow;
     }
 
-    uint8_t GetI(T *p) {
-        if(IFullSlotsCount == 0) return retvEmpty;
+    retv GetI(T *p) {
+        if(IFullSlotsCount == 0) return retv::Empty;
         else {
             *p = *PRead;
             PRead++;
             if(PRead > (IBuf + Sz - 1)) PRead = IBuf;     // Circulate buffer
             IFullSlotsCount--;
-            return retvOk;
+            return retv::Ok;
         }
     }
 
-    uint8_t Get(T *p) {
-        if(IFullSlotsCount == 0) return retvEmpty;
+    retv Get(T *p) {
+        if(IFullSlotsCount == 0) return retv::Empty;
         else {
             chSysLock();
             *p = *PRead;
@@ -96,14 +96,14 @@ public:
             if(PRead > (IBuf + Sz - 1)) PRead = IBuf;     // Circulate buffer
             IFullSlotsCount--;
             chSysUnlock();
-            return retvOk;
+            return retv::Ok;
         }
     }
 
-    uint8_t GetAndDoNotRemove(T *p) {
-        if(IFullSlotsCount == 0) return retvEmpty;
+    retv GetAndDoNotRemove(T *p) {
+        if(IFullSlotsCount == 0) return retv::Empty;
         *p = *PRead;
-        return retvOk;
+        return retv::Ok;
     }
 
     // Put anyway
@@ -114,26 +114,26 @@ public:
         if(IFullSlotsCount < Sz) IFullSlotsCount++;
     }
 
-    uint8_t PutIfNotOverflow(T Value) {
+    retv PutIfNotOverflow(T Value) {
         if(IFullSlotsCount < Sz) {
             *PWrite = Value;
             PWrite++;
             if(PWrite > (IBuf + Sz - 1)) PWrite = IBuf;   // Circulate buffer
             IFullSlotsCount++;
-            return retvOk;
+            return retv::Ok;
         }
-        else return retvOverflow;
+        else return retv::Overflow;
     }
 
-    uint8_t PutPIfNotOverflow(T *PValue) {
+    retv PutPIfNotOverflow(T *PValue) {
         if(IFullSlotsCount < Sz) {
             *PWrite = *PValue;
             PWrite++;
             if(PWrite > (IBuf + Sz - 1)) PWrite = IBuf;   // Circulate buffer
             IFullSlotsCount++;
-            return retvOk;
+            return retv::Ok;
         }
-        else return retvOverflow;
+        else return retv::Overflow;
     }
 };
 #endif
@@ -145,34 +145,34 @@ protected:
     uint32_t IFullSlotsCount=0;
     T IBuf[Sz], *PRead=IBuf, *PWrite=IBuf;
 public:
-    uint8_t Get(T *p) {
-        if(IFullSlotsCount == 0) return retvEmpty;
+    retv Get(T *p) {
+        if(IFullSlotsCount == 0) return retv::Empty;
         memcpy(p, PRead, sizeof(T));
         if(++PRead > (IBuf + Sz - 1)) PRead = IBuf;     // Circulate buffer
         IFullSlotsCount--;
-        return retvOk;
+        return retv::Ok;
     }
-    uint8_t GetPAndMove(T **pp) {
-    	if(IFullSlotsCount == 0) return retvEmpty;
+    retv GetPAndMove(T **pp) {
+    	if(IFullSlotsCount == 0) return retv::Empty;
     	*pp = PRead;
         if(++PRead > (IBuf + Sz - 1)) PRead = IBuf;     // Circulate buffer
         IFullSlotsCount--;
-        return retvOk;
+        return retv::Ok;
     }
-    uint8_t GetLastP(T **pp) {
-    	if(IFullSlotsCount == 0) return retvEmpty;
+    retv GetLastP(T **pp) {
+    	if(IFullSlotsCount == 0) return retv::Empty;
 		*pp = PRead;
-		return retvOk;
+		return retv::Ok;
     }
 
-    uint8_t PutAnyway(T *p) {
+    retv PutAnyway(T *p) {
 		memcpy(PWrite, p, sizeof(T));
 		if(++PWrite > (IBuf + Sz - 1)) PWrite = IBuf;   // Circulate buffer
 		if(IFullSlotsCount < Sz) IFullSlotsCount++;
-		return retvOk;
+		return retv::Ok;
 	}
-    uint8_t Put(T *p) {
-        if(IFullSlotsCount >= Sz) return retvOverflow;
+    retv Put(T *p) {
+        if(IFullSlotsCount >= Sz) return retv::Overflow;
         return PutAnyway(p);
     }
 
@@ -288,24 +288,24 @@ protected:
     uint32_t Cnt=0;
     T IBuf[Sz];
 public:
-    uint8_t Put(T Value) {
-        if(Cnt == Sz) return retvOverflow;
+    retv Put(T Value) {
+        if(Cnt == Sz) return retv::Overflow;
         IBuf[Cnt] = Value;
         Cnt++;
-        return retvOk;
+        return retv::Ok;
     }
 
-    uint8_t Get(T *p) {
-        if(Cnt == 0) return retvEmpty;
+    retv Get(T *p) {
+        if(Cnt == 0) return retv::Empty;
         Cnt--;
         *p = IBuf[Cnt];
-        return retvOk;
+        return retv::Ok;
     }
 
-    uint8_t GetAndDoNotRemove(T *p) {
-        if(Cnt == 0) return retvEmpty;
+    retv GetAndDoNotRemove(T *p) {
+        if(Cnt == 0) return retv::Empty;
         *p = IBuf[Cnt-1];
-        return retvOk;
+        return retv::Ok;
     }
 
     inline uint32_t GetFullCount()  { return Cnt; }
@@ -321,12 +321,12 @@ private:
     T IBuf[Sz];
 public:
     T* GetPtr() { return (Indx >= 0)? &IBuf[Indx] : nullptr; }
-    uint8_t Push() {
+    retv Push() {
         if(Indx < Sz) {
             Indx++;
-            return retvOk;
+            return retv::Ok;
         }
-        else return retvOverflow;
+        else return retv::Overflow;
     }
     void Pop()  { if(Indx >= 0) Indx--; }
     void Flush() { Indx = -1; }
@@ -409,31 +409,31 @@ public:
     uint32_t Cnt = 0;
     char **Strings = nullptr;
 
-    uint8_t AddAndCopyString(const char* S) {
+    retv AddAndCopyString(const char* S) {
         // Append array of pointers if needed
         if(Cnt == AllocatedCnt) {
-            if(AllocateCnt(Cnt + 1) != retvOk) return retvOutOfMemory;
+            if(AllocateCnt(Cnt + 1) != retv::Ok) return retv::OutOfMemory;
         }
         // Copy string
         uint32_t Len = strlen(S);
         if(Len > 0) {
             Strings[Cnt] = (char*)malloc(Len + 1);
-            if(!Strings[Cnt]) return retvFail;
+            if(!Strings[Cnt]) return retv::Fail;
             strcpy(Strings[Cnt], S);
             Cnt++;
         }
-        return retvOk;
+        return retv::Ok;
     }
 
-    uint8_t AllocateCnt(uint32_t ACnt) {
-        if(ACnt > MaxCnt) return retvOverflow;
+    retv AllocateCnt(uint32_t ACnt) {
+        if(ACnt > MaxCnt) return retv::Overflow;
         char **tmp = (char**)realloc(Strings, ACnt * sizeof(char*));
         if(tmp) {
             Strings = tmp;
             AllocatedCnt = ACnt;
-            return retvOk;
+            return retv::Ok;
         }
-        else return retvOutOfMemory;
+        else return retv::OutOfMemory;
     }
 
     // Delete all strings, delete array of pointers
@@ -473,17 +473,17 @@ public:
         CurrIndx = 0;
     }
 
-    uint8_t Add(T AValue) {
+    retv Add(T AValue) {
         if(Cnt < Sz) {
             IBuf[Cnt++] = AValue;
-            return retvOk;
+            return retv::Ok;
         }
-        else return retvOverflow;
+        else return retv::Overflow;
     }
 
-    uint8_t AddIfNotYet(T AValue) {
+    retv AddIfNotYet(T AValue) {
         for(T IValue : IBuf) {
-            if(IValue == AValue) return retvOk; // already in
+            if(IValue == AValue) return retv::Ok; // already in
         }
         return Add(AValue);
     }

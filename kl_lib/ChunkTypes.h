@@ -11,6 +11,7 @@
 #include "color.h"
 #include "ch.h"
 #include "MsgQ.h"
+#include "kl_buf.h"
 
 enum ChunkSort_t {csSetup, csWait, csGoto, csEnd, csRepeat};
 
@@ -61,29 +62,31 @@ struct BeepChunk_t {   // Value == Volume
 #if 1 // ====================== Base sequencer class ===========================
 enum SequencerLoopTask_t {sltProceed, sltBreak};
 
-template <class TChunk>
+template <class TChunk, uint32_t que_len>
 class BaseSequencer_t : private IrqHandler_t {
+private:
+    CircBuf_t<const TChunk*, que_len> seq_que;
 protected:
-    virtual_timer_t ITmr;
-    const TChunk *IPStartChunk, *IPCurrentChunk;
-    int32_t RepeatCounter = -1;
-    EvtMsg_t IEvtMsg;
+    virtual_timer_t itmr;
+    const TChunk *start_chunk = nullptr, *curr_chunk = nullptr;
+    int32_t repeat_cntr = -1;
+    EvtMsg_t on_end_evt_msg;
     virtual void ISwitchOff() = 0;
     virtual SequencerLoopTask_t ISetup() = 0;
-    void SetupDelay(uint32_t ms) { chVTSetI(&ITmr, TIME_MS2I(ms), TmrKLCallback, this); }
+    void SetupDelay(uint32_t ms) { chVTSetI(&itmr, TIME_MS2I(ms), TmrKLCallback, this); }
 
     // Process sequence
     void IIrqHandler() {
-        if(chVTIsArmedI(&ITmr)) chVTResetI(&ITmr);  // Reset timer
+        if(chVTIsArmedI(&itmr)) chVTResetI(&itmr);  // Reset timer
         while(true) {   // Process the sequence
-            switch(IPCurrentChunk->ChunkSort) {
+            switch(curr_chunk->ChunkSort) {
                 case csSetup: // setup now and exit if required
                     if(ISetup() == sltBreak) return;
                     break;
 
                 case csWait: { // Start timer, pointing to next chunk
-                        uint32_t Delay = IPCurrentChunk->Time_ms;
-                        IPCurrentChunk++;
+                        uint32_t Delay = curr_chunk->Time_ms;
+                        curr_chunk++;
                         if(Delay != 0) {
                             SetupDelay(Delay);
                             return;
@@ -91,48 +94,60 @@ protected:
                     }
                     break;
 
+                case csRepeat:
+                    if(repeat_cntr == -1) repeat_cntr = curr_chunk->RepeatCnt;
+                    if(repeat_cntr == 0) {    // All was repeated, goto next
+                        repeat_cntr = -1;     // reset counter
+                        curr_chunk++;
+                    }
+                    else {  // repeating in progress
+                        curr_chunk = start_chunk;  // Always from beginning
+                        repeat_cntr--;
+                    }
+                    break;
+
                 case csGoto:
-                    IPCurrentChunk = IPStartChunk + IPCurrentChunk->ChunkToJumpTo;
-                    if(IEvtMsg.ID != evtIdNone) EvtQMain.SendNowOrExitI(IEvtMsg);
+                    curr_chunk = start_chunk + curr_chunk->ChunkToJumpTo;
+                    if(on_end_evt_msg.id != EvtId::None) EvtQMain.SendNowOrExitI(on_end_evt_msg);
                     SetupDelay(1);
                     return;
                     break;
 
                 case csEnd:
-                    if(IEvtMsg.ID != evtIdNone) EvtQMain.SendNowOrExitI(IEvtMsg);
-                    IPStartChunk = nullptr;
-                    IPCurrentChunk = nullptr;
-                    return;
-                    break;
-
-                case csRepeat:
-                    if(RepeatCounter == -1) RepeatCounter = IPCurrentChunk->RepeatCnt;
-                    if(RepeatCounter == 0) {    // All was repeated, goto next
-                        RepeatCounter = -1;     // reset counter
-                        IPCurrentChunk++;
+                    if(on_end_evt_msg.id != EvtId::None) EvtQMain.SendNowOrExitI(on_end_evt_msg);
+                    if(seq_que.GetI(&start_chunk) == retv::Ok) { // There is something next
+                        curr_chunk = start_chunk;
+                        repeat_cntr = -1;
                     }
-                    else {  // repeating in progress
-                        IPCurrentChunk = IPStartChunk;  // Always from beginning
-                        RepeatCounter--;
+                    else { // There is nothing next
+                        start_chunk = nullptr;
+                        curr_chunk = nullptr;
+                        return;
                     }
                     break;
             } // switch
         } // while
     } // IProcessSequenceI
 public:
-    void SetupSeqEndEvt(EvtMsg_t AEvtMsg) { IEvtMsg = AEvtMsg; }
+    BaseSequencer_t() {}
+    void SetupSeqEndEvt(EvtMsg_t AEvtMsg) { on_end_evt_msg = AEvtMsg; }
 
-    void StartOrRestart(const TChunk *PChunk) {
-        chSysLock();
-        RepeatCounter = -1;
-        IPStartChunk = PChunk;   // Save first chunk
-        IPCurrentChunk = PChunk;
+    void StartOrRestartI(const TChunk *pchunk) {
+        repeat_cntr = -1;
+        start_chunk = pchunk;   // Save first chunk
+        curr_chunk = pchunk;
+        seq_que.Flush();
         IIrqHandler();
+    }
+
+    void StartOrRestart(const TChunk *pchunk) {
+        chSysLock();
+        StartOrRestartI(pchunk);
         chSysUnlock();
     }
 
     void StartOrContinue(const TChunk *PChunk) {
-        if(PChunk == IPStartChunk) return; // Same sequence
+        if(PChunk == start_chunk) return; // Same sequence
         else StartOrRestart(PChunk);
     }
 
@@ -141,17 +156,33 @@ public:
     }
 
     void Stop() {
-        if(IPStartChunk != nullptr) {
+        if(start_chunk != nullptr) {
             chSysLock();
-            if(chVTIsArmedI(&ITmr)) chVTResetI(&ITmr);
-            IPStartChunk = nullptr;
-            IPCurrentChunk = nullptr;
+            if(chVTIsArmedI(&itmr)) chVTResetI(&itmr);
+            start_chunk = nullptr;
+            curr_chunk = nullptr;
+            seq_que.Flush();
             chSysUnlock();
         }
         ISwitchOff();
     }
-    const TChunk* GetCurrentSequence() { return IPStartChunk; }
-    bool IsIdle() { return (IPStartChunk == nullptr and IPCurrentChunk == nullptr); }
+    const TChunk* GetCurrentSequence() { return start_chunk; }
+
+    // Next sequence will be started after current ends
+    retv StartOrAddToQueueI(const TChunk *pchunk) {
+        if(IsIdle() and pchunk != nullptr) {
+            StartOrRestartI(pchunk);
+            return retv::Ok;
+        }
+        else return seq_que.PutIfNotOverflow(pchunk);
+    }
+    void StartOrAddToQueue(const TChunk *pchunk) {
+        chSysLock();
+        StartOrAddToQueueI(pchunk);
+        chSysUnlock();
+    }
+
+    bool IsIdle() { return (start_chunk == nullptr); }
 };
 #endif
 

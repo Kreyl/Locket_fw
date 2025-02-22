@@ -18,7 +18,7 @@
 */
 
  /* Put it here instead of Makefile */
-__main_stack_size__     = 0x0400; 
+__main_stack_size__     = 0x0400;
 __process_stack_size__  = 0x0400;
 
 /*
@@ -54,4 +54,4 @@ REGION_ALIAS("BSS_RAM", ram0);
 /* RAM region to be used for the default heap.*/
 REGION_ALIAS("HEAP_RAM", ram0);
 
-INCLUDE ../rules.ld
+INCLUDE ./rules.ld

@@ -3,12 +3,12 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "ConceptOfGoodness"
+#define APP_NAME            "Pavia"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      FALSE
-#define BUTTONS_ENABLED     FALSE
+#define BUTTONS_ENABLED     TRUE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 

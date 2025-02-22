@@ -5,7 +5,8 @@
  * Created on 7 Март 2010 г., 12:42
  */
 
-#pragma once
+#ifndef CC1101_RF_SETTINGS_H__
+#define CC1101_RF_SETTINGS_H__
 
 // All this is for 27.0 MHz crystal, and for 868 MHz carrier
 
@@ -19,9 +20,15 @@
 #define CC_FREQ0_VALUE      0xED        // Frequency control word, low byte.
 
 // ===================== Channel spacing =======================================
-#define CC_CHANNEL_SPACING  421     // 200, 400, 421(top)
+#define CC_CHANNEL_SPACING  50     // 30, 50, 200, 400, 421(top)
 
-#if CC_CHANNEL_SPACING == 200
+#if CC_CHANNEL_SPACING == 30
+#define CC_MDMCFG0_VALUE    36
+#define CC_CHANSPC_E        0
+#elif CC_CHANNEL_SPACING == 50
+#define CC_MDMCFG0_VALUE    230
+#define CC_CHANSPC_E        0
+#elif CC_CHANNEL_SPACING == 200
 #define CC_MDMCFG0_VALUE    229     // Channel spacing mantissa. See exponent at MDMCFG1. RF studio.
 #define CC_CHANSPC_E        2       // Exponent of Channel Spacing, RF Studio
 #elif CC_CHANNEL_SPACING == 421
@@ -54,9 +61,11 @@
 #define CC_FIFOTHR_VALUE    0b00000111  // RX attenuation = 0; RXFIFO and TXFIFO thresholds: TX 33, RX 32
 //#define CC_IOCFG2_VALUE     0x0E        // GDO2: Carrier Sense
 //#define CC_IOCFG2_VALUE     0x09        // GDO2: Clear Channal Assesment
-#define CC_IOCFG2_VALUE     0x3F        // GDO2: CLK_XOSC/192
+#define CC_IOCFG2_VALUE     0x3F        // GDO2: CLK_XOSC/192 = 27MHz / 192 = 140 625 Hz
 #define CC_IOCFG0_VALUE     0x06        // GDO0 - Asserts when sync word has been sent / received, and de-asserts at the end of the packet.
                                         // In RX, the pin will also deassert when a packet is discarded due to address or maximum length filtering
+
+//#define CC_IOCFG0_VALUE     0x07 // Asserts when a packet has been received with CRC OK. De-asserts when the first byte is read from the RX FIFO
 
 //#define CC_PKTCTRL1_VALUE   0b00001110  // PQT=0, CRC autoflush=1, Append=1, Address check = 10 (check, 0 is broadcast)
 #define CC_PKTCTRL1_VALUE   0b00001100  // PQT=0, CRC autoflush=1, Append=1, Address check = 00 (no check)
@@ -250,3 +259,5 @@ static const CCRegValue_t CCBitrate500k[CC_BRSETUP_CNT] = {
 // Rare use settings
 #define CC_SYNC1_VALUE      0xD3
 #define CC_SYNC0_VALUE      0x91
+
+#endif //CC1101_RF_SETTINGS_H__

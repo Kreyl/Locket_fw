@@ -192,86 +192,53 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
 #define SHOWTIME        270
-#define PAUSETIME       720
+#define PAUSETIME       180
 #define SHORTPAUSETIME  72
 
-const LedRGBChunk_t lsqAri[] = {
-        {csSetup, 0, clBlue}, {csWait, SHOWTIME},
+// Aliens
+LedRGBChunk_t lsqWitch1[] = {
+        {csSetup, 0, clBlue},  {csWait, PAUSETIME},
         {csSetup, 0, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
 
-const LedRGBChunk_t lsqKaesu[] = {
-        {csSetup, 0, clRed},   {csWait, SHOWTIME},
+LedRGBChunk_t lsqWitch2[] = {
+        {csSetup, 0, clBlue},  {csWait, PAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csRepeat, 1},
+        {csEnd},
+};
+
+LedRGBChunk_t lsqWitchMany[] = {
+        {csSetup, 0, clBlue},  {csWait, PAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csRepeat, 2},
+        {csEnd},
+};
+
+LedRGBChunk_t lsqSaintPlace[] = {
+        {csSetup, 0, clRed},   {csWait, PAUSETIME},
+        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csEnd},
+};
+LedRGBChunk_t lsqWitchPlace[] = {
+        {csSetup, 0, clGreen}, {csWait, PAUSETIME},
         {csSetup, 0, clBlack}, {csWait, PAUSETIME},
         {csEnd},
 };
 
-const LedRGBChunk_t lsqNorth[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
-        {csEnd},
+// Self
+const LedRGBChunk_t lsqSelfTypeWitch[] = {
+        {csSetup, 0, {0, 0, 1} }, {csEnd},
 };
-const LedRGBChunk_t lsqNorthStrong[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clWhite},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
-        {csEnd},
+const LedRGBChunk_t lsqSelfTypeWitchNoVibro[] = {
+        {csSetup, 0, {1, 1, 0} }, {csEnd},
 };
-
-const LedRGBChunk_t lsqSouth[] = {
-        {csSetup, 0, {128,0,255}}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},     {csWait, PAUSETIME},
-        {csEnd},
+const LedRGBChunk_t lsqSelfTypeSaintPlace[] = {
+        {csSetup, 0, {1, 0, 0} }, {csEnd},
 };
-const LedRGBChunk_t lsqSouthStrong[] = {
-        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clWhite},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
-        {csEnd},
-};
-
-
-const LedRGBChunk_t lsqNorthCursed[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clRed},    {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
-        {csEnd},
-};
-const LedRGBChunk_t lsqSouthCursed[] = {
-        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clRed},     {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
-        {csEnd},
-};
-
-
-const LedRGBChunk_t lsqHidden[] = {
-        {csSetup, 0, clBlue},  {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
-        {csRepeat, 1},
-        {csWait, PAUSETIME},
-        {csEnd},
-};
-
-const LedRGBChunk_t lsqSilent[] = {
-        {csSetup, 0, {255, 90, 0}},  {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
-        {csRepeat, 1},
-        {csWait, PAUSETIME},
-        {csEnd},
-};
-
-const LedRGBChunk_t lsqVisible[] = {
-        {csSetup, 0, clGreen}, {csWait, SHORTPAUSETIME},
-        {csSetup, 0, clBlack}, {csWait, SHORTPAUSETIME},
-        {csRepeat, 1},
-        {csWait, PAUSETIME},
-        {csEnd},
+const LedRGBChunk_t lsqSelfTypeWitchPlace[] = {
+        {csSetup, 0, {0, 1, 0} }, {csEnd},
 };
 
 
@@ -417,7 +384,8 @@ const BeepChunk_t bsqBeepPillBad[] = {
 #define VIBRO_VOLUME    100  // 1 to 100
 
 #define VIBRO_SHORT_MS          99
-#define VIBRO_REPEAT_PERIOD     1008
+#define VIBRO_LONG_MS           207
+#define VIBRO_REPEAT_PERIOD     360
 
 const BaseChunk_t vsqBrr[] = {
         {csSetup, VIBRO_VOLUME},
@@ -455,77 +423,14 @@ const BaseChunk_t vsqBrrBrrBrr[] = {
         {csEnd}
 };
 
-const BaseChunk_t vsqAttack[] = {
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 99},
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 99},
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 99},
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 99},
-        {csWait, 450},
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 99},
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 1008},
-        {csRepeat, 2},
-        {csWait, 999},
+
+const BaseChunk_t vsqLongBrr[] = {
+        {csSetup, VIBRO_VOLUME},
+        {csWait, VIBRO_LONG_MS},
+        {csSetup, 0},
+        {csWait, VIBRO_REPEAT_PERIOD},
         {csEnd}
 };
-
-const BaseChunk_t vsqRetreat[] = {
-        {csSetup, VIBRO_VOLUME}, {csWait, 360},
-        {csSetup, 0},            {csWait, 99},
-        {csSetup, VIBRO_VOLUME}, {csWait, 99},
-        {csSetup, 0},            {csWait, 720},
-        {csRepeat, 2},
-        {csWait, 999},
-        {csEnd}
-};
-
-/*
-const BaseChunk_t vsqError[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, 999},
-        {csSetup, 0},
-        {csEnd}
-};
-
-const BaseChunk_t vsqSingle[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 1800},
-        {csGoto, 0}
-};
-const BaseChunk_t vsqPair[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 99},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 1350},
-        {csGoto, 0}
-};
-const BaseChunk_t vsqMany[] = {
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 99},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 99},
-        {csSetup, VIBRO_VOLUME},
-        {csWait, VIBRO_SHORT_MS},
-        {csSetup, 0},
-        {csWait, 1008},
-        {csGoto, 0}
-};
-*/
 #endif
 
 #endif //SEQUENCES_H__

@@ -57,18 +57,18 @@ public:
     char* GetRemainder() { return Remainer; }
 
     template <typename T>
-    uint8_t GetNext(T *POutput) {
+    retv GetNext(T *POutput) {
         char* S = GetNextString();
         if(S) {
             char *p;
             int32_t dw32 = strtol(S, &p, 0);
             if(*p == '\0') {
                 *POutput = (T)dw32;
-                return retvOk;
+                return retv::Ok;
             }
-            else return retvNotANumber;
+            else return retv::NotANumber;
         }
-        return retvFail;
+        return retv::Fail;
     }
 
     /*
@@ -184,66 +184,66 @@ public:
 #if PRINTF_FLOAT_EN
     uint8_t GetNextFloat(float *POutput) {
         char* S = GetNextString();
-        if(!S) return retvFail;
+        if(!S) return retv::Fail;
         char *p;
         float f = strtof(S, &p);
         if(*p == '\0') {
             *POutput = f;
-            return retvOk;
+            return retv::Ok;
         }
-        else return retvNotANumber;
+        else return retv::NotANumber;
     }
 
     uint8_t GetNextDouble(double *POutput) {
         char* S = GetNextString();
-        if(!S) return retvFail;
+        if(!S) return retv::Fail;
         char *p;
         double f = strtod(S, &p);
         if(*p == '\0') {
             *POutput = f;
-            return retvOk;
+            return retv::Ok;
         }
-        else return retvNotANumber;
+        else return retv::NotANumber;
     }
 #endif
 
     template <typename T>
-    uint8_t GetArray(T *Ptr, int32_t Len) {
+    retv GetArray(T *Ptr, int32_t Len) {
         for(int32_t i=0; i<Len; i++) {
             T Number;
-            uint8_t r = GetNext<T>(&Number);
-            if(r == retvOk) *Ptr++ = Number;
+            retv r = GetNext<T>(&Number);
+            if(r == retv::Ok) *Ptr++ = Number;
             else return r;
         }
-        return retvOk;
+        return retv::Ok;
     }
 
-    uint8_t GetClrRGB(Color_t *PClr) {
-        if(GetNext<uint8_t>(&PClr->R) != retvOk) return retvFail;
-        if(GetNext<uint8_t>(&PClr->G) != retvOk) return retvFail;
-        if(GetNext<uint8_t>(&PClr->B) != retvOk) return retvFail;
-        return retvOk;
+    retv GetClrRGB(Color_t *PClr) {
+        if(GetNext<uint8_t>(&PClr->R) != retv::Ok) return retv::Fail;
+        if(GetNext<uint8_t>(&PClr->G) != retv::Ok) return retv::Fail;
+        if(GetNext<uint8_t>(&PClr->B) != retv::Ok) return retv::Fail;
+        return retv::Ok;
     }
 
-    uint8_t GetClrHSV(ColorHSV_t *PClr) {
-        if(GetNext<uint16_t>(&PClr->H) != retvOk) return retvFail;
-        if(GetNext<uint8_t>(&PClr->S) != retvOk) return retvFail;
-        if(GetNext<uint8_t>(&PClr->V) != retvOk) return retvFail;
-        return retvOk;
+    retv GetClrHSV(ColorHSV_t *PClr) {
+        if(GetNext<uint16_t>(&PClr->H) != retv::Ok) return retv::Fail;
+        if(GetNext<uint8_t>(&PClr->S) != retv::Ok) return retv::Fail;
+        if(GetNext<uint8_t>(&PClr->V) != retv::Ok) return retv::Fail;
+        return retv::Ok;
     }
 
     /*  int32_t Indx, Value;
-        if(PCmd->GetParams<int32_t>(2, &Indx, &Value) == retvOk) {...}
+        if(PCmd->GetParams<int32_t>(2, &Indx, &Value) == retv::Ok) {...}
         else PShell->Ack(retvCmdError);    */
     template <typename T>
-    uint8_t GetParams(uint8_t Cnt, ...) {
-        uint8_t Rslt = retvOk;
+    retv GetParams(uint8_t Cnt, ...) {
+        retv Rslt = retv::Ok;
         va_list args;
         va_start(args, Cnt);
         while(Cnt--) {
             T* ptr = va_arg(args, T*);
             Rslt = GetNext<T>(ptr);
-            if(Rslt != retvOk) break;
+            if(Rslt != retv::Ok) break;
         }
         va_end(args);
         return Rslt;
@@ -276,9 +276,9 @@ public:
 // Parent class for everything that prints
 class PrintfHelper_t {
 private:
-    uint8_t IPutUint(uint32_t n, uint32_t base, uint32_t width, char filler);
+    retv IPutUint(uint32_t n, uint32_t base, uint32_t width, char filler);
 protected:
-    virtual uint8_t IPutChar(char c) = 0;
+    virtual retv IPutChar(char c) = 0;
     virtual void IStartTransmissionIfNotYet() = 0;
 public:
     void IVsPrintf(const char *format, va_list args);
