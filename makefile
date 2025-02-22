@@ -3,13 +3,11 @@ PRJ_NAME = Locket
 # What to include, in form dir1 dir2 dir3...
 INCLUDE_DIRS = ./ kl_lib os os/hal os/include os/stm32l15x Pill Radio
 # What to define in form MYDEF1 MYDEF2=18 MYDEF3... $(MAKECMDGOALS) is name of requested action
-DEFINS = 
-DEFINS += BUILD_CFG_$(GOAL_NAME)=1 # add BUILD_CFG_GOALNAME=1 define, uppercasing GOAL_NAME
-
+DEFINS =
 
 ######################### Figure out what to do #########################
 # Target must be in the following form: build_Release, clean_Debug, flash_Fromboot
-# The first word is the action (build, clean, flash); 
+# The first word is the action (build, clean, flash);
 # the second is the name of the configuration and the name of the OUT_DIR.
 INPUT_WORDS = $(subst _, ,$(MAKECMDGOALS)) # Replace '_' with ' '
 ACTION = $(word 1,$(INPUT_WORDS))
@@ -22,45 +20,50 @@ $(MAKECMDGOALS): $(ACTION)
 ######################### Common Cfg Settings #########################
 MCU = cortex-m3
 FLOAT_FLAGS = # -mfloat-abi=hard -mfpu=fpv4-sp-d16 -fsingle-precision-constant -Wdouble-promotion -Wfloat-conversion -Wfloat-equal
-WARNING_FLAGS = -Wall -Wlogical-op
+WARNING_FLAGS = -Wall -Wlogical-op -Werror
+DISABLED_WARNINGS = -Wno-address-of-packed-member -Wno-unknown-pragmas -Wno-volatile
 COMMON_FLAGS = -mcpu=$(MCU) -mthumb -fmessage-length=0 -ffunction-sections -fdata-sections -ffreestanding $(FLOAT_FLAGS) $(WARNING_FLAGS)
-CPP_FLAGS = -std=gnu++17 -fabi-version=0 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics -Wno-address-of-packed-member
-C_FLAGS = -std=gnu17
+CPP_FLAGS = -std=gnu++20 -fabi-version=0 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics $(DISABLED_WARNINGS) $(OUTPUT_ASM)
+C_FLAGS = -std=gnu17 $(OUTPUT_ASM)
 # Add this to build commands. Nothing to change here.
 OBJ_FLAGS = -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -c -o "$@" "$<"
-LINKER_FLAGS = -Xlinker --gc-sections --specs=nano.specs --specs=nosys.specs -nostartfiles -Wl,-Map,"$(OUT_DIR)/$(PRJ_NAME).map" -o "$(OUT_DIR)/$(PRJ_NAME).elf"
+ELF_NAME = $(OUT_DIR)/$(PRJ_NAME).elf
+LINKER_FLAGS = -Xlinker --gc-sections --specs=nano.specs --specs=nosys.specs -nostartfiles -Wl,-Map,"$(OUT_DIR)/$(PRJ_NAME).map" -o "$(ELF_NAME)"
 
 ######################### Individual Cfg Settings #########################
 ####### Release Cfg Settings #######
 ifeq "$(GOAL_NAME)" "Release"
 COMMON_FLAGS += -Os -flto
-LINKER_FLAGS += 
+LINKER_FLAGS +=
 LD_SCRIPT = STM32L151x8.ld
 # Comment / uncomment the following lines to produce .hex and/or .bin output
-BUILD_HEX = $(OUT_DIR)/$(PRJ_NAME).hex
-# BUILD_BIN = $(OUT_DIR)/$(PRJ_NAME).bin
+HEX_NAME = $(OUT_DIR)/$(PRJ_NAME).hex
+# BIN_NAME = $(OUT_DIR)/$(PRJ_NAME).bin
+# OUTPUT_ASM = -Wa,-adhlns="$@.lst"
 
 ####### Debug Cfg Settings #######
 else ifeq "$(GOAL_NAME)" "Debug"
 COMMON_FLAGS += -O0 -g3
-LINKER_FLAGS += 
+LINKER_FLAGS +=
 LD_SCRIPT = STM32L151x8.ld
 # Comment / uncomment the following lines to produce .hex and/or .bin output
-BUILD_HEX = $(OUT_DIR)/$(PRJ_NAME).hex
-# BUILD_BIN = $(OUT_DIR)/$(PRJ_NAME).bin
+HEX_NAME = $(OUT_DIR)/$(PRJ_NAME).hex
+# BIN_NAME = $(OUT_DIR)/$(PRJ_NAME).bin
+# OUTPUT_ASM = -Wa,-adhlns="$@.lst"
 
-####### FromBoot Cfg Settings ####### 
+####### FromBoot Cfg Settings #######
 # Put to flash starting from 0x800XXXX, to reserve place for bootloader. All other is same as Release.
 else ifeq "$(GOAL_NAME)" "Fromboot"
 COMMON_FLAGS += -Os -flto
-LINKER_FLAGS += 
+LINKER_FLAGS +=
 LD_SCRIPT = GD32E103xB_FromBoot.ld
 # Comment / uncomment the following lines to produce .hex and/or .bin output
-BUILD_HEX = $(OUT_DIR)/$(PRJ_NAME).hex
-BUILD_BIN = $(OUT_DIR)/$(PRJ_NAME).bin
+HEX_NAME = $(OUT_DIR)/fw$(PRJ_NAME).hex
+BIN_NAME = $(OUT_DIR)/fw$(PRJ_NAME).bin
+# OUTPUT_ASM = -Wa,-adhlns="$@.lst"
 endif
 
-######################### Toolchain ######################### 
+######################### Toolchain #########################
 CPP_CMP = arm-none-eabi-g++
 C_CMP = arm-none-eabi-gcc
 OBJCPY = arm-none-eabi-objcopy
@@ -77,13 +80,15 @@ TIMESTAMP = $(shell "date" "+%Y%m%d_%H%M")
 INCLUDE_STR = $(addprefix -I./,$(INCLUDE_DIRS))
 # Build define flag string out of DEFINS list, surrounding with double quotes
 ToUppercase = $(shell echo $(1) | tr '[:lower:]' '[:upper:]')
+# add BUILD_CFG_GOALNAME=1 define, uppercasing GOAL_NAME
+DEFINS += BUILD_CFG_$(call ToUppercase,$(GOAL_NAME))=1
 DEFINE_STR = $(patsubst %,-D"%",$(DEFINS))
-COMMON_FLAGS += $(DEFINE_STR) 
+COMMON_FLAGS += $(DEFINE_STR)
 # Recursive wildcard to iterate subdirs of any depth
 rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
-# Find all .cpp, .c and .S files in all subfolders of ../ 
+# Find all .cpp, .c and .S files in all subfolders of ../
 SRCS = $(call rwildcard,./,*.c) $(call rwildcard,./,*.cpp) $(call rwildcard,./,*.S)
-# Remove leading ./ 
+# Remove leading ./
 SRCS := $(patsubst ./%,%,$(SRCS))
 # Replace .cpp, .c, .S with .o
 OBJS = $(SRCS:.cpp=.o) # Take all srcs replacing .cpp with .o
@@ -98,17 +103,17 @@ VPATH := ../
 # Add OUT_DIR prefix to OBJS
 OBJS := $(addprefix $(OUT_DIR)/, $(OBJS))
 # Include dependents *.d (ignore if not exist) to rebuild what depends on changed .h
--include $(OBJS:.o=.d) 
+-include $(OBJS:.o=.d)
 
 # Build: Require dir tree, .elf file, .hex, .bin, .siz
-build: $(OUT_DIR)/out_subdirs $(OUT_DIR)/$(PRJ_NAME).elf $(BUILD_HEX) $(BUILD_BIN) print_size
+build: $(OUT_DIR)/out_subdirs $(ELF_NAME) $(HEX_NAME) $(BIN_NAME) print_size
 
 # Construct dir tree: out_dir/dir1, out_dir/dir2, ...
 $(OUT_DIR)/out_subdirs:
 	@mkdir -p $(addprefix $(OUT_DIR)/, $(SUBDIRS))
 
 # Construct .elf
-$(OUT_DIR)/$(PRJ_NAME).elf: $(OBJS)
+$(ELF_NAME): $(OBJS)
 	@echo 'Linking $@'
 	@$(CPP_CMP) $(COMMON_FLAGS) -T $(LD_SCRIPT) $(LINKER_FLAGS) $(OBJS)
 
@@ -121,7 +126,7 @@ $(OUT_DIR)/version.o: version.cpp .FORCE
 # cpp
 $(OUT_DIR)/%.o: %.cpp
 	@echo 'Building $<'
-	@$(CPP_CMP) $(COMMON_FLAGS) $(INCLUDE_STR) $(CPP_FLAGS) $(OBJ_FLAGS) 
+	@$(CPP_CMP) $(COMMON_FLAGS) $(INCLUDE_STR) $(CPP_FLAGS) $(OBJ_FLAGS)
 # c
 $(OUT_DIR)/%.o: %.c
 	@echo 'Building $<'
@@ -129,22 +134,27 @@ $(OUT_DIR)/%.o: %.c
 # S
 $(OUT_DIR)/%.o: %.S
 	@echo 'Building $<'
-	@$(C_CMP) -x assembler-with-cpp $(COMMON_FLAGS) $(INCLUDE_STR) $(OBJ_FLAGS) 
+	@$(C_CMP) -x assembler-with-cpp $(COMMON_FLAGS) $(INCLUDE_STR) $(OBJ_FLAGS)
 
 # Output .hex
-$(OUT_DIR)/$(PRJ_NAME).hex: $(OUT_DIR)/$(PRJ_NAME).elf
+$(HEX_NAME): $(ELF_NAME)
 	@echo 'Constructing $@'
-	@$(OBJCPY) -O ihex "$(OUT_DIR)/$(PRJ_NAME).elf" "$(OUT_DIR)/$(PRJ_NAME).hex"
+	@$(OBJCPY) -O ihex "$(ELF_NAME)" "$(HEX_NAME)"
 
 # Output .bin
-$(OUT_DIR)/$(PRJ_NAME).bin: $(OUT_DIR)/$(PRJ_NAME).elf
+$(BIN_NAME): $(ELF_NAME)
 	@echo 'Constructing $@'
-	@$(OBJCPY) -O binary "$(OUT_DIR)/$(PRJ_NAME).elf" "$(OUT_DIR)/$(PRJ_NAME).bin"
+	@$(OBJCPY) -O binary "$(ELF_NAME)" "$(BIN_NAME)"
+
+# Output ASM (.lst)
+# $(OUTPUT_ASM): $(ELF_NAME)
+# 	@echo 'Generating asm $@'
+# 	@$(OBJDUMP) -d
 
 # Print size
-print_size: 
+print_size:
 	@echo 'Size:'
-	@$(SZ) --format=berkeley "$(OUT_DIR)/$(PRJ_NAME).elf"
+	@$(SZ) --format=berkeley "$(ELF_NAME)"
 
 
 ######################### Clean #########################
@@ -155,11 +165,11 @@ clean:
 
 ######################### Flash it ######################### Using BlackMagicProbe
 flash:
-	@$(GDB) -q -ex "target extended-remote $(GDB_COM)" -ex "mon swdp_scan" -ex "att 1" -ex "load $(OUT_DIR)/$(PRJ_NAME).hex" -ex "det" -ex "quit"
+	@$(GDB) -q -ex "target extended-remote $(GDB_COM)" -ex "mon swdp_scan" -ex "att 1" -ex "load $(HEX_NAME)" -ex "det" -ex "quit"
 
 
 ######################### Test for debugging ########################
 .PHONY: test
-test: 
+test:
 	@echo $(ACTION)
 	@echo $(OUT_DIR)

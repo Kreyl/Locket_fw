@@ -3,7 +3,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "Pavia"
+#define APP_NAME            "ConceptOfGoodness"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
@@ -37,9 +37,9 @@
 
 // LED
 #define LED_EN_PIN      { GPIOB, 2, omPushPull }
-#define LED_G_PIN       { GPIOB, 1, TIM3, 4, invInverted, omOpenDrain, 255 }
-#define LED_B_PIN       { GPIOB, 0, TIM3, 3, invInverted, omOpenDrain, 255 }
-#define LED_R_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
+#define LED_G_PIN       { GPIOB, 1, TIM3, 4, Inv::Inverted, omOpenDrain, 255 }
+#define LED_B_PIN       { GPIOB, 0, TIM3, 3, Inv::Inverted, omOpenDrain, 255 }
+#define LED_R_PIN       { GPIOB, 5, TIM3, 2, Inv::Inverted, omOpenDrain, 255 }
 
 // Buttons
 #define BTN1_PIN        GPIOA, 0
@@ -47,11 +47,11 @@
 #define BTN3_PIN        GPIOB, 8
 
 // Vibro
-#define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, 99 }
+#define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, Inv::NotInverted, omPushPull, 99 }
 
 // Beeper
 #define BEEPER_TOP      22
-#define BEEPER_PIN      { GPIOB, 15, TIM11, 1, invNotInverted, omPushPull, BEEPER_TOP }
+#define BEEPER_PIN      { GPIOB, 15, TIM11, 1, Inv::NotInverted, omPushPull, BEEPER_TOP }
 
 // DIP switch
 #define DIP_SW_CNT      8

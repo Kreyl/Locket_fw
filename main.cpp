@@ -4,12 +4,12 @@
 #include "Sequences.h"
 #include "kl_lib.h"
 #include "radio_lvl1.h"
-#include "Config.h"
+#include "App.h"
 
-#if 1 // ======================== Variables and defines ========================
+#pragma region // ======================== Variables and defines ========================
 // Forever
 extern const char *kBuildTime, *kBuildCfgName;
-EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
+EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> evt_q_main;
 static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
 CmdUart_t Uart { &CmdUartParams };
 static void ITask();
@@ -33,61 +33,7 @@ void SleepNow(uint32_t Delay) {
     Sleep::EnterStandby();
     chSysUnlock();
 }
-
-Config cfg;
-#endif
-
-static void ShowSelfTypeWhenIdle() {
-    switch(cfg.type) {
-        case DevType::Witch:
-            if(cfg.VibroEnabled()) Led.StartOrAddToQueue(lsqSelfTypeWitch);
-            else  Led.StartOrAddToQueue(lsqSelfTypeWitchNoVibro);
-            break;
-        case DevType::SaintPlace: Led.StartOrAddToQueue(lsqSelfTypeSaintPlace); break;
-        case DevType::WitchPlace: Led.StartOrAddToQueue(lsqSelfTypeWitchPlace); break;
-    }
-}
-
-static void ProcessRxTbl(RxTable &tbl) {
-    if(cfg.type != DevType::Witch) return; // Only witches can feel
-    // === Analyze table ===
-    uint32_t witch_cnt = 0;
-    bool saint_place_is_near = false, witch_place_is_near = false;
-    for(uint32_t i=0; i<tbl.cnt; i++) {
-        // If Saint Place is near - indicate it and go out
-        if(tbl[i].type == (uint8_t)DevType::SaintPlace) {
-            saint_place_is_near = true;
-            break;
-        }
-        else if(tbl[i].type == (uint8_t)DevType::WitchPlace) witch_place_is_near = true;
-        else witch_cnt++;  // witch is here!
-    } // for
-    // === Indicate ===
-    if(saint_place_is_near) Led.StartOrRestart(lsqSaintPlace); // ...and do no more
-    else {
-        // Present witches
-        switch(witch_cnt) {
-            case 0:  break; // Noone near
-            case 1:  Led.StartOrRestart(lsqWitch1); break;
-            case 2:  Led.StartOrRestart(lsqWitch2); break;
-            default: Led.StartOrRestart(lsqWitchMany); break;
-        } // switch
-        if(cfg.VibroEnabled()) {
-            switch(witch_cnt) {
-                case 0:  break; // Noone near
-                case 1:  Vibro.StartOrContinue(vsqBrr); break;
-                case 2:  Vibro.StartOrContinue(vsqBrrBrr); break;
-                default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
-            } // switch
-        }
-        // Present witch place if any
-        if(witch_place_is_near) {
-            Led.StartOrAddToQueue(lsqWitchPlace);
-        }
-    } // else
-    // Present self
-    ShowSelfTypeWhenIdle();
-}
+#pragma endregion
 
 void main(void) {
     // ==== Init Vcore & clock system ====
@@ -97,7 +43,7 @@ void main(void) {
     // === Init OS ===
     halInit();
     chSysInit();
-    EvtQMain.Init();
+    evt_q_main.Init();
     // ==== Init hardware ====
     Uart.Init();
     ReadIDfromEE();
@@ -114,7 +60,6 @@ void main(void) {
     }
 
     ReadAndSetupMode();
-    ShowSelfTypeWhenIdle();
     TmrEverySecond.StartOrRestart();
     SimpleSensors::Init();
 
@@ -122,67 +67,32 @@ void main(void) {
     ITask();
 }
 
-static void SetupAndShowBrightness() {
-    uint8_t v = Config::kBrtTable[cfg.brt_indx];
-    lsqWitch1[0].Color.B = v;
-    lsqWitch2[0].Color.B = v;
-    lsqWitchMany[0].Color.B = v;
-    lsqSaintPlace[0].Color.R = v;
-    lsqWitchPlace[0].Color.G = v;
-    Led.StartOrRestart(lsqWitch1);
-    ShowSelfTypeWhenIdle();
-}
-
 __noreturn
 void ITask() {
     while(true) {
-        EvtMsg_t Msg = EvtQMain.Fetch(TIME_INFINITE);
-        switch(Msg.id) {
+        EvtMsg_t msg = evt_q_main.Fetch(TIME_INFINITE);
+        switch(msg.id) {
             case EvtId::EverySecond:
                 if(ReadAndSetupMode() == retv::New) chThdSleepMilliseconds(810);
-                // Process disabled vibro if it is disabled
-                if(cfg.novibro_time_left_s > 0) {
-                    cfg.novibro_time_left_s--;
-                    if(cfg.novibro_time_left_s == 0) ShowSelfTypeWhenIdle(); // Indicate changed vibro state
-                }
                 break;
 
-            case EvtId::CheckRxTable: ProcessRxTbl(*(RxTable*)Msg.ptr); break;
+            case EvtId::CheckRxTable: ProcessRxTbl(*(RxTable*)msg.ptr); break;
 
 #if BUTTONS_ENABLED
         case EvtId::Buttons:
-            Printf("Btn %u %u\r", Msg.btn_info.btn_indx, Msg.btn_info.type);
-            switch(Msg.btn_info.btn_indx) {
-                case 0: // Vibro on/off
-                    if(cfg.VibroEnabled()) cfg.DisableVibro();
-                    else cfg.EnableVibro();
-                    ShowSelfTypeWhenIdle(); // Indicate vibro state
-                    break;
-                case 1: // Increase brt
-                    if(cfg.brt_indx < Config::kBrtCnt - 1) {
-                        cfg.brt_indx++;
-                        SetupAndShowBrightness();
-                    }
-                    break;
-                case 2: // Decrease brt
-                    if(cfg.brt_indx > 0) {
-                        cfg.brt_indx--;
-                        SetupAndShowBrightness();
-                    }
-                    break;
-                default: break;
-            } // switch
+            Printf("Btn %u %u\r", msg.btn_info.btn_indx, msg.btn_info.type);
+            OnBtnPress(msg.btn_info);
             break;
 #endif
 #if ADC_REQUIRED
         case evtIdAdcRslt: Printf("Battery: %u mV\r", Adc.GetVDAmV(Adc.GetResultMedian(0))); break;
 #endif
             case EvtId::ShellCmd:
-                OnCmd((Shell_t*) Msg.ptr);
-                ((Shell_t*)Msg.ptr)->SignalCmdProcessed();
+                OnCmd((Shell_t*) msg.ptr);
+                ((Shell_t*)msg.ptr)->SignalCmdProcessed();
                 break;
             default:
-                Printf("Unhandled Msg %u\r", Msg.id);
+                Printf("Unhandled msg %u\r", msg.id);
                 break;
         } // Switch
     } // while true
@@ -196,29 +106,12 @@ retv ReadAndSetupMode() {
     // Something has changed
     Printf("Dip: 0x%02X; ", dw);
     OldDipSettings = dw;
-    // Select dev type
-    uint32_t bits = (dw >> 6) & 0b11UL;
-    if(bits == 1) cfg.type = DevType::SaintPlace;
-    else if(bits == 2) cfg.type = DevType::WitchPlace;
-    else cfg.type = DevType::Witch; // 0 or 3
     // Select power
-    bits = dw & 0b1111; // Remove high bits = group 5678
+    uint32_t bits = dw & 0b1111; // Remove high bits = group 5678
     cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : PwrTable[bits];
-    // Print settings
-    if(cfg.type == DevType::SaintPlace) {
-        Led.StartOrRestart(lsqSaintPlace);
-        Printf("Type: SaintPlace; ");
-    }
-    else if(cfg.type == DevType::WitchPlace) {
-        Led.StartOrRestart(lsqWitchPlace);
-        Printf("Type: WitchPlace; ");
-    }
-    else {
-        Led.StartOrRestart(lsqWitch1);
-        Printf("Type: Witch; ");
-    }
-    Printf("Pwr: %S\r", CC_PwrToString(cfg.tx_power));
-    ShowSelfTypeWhenIdle();
+    // Select dev type: group 5678
+    SetDevtype((dw >> 4) & 0b1111UL);
+    cfg.PrintTxPwr();
     return retv::New;
 }
 

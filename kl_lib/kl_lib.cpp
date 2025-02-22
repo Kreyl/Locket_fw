@@ -331,7 +331,7 @@ void PinOutputPWM_t::Init() const {
     ITmr->CR1 |= TIM_CR1_ARPE;
     ITmr->ARR = ISetup.TopValue;
     // Setup Output
-    uint16_t tmp = (ISetup.Inverted == invInverted)? 0b111 : 0b110; // PWM mode 1 or 2
+    uint16_t tmp = (ISetup.Inverted == Inv::Inverted)? 0b111 : 0b110; // PWM mode 1 or 2
     switch(ISetup.TimerChnl) {
         case 1:
             ITmr->CCMR1 |= (tmp << 4);
@@ -465,12 +465,12 @@ void TmrKLCallback(virtual_timer_t *vtp, void *p) {
 }
 
 void TmrKL_t::IIrqHandler() {    // Call it inside callback
-    EvtQMain.SendNowOrExitI(EvtMsg_t(evt_id));
+    evt_q_main.SendNowOrExitI(EvtMsg_t(evt_id));
     if(TmrType == tktPeriodic) StartI();
 }
 
 void TmrKL_t::StartI() {
-    if(Period == 0) EvtQMain.SendNowOrExitI(EvtMsg_t(evt_id)); // Do not restart even if periodic: this will not work good anyway
+    if(Period == 0) evt_q_main.SendNowOrExitI(EvtMsg_t(evt_id)); // Do not restart even if periodic: this will not work good anyway
     else chVTSetI(&Tmr, Period, TmrKLCallback, this); // Will be reset before start
 }
 #endif

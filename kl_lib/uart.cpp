@@ -437,7 +437,7 @@ void CmdUart_t::ProcessByteIfReceived() {
     while(GetByte(&b) == retv::Ok) {
         if(Cmd.PutChar(b) == pdrNewCmd) {
             RxProcessed = false;
-            EvtQMain.SendNowOrExit(EvtMsg_t(EvtId::ShellCmd, (Shell_t*)this));
+            evt_q_main.SendNowOrExit(EvtMsg_t(EvtId::ShellCmd, (Shell_t*)this));
         } // if new cmd
     } // while get byte
 //    PrintfI("e\r");
@@ -519,7 +519,7 @@ void ModbusUart485_t::ProcessByteIfReceived() {
     while(GetByte(&b) == retv::Ok) {
         if(Cmd.PutChar(b) == pdrNewCmd) {
             RxProcessed = false;
-//            EvtQMain.SendNowOrExit(EvtMsg_t(evtIdModbusCmd));
+//            evt_q_main.SendNowOrExit(EvtMsg_t(evtIdModbusCmd));
         } // if new cmd
     } // while get byte
 }
@@ -582,7 +582,7 @@ void ByteUart_t::IRxTask() {
     while(GetByte(&b) == retv::Ok) {
         if(Cmd.PutChar(b) == pdrNewCmd) {
             EvtMsg_t Msg(evtIdByteCmd, (ByteShell_t*)this);
-            CmdProcessInProgress = (EvtQMain.SendNowOrExit(Msg) == retv::Ok);
+            CmdProcessInProgress = (evt_q_main.SendNowOrExit(Msg) == retv::Ok);
         }
     }
 }

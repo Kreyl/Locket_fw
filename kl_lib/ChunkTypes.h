@@ -108,13 +108,13 @@ protected:
 
                 case csGoto:
                     curr_chunk = start_chunk + curr_chunk->ChunkToJumpTo;
-                    if(on_end_evt_msg.id != EvtId::None) EvtQMain.SendNowOrExitI(on_end_evt_msg);
+                    if(on_end_evt_msg.id != EvtId::None) evt_q_main.SendNowOrExitI(on_end_evt_msg);
                     SetupDelay(1);
                     return;
                     break;
 
                 case csEnd:
-                    if(on_end_evt_msg.id != EvtId::None) EvtQMain.SendNowOrExitI(on_end_evt_msg);
+                    if(on_end_evt_msg.id != EvtId::None) evt_q_main.SendNowOrExitI(on_end_evt_msg);
                     if(seq_que.GetI(&start_chunk) == retv::Ok) { // There is something next
                         curr_chunk = start_chunk;
                         repeat_cntr = -1;

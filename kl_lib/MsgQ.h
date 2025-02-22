@@ -175,6 +175,6 @@ public:
         default: Printf("Unhandled Msg %u\r", Msg.ID); break;
     } // Switch
  */
-extern EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
+extern EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> evt_q_main;
 
 #endif //MSGQ_H__

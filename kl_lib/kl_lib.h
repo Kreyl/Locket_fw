@@ -126,11 +126,6 @@ static T Average(T *p, uint32_t Len) {
 }
 
 template <typename T>
-static inline T Proportion(T MinX, T MaxX, T MinY, T MaxY, T x) {
-    return (((x - MaxX) * (MaxY - MinY)) / (MaxX - MinX)) + MaxY;
-}
-
-template <typename T>
 static T FindMediana(T *Arr, int32_t N) {
     int32_t L = 1, r = N, i, j, k = N / 2;
     T x;
@@ -526,8 +521,8 @@ public:
         tmp |= (uint16_t)TrgInput;
         ITmr->SMCR = tmp;
     }
-    void SetEtrPolarity(Inverted_t AInverted) {
-        if(AInverted == invInverted) ITmr->SMCR |= TIM_SMCR_ETP;
+    void SetEtrPolarity(Inv AInverted) {
+        if(AInverted == Inv::Inverted) ITmr->SMCR |= TIM_SMCR_ETP;
         else ITmr->SMCR &= ~TIM_SMCR_ETP;
     }
     void SelectMasterMode(TmrMasterMode_t MasterMode) const {
@@ -633,12 +628,12 @@ struct PwmSetup_t {
     uint16_t Pin;
     TIM_TypeDef *PTimer;
     uint32_t TimerChnl;
-    Inverted_t Inverted;
+    Inv Inverted;
     PinOutMode_t OutputType;
     uint32_t TopValue;
     PwmSetup_t(GPIO_TypeDef *APGpio, uint16_t APin,
             TIM_TypeDef *APTimer, uint32_t ATimerChnl,
-            Inverted_t AInverted, PinOutMode_t AOutputType,
+            Inv AInverted, PinOutMode_t AOutputType,
             uint32_t ATopValue) : PGpio(APGpio), Pin(APin), PTimer(APTimer),
                     TimerChnl(ATimerChnl), Inverted(AInverted), OutputType(AOutputType),
                     TopValue(ATopValue) {}
@@ -687,7 +682,7 @@ struct LPTimPwmSetup_t {
     GPIO_TypeDef *PGpio;
     uint16_t Pin;
     LPTIM_TypeDef *PTimer;
-    Inverted_t Inverted;
+    Inv Inverted;
     PinOutMode_t OutputType;
     uint32_t TopValue;
 };
@@ -1094,7 +1089,7 @@ public:
     PinOutputPWM_t(const PwmSetup_t &ASetup) : Timer_t(ASetup.PTimer), ISetup(ASetup) {}
     PinOutputPWM_t(GPIO_TypeDef *PGpio, uint16_t Pin,
             TIM_TypeDef *PTimer, uint32_t TimerChnl,
-            Inverted_t Inverted, PinOutMode_t OutputType,
+            Inv Inverted, PinOutMode_t OutputType,
             uint32_t TopValue) : Timer_t(PTimer),
                     ISetup(PGpio, Pin, PTimer, TimerChnl, Inverted, OutputType, TopValue) {}
 };

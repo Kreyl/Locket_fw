@@ -14,7 +14,6 @@
 #include "kl_buf.h"
 #include "uart.h"
 #include "MsgQ.h"
-#include "Config.h"
 #include "types.h"
 
 #if 1 // =========================== Pkt_t =====================================
@@ -73,14 +72,14 @@ public:
         if(cnt < (RXTABLE_SZ-1)) cnt++;
     }
 
-    StatusOr<rPkt_t> GetPktByID(uint16_t id) {
-        for(uint32_t i=0; i<cnt; i++) {
-            if(ibuf[i].id == id) {
-                return StatusOr<rPkt_t>(retv::Ok, ibuf[i]);
-            }
-        }
-        return StatusOr<rPkt_t>(retv::Fail);
-    }
+    // StatusOr<rPkt_t> GetPktByID(uint16_t id) {
+    //     for(uint32_t i=0; i<cnt; i++) {
+    //         if(ibuf[i].id == id) {
+    //             return StatusOr<rPkt_t>(retv::Ok, ibuf[i]);
+    //         }
+    //     }
+    //     return StatusOr<rPkt_t>(retv::Fail);
+    // }
 
     bool IDPresents(uint16_t id) {
         for(uint32_t i=0; i<cnt; i++) {

@@ -8,6 +8,7 @@
 #include "radio_lvl1.h"
 #include "cc1101.h"
 #include "uart.h"
+#include "App.h"
 
 cc1101_t CC(CC_Setup0);
 
@@ -30,7 +31,7 @@ cc1101_t CC(CC_Setup0);
 static rPkt_t pkt_rx, pkt_tx;
 static uint32_t supercycle_cnt = 0;
 static RxTable tbl1, tbl2, *curr_tbl = &tbl1;
-static uint8_t tx_power;
+// static uint8_t tx_power;
 
 static inline void TryToReceive(uint32_t rx_duration_ms) {
     sysinterval_t total_duration_st = TIME_MS2I(rx_duration_ms);
@@ -59,29 +60,29 @@ static inline void TryToSleep(uint32_t sleep_duration_ms) {
 }
 
 static inline void TaskFeelEachOther() {
-    for(uint32_t cycle_n=0; cycle_n < CYCLE_CNT; cycle_n++) {   // Iterate cycles
-        uint32_t tx_slot = Random::Generate(0, (SLOT_CNT-1)); // Decide when to transmit
-        // If TX slot is not zero: receive in zero cycle, sleep in non-zero cycle
-        if(tx_slot != 0) {
-            uint32_t time_before_tx = tx_slot * SLOT_DURATION_MS;
-            if(cycle_n == 0) TryToReceive(time_before_tx);
-            else TryToSleep(time_before_tx);
-        }
-        // ==== TX ====
-        pkt_tx.id = cfg.id;
-        pkt_tx.type = (uint8_t)cfg.type;
-        DBG1_SET();
-        CC.Recalibrate();
-        CC.Transmit((uint8_t*)&pkt_tx, RPKT_LEN);
-        DBG1_CLR();
+    // for(uint32_t cycle_n=0; cycle_n < CYCLE_CNT; cycle_n++) {   // Iterate cycles
+    //     uint32_t tx_slot = Random::Generate(0, (SLOT_CNT-1)); // Decide when to transmit
+    //     // If TX slot is not zero: receive in zero cycle, sleep in non-zero cycle
+    //     if(tx_slot != 0) {
+    //         uint32_t time_before_tx = tx_slot * SLOT_DURATION_MS;
+    //         if(cycle_n == 0) TryToReceive(time_before_tx);
+    //         else TryToSleep(time_before_tx);
+    //     }
+    //     // ==== TX ====
+    //     pkt_tx.id = cfg.id;
+    //     pkt_tx.type = (uint8_t)cfg.type;
+    //     DBG1_SET();
+    //     CC.Recalibrate();
+    //     CC.Transmit((uint8_t*)&pkt_tx, RPKT_LEN);
+    //     DBG1_CLR();
 
-        // If TX slot is not last: receive in zero cycle, sleep in non-zero cycle
-        if(tx_slot != (SLOT_CNT-1)) {
-            uint32_t time_after_tx = ((SLOT_CNT-1) - tx_slot) * SLOT_DURATION_MS;
-            if(cycle_n == 0) TryToReceive(time_after_tx);
-            else TryToSleep(time_after_tx);
-        }
-    } // for
+    //     // If TX slot is not last: receive in zero cycle, sleep in non-zero cycle
+    //     if(tx_slot != (SLOT_CNT-1)) {
+    //         uint32_t time_after_tx = ((SLOT_CNT-1) - tx_slot) * SLOT_DURATION_MS;
+    //         if(cycle_n == 0) TryToReceive(time_after_tx);
+    //         else TryToSleep(time_after_tx);
+    //     }
+    // } // for
 }
 
 static THD_WORKING_AREA(warLvl1Thread, 256);
@@ -91,17 +92,17 @@ static void rLvl1Thread(void *arg) {
     while(true) {
         TaskFeelEachOther();
         // Set new tx pwr if changed
-        if(tx_power != cfg.tx_power) {
-            tx_power = cfg.tx_power;
-            CC.SetTxPower(tx_power);
-        }
+        // if(tx_power != cfg.tx_power) {
+        //     tx_power = cfg.tx_power;
+        //     CC.SetTxPower(tx_power);
+        // }
         // Is it time to check?
         supercycle_cnt++;
         if(supercycle_cnt >= CHECK_RXTABLE_PERIOD_SC) {
             supercycle_cnt = 0;
             if(curr_tbl->cnt != 0) { // Report and switch table if not empty
                 chSysLock();
-                EvtQMain.SendNowOrExitI(EvtMsg_t(EvtId::CheckRxTable, (void*)curr_tbl));
+                // EvtQMain.SendNowOrExitI(EvtMsg_t(EvtId::CheckRxTable, (void*)curr_tbl));
                 curr_tbl = (curr_tbl == &tbl1)? &tbl2 : &tbl1;
                 curr_tbl->Clear();
                 chSysUnlock();
@@ -120,9 +121,9 @@ retv RadioInit() {
         CC.SetPktSize(RPKT_LEN);
         CC.SetChannel(RCHNL_EACH_OTH);
         CC.SetTxPower(cfg.tx_power);
-        // CC.SetBitrate(CCBitrate500k);
+        CC.SetBitrate(CCBitrate500k);
         // CC.SetBitrate(CCBitrate250k);
-        CC.SetBitrate(CCBitrate100k);
+        // CC.SetBitrate(CCBitrate100k);
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return retv::Ok;
