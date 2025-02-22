@@ -8,7 +8,7 @@ Config cfg;
 struct DevIdName {
     DevType type;
     const char* name;
-    LedRGBChunk_t *lsq_self;
+    const LedRGBChunk_t *lsq_self;
 };
 
 
@@ -27,7 +27,7 @@ static const DevIdName dev_id_names[kDevTypeCnt] = {
     {DevType::PlaceMinus1Magic, "PlaceMinus1Magic", lsqPlaceMinus1Magic },
     {DevType::PlaceMinus2Magic, "PlaceMinus2Magic", lsqPlaceMinus2Magic },
     {DevType::PlaceMinus3Magic, "PlaceMinus3Magic", lsqPlaceMinus3Magic},
-    {DevType::Particle,         "Particle",         lsqParticle },
+    {DevType::Particle,         "Particle",         lsqSearcher },
     {DevType::Path,             "Path",             lsqPath }
 };
 
@@ -119,5 +119,5 @@ void SetDevtype(uint32_t id) {
         cfg.type = static_cast<DevType>(id);
         ShowSelfType();
     }
-    else Printf("Invalid dev type: %u\r");
+    else Printf("Invalid dev type: %u\r", id);
 }

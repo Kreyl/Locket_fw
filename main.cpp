@@ -1,7 +1,6 @@
 #include "board.h"
 #include "led.h"
 #include "vibro.h"
-#include "Sequences.h"
 #include "kl_lib.h"
 #include "radio_lvl1.h"
 #include "App.h"
@@ -13,7 +12,7 @@ EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> evt_q_main;
 static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
 CmdUart_t Uart { &CmdUartParams };
 static void ITask();
-static void OnCmd(Shell_t *PShell);
+static void OnCmd(Shell_t *pshell);
 static retv ReadAndSetupMode();
 // EEAddresses
 #define EE_ADDR_DEVICE_ID       0
@@ -33,6 +32,15 @@ void SleepNow(uint32_t Delay) {
     Sleep::EnterStandby();
     chSysUnlock();
 }
+
+static const LedRGBChunk_t lsqFailure[] = {
+    {csSetup, 0, clRed},
+    {csWait, 45},
+    {csSetup, 0, clBlack},
+    {csWait, 45},
+    {csRepeat, 1},
+    {csEnd}
+};
 #pragma endregion
 
 void main(void) {
@@ -53,11 +61,11 @@ void main(void) {
     Led.Init();
     Vibro.Init();
 
-    if(RadioInit() == retv::Ok) Vibro.StartOrRestart(vsqBrrBrr);
-    else {
-        Led.StartOrRestart(lsqFailure);
-        chThdSleepMilliseconds(1008);
-    }
+    // if(RadioInit() == retv::Ok) Vibro.StartOrRestart(vsqBrrBrr);
+    // else {
+    //     Led.StartOrRestart(lsqFailure);
+    //     chThdSleepMilliseconds(1008);
+    // }
 
     ReadAndSetupMode();
     TmrEverySecond.StartOrRestart();
@@ -116,51 +124,59 @@ retv ReadAndSetupMode() {
 }
 
 #if 1 // ================= Command processing ====================
-void OnCmd(Shell_t *PShell) {
-    Cmd_t *PCmd = &PShell->Cmd;
+void OnCmd(Shell_t *pshell) {
+    Cmd_t *pcmd = &pshell->Cmd;
 // Handle command
-    if(PCmd->NameIs("Ping"))
-        PShell->Ok();
-    else if(PCmd->NameIs("Version"))
-        PShell->Print("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
-//    else if(PCmd->NameIs("GetID"))
-//        PShell->Print("ID: %u\r", Cfg.ID);
+    if(pcmd->NameIs("Ping"))
+        pshell->Ok();
+    else if(pcmd->NameIs("Version"))
+        pshell->Print("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
+//    else if(pcmd->NameIs("GetID"))
+//        pshell->Print("ID: %u\r", Cfg.ID);
 #if ADC_REQUIRED
-else if(PCmd->NameIs("GetBat")) Adc.StartMeasurement();
+else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();
 #endif
 
-    else if(PCmd->NameIs("SetID")) {
+    else if(pcmd->NameIs("SetType")) {
+        uint32_t new_type = 0;
+        if(pcmd->GetNext<uint32_t>(&new_type).IsOk()) {
+            SetDevtype(new_type);
+        }
+        else pshell->BadParam();
+    }
+
+    else if(pcmd->NameIs("SetID")) {
         int32_t new_id = 0;
-        if(PCmd->GetNext<int32_t>(&new_id) != retv::Ok) {
-            PShell->CmdError();
+        if(pcmd->GetNext<int32_t>(&new_id) != retv::Ok) {
+            pshell->CmdError();
             return;
         }
-        if(ISetID(new_id) == retv::Ok) PShell->Ok();
-        else PShell->Failure();
+        if(ISetID(new_id) == retv::Ok) pshell->Ok();
+        else pshell->Failure();
     }
 
 #if PILL_ENABLED // ==== Pills ====
-else if(PCmd->NameIs("PillRead32")) {
+else if(pcmd->NameIs("PillRead32")) {
     int32_t Cnt = 0;
-    if(PCmd->GetNextInt32(&Cnt) != OK) { PShell->Ack(CMD_ERROR); return; }
+    if(pcmd->GetNextInt32(&Cnt) != OK) { pshell->Ack(CMD_ERROR); return; }
     uint8_t MemAddr = 0, b = OK;
-    PShell->Printf("#PillData32 ");
+    pshell->Printf("#PillData32 ");
     for(int32_t i=0; i<Cnt; i++) {
         b = PillMgr.Read(MemAddr, &dw32, 4);
         if(b != OK) break;
-        PShell->Printf("%d ", dw32);
+        pshell->Printf("%d ", dw32);
         MemAddr += 4;
     }
     Uart.Printf("\r\n");
-    PShell->Ack(b);
+    pshell->Ack(b);
 }
 
-else if(PCmd->NameIs("PillWrite32")) {
+else if(pcmd->NameIs("PillWrite32")) {
     uint8_t b = CMD_ERROR;
     uint8_t MemAddr = 0;
     // Iterate data
     while(true) {
-        if(PCmd->GetNextInt32(&dw32) != OK) break;
+        if(pcmd->GetNextInt32(&dw32) != OK) break;
 //            Uart.Printf("%X ", Data);
         b = PillMgr.Write(MemAddr, &dw32, 4);
         if(b != OK) break;
@@ -168,14 +184,14 @@ else if(PCmd->NameIs("PillWrite32")) {
     } // while
     Uart.Ack(b);
 }
-else if(PCmd->NameIs("Pill")) {
-    if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
+else if(pcmd->NameIs("Pill")) {
+    if(pcmd->GetNextInt32(&dw32) != OK) { pshell->Ack(CMD_ERROR); return; }
     PillType = (PillType_t)dw32;
     App.SignalEvt(EVT_PILL_CHECK);
 }
 #endif
 
-    else PShell->CmdUnknown();
+    else pshell->CmdUnknown();
 }
 #endif
 
