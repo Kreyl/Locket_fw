@@ -28,10 +28,12 @@ cc1101_t CC(CC_Setup0);
 #define DBG1_CLR()
 #endif
 
-static rPkt_t pkt_rx, pkt_tx;
-static uint32_t supercycle_cnt = 0;
+static rPkt pkt_rx;
+rPkt Radio::pkt_tx;
+
+// static uint32_t supercycle_cnt = 0;
 static RxTable tbl1, tbl2, *curr_tbl = &tbl1;
-// static uint8_t tx_power;
+static uint8_t tx_power;
 
 static inline void TryToReceive(uint32_t rx_duration_ms) {
     sysinterval_t total_duration_st = TIME_MS2I(rx_duration_ms);
@@ -40,7 +42,7 @@ static inline void TryToReceive(uint32_t rx_duration_ms) {
     CC.Recalibrate();
     while(true) {
         DBG2_SET();
-        retv rx_rslt = CC.Receive_st(time_left_st, (uint8_t*)&pkt_rx, RPKT_LEN, &pkt_rx.rssi);
+        retv rx_rslt = CC.Receive_st(time_left_st, (uint8_t*)&pkt_rx, kRPktSz, &pkt_rx.rssi);
         DBG2_CLR();
         if(rx_rslt == retv::Ok) {
 //            Printf("%u %d; %d\r", pkt_rx.id, pkt_rx.type, pkt_rx.rssi);
@@ -54,35 +56,38 @@ static inline void TryToReceive(uint32_t rx_duration_ms) {
 }
 
 static inline void TryToSleep(uint32_t sleep_duration_ms) {
-    if(sleep_duration_ms >= MIN_SLEEP_DURATION_MS) CC.EnterPwrDown();
+    if(sleep_duration_ms >= kMinSleepDuration_ms) CC.EnterPwrDown();
     else CC.EnterIdle();
     chThdSleepMilliseconds(sleep_duration_ms);
 }
 
 static inline void TaskFeelEachOther() {
-    // for(uint32_t cycle_n=0; cycle_n < CYCLE_CNT; cycle_n++) {   // Iterate cycles
-    //     uint32_t tx_slot = Random::Generate(0, (SLOT_CNT-1)); // Decide when to transmit
-    //     // If TX slot is not zero: receive in zero cycle, sleep in non-zero cycle
-    //     if(tx_slot != 0) {
-    //         uint32_t time_before_tx = tx_slot * SLOT_DURATION_MS;
-    //         if(cycle_n == 0) TryToReceive(time_before_tx);
-    //         else TryToSleep(time_before_tx);
-    //     }
-    //     // ==== TX ====
-    //     pkt_tx.id = cfg.id;
-    //     pkt_tx.type = (uint8_t)cfg.type;
-    //     DBG1_SET();
-    //     CC.Recalibrate();
-    //     CC.Transmit((uint8_t*)&pkt_tx, RPKT_LEN);
-    //     DBG1_CLR();
-
-    //     // If TX slot is not last: receive in zero cycle, sleep in non-zero cycle
-    //     if(tx_slot != (SLOT_CNT-1)) {
-    //         uint32_t time_after_tx = ((SLOT_CNT-1) - tx_slot) * SLOT_DURATION_MS;
-    //         if(cycle_n == 0) TryToReceive(time_after_tx);
-    //         else TryToSleep(time_after_tx);
-    //     }
-    // } // for
+    for(uint32_t cycle_n=0; cycle_n < kCycleCnt; cycle_n++) { // Iterate cycles
+        if(CheckIfTxAndPrepareRPkt()) {
+            int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
+            // If TX slot is not zero: receive in zero cycle, sleep in non-zero cycle
+            if(tx_slot != 0) {
+                uint32_t time_before_tx = tx_slot * kSlotDuration_ms;
+                if(cycle_n == 0) TryToReceive(time_before_tx);
+                else TryToSleep(time_before_tx);
+            }
+            // ==== TX ====
+            DBG1_SET();
+            CC.Recalibrate();
+            CC.Transmit(Radio::pkt_tx.bytes, kRPktSz);
+            DBG1_CLR();
+            // If TX slot is not last: receive in zero cycle, sleep in non-zero cycle
+            if(tx_slot != (kSlotCnt-1)) {
+                uint32_t time_after_tx = ((kSlotCnt-1) - tx_slot) * kSlotDuration_ms;
+                if(cycle_n == 0) TryToReceive(time_after_tx);
+                else TryToSleep(time_after_tx);
+            }
+        } // if tx
+        else { // No TX
+            if(cycle_n == 0) TryToReceive(kCycleDuration_ms);
+            else TryToSleep(kCycleDuration_ms);
+        }
+    } // for
 }
 
 static THD_WORKING_AREA(warLvl1Thread, 256);
@@ -92,34 +97,36 @@ static void rLvl1Thread(void *arg) {
     while(true) {
         TaskFeelEachOther();
         // Set new tx pwr if changed
-        // if(tx_power != cfg.tx_power) {
-        //     tx_power = cfg.tx_power;
-        //     CC.SetTxPower(tx_power);
-        // }
-        // Is it time to check?
-        supercycle_cnt++;
-        if(supercycle_cnt >= CHECK_RXTABLE_PERIOD_SC) {
-            supercycle_cnt = 0;
-            if(curr_tbl->cnt != 0) { // Report and switch table if not empty
-                chSysLock();
-                // EvtQMain.SendNowOrExitI(EvtMsg_t(EvtId::CheckRxTable, (void*)curr_tbl));
-                curr_tbl = (curr_tbl == &tbl1)? &tbl2 : &tbl1;
-                curr_tbl->Clear();
-                chSysUnlock();
-            }
+        if(tx_power != cfg.tx_power) {
+            tx_power = cfg.tx_power;
+            CC.SetTxPower(tx_power);
         }
+        // Is it time to check?
+        // supercycle_cnt++;
+        // if(supercycle_cnt >= CHECK_RXTABLE_PERIOD_SC) {
+        //     supercycle_cnt = 0;
+        //     if(curr_tbl->cnt != 0) { // Report and switch table if not empty
+        //         chSysLock();
+        //         // EvtQMain.SendNowOrExitI(EvtMsg_t(EvtId::CheckRxTable, (void*)curr_tbl));
+        //         curr_tbl = (curr_tbl == &tbl1)? &tbl2 : &tbl1;
+        //         curr_tbl->Clear();
+        //         chSysUnlock();
+        //     }
+        // }
     } // while true
 }
 
-retv RadioInit() {
+namespace Radio {
+
+retv Init() {
 #ifdef DBG_PINS
     PinSetupOut(DBG_GPIO1, DBG_PIN1, omPushPull);
     PinSetupOut(DBG_GPIO2, DBG_PIN2, omPushPull);
 #endif
 
     if(CC.Init() == retv::Ok) {
-        CC.SetPktSize(RPKT_LEN);
-        CC.SetChannel(RCHNL_EACH_OTH);
+        CC.SetPktSize(kRPktSz);
+        CC.SetChannel(0);
         CC.SetTxPower(cfg.tx_power);
         CC.SetBitrate(CCBitrate500k);
         // CC.SetBitrate(CCBitrate250k);
@@ -130,3 +137,5 @@ retv RadioInit() {
     }
     else return retv::Fail;
 }
+
+} // namespace Radio

@@ -18,29 +18,39 @@
 
 #if 1 // =========================== Pkt_t =====================================
 #pragma pack(push, 1)
-struct rPkt_t {
-    uint32_t salt = 0xCa110fEa;
-    uint16_t id; // Required to distinct packets from same src
-    uint8_t type;
-    int8_t rssi; // Will be set after RX. Transmitting is useless, but who cares.
+union rPkt {
+    uint32_t dw32[2];
+    uint8_t bytes[8];
+    struct {
+        uint8_t id; // Required to distinct packets from same src.
+        uint32_t transaction_id: 24;
+        int16_t goodness;
+        uint8_t green_evil : 1;
+        uint8_t artifact: 1;
+        uint8_t cyan_beast: 1;
+        uint8_t searcher: 1;
+        uint8_t : 4;
+        int8_t rssi; // Will be set after RX. Transmitting is useless, but who cares.
+    };
+    void Reset(uint8_t aid) {
+        dw32[0] = 0;
+        dw32[1] = 0;
+        id = aid;
+    }
 };
 #pragma pack(pop)
 #endif
 
-#define RPKT_LEN    sizeof(rPkt_t)
-
+inline constexpr const uint8_t kRPktSz = sizeof(rPkt);
 
 #if 1 // =================== Channels, cycles, Rssi  ===========================
-#define RCHNL_EACH_OTH          0
-
 // Feel-Each-Other related
-#define CYCLE_CNT               4U
-#define SLOT_CNT                54U
-// #define SLOT_DURATION_MS        3U // for 500kBit/s
-// #define SLOT_DURATION_MS        5U // for 250kBit/s
-#define SLOT_DURATION_MS        5U // for 100kBit/s
-#define MIN_SLEEP_DURATION_MS   18UL
-#define CHECK_RXTABLE_PERIOD_SC 4UL // Check RxTable every N SuperCycles
+inline constexpr const uint32_t kCycleCnt = 4U, kSlotCnt = 54U;
+inline constexpr const uint32_t kSlotDuration_ms = 3U; // for 500kBit/s
+// inline constexpr const uint32_t kSlotDuration_ms = 5U; // for 100 & 2500kBit/s
+inline constexpr const uint32_t kCycleDuration_ms = kSlotDuration_ms * kSlotCnt;
+inline constexpr const uint32_t kMinSleepDuration_ms = 18UL;
+// #define CHECK_RXTABLE_PERIOD_SC 4UL // Check RxTable every N SuperCycles
 /*
  * CYCLE_DUR = SLOT_DUR(3ms) * SLOT_CNT(54) = 162ms
  * SUPERCYCLE_DUR = CYCLE_DUR * CYCLE_CNT(5) = 810ms
@@ -49,19 +59,13 @@ struct rPkt_t {
 #endif
 
 #if 1 // ============================= RX Table ================================
-#define RXTABLE_SZ              50U // 50 devices total
 #define RXT_PKT_REQUIRED        TRUE
 class RxTable {
-private:
-#if RXT_PKT_REQUIRED
-    rPkt_t ibuf[RXTABLE_SZ];
-#else
-    uint8_t IdBuf[RXTABLE_SZ];
-#endif
 public:
+    static const uint32_t kSize = 36;
     uint32_t cnt = 0;
 #if RXT_PKT_REQUIRED
-    void AddOrReplaceExistingPkt(rPkt_t &apkt) {
+    void AddOrReplaceExistingPkt(rPkt &apkt) {
         for(uint32_t i=0; i<cnt; i++) {
             if(ibuf[i].id == apkt.id) {
                 ibuf[i] = apkt; // Replace with newer pkt
@@ -69,16 +73,16 @@ public:
             }
         }
         ibuf[cnt] = apkt;
-        if(cnt < (RXTABLE_SZ-1)) cnt++;
+        if(cnt < (kSize-1)) cnt++;
     }
 
-    // StatusOr<rPkt_t> GetPktByID(uint16_t id) {
+    // StatusOr<rPkt> GetPktByID(uint16_t id) {
     //     for(uint32_t i=0; i<cnt; i++) {
     //         if(ibuf[i].id == id) {
-    //             return StatusOr<rPkt_t>(retv::Ok, ibuf[i]);
+    //             return StatusOr<rPkt>(retv::Ok, ibuf[i]);
     //         }
     //     }
-    //     return StatusOr<rPkt_t>(retv::Fail);
+    //     return StatusOr<rPkt>(retv::Fail);
     // }
 
     bool IDPresents(uint16_t id) {
@@ -101,22 +105,34 @@ public:
     void Clear() { cnt = 0; }
 
 #if RXT_PKT_REQUIRED
-    rPkt_t& operator [](uint32_t indx) { return ibuf[indx]; }
+    rPkt& operator [](uint32_t indx) { return ibuf[indx]; }
 #endif
 
     void Print() {
         Printf("RxTable cnt: %u\r", cnt);
         for(uint32_t i=0; i<cnt; i++) {
 #if RXT_PKT_REQUIRED
-            Printf("ID: %u; type: %u\r", ibuf[i].id, ibuf[i].type);
+            // Printf("ID: %u; type: %u\r", ibuf[i].id, ibuf[i].type);
 #else
             Printf("ID: %u\r", IdBuf[i]);
 #endif
         }
     }
+private:
+#if RXT_PKT_REQUIRED
+    rPkt ibuf[kSize];
+#else
+    uint8_t IdBuf[RXTABLE_SZ];
+#endif
 };
 #endif
 
-retv RadioInit();
+namespace Radio {
+
+retv Init();
+
+extern rPkt pkt_tx;
+
+} // namespace Radio
 
 #endif //RADIO_LVL1_H__

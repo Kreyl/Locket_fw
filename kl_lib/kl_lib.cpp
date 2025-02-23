@@ -475,6 +475,15 @@ void TmrKL_t::StartI() {
 }
 #endif
 
+namespace Random {
+uint32_t next;
+
+void SeedWithUniqID() {
+    next = GetUniqID1() + GetUniqID2() + GetUniqID3();
+}
+
+}
+
 #if 1 // ============================= DEBUG ===================================
 extern "C" {
 

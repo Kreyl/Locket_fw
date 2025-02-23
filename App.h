@@ -36,6 +36,11 @@ extern Config cfg;
 
 void SetDevtype(uint32_t id);
 
+void ApplyPill(int32_t pill_id);
+
 // Evt processing
 void OnBtnPress(BtnEvtInfo_t btn_info);
-void ProcessRxTbl(RxTable &tbl);
+void OnSecond();
+
+// Radio callback
+bool CheckIfTxAndPrepareRPkt();

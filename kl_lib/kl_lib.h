@@ -17,7 +17,6 @@
 #include "types.h"
 
 // ==== Build time ====
-// Define symbol BUILD_TIME in main.cpp options with value ${current_date}.
 // Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
 #define STRINGIFY(x)    # x
 #define XSTRINGIFY(x)   STRINGIFY(x)
@@ -296,7 +295,7 @@ public:
 
 #if 1 // ========================== Random =====================================
 namespace Random {
-static uint32_t next = 1;
+extern uint32_t next;
 
 static int32_t do_rand(uint32_t *ctx) {
 #if 0
@@ -314,12 +313,14 @@ static int32_t do_rand(uint32_t *ctx) {
 static int32_t rand() { return do_rand(&next); }
 
 // Generate pseudo-random value
-static inline long int Generate(long int LowInclusive, long int HighInclusive) {
-    uint32_t last = rand();
-    return (last % (HighInclusive + 1 - LowInclusive)) + LowInclusive;
+static inline int32_t Generate(int32_t low_inclusive, int32_t high_inclusive) {
+    int32_t last = rand();
+    return (last % (high_inclusive + 1 - low_inclusive)) + low_inclusive;
 }
 // Seed pseudo-random generator with new seed
-static inline void Seed(unsigned int Seed) { next = Seed; }
+static inline void Seed(uint32_t seed) { next = seed; }
+
+void SeedWithUniqID();
 
 // True random
 #if defined STM32L4XX
@@ -327,7 +328,7 @@ void TrueInit();
 void TrueDeinit();
 
 // Generate truly random value
-uint32_t TrueGenerate(uint32_t LowInclusive, uint32_t HighInclusive);
+uint32_t TrueGenerate(uint32_t low_inclusive, uint32_t high_inclusive);
 // Seed pseudo random with true random
 void SeedWithTrue();
 #endif

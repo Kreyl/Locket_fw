@@ -21,10 +21,10 @@ static uint8_t GetDipSwitch();
 static retv ISetID(int32_t NewID);
 static void ReadIDfromEE();
 
-LedRGBwPower_t<3> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
-Vibro_t<3> Vibro { VIBRO_SETUP };
+LedRGBwPower_t<7> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+Vibro_t<4> vibro { VIBRO_SETUP };
 
-static TmrKL_t TmrEverySecond {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
+static TmrKL_t tmr_every_second {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
 
 void SleepNow(uint32_t Delay) {
     chSysLock();
@@ -58,17 +58,20 @@ void main(void) {
     Printf("\r%S %S; ID: %u\r", APP_NAME, kBuildTime, cfg.id);
     Clk.PrintFreqs();
 
-    Led.Init();
-    Vibro.Init();
+    Printf("rpkt sz: %u\r", kRPktSz);
 
-    // if(RadioInit() == retv::Ok) Vibro.StartOrRestart(vsqBrrBrr);
-    // else {
-    //     Led.StartOrRestart(lsqFailure);
-    //     chThdSleepMilliseconds(1008);
-    // }
+
+    Random::SeedWithUniqID();
+    Led.Init();
+    vibro.Init();
+
+    if(Radio::Init().NotOk()) {
+        Led.StartOrRestart(lsqFailure);
+        chThdSleepMilliseconds(1008);
+    }
 
     ReadAndSetupMode();
-    TmrEverySecond.StartOrRestart();
+    tmr_every_second.StartOrRestart();
     SimpleSensors::Init();
 
     // Main cycle
@@ -82,18 +85,17 @@ void ITask() {
         switch(msg.id) {
             case EvtId::EverySecond:
                 if(ReadAndSetupMode() == retv::New) chThdSleepMilliseconds(810);
+                OnSecond();
                 break;
 
-            case EvtId::CheckRxTable: ProcessRxTbl(*(RxTable*)msg.ptr); break;
-
 #if BUTTONS_ENABLED
-        case EvtId::Buttons:
-            Printf("Btn %u %u\r", msg.btn_info.btn_indx, msg.btn_info.type);
-            OnBtnPress(msg.btn_info);
-            break;
+            case EvtId::Buttons:
+                Printf("Btn %u %u\r", msg.btn_info.btn_indx, msg.btn_info.type);
+                OnBtnPress(msg.btn_info);
+                break;
 #endif
 #if ADC_REQUIRED
-        case evtIdAdcRslt: Printf("Battery: %u mV\r", Adc.GetVDAmV(Adc.GetResultMedian(0))); break;
+            case evtIdAdcRslt: Printf("Battery: %u mV\r", Adc.GetVDAmV(Adc.GetResultMedian(0))); break;
 #endif
             case EvtId::ShellCmd:
                 OnCmd((Shell_t*) msg.ptr);
