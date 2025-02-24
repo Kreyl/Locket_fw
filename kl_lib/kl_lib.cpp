@@ -48,6 +48,49 @@ void PrintThdFreeStack(void *wsp, uint32_t size) {
 
 #endif
 
+#pragma region // 32-bit uniq ID by hashing
+
+uint32_t GetUniqID32(uint32_t x, uint32_t y, uint32_t z) {
+    // Magic numbers for 32-bit hashing.  Copied from Murmur3.
+    static const uint32_t c1 = 0xcc9e2d51;
+    static const uint32_t c2 = 0x1b873593;
+    // uint32_t uniq_id[3] = {GetUniqID1(), GetUniqID2(), GetUniqID3()};
+    // char *p = reinterpret_cast<char*>(uniq_id);
+    uint32_t len = 12; // 3 uniq ids 4 bytes each
+    uint32_t a = len, b = a * 5, c = 9, d = b;
+    // a += GetUniqID1();
+    // b += GetUniqID2();
+    // c += GetUniqID3();
+    a += x;
+    b += y;
+    c += z;
+
+    auto Rotate32 = [](uint32_t val, uint32_t shift) {
+        return (shift == 0)? val : (val >> shift) | (val << (32 - shift));
+    };
+
+    auto Mur = [Rotate32](uint32_t a, uint32_t h) {
+        a *= c1;
+        a = Rotate32(a, 17);
+        a *= c2;
+        h ^= a;
+        h = Rotate32(h, 19);
+        return h;
+    };
+
+    auto fmix = [](uint32_t h) {
+        h ^= h >> 16;
+        h *= 0x85ebca6b;
+        h ^= h >> 13;
+        h *= 0xc2b2ae35;
+        h ^= h >> 16;
+        return h;
+    };
+
+    return fmix(Mur(c, Mur(b, Mur(a, d))));
+}
+#pragma endregion
+
 /********************************************
 arena;     total space allocated from system
 ordblks;   number of non-inuse chunks

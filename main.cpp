@@ -131,13 +131,22 @@ retv ReadAndSetupMode() {
 #if 1 // ================= Command processing ====================
 void OnCmd(Shell_t *pshell) {
     Cmd_t *pcmd = &pshell->Cmd;
-// Handle command
+    // Handle command
     if(pcmd->NameIs("Ping"))
         pshell->Ok();
     else if(pcmd->NameIs("Version"))
-        pshell->Print("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
-//    else if(pcmd->NameIs("GetID"))
-//        pshell->Print("ID: %u\r", Cfg.ID);
+        pshell->Print("%S %S\r", APP_NAME, kBuildTime);
+
+    else if(pcmd->NameIs("GetID")) {
+        uint32_t x, y, z;
+        if(pcmd->GetNext<uint32_t>(&x).IsOk() && pcmd->GetNext<uint32_t>(&y).IsOk() && pcmd->GetNext<uint32_t>(&z).IsOk())
+            pshell->Print("ID: 0x%08X\r", GetUniqID32(x, y, z));
+        else pshell->BadParam();
+        // pshell->Print("ID: %u\r", Cfg.ID);
+    }
+
+
+
 #if ADC_REQUIRED
 else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();
 #endif

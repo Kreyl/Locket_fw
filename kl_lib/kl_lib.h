@@ -215,15 +215,12 @@ void MemCpy(void *Dst, void *Src, uint32_t Sz);
 #else
 #define UNIQ_ID_BASE    0x1FF800D0
 #endif
-static inline uint32_t GetUniqID1() {
-    return *((uint32_t*)(UNIQ_ID_BASE + 0x00));
-}
-static inline uint32_t GetUniqID2() {
-    return *((uint32_t*)(UNIQ_ID_BASE + 0x04));
-}
-static inline uint32_t GetUniqID3() {
-    return *((uint32_t*)(UNIQ_ID_BASE + 0x14));
-}
+static inline uint32_t GetUniqID1() { return *((uint32_t*)(UNIQ_ID_BASE + 0x00)); }
+static inline uint32_t GetUniqID2() { return *((uint32_t*)(UNIQ_ID_BASE + 0x04)); }
+static inline uint32_t GetUniqID3() { return *((uint32_t*)(UNIQ_ID_BASE + 0x14)); }
+
+uint32_t GetUniqID32(uint32_t x, uint32_t y, uint32_t z); // Construct uniq id by hashing hw uniq id
+
 #elif defined STM32L4XX
 #define UNIQ_ID_BASE    0x1FFF7590
 static inline uint32_t GetUniqID1() {

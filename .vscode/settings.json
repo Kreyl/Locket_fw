@@ -18,7 +18,8 @@
         "vector": "cpp",
         "initializer_list": "cpp",
         "cmath": "cpp",
-        "memory_resource": "cpp"
+        "memory_resource": "cpp",
+        "string": "cpp"
     },
     // TODO Highlight
     "todohighlight.isEnable": true,
