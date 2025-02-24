@@ -290,7 +290,7 @@ void Indicate() {
 }
 
 
-void ProcessRxTbl() {
+void ProcessRxTbl(RxTable *ptbl) {
     /*
     if(cfg.type != DevType::Witch) return; // Only witches can feel
     // === Analyze table ===
@@ -336,7 +336,6 @@ void ProcessRxTbl() {
 void OnSecond() {
     seconds_passed++;
     bool time_to_act = (seconds_passed % 4 == 0);
-    if(time_to_act) ProcessRxTbl();
     // Process goodness
     switch(cfg.type) {
         case DevType::Searcher:
@@ -380,39 +379,39 @@ void ApplyPill(int32_t pill_id) {
     }
 }
 
-bool CheckIfTxAndPrepareRPkt() {
+bool CheckIfTxAndPrepareRPkt(rPkt *ppkt) {
     // Particle & Path do not transmit
     if(cfg.type == DevType::Particle or cfg.type == DevType::Path) return false;
     // Others save master must transmit all the time
-    Radio::pkt_tx.Reset(cfg.id); // Zero all
+    ppkt->Reset(cfg.id); // Zero all
     switch(cfg.type) {
-        case DevType::Searcher:   Radio::pkt_tx.searcher = 1; break;
+        case DevType::Searcher:   ppkt->searcher = 1; break;
 
-        case DevType::PlacePlus1: Radio::pkt_tx.goodness = 1; break;
-        case DevType::PlacePlus2: Radio::pkt_tx.goodness = 2; break;
-        case DevType::PlacePlus3: Radio::pkt_tx.goodness = 3; break;
+        case DevType::PlacePlus1: ppkt->goodness = 1; break;
+        case DevType::PlacePlus2: ppkt->goodness = 2; break;
+        case DevType::PlacePlus3: ppkt->goodness = 3; break;
 
         case DevType::Master:
             if(!tx_params.must_tx) return false;
             chSysLock();
             if(tx_params.goodness != 0) {
-                Radio::pkt_tx.transaction_id = tx_params.transaction_id;
-                Radio::pkt_tx.goodness = tx_params.goodness;
+                ppkt->transaction_id = tx_params.transaction_id;
+                ppkt->goodness = tx_params.goodness;
             }
-            else if(tx_params.green_evil) Radio::pkt_tx.green_evil = 1;
+            else if(tx_params.green_evil) ppkt->green_evil = 1;
             chSysUnlock();
             break;
 
-        case DevType::PlaceMinus1: Radio::pkt_tx.goodness = -1; break;
-        case DevType::PlaceMinus2: Radio::pkt_tx.goodness = -2; break;
-        case DevType::PlaceMinus3: Radio::pkt_tx.goodness = -3; break;
+        case DevType::PlaceMinus1: ppkt->goodness = -1; break;
+        case DevType::PlaceMinus2: ppkt->goodness = -2; break;
+        case DevType::PlaceMinus3: ppkt->goodness = -3; break;
 
-        case DevType::Artifact: Radio::pkt_tx.artifact = 1; break;
-        case DevType::Beast: Radio::pkt_tx.cyan_beast = 1; break;
+        case DevType::Artifact: ppkt->artifact = 1; break;
+        case DevType::Beast: ppkt->cyan_beast = 1; break;
 
-        case DevType::PlaceMinus1Magic: Radio::pkt_tx.goodness = -1; Radio::pkt_tx.green_evil = 1; break;
-        case DevType::PlaceMinus2Magic: Radio::pkt_tx.goodness = -2; Radio::pkt_tx.green_evil = 1; break;
-        case DevType::PlaceMinus3Magic: Radio::pkt_tx.goodness = -3; Radio::pkt_tx.green_evil = 1; break;
+        case DevType::PlaceMinus1Magic: ppkt->goodness = -1; ppkt->green_evil = 1; break;
+        case DevType::PlaceMinus2Magic: ppkt->goodness = -2; ppkt->green_evil = 1; break;
+        case DevType::PlaceMinus3Magic: ppkt->goodness = -3; ppkt->green_evil = 1; break;
 
         default: return false; // Impossible to get here, but just in case
     } // switch

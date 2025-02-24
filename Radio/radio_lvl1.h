@@ -37,26 +37,17 @@ union rPkt {
         dw32[1] = 0;
         id = aid;
     }
+    rPkt& operator = (const rPkt &right) {
+        dw32[0] = right.dw32[0];
+        dw32[1] = right.dw32[1];
+        return *this;
+    }
 };
 #pragma pack(pop)
 #endif
 
 inline constexpr const uint8_t kRPktSz = sizeof(rPkt);
 
-#if 1 // =================== Channels, cycles, Rssi  ===========================
-// Feel-Each-Other related
-inline constexpr const uint32_t kCycleCnt = 4U, kSlotCnt = 54U;
-inline constexpr const uint32_t kSlotDuration_ms = 3U; // for 500kBit/s
-// inline constexpr const uint32_t kSlotDuration_ms = 5U; // for 100 & 2500kBit/s
-inline constexpr const uint32_t kCycleDuration_ms = kSlotDuration_ms * kSlotCnt;
-inline constexpr const uint32_t kMinSleepDuration_ms = 18UL;
-// #define CHECK_RXTABLE_PERIOD_SC 4UL // Check RxTable every N SuperCycles
-/*
- * CYCLE_DUR = SLOT_DUR(3ms) * SLOT_CNT(54) = 162ms
- * SUPERCYCLE_DUR = CYCLE_DUR * CYCLE_CNT(5) = 810ms
- * CHECK_PERIOD = SUPERCYCLE_DUR * CHECK_RXTABLE_PERIOD_SC(4) = 3240ms
- */
-#endif
 
 #if 1 // ============================= RX Table ================================
 #define RXT_PKT_REQUIRED        TRUE
@@ -66,12 +57,17 @@ public:
     uint32_t cnt = 0;
 #if RXT_PKT_REQUIRED
     void AddOrReplaceExistingPkt(rPkt &apkt) {
-        for(uint32_t i=0; i<cnt; i++) {
-            if(ibuf[i].id == apkt.id) {
-                ibuf[i] = apkt; // Replace with newer pkt
-                return;
+        if(cnt != 0) { // Find same ID
+            rPkt *ppkt = &ibuf[0], *pend = &ibuf[cnt];
+            while(ppkt < pend) {
+                if(ppkt->id == apkt.id) {
+                    *ppkt = apkt; // Replace with newer pkt
+                    return;
+                }
+                ppkt++;
             }
         }
+        // Empty or not found
         ibuf[cnt] = apkt;
         if(cnt < (kSize-1)) cnt++;
     }
@@ -129,9 +125,21 @@ private:
 
 namespace Radio {
 
-retv Init();
+#pragma region // ==== Constants ====
+inline constexpr const uint32_t kCycleCnt = 4U, kSlotCnt = 72U;
+inline constexpr const uint32_t kSlotDuration_ms = 3U; // for 500kBit/s
+// inline constexpr const uint32_t kSlotDuration_ms = 5U; // for 100 & 2500kBit/s
+inline constexpr const uint32_t kCycleDuration_ms = kSlotDuration_ms * kSlotCnt;
+inline constexpr const uint32_t kMinSleepDuration_ms = 18UL;
+inline constexpr const uint32_t kCheckRxTablePeriod_sc = 4UL; // Check RxTable every N SuperCycles
+/* Example:
+* CYCLE_DUR = kSlotDuration_ms(3ms) * kSlotCnt(72) = 216ms
+* SUPERCYCLE_DUR = CYCLE_DUR * kCycleCnt(4) = 864ms
+* CHECK_PERIOD = SUPERCYCLE_DUR * kCheckRxTablePeriod_sc(4) = 3456ms
+*/
+#pragma endregion
 
-extern rPkt pkt_tx;
+retv Init();
 
 } // namespace Radio
 

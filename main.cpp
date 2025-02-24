@@ -88,12 +88,15 @@ void ITask() {
                 OnSecond();
                 break;
 
-#if BUTTONS_ENABLED
             case EvtId::Buttons:
                 Printf("Btn %u %u\r", msg.btn_info.btn_indx, msg.btn_info.type);
                 OnBtnPress(msg.btn_info);
                 break;
-#endif
+
+            case EvtId::CheckRxTable:
+                ProcessRxTbl(static_cast<RxTable*>(msg.ptr));
+                break;
+
 #if ADC_REQUIRED
             case evtIdAdcRslt: Printf("Battery: %u mV\r", Adc.GetVDAmV(Adc.GetResultMedian(0))); break;
 #endif

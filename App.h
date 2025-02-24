@@ -42,5 +42,6 @@ void ApplyPill(int32_t pill_id);
 void OnBtnPress(BtnEvtInfo_t btn_info);
 void OnSecond();
 
-// Radio callback
-bool CheckIfTxAndPrepareRPkt();
+// Radio
+bool CheckIfTxAndPrepareRPkt(rPkt *ppkt);
+void ProcessRxTbl(RxTable *ptbl);

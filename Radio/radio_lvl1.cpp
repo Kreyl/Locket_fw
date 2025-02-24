@@ -28,10 +28,9 @@ cc1101_t CC(CC_Setup0);
 #define DBG1_CLR()
 #endif
 
-static rPkt pkt_rx;
-rPkt Radio::pkt_tx;
+static rPkt pkt_rx, pkt_tx;
 
-// static uint32_t supercycle_cnt = 0;
+static uint32_t supercycle_cnt = 0;
 static RxTable tbl1, tbl2, *curr_tbl = &tbl1;
 static uint8_t tx_power;
 
@@ -55,6 +54,8 @@ static inline void TryToReceive(uint32_t rx_duration_ms) {
     }
 }
 
+namespace Radio {
+
 static inline void TryToSleep(uint32_t sleep_duration_ms) {
     if(sleep_duration_ms >= kMinSleepDuration_ms) CC.EnterPwrDown();
     else CC.EnterIdle();
@@ -63,7 +64,7 @@ static inline void TryToSleep(uint32_t sleep_duration_ms) {
 
 static inline void TaskFeelEachOther() {
     for(uint32_t cycle_n=0; cycle_n < kCycleCnt; cycle_n++) { // Iterate cycles
-        if(CheckIfTxAndPrepareRPkt()) {
+        if(CheckIfTxAndPrepareRPkt(&pkt_tx)) {
             int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
             // If TX slot is not zero: receive in zero cycle, sleep in non-zero cycle
             if(tx_slot != 0) {
@@ -74,7 +75,7 @@ static inline void TaskFeelEachOther() {
             // ==== TX ====
             DBG1_SET();
             CC.Recalibrate();
-            CC.Transmit(Radio::pkt_tx.bytes, kRPktSz);
+            CC.Transmit(pkt_tx.bytes, kRPktSz);
             DBG1_CLR();
             // If TX slot is not last: receive in zero cycle, sleep in non-zero cycle
             if(tx_slot != (kSlotCnt-1)) {
@@ -101,22 +102,21 @@ static void rLvl1Thread(void *arg) {
             tx_power = cfg.tx_power;
             CC.SetTxPower(tx_power);
         }
-        // Is it time to check?
-        // supercycle_cnt++;
-        // if(supercycle_cnt >= CHECK_RXTABLE_PERIOD_SC) {
-        //     supercycle_cnt = 0;
-        //     if(curr_tbl->cnt != 0) { // Report and switch table if not empty
-        //         chSysLock();
-        //         // EvtQMain.SendNowOrExitI(EvtMsg_t(EvtId::CheckRxTable, (void*)curr_tbl));
-        //         curr_tbl = (curr_tbl == &tbl1)? &tbl2 : &tbl1;
-        //         curr_tbl->Clear();
-        //         chSysUnlock();
-        //     }
-        // }
+        supercycle_cnt++;
+        if(supercycle_cnt >= kCheckRxTablePeriod_sc) {
+            supercycle_cnt = 0;
+            if(curr_tbl->cnt != 0) { // Report and switch table if not empty
+                chSysLock();
+                EvtMsg_t msg{EvtMsg_t(EvtId::CheckRxTable, static_cast<void*>(curr_tbl))};
+                curr_tbl = (curr_tbl == &tbl1)? &tbl2 : &tbl1;
+                curr_tbl->Clear();
+                evt_q_main.SendNowOrExitI(msg);
+                chSysUnlock();
+            }
+        }
     } // while true
 }
 
-namespace Radio {
 
 retv Init() {
 #ifdef DBG_PINS
