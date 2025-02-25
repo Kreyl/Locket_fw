@@ -48,9 +48,57 @@ void PrintThdFreeStack(void *wsp, uint32_t size) {
 
 #endif
 
-#pragma region // 32-bit uniq ID by hashing
+uint32_t HashMurmur3_32(const void *key, uint32_t sz, uint32_t seed) {
+    const uint8_t * data = reinterpret_cast<const uint8_t*>(key);
+    const int32_t nblocks = sz / 4;
+    const uint32_t * blocks = reinterpret_cast<const uint32_t*>(data + nblocks*4);
+    uint32_t h = seed;
+    static const uint32_t c1 = 0xcc9e2d51;
+    static const uint32_t c2 = 0x1b873593;
+    auto Rotl32 = [](uint32_t val, uint32_t shift) {
+        return (val << shift) | (val >> (32 - shift));
+    };
 
-uint32_t GetUniqID32(uint32_t x, uint32_t y, uint32_t z) {
+    for(int32_t i = -nblocks; i; i++) {
+        uint32_t k1 = blocks[i];
+        k1 *= c1;
+        k1 = Rotl32(k1, 15);
+        k1 *= c2;
+
+        h ^= k1;
+        h = Rotl32(h, 13);
+        h = h * 5 + 0xe6546b64;
+    }
+
+    const uint8_t * tail = static_cast<const uint8_t*>(data + nblocks*4);
+    uint32_t k1 = 0;
+    switch(sz & 3) { // Falling through is intentional
+        case 3: k1 ^= tail[2] << 16;
+        case 2: k1 ^= tail[1] << 8;
+        case 1: k1 ^= tail[0];
+                k1 *= c1;
+                k1 = Rotl32(k1, 15);
+                k1 *= c2;
+                h ^= k1;
+    } // switch
+
+    h ^= sz;
+    h ^= h >> 16;
+    h *= 0x85ebca6b;
+    h ^= h >> 13;
+    h *= 0xc2b2ae35;
+    h ^= h >> 16;
+    return h;
+}
+
+// Using simplified Murmur3 hash function
+uint32_t GetUniqID32() {
+    uint32_t blocks[3] = {GetUniqID1(), GetUniqID2(), GetUniqID3()};
+    uint32_t h = HashMurmur3_32(blocks, sizeof(blocks), 1234);
+    return h;
+}
+
+/*
     // Magic numbers for 32-bit hashing.  Copied from Murmur3.
     static const uint32_t c1 = 0xcc9e2d51;
     static const uint32_t c2 = 0x1b873593;
@@ -89,7 +137,7 @@ uint32_t GetUniqID32(uint32_t x, uint32_t y, uint32_t z) {
 
     return fmix(Mur(c, Mur(b, Mur(a, d))));
 }
-#pragma endregion
+*/
 
 /********************************************
 arena;     total space allocated from system

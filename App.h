@@ -25,9 +25,8 @@ inline constexpr const uint32_t kDevTypeCnt = 15;
 
 class Config {
 public:
-    static const int32_t kIdMin=0, kIdMax=50, kIdBad=-1, kIdDefault = kIdMin;
+    uint32_t id = 0;
     DevType type = DevType::Searcher;
-    int32_t id = kIdMin;
     uint8_t tx_power = 0;
     void PrintTxPwr();
 };

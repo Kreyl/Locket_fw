@@ -18,8 +18,6 @@ static retv ReadAndSetupMode();
 #define EE_ADDR_DEVICE_ID       0
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
-static retv ISetID(int32_t NewID);
-static void ReadIDfromEE();
 
 LedRGBwPower_t<7> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t<4> vibro { VIBRO_SETUP };
@@ -54,8 +52,8 @@ void main(void) {
     evt_q_main.Init();
     // ==== Init hardware ====
     Uart.Init();
-    ReadIDfromEE();
-    Printf("\r%S %S; ID: %u\r", APP_NAME, kBuildTime, cfg.id);
+    cfg.id = GetUniqID32();
+    Printf("\r%S %S; ID: 0x%08X\r", APP_NAME, kBuildTime, cfg.id);
     Clk.PrintFreqs();
 
     Printf("rpkt sz: %u\r", kRPktSz);
@@ -138,9 +136,15 @@ void OnCmd(Shell_t *pshell) {
         pshell->Print("%S %S\r", APP_NAME, kBuildTime);
 
     else if(pcmd->NameIs("GetID")) {
-        uint32_t x, y, z;
-        if(pcmd->GetNext<uint32_t>(&x).IsOk() && pcmd->GetNext<uint32_t>(&y).IsOk() && pcmd->GetNext<uint32_t>(&z).IsOk())
-            pshell->Print("ID: 0x%08X\r", GetUniqID32(x, y, z));
+        // uint32_t x, y, z;
+        uint32_t seed;
+        if(pcmd->GetNext<uint32_t>(&seed).IsOk()) {
+            char* S = pcmd->GetNextString();
+            uint32_t h = HashMurmur3_32(S, strlen(S), seed);
+            pshell->Print("ID: 0x%08X\r", h);
+        }
+        // if(pcmd->GetNext<uint32_t>(&x).IsOk() && pcmd->GetNext<uint32_t>(&y).IsOk() && pcmd->GetNext<uint32_t>(&z).IsOk())
+        //     pshell->Print("ID: 0x%08X\r", GetUniqID32(x, y, z));
         else pshell->BadParam();
         // pshell->Print("ID: %u\r", Cfg.ID);
     }
@@ -159,15 +163,15 @@ else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();
         else pshell->BadParam();
     }
 
-    else if(pcmd->NameIs("SetID")) {
-        int32_t new_id = 0;
-        if(pcmd->GetNext<int32_t>(&new_id) != retv::Ok) {
-            pshell->CmdError();
-            return;
-        }
-        if(ISetID(new_id) == retv::Ok) pshell->Ok();
-        else pshell->Failure();
-    }
+    // else if(pcmd->NameIs("SetID")) {
+    //     int32_t new_id = 0;
+    //     if(pcmd->GetNext<int32_t>(&new_id) != retv::Ok) {
+    //         pshell->CmdError();
+    //         return;
+    //     }
+    //     if(ISetID(new_id) == retv::Ok) pshell->Ok();
+    //     else pshell->Failure();
+    // }
 
 #if PILL_ENABLED // ==== Pills ====
 else if(pcmd->NameIs("PillRead32")) {
@@ -210,27 +214,27 @@ else if(pcmd->NameIs("Pill")) {
 #endif
 
 #if 1 // =========================== ID management =============================
-void ReadIDfromEE() {
-    cfg.id = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
-    if(cfg.id < Config::kIdMin or cfg.id > Config::kIdMax) {
-        Printf("\rUsing default ID\r");
-        cfg.id = Config::kIdDefault;
-    }
-}
+// void ReadIDfromEE() {
+    // cfg.id = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
+    // if(cfg.id < Config::kIdMin or cfg.id > Config::kIdMax) {
+    //     Printf("\rUsing default ID\r");
+    //     cfg.id = Config::kIdDefault;
+    // }
+// }
 
-retv ISetID(int32_t new_id) {
-    if(new_id < Config::kIdMin or new_id > Config::kIdMax) return retv::BadValue;
-    retv rslt = EE::Write32(EE_ADDR_DEVICE_ID, new_id);
-    if(rslt == retv::Ok) {
-        cfg.id = new_id;
-        Printf("New ID: %u\r", new_id);
-        return retv::Ok;
-    }
-    else {
-        Printf("EE error: %u\r", rslt);
-        return retv::Fail;
-    }
-}
+// retv ISetID(int32_t new_id) {
+//     if(new_id < Config::kIdMin or new_id > Config::kIdMax) return retv::BadValue;
+//     retv rslt = EE::Write32(EE_ADDR_DEVICE_ID, new_id);
+//     if(rslt == retv::Ok) {
+//         cfg.id = new_id;
+//         Printf("New ID: %u\r", new_id);
+//         return retv::Ok;
+//     }
+//     else {
+//         Printf("EE error: %u\r", rslt);
+//         return retv::Fail;
+//     }
+// }
 #endif
 
 // ====== DIP switch ======

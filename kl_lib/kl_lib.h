@@ -153,6 +153,9 @@ static T FindMediana(T *Arr, int32_t N) {
 uint32_t GetThdFreeStack(void *wsp, uint32_t size);
 void PrintThdFreeStack(void *wsp, uint32_t size);
 
+// Murmur3 hash
+uint32_t HashMurmur3_32(const void *key, uint32_t len, uint32_t seed);
+
 /*
  * Early initialization code.
  * This initialization must be performed just after stack setup and before
@@ -219,7 +222,7 @@ static inline uint32_t GetUniqID1() { return *((uint32_t*)(UNIQ_ID_BASE + 0x00))
 static inline uint32_t GetUniqID2() { return *((uint32_t*)(UNIQ_ID_BASE + 0x04)); }
 static inline uint32_t GetUniqID3() { return *((uint32_t*)(UNIQ_ID_BASE + 0x14)); }
 
-uint32_t GetUniqID32(uint32_t x, uint32_t y, uint32_t z); // Construct uniq id by hashing hw uniq id
+uint32_t GetUniqID32(); // Construct uniq id by hashing hw uniq id
 
 #elif defined STM32L4XX
 #define UNIQ_ID_BASE    0x1FFF7590
