@@ -41,7 +41,7 @@ static inline void TryToReceive(uint32_t rx_duration_ms) {
     CC.Recalibrate();
     while(true) {
         DBG2_SET();
-        retv rx_rslt = CC.Receive_st(time_left_st, (uint8_t*)&pkt_rx, kRPktSz, &pkt_rx.rssi);
+        retv rx_rslt = CC.Receive_st(time_left_st, reinterpret_cast<uint8_t*>(&pkt_rx), kRPktSz, &pkt_rx.rssi);
         DBG2_CLR();
         if(rx_rslt == retv::Ok) {
 //            Printf("%u %d; %d\r", pkt_rx.id, pkt_rx.type, pkt_rx.rssi);
@@ -56,15 +56,41 @@ static inline void TryToReceive(uint32_t rx_duration_ms) {
 
 namespace Radio {
 
-static inline void TryToSleep(uint32_t sleep_duration_ms) {
+static void TryToSleep(uint32_t sleep_duration_ms) {
     if(sleep_duration_ms >= kMinSleepDuration_ms) CC.EnterPwrDown();
     else CC.EnterIdle();
     chThdSleepMilliseconds(sleep_duration_ms);
 }
 
-static inline void TaskFeelEachOther() {
-    for(uint32_t cycle_n=0; cycle_n < kCycleCnt; cycle_n++) { // Iterate cycles
-        if(CheckIfTxAndPrepareRPkt(&pkt_tx)) {
+static void TaskFeelEachOther(bool must_tx, bool must_rx) {
+    if(!must_tx and !must_rx) {
+        CC.EnterPwrDown();
+        chThdSleepMilliseconds(kCycleDuration_ms);
+    }
+    else if(must_tx and !must_rx) {
+        for(uint32_t cycle_n=0; cycle_n < kCycleCnt; cycle_n++) {
+            int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
+            if(tx_slot != 0) {
+                uint32_t time_before_tx = tx_slot * kSlotDuration_ms;
+                TryToSleep(time_before_tx);
+            }
+            DBG1_SET();
+            CC.Recalibrate();
+            CC.Transmit(reinterpret_cast<uint8_t*>(&pkt_tx), kRPktSz);
+            DBG1_CLR();
+            if(tx_slot != (kSlotCnt-1)) {
+                uint32_t time_after_tx = ((kSlotCnt-1) - tx_slot) * kSlotDuration_ms;
+                TryToSleep(time_after_tx);
+            }
+        } // for
+    }
+    else if(!must_tx and must_rx) {
+        TryToReceive(kCycleDuration_ms); // Zero cycle: receive
+        CC.EnterPwrDown();               // Other cycles - just sleep
+        chThdSleepMilliseconds(kCycleDuration_ms * (kCycleCnt-1));
+    }
+    else { // must_tx and must_rx
+        for(uint32_t cycle_n=0; cycle_n < kCycleCnt; cycle_n++) {
             int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
             // If TX slot is not zero: receive in zero cycle, sleep in non-zero cycle
             if(tx_slot != 0) {
@@ -75,7 +101,7 @@ static inline void TaskFeelEachOther() {
             // ==== TX ====
             DBG1_SET();
             CC.Recalibrate();
-            CC.Transmit(pkt_tx.bytes, kRPktSz);
+            CC.Transmit(reinterpret_cast<uint8_t*>(&pkt_tx), kRPktSz);
             DBG1_CLR();
             // If TX slot is not last: receive in zero cycle, sleep in non-zero cycle
             if(tx_slot != (kSlotCnt-1)) {
@@ -83,12 +109,8 @@ static inline void TaskFeelEachOther() {
                 if(cycle_n == 0) TryToReceive(time_after_tx);
                 else TryToSleep(time_after_tx);
             }
-        } // if tx
-        else { // No TX
-            if(cycle_n == 0) TryToReceive(kCycleDuration_ms);
-            else TryToSleep(kCycleDuration_ms);
-        }
-    } // for
+        } // for
+    } // else
 }
 
 static THD_WORKING_AREA(warLvl1Thread, 256);
@@ -96,7 +118,9 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
-        TaskFeelEachOther();
+        bool must_tx = CheckIfTxAndPrepareRPkt(&pkt_tx);
+        bool must_rx = CheckIfRx();
+        TaskFeelEachOther(must_tx, must_rx);
         // Set new tx pwr if changed
         if(tx_power != cfg.tx_power) {
             tx_power = cfg.tx_power;

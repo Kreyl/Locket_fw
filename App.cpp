@@ -65,25 +65,14 @@ void Config::PrintTxPwr() {
 #pragma region // ==== Influence & Modifiers ====
 // Radio TX
 static struct {
-    uint32_t prev_g_en_time = 0; // When goodness was enabled previously
-    uint32_t transaction_id = 0;
     int16_t goodness = 0;
     bool green_evil = false;
     bool must_tx = false;
+
     void EnableGoodness(int16_t agoodness) {
         chSysLock();
         goodness = agoodness;
         green_evil = false;
-        // Calculate new transaction ID if enough time has passed since prev time.
-        // This is needed to handle situation with short button release and press again
-        if(prev_g_en_time == 0 or (seconds_passed - prev_g_en_time) > 4) {
-            uint32_t new_id;
-            do {
-                new_id = Random::Generate(1, 0xFFFFFF);
-            } while(new_id == transaction_id);
-            transaction_id = new_id;
-        }
-        prev_g_en_time = seconds_passed;
         must_tx = true;
         chSysUnlock();
     }
@@ -96,8 +85,6 @@ static struct {
     }
     void Disable() { must_tx = false; }
     void Reset() {
-        prev_g_en_time = 0;
-        transaction_id = 0;
         goodness = 0;
         green_evil = false;
         must_tx = false;
@@ -290,7 +277,118 @@ void Indicate() {
 }
 
 
+void OnSecond() {
+    seconds_passed++;
+    bool time_to_act = (seconds_passed % 4 == 0);
+    // Process goodness
+    switch(cfg.type) {
+        case DevType::Searcher:
+        case DevType::Particle:
+            ProcessGoodnessForParticle();
+            break;
+        case DevType::Beast:
+            ProcessGoodnessForBeast();
+            break;
+        default: // Places, master, artifact, path
+            break;
+    } // switch
+    // Indicate if needed
+    if(time_to_act) Indicate();
+}
+
+void Reset() {
+    seconds_passed = 0;
+    goodness = kGoodnessDefault;
+    beast_resource = kBeastDefault;
+    modifier.Reset();
+    tx_params.Reset();
+    ShowSelfType();
+}
+
+void ApplyPill(int32_t pill_id, int32_t pill_value) {
+    switch(pill_id) {
+        case  1: InjectGoodnessUnconditional(+1200); break;
+        case  2: InjectGoodnessUnconditional(-1200); break;
+        case  3: modifier.fix_forever = true; break;
+        case  4: modifier.fix_timed = 3600;   break;
+        case  5: modifier.Reset(); break;
+        case  6: Reset(); break;
+        // Type switch
+        case  7: cfg.type = DevType::Particle; break;
+        case  8: cfg.type = DevType::Searcher; break;
+        case  9: cfg.type = DevType::Beast; break;
+        case 10: cfg.type = DevType::Path; break;
+
+        default: Printf("Invalid pill: %d\r", pill_id); break;
+    }
+}
+
+
+void OnBtnPress(BtnEvtInfo_t btn_info) {
+    if(cfg.type == DevType::Master) {
+        switch(btn_info.btn_indx) {
+            case 0:  // Top button
+                if(btn_info.type == beShortPress) tx_params.EnableGoodness(+1200);
+                else tx_params.Disable(); // Release
+                break;
+            case 1:  // Middle button
+                if(btn_info.type == beShortPress) tx_params.EnableGreenEvil();
+                else tx_params.Disable(); // Release
+                break;
+            case 2:  // Bottom button
+                if(btn_info.type == beShortPress) tx_params.EnableGoodness(-1200);
+                else tx_params.Disable(); // Release
+                break;
+            default: break;
+        } // switch
+    }
+}
+
+void SetDevtype(uint32_t id) {
+    if(IsDevTypeValid(id)) {
+        cfg.type = static_cast<DevType>(id);
+        Reset(); // Show self type inside
+    }
+    else Printf("Invalid dev type: %u\r", id);
+}
+
+#pragma region // ==== Radio related ====
+// RX. Called from radio lvl
+bool CheckIfRx() {
+    switch(cfg.type) {
+        case DevType::Searcher: return true;
+
+        case DevType::PlacePlus1:
+        case DevType::PlacePlus2:
+        case DevType::PlacePlus3:
+            return false;
+
+        case DevType::Master: return true;
+
+        case DevType::PlaceMinus1:
+        case DevType::PlaceMinus2:
+        case DevType::PlaceMinus3:
+            return false;
+
+        case DevType::Artifact: return false;
+        case DevType::Beast: return true;
+
+        case DevType::PlaceMinus1Magic:
+        case DevType::PlaceMinus2Magic:
+        case DevType::PlaceMinus3Magic:
+            return false;
+
+        case DevType::Particle: return true;
+        case DevType::Path: return true;
+    } // switch
+    return false; // Will newer be here
+}
+
+// RX. Called from main, invoked by radio
 void ProcessRxTbl(RxTable *ptbl) {
+    // Places and artifact do not receive
+
+
     /*
     if(cfg.type != DevType::Witch) return; // Only witches can feel
     // === Analyze table ===
@@ -333,52 +431,7 @@ void ProcessRxTbl(RxTable *ptbl) {
     */
 }
 
-void OnSecond() {
-    seconds_passed++;
-    bool time_to_act = (seconds_passed % 4 == 0);
-    // Process goodness
-    switch(cfg.type) {
-        case DevType::Searcher:
-        case DevType::Particle:
-            ProcessGoodnessForParticle();
-            break;
-        case DevType::Beast:
-            ProcessGoodnessForBeast();
-            break;
-        default: // Places, master, artifact, path
-            break;
-    } // switch
-    // Indicate if needed
-    if(time_to_act) Indicate();
-}
-
-void Reset() {
-    seconds_passed = 0;
-    goodness = kGoodnessDefault;
-    beast_resource = kBeastDefault;
-    modifier.Reset();
-    tx_params.Reset();
-    ShowSelfType();
-}
-
-void ApplyPill(int32_t pill_id) {
-    switch(pill_id) {
-        case  1: InjectGoodnessUnconditional(+1200); break;
-        case  2: InjectGoodnessUnconditional(-1200); break;
-        case  3: modifier.fix_forever = true; break;
-        case  4: modifier.fix_timed = 3600;   break;
-        case  5: modifier.Reset(); break;
-        case  6: Reset(); break;
-        // Type switch
-        case  7: cfg.type = DevType::Particle; break;
-        case  8: cfg.type = DevType::Searcher; break;
-        case  9: cfg.type = DevType::Beast; break;
-        case 10: cfg.type = DevType::Path; break;
-
-        default: Printf("Invalid pill: %d\r", pill_id); break;
-    }
-}
-
+// Tx. Called from radio level
 bool CheckIfTxAndPrepareRPkt(rPkt *ppkt) {
     // Particle & Path do not transmit
     if(cfg.type == DevType::Particle or cfg.type == DevType::Path) return false;
@@ -394,9 +447,9 @@ bool CheckIfTxAndPrepareRPkt(rPkt *ppkt) {
         case DevType::Master:
             if(!tx_params.must_tx) return false;
             chSysLock();
-            if(tx_params.goodness != 0) {
-                ppkt->transaction_id = tx_params.transaction_id;
+            if(tx_params.goodness != 0) { // Transmit goodness with single transaction flag
                 ppkt->goodness = tx_params.goodness;
+                ppkt->single_transaction = 1;
             }
             else if(tx_params.green_evil) ppkt->green_evil = 1;
             chSysUnlock();
@@ -406,8 +459,8 @@ bool CheckIfTxAndPrepareRPkt(rPkt *ppkt) {
         case DevType::PlaceMinus2: ppkt->goodness = -2; break;
         case DevType::PlaceMinus3: ppkt->goodness = -3; break;
 
-        case DevType::Artifact: ppkt->artifact = 1; break;
-        case DevType::Beast: ppkt->cyan_beast = 1; break;
+        case DevType::Artifact:    ppkt->artifact = 1; break;
+        case DevType::Beast:       ppkt->cyan_beast = 1; break;
 
         case DevType::PlaceMinus1Magic: ppkt->goodness = -1; ppkt->green_evil = 1; break;
         case DevType::PlaceMinus2Magic: ppkt->goodness = -2; ppkt->green_evil = 1; break;
@@ -417,31 +470,4 @@ bool CheckIfTxAndPrepareRPkt(rPkt *ppkt) {
     } // switch
     return true;
 }
-
-void OnBtnPress(BtnEvtInfo_t btn_info) {
-    if(cfg.type == DevType::Master) {
-        switch(btn_info.btn_indx) {
-            case 0:  // Top button
-                if(btn_info.type == beShortPress) tx_params.EnableGoodness(+1200);
-                else tx_params.Disable(); // Release
-                break;
-            case 1:  // Middle button
-                if(btn_info.type == beShortPress) tx_params.EnableGreenEvil();
-                else tx_params.Disable(); // Release
-                break;
-            case 2:  // Bottom button
-                if(btn_info.type == beShortPress) tx_params.EnableGoodness(-1200);
-                else tx_params.Disable(); // Release
-                break;
-            default: break;
-        } // switch
-    }
-}
-
-void SetDevtype(uint32_t id) {
-    if(IsDevTypeValid(id)) {
-        cfg.type = static_cast<DevType>(id);
-        Reset(); // Show self type inside
-    }
-    else Printf("Invalid dev type: %u\r", id);
-}
+#pragma endregion

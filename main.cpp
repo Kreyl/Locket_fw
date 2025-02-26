@@ -14,8 +14,7 @@ CmdUart_t Uart { &CmdUartParams };
 static void ITask();
 static void OnCmd(Shell_t *pshell);
 static retv ReadAndSetupMode();
-// EEAddresses
-#define EE_ADDR_DEVICE_ID       0
+
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
 
@@ -136,16 +135,19 @@ void OnCmd(Shell_t *pshell) {
         pshell->Print("%S %S\r", APP_NAME, kBuildTime);
 
     else if(pcmd->NameIs("GetID")) {
-        // uint32_t x, y, z;
-        uint32_t seed;
-        if(pcmd->GetNext<uint32_t>(&seed).IsOk()) {
-            char* S = pcmd->GetNextString();
-            uint32_t h = HashMurmur3_32(S, strlen(S), seed);
-            pshell->Print("ID: 0x%08X\r", h);
-        }
+        // rPkt pkt;
+        // pkt.Reset(0x12345678);
+        // pkt.goodness = -1200;
+        // pkt
+        // uint32_t seed;
+        // if(pcmd->GetNext<uint32_t>(&seed).IsOk()) {
+        //     char* S = pcmd->GetNextString();
+        //     uint32_t h = HashMurmur3_32(S, strlen(S), seed);
+        //     pshell->Print("ID: 0x%08X\r", h);
+        // }
         // if(pcmd->GetNext<uint32_t>(&x).IsOk() && pcmd->GetNext<uint32_t>(&y).IsOk() && pcmd->GetNext<uint32_t>(&z).IsOk())
         //     pshell->Print("ID: 0x%08X\r", GetUniqID32(x, y, z));
-        else pshell->BadParam();
+        // else pshell->BadParam();
         // pshell->Print("ID: %u\r", Cfg.ID);
     }
 

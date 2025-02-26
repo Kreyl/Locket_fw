@@ -35,7 +35,7 @@ extern Config cfg;
 
 void SetDevtype(uint32_t id);
 
-void ApplyPill(int32_t pill_id);
+void ApplyPill(int32_t pill_id, int32_t pill_value);
 
 // Evt processing
 void OnBtnPress(BtnEvtInfo_t btn_info);
@@ -43,4 +43,5 @@ void OnSecond();
 
 // Radio
 bool CheckIfTxAndPrepareRPkt(rPkt *ppkt);
+bool CheckIfRx();
 void ProcessRxTbl(RxTable *ptbl);

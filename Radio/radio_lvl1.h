@@ -18,28 +18,28 @@
 
 #if 1 // =========================== Pkt_t =====================================
 #pragma pack(push, 1)
-union rPkt {
-    uint32_t dw32[2];
-    uint8_t bytes[8];
-    struct {
-        uint8_t id; // Required to distinct packets from same src.
-        uint32_t transaction_id: 24;
-        int16_t goodness;
-        uint8_t green_evil : 1;
-        uint8_t artifact: 1;
-        uint8_t cyan_beast: 1;
-        uint8_t searcher: 1;
-        uint8_t : 4;
-        int8_t rssi; // Will be set after RX. Transmitting is useless, but who cares.
+struct rPkt {
+    uint32_t id; // Required to distinct packets from same src.
+    union {
+        uint32_t dw32;
+        struct {
+            int16_t goodness;
+            uint8_t single_transaction : 1;
+            uint8_t green_evil : 1;
+            uint8_t artifact: 1;
+            uint8_t cyan_beast: 1;
+            uint8_t searcher: 1;
+            uint8_t : 3;
+            int8_t rssi; // Will be set after RX. Transmitting is useless, but who cares.
+        };
     };
-    void Reset(uint8_t aid) {
-        dw32[0] = 0;
-        dw32[1] = 0;
+    void Reset(uint32_t aid) {
         id = aid;
+        dw32 = 0;
     }
     rPkt& operator = (const rPkt &right) {
-        dw32[0] = right.dw32[0];
-        dw32[1] = right.dw32[1];
+        id = right.id;
+        dw32 = right.dw32;
         return *this;
     }
 };
@@ -57,15 +57,13 @@ public:
     uint32_t cnt = 0;
 #if RXT_PKT_REQUIRED
     void AddOrReplaceExistingPkt(rPkt &apkt) {
-        if(cnt != 0) { // Find same ID
-            rPkt *ppkt = &ibuf[0], *pend = &ibuf[cnt];
-            while(ppkt < pend) {
-                if(ppkt->id == apkt.id) {
-                    *ppkt = apkt; // Replace with newer pkt
-                    return;
-                }
-                ppkt++;
+        rPkt *ppkt = &ibuf[0], *pend = &ibuf[cnt];
+        while(ppkt < pend) {
+            if(ppkt->id == apkt.id) {
+                *ppkt = apkt; // Replace with newer pkt
+                return;
             }
+            ppkt++;
         }
         // Empty or not found
         ibuf[cnt] = apkt;
@@ -128,8 +126,9 @@ namespace Radio {
 #pragma region // ==== Constants ====
 inline constexpr const uint32_t kCycleCnt = 4U, kSlotCnt = 72U;
 inline constexpr const uint32_t kSlotDuration_ms = 3U; // for 500kBit/s
-// inline constexpr const uint32_t kSlotDuration_ms = 5U; // for 100 & 2500kBit/s
+// inline constexpr const uint32_t kSlotDuration_ms = 5U; // for 100 & 250kBit/s
 inline constexpr const uint32_t kCycleDuration_ms = kSlotDuration_ms * kSlotCnt;
+// inline constexpr const uint32_t kSuperCycleDuration_ms = kCycleDuration_ms * kCycleCnt;
 inline constexpr const uint32_t kMinSleepDuration_ms = 18UL;
 inline constexpr const uint32_t kCheckRxTablePeriod_sc = 4UL; // Check RxTable every N SuperCycles
 /* Example:
