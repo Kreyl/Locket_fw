@@ -44,4 +44,4 @@ void OnSecond();
 // Radio
 bool CheckIfTxAndPrepareRPkt(rPkt *ppkt);
 bool CheckIfRx();
-void ProcessRxTbl(RxTable *ptbl);
+void ProcessRxTbl(RxTable &tbl);

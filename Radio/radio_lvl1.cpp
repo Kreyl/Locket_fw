@@ -67,35 +67,18 @@ static void TaskFeelEachOther(bool must_tx, bool must_rx) {
         CC.EnterPwrDown();
         chThdSleepMilliseconds(kCycleDuration_ms);
     }
-    else if(must_tx and !must_rx) {
-        for(uint32_t cycle_n=0; cycle_n < kCycleCnt; cycle_n++) {
-            int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
-            if(tx_slot != 0) {
-                uint32_t time_before_tx = tx_slot * kSlotDuration_ms;
-                TryToSleep(time_before_tx);
-            }
-            DBG1_SET();
-            CC.Recalibrate();
-            CC.Transmit(reinterpret_cast<uint8_t*>(&pkt_tx), kRPktSz);
-            DBG1_CLR();
-            if(tx_slot != (kSlotCnt-1)) {
-                uint32_t time_after_tx = ((kSlotCnt-1) - tx_slot) * kSlotDuration_ms;
-                TryToSleep(time_after_tx);
-            }
-        } // for
-    }
     else if(!must_tx and must_rx) {
         TryToReceive(kCycleDuration_ms); // Zero cycle: receive
         CC.EnterPwrDown();               // Other cycles - just sleep
         chThdSleepMilliseconds(kCycleDuration_ms * (kCycleCnt-1));
     }
-    else { // must_tx and must_rx
+    else { // must_tx and maybe must_rx
         for(uint32_t cycle_n=0; cycle_n < kCycleCnt; cycle_n++) {
             int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
             // If TX slot is not zero: receive in zero cycle, sleep in non-zero cycle
             if(tx_slot != 0) {
                 uint32_t time_before_tx = tx_slot * kSlotDuration_ms;
-                if(cycle_n == 0) TryToReceive(time_before_tx);
+                if(must_rx and cycle_n == 0) TryToReceive(time_before_tx);
                 else TryToSleep(time_before_tx);
             }
             // ==== TX ====
@@ -106,7 +89,7 @@ static void TaskFeelEachOther(bool must_tx, bool must_rx) {
             // If TX slot is not last: receive in zero cycle, sleep in non-zero cycle
             if(tx_slot != (kSlotCnt-1)) {
                 uint32_t time_after_tx = ((kSlotCnt-1) - tx_slot) * kSlotDuration_ms;
-                if(cycle_n == 0) TryToReceive(time_after_tx);
+                if(must_rx and cycle_n == 0) TryToReceive(time_after_tx);
                 else TryToSleep(time_after_tx);
             }
         } // for

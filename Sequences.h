@@ -326,7 +326,7 @@ const LedRGBChunk_t lsqPlacePlus3_inwork[] = {
 };
 
 const LedRGBChunk_t lsqMaster_inwork[] = {
-        {csSetup, 0, clWhite},  {csWait, SHOWTIME},
+        {csSetup, 0, {27, 27, 27}},  {csWait, SHOWTIME},
         {csSetup, 0, {1,1,1}},
         {csEnd},
 };

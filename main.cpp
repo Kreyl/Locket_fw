@@ -18,7 +18,7 @@ static retv ReadAndSetupMode();
 static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
 
-LedRGBwPower_t<7> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+LedRGBwPower_t<11> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t<4> vibro { VIBRO_SETUP };
 
 static TmrKL_t tmr_every_second {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
@@ -91,7 +91,7 @@ void ITask() {
                 break;
 
             case EvtId::CheckRxTable:
-                ProcessRxTbl(static_cast<RxTable*>(msg.ptr));
+                ProcessRxTbl(*static_cast<RxTable*>(msg.ptr));
                 break;
 
 #if ADC_REQUIRED

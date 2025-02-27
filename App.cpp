@@ -4,7 +4,7 @@
 #include "vibro.h"
 #include "ch.h"
 
-extern LedRGBwPower_t<7> Led;
+extern LedRGBwPower_t<11> Led;
 extern Vibro_t<4> vibro;
 Config cfg;
 static uint32_t seconds_passed = 0;
@@ -92,16 +92,66 @@ static struct {
 } tx_params;
 
 // Radio RX
-static struct {
-    int32_t goodness = 0;
-    int32_t green_evil = 0;
-    int32_t artifact = 0;
-    int32_t cyan_beast = 0;
-    int32_t searcher = 0;
-    // For master's indication
-    int32_t goodness_plus = 0;
-    int32_t goodness_minus = 0;
-} influence;
+union Influence {
+    struct {
+        int32_t goodness_delta;
+        int32_t green_evil;
+        int32_t artifact;
+        int32_t cyan_beast;
+        int32_t searcher;
+        // For master's indication
+        int32_t goodness_plus;
+        int32_t goodness_minus;
+    };
+    int32_t arr[7];
+    void Reset() {
+        for(uint32_t i=0; i<7; i++) arr[i] = 0;
+    }
+    void Print() {
+        Printf("Influence: %d %d %d %d %d %d %d\r",
+            goodness_delta, green_evil, artifact, cyan_beast, searcher, goodness_plus, goodness_minus);
+    }
+    Influence& operator = (const Influence &right) {
+        chSysLock();
+        for(uint32_t i=0; i<7; i++) arr[i] = right.arr[i];
+        chSysUnlock();
+        return *this;
+    }
+};
+static Influence influence, new_influence;
+
+// ==== Single goodness injection by master ====
+inline constexpr const uint32_t kMinDelayBetweenInjs_s = 18;
+static class GTransaction {
+private:
+    static const uint32_t kCntMax = 11;
+    struct GTransItem {
+        uint32_t id;
+        uint32_t time_last_rx = 0;
+    };
+    GTransItem arr[kCntMax];
+public:
+    retv ProcessId(uint32_t id) {
+        retv rslt = retv::Same;
+        uint32_t last_zero_indx = 0; // Not good XXX
+        for(uint32_t i=0; i<kCntMax; i++) {
+            if(arr[i].id == 0) last_zero_indx = i;
+            if(arr[i].id == id) { // ID presents, check if still fresh
+                uint32_t seconds_passed_since_last_rx = seconds_passed - arr[i].time_last_rx;
+                if(seconds_passed_since_last_rx > kMinDelayBetweenInjs_s) rslt = retv::New; // Expired
+                arr[i].time_last_rx = seconds_passed; // Renew last rx time, anyway
+                return rslt; // New if expired, Same otherwise
+            }
+        }
+        // ID not present, insert it
+        arr[last_zero_indx].id = id;
+        arr[last_zero_indx].time_last_rx = seconds_passed;
+        return retv::New;
+    }
+    void Reset() {
+        for(uint32_t i=0; i<kCntMax; i++) arr[i].id = 0;
+    }
+} g_trans_list;
 
 // Modifiers
 struct Modifier {
@@ -136,6 +186,12 @@ void InjectGoodnessUnconditional(int32_t goodness_value) {
         default:
             break;
     } // switch(cfg.type)
+}
+
+void InjectGoodnessConditional(int32_t goodness_value) {
+    if(!modifier.IsFixed()) {
+        InjectGoodnessUnconditional(goodness_value);
+    }
 }
 
 void ProcessGoodnessForParticle() {
@@ -302,6 +358,8 @@ void Reset() {
     beast_resource = kBeastDefault;
     modifier.Reset();
     tx_params.Reset();
+    influence.Reset();
+    g_trans_list.Reset();
     ShowSelfType();
 }
 
@@ -384,51 +442,37 @@ bool CheckIfRx() {
     return false; // Will newer be here
 }
 
-// RX. Called from main, invoked by radio
-void ProcessRxTbl(RxTable *ptbl) {
-    // Places and artifact do not receive
-
-
-    /*
-    if(cfg.type != DevType::Witch) return; // Only witches can feel
-    // === Analyze table ===
-    uint32_t witch_cnt = 0;
-    bool saint_place_is_near = false, witch_place_is_near = false;
+// RX. Called from main thread by evt sent by radio
+void ProcessRxTbl(RxTable &tbl) {
+    new_influence.Reset();
     for(uint32_t i=0; i<tbl.cnt; i++) {
-        // If Saint Place is near - indicate it and go out
-        if(tbl[i].type == (uint8_t)DevType::SaintPlace) {
-            saint_place_is_near = true;
-            break;
+        rPkt &pkt = tbl[i]; // Single pkt from one ID
+        // Goodness: add it even if its value is zero, because who cares?
+        if(pkt.single_transaction) { // Master's whim
+            if(g_trans_list.ProcessId(pkt.id) == retv::New) {
+                InjectGoodnessConditional(pkt.goodness);
+            }
         }
-        else if(tbl[i].type == (uint8_t)DevType::WitchPlace) witch_place_is_near = true;
-        else witch_cnt++;  // witch is here!
-    } // for
-    // === Indicate ===
-    if(saint_place_is_near) Led.StartOrRestart(lsqSaintPlace); // ...and do no more
-    else {
-        // Present witches
-        switch(witch_cnt) {
-            case 0:  break; // Noone near
-            case 1:  Led.StartOrRestart(lsqWitch1); break;
-            case 2:  Led.StartOrRestart(lsqWitch2); break;
-            default: Led.StartOrRestart(lsqWitchMany); break;
-        } // switch
-        if(cfg.VibroEnabled()) {
-            switch(witch_cnt) {
-                case 0:  break; // Noone near
-                case 1:  Vibro.StartOrContinue(vsqBrr); break;
-                case 2:  Vibro.StartOrContinue(vsqBrrBrr); break;
-                default: Vibro.StartOrContinue(vsqBrrBrrBrr); break;
-            } // switch
+        else { // Not a single ransaction, just field
+            new_influence.goodness_delta += pkt.goodness;
+            // For master's indication
+            switch(pkt.goodness) {
+                case  1: if(new_influence.goodness_plus  <  1) { new_influence.goodness_plus  =  1; } break;
+                case  2: if(new_influence.goodness_plus  <  2) { new_influence.goodness_plus  =  2; } break;
+                case  3: if(new_influence.goodness_plus  <  3) { new_influence.goodness_plus  =  3; } break;
+                case -1: if(new_influence.goodness_minus > -1) { new_influence.goodness_minus = -1; } break;
+                case -2: if(new_influence.goodness_minus > -2) { new_influence.goodness_minus = -2; } break;
+                case -3: if(new_influence.goodness_minus > -3) { new_influence.goodness_minus = -3; } break;
+                default: break;
+            }
         }
-        // Present witch place if any
-        if(witch_place_is_near) {
-            Led.StartOrAddToQueue(lsqWitchPlace);
-        }
-    } // else
-    // Present self
-    ShowSelfType();
-    */
+        // Green Evil, Artifact, Beast, Searcher. Value >1 is useful for debug / master's indication
+        if(pkt.green_evil) new_influence.green_evil++;
+        if(pkt.artifact)   new_influence.artifact++;
+        if(pkt.cyan_beast) new_influence.cyan_beast++;
+        if(pkt.searcher)   new_influence.searcher++;
+    }
+    influence = new_influence; // Apply what received
 }
 
 // Tx. Called from radio level
