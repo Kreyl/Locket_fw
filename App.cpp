@@ -7,7 +7,7 @@
 extern LedRGBwPower_t<11> Led;
 extern Vibro_t<4> vibro;
 Config cfg;
-static uint32_t seconds_passed = 0;
+static uint32_t time_s = 0;
 
 #pragma region // ==== DevType related ====
 struct DevIdName {
@@ -124,28 +124,36 @@ static Influence influence, new_influence;
 inline constexpr const uint32_t kMinDelayBetweenInjs_s = 18;
 static class GTransaction {
 private:
-    static const uint32_t kCntMax = 11;
+    static const uint32_t kCntMax = 9;
     struct GTransItem {
         uint32_t id;
         uint32_t time_last_rx = 0;
+        bool IsExpired() { return (time_s - time_last_rx) > kMinDelayBetweenInjs_s; }
     };
     GTransItem arr[kCntMax];
 public:
     retv ProcessId(uint32_t id) {
         retv rslt = retv::Same;
-        uint32_t last_zero_indx = 0; // Not good XXX
+        uint32_t last_empty_indx = 0;
         for(uint32_t i=0; i<kCntMax; i++) {
-            if(arr[i].id == 0) last_zero_indx = i;
-            if(arr[i].id == id) { // ID presents, check if still fresh
-                uint32_t seconds_passed_since_last_rx = seconds_passed - arr[i].time_last_rx;
-                if(seconds_passed_since_last_rx > kMinDelayBetweenInjs_s) rslt = retv::New; // Expired
-                arr[i].time_last_rx = seconds_passed; // Renew last rx time, anyway
-                return rslt; // New if expired, Same otherwise
-            }
-        }
+            if(arr[i].id == 0) last_empty_indx = i;
+            else {
+                if(arr[i].id == id) { // ID presents, check if still fresh
+                    if(arr[i].IsExpired()) rslt = retv::New;
+                    arr[i].time_last_rx = time_s; // Renew last rx time, anyway
+                    return rslt; // New if expired, Same otherwise
+                }
+                else { // Some other id, check if time to empty it
+                    if(arr[i].IsExpired()) {
+                        arr[i].id = 0;
+                        last_empty_indx = i;
+                    }
+                } // some other id
+            } // not zero
+        } // for
         // ID not present, insert it
-        arr[last_zero_indx].id = id;
-        arr[last_zero_indx].time_last_rx = seconds_passed;
+        arr[last_empty_indx].id = id;
+        arr[last_empty_indx].time_last_rx = time_s;
         return retv::New;
     }
     void Reset() {
@@ -197,7 +205,7 @@ void InjectGoodnessConditional(int32_t goodness_value) {
 void ProcessGoodnessForParticle() {
     if(!modifier.IsFixed()) { // do not change if fixed
         // Apply influence if any
-        if(influence.goodness != 0) goodness += influence.goodness;
+        if(influence.goodness_delta != 0) goodness += influence.goodness_delta;
         else goodness--; // No influence, just decrease
         // Keep goodness in range
         if(goodness > kGoodnessMax) goodness = kGoodnessMax;
@@ -210,9 +218,9 @@ void ProcessGoodnessForParticle() {
 void ProcessGoodnessForBeast() {
     if(beast_resource > 0) {
         if(!modifier.IsFixed()) { // do not change if fixed
-            // Positive goodness decreases resource
-            if(influence.goodness > 0) beast_resource -= (1L + influence.goodness * 5L);
-            else beast_resource--; // No influence, just decrease
+            beast_resource--; // Always decrease
+            // Positive influence decreases resource, negative one does nothing
+            if(influence.goodness_delta > 0) beast_resource -= influence.goodness_delta * 5L;
             // Keep resource in range
             if(beast_resource > kBeastMax) beast_resource = kBeastMax;
             else if(beast_resource < 0) beast_resource = 0;
@@ -304,11 +312,11 @@ void Indicate() {
             }
             else if(beast_resource > 3600) {
                 Led.StartOrAddToQueue(lsqBeast2_inwork);
-                if(seconds_passed % 60 == 0) vibro.StartOrAddToQueue(vsqBrr); // Every minute
+                if(time_s % 60 == 0) vibro.StartOrAddToQueue(vsqBrr); // Every minute
             }
             else if(beast_resource > 0) {
                 Led.StartOrAddToQueue(lsqBeast3_inwork);
-                if(seconds_passed % 30 == 0) vibro.StartOrAddToQueue(vsqBrrBrr); // Every 30 seconds
+                if(time_s % 30 == 0) vibro.StartOrAddToQueue(vsqBrrBrr); // Every 30 seconds
             }
             else if(beast_resource > -kBeaastMin) { // Out of Control
                 Led.StartOrAddToQueue(lsqBeast4_inwork);
@@ -334,8 +342,8 @@ void Indicate() {
 
 
 void OnSecond() {
-    seconds_passed++;
-    bool time_to_act = (seconds_passed % 4 == 0);
+    time_s++;
+    bool time_to_act = (time_s % 4 == 0);
     // Process goodness
     switch(cfg.type) {
         case DevType::Searcher:
@@ -353,7 +361,7 @@ void OnSecond() {
 }
 
 void Reset() {
-    seconds_passed = 0;
+    time_s = 0;
     goodness = kGoodnessDefault;
     beast_resource = kBeastDefault;
     modifier.Reset();
