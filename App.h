@@ -33,9 +33,9 @@ public:
 
 extern Config cfg;
 
-void SetDevtype(uint32_t id);
+void SetDevtype(uint32_t type32);
 
-void ApplyPill(int32_t pill_id, int32_t pill_value);
+void ApplyPill(int32_t pill_id);
 
 // Evt processing
 void OnBtnPress(BtnEvtInfo_t btn_info);

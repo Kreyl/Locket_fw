@@ -4,6 +4,7 @@
 #include "kl_lib.h"
 #include "radio_lvl1.h"
 #include "App.h"
+#include "beeper.h"
 
 #pragma region // ======================== Variables and defines ========================
 // Forever
@@ -20,6 +21,7 @@ static uint8_t GetDipSwitch();
 
 LedRGBwPower_t<11> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t<4> vibro { VIBRO_SETUP };
+Beeper_t<4> beeper { BEEPER_PIN };
 
 static TmrKL_t tmr_every_second {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
 
@@ -61,6 +63,7 @@ void main(void) {
     Random::SeedWithUniqID();
     Led.Init();
     vibro.Init();
+    beeper.Init();
 
     if(Radio::Init().NotOk()) {
         Led.StartOrRestart(lsqFailure);

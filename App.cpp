@@ -3,11 +3,15 @@
 #include "led.h"
 #include "vibro.h"
 #include "ch.h"
+#include "beeper.h"
 
 extern LedRGBwPower_t<11> Led;
 extern Vibro_t<4> vibro;
+extern Beeper_t<4> beeper;
 Config cfg;
 static uint32_t time_s = 0;
+
+void Reset();
 
 #pragma region // ==== DevType related ====
 struct DevIdName {
@@ -55,6 +59,16 @@ static void ShowSelfType() {
         Led.StartOrAddToQueue(dev_id_names[*r].lsq_self);
     }
     else Printf("DevType: Unknown\r");
+}
+
+static void SetDevType(DevType type) {
+    cfg.type = type;
+    Reset(); // Show self type inside
+}
+
+void SetDevtype(uint32_t type32) {
+    if(IsDevTypeValid(type32)) SetDevType(static_cast<DevType>(type32));
+    else Printf("Invalid dev type: %u\r", type32);
 }
 
 void Config::PrintTxPwr() {
@@ -371,22 +385,29 @@ void Reset() {
     ShowSelfType();
 }
 
-void ApplyPill(int32_t pill_id, int32_t pill_value) {
+void ApplyPill(int32_t pill_id) {
     switch(pill_id) {
-        case  1: InjectGoodnessUnconditional(+1200); break;
-        case  2: InjectGoodnessUnconditional(-1200); break;
-        case  3: modifier.fix_forever = true; break;
-        case  4: modifier.fix_timed = 3600;   break;
-        case  5: modifier.Reset(); break;
-        case  6: Reset(); break;
-        // Type switch
-        case  7: cfg.type = DevType::Particle; break;
-        case  8: cfg.type = DevType::Searcher; break;
-        case  9: cfg.type = DevType::Beast; break;
-        case 10: cfg.type = DevType::Path; break;
+        case  1: Led.StartOrAddToQueue(lsqPillReset);         Reset(); break;
+        case  2: Led.StartOrAddToQueue(lsqPillGoodnessPlus);  InjectGoodnessUnconditional(+1200); break;
+        case  3: Led.StartOrAddToQueue(lsqPillGoodnessMinus); InjectGoodnessUnconditional(-1200); break;
+        case  4: Led.StartOrAddToQueue(lsqPillFixForever);    modifier.fix_forever = true; break;
+        case  5: Led.StartOrAddToQueue(lsqPillFixTimed);      modifier.fix_timed = 3600;   break;
+        case  6: Led.StartOrAddToQueue(lsqPillDisableFix);    modifier.Reset(); break;
 
-        default: Printf("Invalid pill: %d\r", pill_id); break;
-    }
+        // Type switch
+        case  7: SetDevType(DevType::Particle); break;
+        case  8: SetDevType(DevType::Searcher); break;
+        case  9: SetDevType(DevType::Beast);    break;
+        case 10: SetDevType(DevType::Path);     break;
+
+        default:
+            Printf("Invalid pill: %d\r", pill_id);
+            Led.StartOrAddToQueue(lsqPillBad);
+            beeper.StartOrRestart(bsqBeepPillBad);
+            return; // Get out before switch ends
+    } // switch
+    // Will be here if pill is good
+    beeper.StartOrRestart(bsqBeepPillOk);
 }
 
 
@@ -408,14 +429,6 @@ void OnBtnPress(BtnEvtInfo_t btn_info) {
             default: break;
         } // switch
     }
-}
-
-void SetDevtype(uint32_t id) {
-    if(IsDevTypeValid(id)) {
-        cfg.type = static_cast<DevType>(id);
-        Reset(); // Show self type inside
-    }
-    else Printf("Invalid dev type: %u\r", id);
 }
 
 #pragma region // ==== Radio related ====

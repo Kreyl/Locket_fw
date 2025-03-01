@@ -191,110 +191,109 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 
 #if 1 // ============================ LED RGB ==================================
 #define LOW_BRTNESS     4
-#define SHOWTIME        180
-#define PAUSETIME       270
+inline constexpr const uint32_t kBlinkDuration = 180, kPauseDuration = 360;
 #define SHORTPAUSETIME  72
 
 #pragma region // ==== Start-up indication ====
 const LedRGBChunk_t lsqSearcher[] = {
-        {csSetup, 0, clYellow},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, SHOWTIME},
+        {csSetup, 0, clYellow},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},   {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqPlacePlus1[] = {
-        {csSetup, 0, clBlue},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqPlacePlus2[] = {
-        {csSetup, 0, clBlue},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqPlacePlus3[] = {
-        {csSetup, 0, clBlue},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 2},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqMaster[] = {
-        {csSetup, 0, clWhite},  {csWait, SHOWTIME},
+        {csSetup, 0, clWhite},  {csWait, kBlinkDuration},
         {csSetup, 0, {1,1,1}},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqPlaceMinus1[] = {
-        {csSetup, 0, clRed},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clRed},   {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqPlaceMinus2[] = {
-        {csSetup, 0, clRed},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clRed},   {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqPlaceMinus3[] = {
-        {csSetup, 0, clRed},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clRed},   {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 2},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqArtifact[] = {
-        {csSetup, 0, clMagenta},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},    {csWait, PAUSETIME},
+        {csSetup, 0, clMagenta},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},    {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqBeast[] = {
-        {csSetup, 0, clCyan},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clCyan},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqPlaceMinus1Magic[] = {
-        {csSetup, 0, clRed},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
-        {csSetup, 0, clGreen}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clRed},   {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
+        {csSetup, 0, clGreen}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqPlaceMinus2Magic[] = {
-        {csSetup, 0, clRed},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clRed},   {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csSetup, 0, clGreen},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clGreen},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqPlaceMinus3Magic[] = {
-        {csSetup, 0, clRed},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clRed},   {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 2},
-        {csSetup, 0, clGreen},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clGreen},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqParticle[] = {
-        {csSetup, 0, clYellow},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
+        {csSetup, 0, clYellow},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},   {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqPath[] = {
-        {csSetup, 0, clGreen}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clGreen}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 #pragma endregion
@@ -306,80 +305,80 @@ const LedRGBChunk_t lsqPath[] = {
 #define DARK_BLUE       (Color_t){0,0,DARK_VALUE}
 
 const LedRGBChunk_t lsqPlacePlus1_inwork[] = {
-        {csSetup, 0, DARK_BLUE}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, PAUSETIME},
+        {csSetup, 0, DARK_BLUE}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},   {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqPlacePlus2_inwork[] = {
-        {csSetup, 0, DARK_BLUE}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, SHOWTIME},
+        {csSetup, 0, DARK_BLUE}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},   {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqPlacePlus3_inwork[] = {
-        {csSetup, 0, DARK_BLUE}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},   {csWait, SHOWTIME},
+        {csSetup, 0, DARK_BLUE}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},   {csWait, kBlinkDuration},
         {csRepeat, 2},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqMaster_inwork[] = {
-        {csSetup, 0, {27, 27, 27}},  {csWait, SHOWTIME},
+        {csSetup, 0, {27, 27, 27}},  {csWait, kBlinkDuration},
         {csSetup, 0, {1,1,1}},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqPlaceMinus1_inwork[] = {
-        {csSetup, 0, DARK_RED}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, PAUSETIME},
+        {csSetup, 0, DARK_RED}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},  {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqPlaceMinus2_inwork[] = {
-        {csSetup, 0, DARK_RED}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, SHOWTIME},
+        {csSetup, 0, DARK_RED}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},  {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqPlaceMinus3_inwork[] = {
-        {csSetup, 0, DARK_RED}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},  {csWait, SHOWTIME},
+        {csSetup, 0, DARK_RED}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},  {csWait, kBlinkDuration},
         {csRepeat, 2},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqArtifact_inwork[] = {
-        {csSetup, 0, {0, DARK_VALUE, DARK_VALUE}}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, {0, DARK_VALUE, DARK_VALUE}}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 
 #define BEAST_VALUE 27
 const LedRGBChunk_t lsqBeast1_inwork[] = {
-        {csSetup, 0, {0, 4, 4}},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},    {csWait, PAUSETIME},
+        {csSetup, 0, {0, 4, 4}},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},    {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqBeast2_inwork[] = {
-        {csSetup, 0, {0, BEAST_VALUE, BEAST_VALUE}}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, {0, BEAST_VALUE, BEAST_VALUE}}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqBeast3_inwork[] = {
-        {csSetup, 0, {0, BEAST_VALUE, BEAST_VALUE}},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, {0, BEAST_VALUE, BEAST_VALUE}},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqBeast4_inwork[] = {
-        {csSetup, 0, {0, BEAST_VALUE, BEAST_VALUE}},  {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, {0, BEAST_VALUE, BEAST_VALUE}},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 2},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqBeastMadness[] = {
@@ -388,26 +387,26 @@ const LedRGBChunk_t lsqBeastMadness[] = {
 };
 
 const LedRGBChunk_t lsqPlaceMinus1Magic_inwork[] = {
-        {csSetup, 0, DARK_RED},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},    {csWait, SHOWTIME},
-        {csSetup, 0, DARK_GREEN}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},    {csWait, PAUSETIME},
+        {csSetup, 0, DARK_RED},   {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},    {csWait, kBlinkDuration},
+        {csSetup, 0, DARK_GREEN}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},    {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqPlaceMinus2Magic_inwork[] = {
-        {csSetup, 0, DARK_RED},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},    {csWait, SHOWTIME},
+        {csSetup, 0, DARK_RED},   {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},    {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csSetup, 0, DARK_GREEN}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},    {csWait, PAUSETIME},
+        {csSetup, 0, DARK_GREEN}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},    {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqPlaceMinus3Magic_inwork[] = {
-        {csSetup, 0, DARK_RED},   {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},    {csWait, SHOWTIME},
+        {csSetup, 0, DARK_RED},   {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},    {csWait, kBlinkDuration},
         {csRepeat, 2},
-        {csSetup, 0, DARK_GREEN}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack},    {csWait, PAUSETIME},
+        {csSetup, 0, DARK_GREEN}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},    {csWait, kPauseDuration},
         {csEnd},
 };
 
@@ -423,139 +422,197 @@ const LedRGBChunk_t lsqPathFadeOut[] = {
 
 #pragma region // ==== Master's indication ====
 const LedRGBChunk_t lsqGreenEvil1[] = {
-        {csSetup, 0, clGreen}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clGreen}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqGreenEvil2[] = {
-        {csSetup, 0, clGreen}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clGreen}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqGreenEvil3[] = {
-        {csSetup, 0, clGreen}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clGreen}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 2},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqArtifact1[] = {
-        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clMagenta}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqArtifact2[] = {
-        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clMagenta}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqArtifact3[] = {
-        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clMagenta}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 2},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqCyanBeast1[] = {
-        {csSetup, 0, clCyan}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clCyan}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqCyanBeast2[] = {
-        {csSetup, 0, clCyan}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clCyan}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqCyanBeast3[] = {
-        {csSetup, 0, clCyan}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clCyan}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 2},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqSearcher1[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clYellow}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqSearcher2[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clYellow}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqSearcher3[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clYellow}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 2},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 #pragma endregion
 
+#pragma region // ==== Pill indication ====
+inline constexpr const uint32_t kAfterPillDelay = 2007;
+const LedRGBChunk_t lsqPillBad[] = {
+        {csSetup, 0, clRed},   {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
+        {csRepeat, 2},
+        {csWait, kAfterPillDelay},
+        {csEnd}
+};
+
+const LedRGBChunk_t lsqPillReset[] = {
+        {csSetup, 0, clWhite}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
+        {csRepeat, 2},
+        {csWait, kAfterPillDelay},
+        {csEnd}
+};
+
+const LedRGBChunk_t lsqPillGoodnessPlus[] = {
+        {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},
+        {csWait, kAfterPillDelay},
+        {csEnd}
+};
+
+const LedRGBChunk_t lsqPillGoodnessMinus[] = {
+        {csSetup, 0, clRed},   {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},
+        {csWait, kAfterPillDelay},
+        {csEnd}
+};
+
+const LedRGBChunk_t lsqPillFixForever[] = {
+        {csSetup, 0, clMagenta}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},
+        {csWait, kAfterPillDelay},
+        {csEnd}
+};
+
+const LedRGBChunk_t lsqPillFixTimed[] = {
+        {csSetup, 0, clMagenta}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},   {csWait, kBlinkDuration},
+        {csRepeat, 1},
+        {csWait, kAfterPillDelay},
+        {csEnd}
+};
+
+const LedRGBChunk_t lsqPillDisableFix[] = {
+        {csSetup, 0, clMagenta}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},   {csWait, kBlinkDuration},
+        {csSetup, 0, clRed},     {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack},
+        {csWait, kAfterPillDelay},
+        {csEnd}
+};
+
+#pragma endregion
+
 // === Goodness ===
 const LedRGBChunk_t lsqGoodnessBlue[] = {
-        {csSetup, 0, clBlue}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clBlue}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqGoodnessYellow[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clYellow}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqGoodnessRed[] = {
-        {csSetup, 0, clRed}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clRed}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 
 const LedRGBChunk_t lsqGoodnessBlueFrozen[] = {
-        {csSetup, 0, clBlue}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clBlue}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqGoodnessYellowFrozen[] = {
-        {csSetup, 0, clYellow}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clYellow}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqGoodnessRedFrozen[] = {
-        {csSetup, 0, clRed}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, SHOWTIME},
+        {csSetup, 0, clRed}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
-        {csWait, PAUSETIME},
+        {csWait, kPauseDuration},
         {csEnd},
 };
 
 // === Magic ===
 const LedRGBChunk_t lsqMagicGrenEvil[] = {
-        {csSetup, 0, clGreen}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clGreen}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqMagicArtifact[] = {
-        {csSetup, 0, clMagenta}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clMagenta}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 const LedRGBChunk_t lsqMagicBeast[] = {
-        {csSetup, 0, clCyan}, {csWait, SHOWTIME},
-        {csSetup, 0, clBlack}, {csWait, PAUSETIME},
+        {csSetup, 0, clCyan}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseDuration},
         {csEnd},
 };
 
@@ -609,7 +666,7 @@ const LedSmoothChunk_t lsqEnterIdle[] = {
 
 #endif
 
-#if 0 // ============================= Beeper ==================================
+#if 1 // ============================= Beeper ==================================
 #define BEEP_VOLUME     2   // Maximum 10
 
 #if 1 // ==== Notes ====

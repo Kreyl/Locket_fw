@@ -20,7 +20,7 @@ enum ChunkSort_t {csSetup, csWait, csGoto, csEnd, csRepeat};
     ChunkSort_t ChunkSort;          \
     union {                         \
         uint32_t Value;             \
-        uint32_t Volume;            \
+        uint32_t volume;            \
         uint32_t Time_ms;           \
         uint32_t ChunkToJumpTo;     \
         int32_t RepeatCnt;          \
@@ -55,7 +55,7 @@ struct LedSmoothChunk_t {
 // Beeper
 struct BeepChunk_t {   // Value == Volume
     BaseChunk_Vars;
-    uint16_t Freq_Hz;
+    uint16_t freq_Hz;
 } __attribute__((packed));
 
 
