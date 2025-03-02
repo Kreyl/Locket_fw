@@ -5,7 +5,7 @@
     "cortex-debug.armToolchainPath": "C:/YaStudio/arm-none-eabi-gcc/bin",
     "cortex-debug.armToolchainPrefix": "arm-none-eabi",
     "cortex-debug.openocdPath": "C:/YaStudio/OpenOCD/bin/openocd.exe",
-    "cortex-debug.variableUseNaturalFormat": true, // False is hex, true is decimal
+    "cortex-debug.variableUseNaturalFormat": false, // False is hex, true is decimal
     "debug.onTaskErrors": "abort",
     "terminal.integrated.env.windows": {
         "PATH": "C:/YaStudio/arm-none-eabi-gcc/bin;C:/YaStudio/build-tools;C:/YaStudio/OpenOCD;C:/YaStudio/OpenOCD/bin"

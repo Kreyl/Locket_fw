@@ -1,7 +1,7 @@
 ######################### Project Settings #########################
-PRJ_NAME = Locket
+PRJ_NAME = Prj
 # What to include, in form dir1 dir2 dir3...
-INCLUDE_DIRS = ./ kl_lib os os/hal os/include os/stm32l15x Pill Radio
+INCLUDE_DIRS = ./ kl_lib os os/hal os/include os/stm32l15x Radio
 # What to define in form MYDEF1 MYDEF2=18 MYDEF3... $(MAKECMDGOALS) is name of requested action
 DEFINS =
 

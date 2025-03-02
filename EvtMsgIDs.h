@@ -1,7 +1,7 @@
 /*
  * EvtMsgIDs.h
  *
- *  Created on: 21 ���. 2017 �.
+ *  Created on: 2017
  *      Author: Kreyl
  */
 
@@ -18,6 +18,11 @@ enum class EvtId : uint8_t {
 
     LedSeqDone,
     VibroSeqDone,
+
+    // Pill
+    CheckPill,
+    PillConnected,
+    PillDisconnected,
 
     // Not eternal
     Buttons,

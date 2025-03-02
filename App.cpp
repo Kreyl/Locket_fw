@@ -122,7 +122,7 @@ union Influence {
         for(uint32_t i=0; i<7; i++) arr[i] = 0;
     }
     void Print() {
-        Printf("Influence: %d %d %d %d %d %d %d\r",
+        Printf("goodness_delta %d\rgreen_evil %d\rartifact %d\rcyan_beast %d\rsearcher %d\rgoodness_plus %d\rgoodness_minus %d\r",
             goodness_delta, green_evil, artifact, cyan_beast, searcher, goodness_plus, goodness_minus);
     }
     Influence& operator = (const Influence &right) {
@@ -173,6 +173,16 @@ public:
     void Reset() {
         for(uint32_t i=0; i<kCntMax; i++) arr[i].id = 0;
     }
+    void Print() {
+        Printf("GTransList:\r");
+        bool is_empty = true;
+        for(uint32_t i=0; i<kCntMax; i++) {
+            if(arr[i].id == 0) continue;
+            Printf("  * id %u; rcvd %u s ago\r", arr[i].id, time_s - arr[i].time_last_rx);
+            is_empty = false;
+        }
+        if(is_empty) Printf("  empty\r");
+    }
 } g_trans_list;
 
 // Modifiers
@@ -181,6 +191,7 @@ struct Modifier {
     int32_t fix_timed = 0;
     bool IsFixed() { return fix_forever or fix_timed > 0; }
     void Reset() { fix_forever = false; fix_timed = 0; }
+    void Print() { Printf("FixForever: %d; FixTimed: %d\r", fix_forever, fix_timed); }
 };
 static Modifier modifier;
 #pragma endregion
@@ -386,22 +397,23 @@ void Reset() {
 }
 
 void ApplyPill(int32_t pill_id) {
+    Printf("Pill");
     switch(pill_id) {
-        case  1: Led.StartOrAddToQueue(lsqPillReset);         Reset(); break;
-        case  2: Led.StartOrAddToQueue(lsqPillGoodnessPlus);  InjectGoodnessUnconditional(+1200); break;
-        case  3: Led.StartOrAddToQueue(lsqPillGoodnessMinus); InjectGoodnessUnconditional(-1200); break;
-        case  4: Led.StartOrAddToQueue(lsqPillFixForever);    modifier.fix_forever = true; break;
-        case  5: Led.StartOrAddToQueue(lsqPillFixTimed);      modifier.fix_timed = 3600;   break;
-        case  6: Led.StartOrAddToQueue(lsqPillDisableFix);    modifier.Reset(); break;
+        case  1: Led.StartOrAddToQueue(lsqPillReset);         Printf("Reset\r");      Reset(); break;
+        case  2: Led.StartOrAddToQueue(lsqPillGoodnessPlus);  Printf("GPlus\r");      InjectGoodnessUnconditional(+1200); break;
+        case  3: Led.StartOrAddToQueue(lsqPillGoodnessMinus); Printf("GMinus\r");     InjectGoodnessUnconditional(-1200); break;
+        case  4: Led.StartOrAddToQueue(lsqPillFixForever);    Printf("FixForever\r"); modifier.fix_forever = true; break;
+        case  5: Led.StartOrAddToQueue(lsqPillFixTimed);      Printf("FixTimed\r");   modifier.fix_timed = 3600;   break;
+        case  6: Led.StartOrAddToQueue(lsqPillDisableFix);    Printf("DisableFix\r"); modifier.Reset(); break;
 
         // Type switch
-        case  7: SetDevType(DevType::Particle); break;
-        case  8: SetDevType(DevType::Searcher); break;
-        case  9: SetDevType(DevType::Beast);    break;
-        case 10: SetDevType(DevType::Path);     break;
+        case  7: Printf("SetType: Particle\r"); SetDevType(DevType::Particle); break;
+        case  8: Printf("SetType: Searcher\r"); SetDevType(DevType::Searcher); break;
+        case  9: Printf("SetType: Beast\r");    SetDevType(DevType::Beast);    break;
+        case 10: Printf("SetType: Path\r");     SetDevType(DevType::Path);     break;
 
         default:
-            Printf("Invalid pill: %d\r", pill_id);
+            Printf("Bad: %d\r", pill_id);
             Led.StartOrAddToQueue(lsqPillBad);
             beeper.StartOrRestart(bsqBeepPillBad);
             return; // Get out before switch ends
@@ -409,7 +421,6 @@ void ApplyPill(int32_t pill_id) {
     // Will be here if pill is good
     beeper.StartOrRestart(bsqBeepPillOk);
 }
-
 
 void OnBtnPress(BtnEvtInfo_t btn_info) {
     if(cfg.type == DevType::Master) {
@@ -536,3 +547,14 @@ bool CheckIfTxAndPrepareRPkt(rPkt *ppkt) {
     return true;
 }
 #pragma endregion
+
+void GetState() {
+    RetvValU32 r = DevTypeToIndx(cfg.type);
+    if(r.NotOk()) { Printf("Bad Type: %u\r", cfg.type); return; }
+    Printf("DevType: %s\r", dev_id_names[*r].name);
+    Printf("Goodness: %d\r", goodness);
+    Printf("BeastRsrc: %d\r", beast_resource);
+    modifier.Print();
+    influence.Print();
+    g_trans_list.Print();
+}

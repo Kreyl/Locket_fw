@@ -6,8 +6,8 @@
 #define APP_NAME            "ConceptOfGoodness"
 
 // ==== High-level peripery control ====
-#define PILL_ENABLED        FALSE
-#define BEEPER_ENABLED      FALSE
+#define PILL_ENABLED        TRUE
+#define BEEPER_ENABLED      TRUE
 #define BUTTONS_ENABLED     TRUE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
@@ -72,7 +72,7 @@
 #endif
 
 // Pill power
-#define PILL_PWR_PIN    { GPIOB, 3, omPushPull }
+#define PILL_PWR_PIN    GPIOB, 3, omPushPull
 
 // Radio: SPI, PGpio, Sck, Miso, Mosi, Cs, Gdo0
 #define CC_Setup0       SPI1, GPIOA, 5,6,7, GPIOA,4, GPIOA,3
@@ -114,8 +114,8 @@
 #define UART_DMA_CHNL   0   // Dummy
 
 #if I2C1_ENABLED // ==== I2C ====
-#define I2C1_DMA_TX     STM32_DMA1_STREAM6
-#define I2C1_DMA_RX     STM32_DMA1_STREAM7
+#define I2C1_DMA_TX     STM32_DMA_STREAM_ID(1, 6)
+#define I2C1_DMA_RX     STM32_DMA_STREAM_ID(1, 7)
 #define I2C1_DMA_CHNL   0   // Dummy
 #endif
 

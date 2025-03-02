@@ -17,9 +17,9 @@ private:
     const PinOutputPWM_t ipin;
     void ISwitchOff() { ipin.Set(0); }
     SequencerLoopTask_t ISetup() {
-        ipin.SetFrequencyHz(this->curr_chunk->freq_Hz);
+        if(this->curr_chunk->freq_Hz > 0) ipin.SetFrequencyHz(this->curr_chunk->freq_Hz);
         ipin.Set(this->curr_chunk->volume);
-        this->curr_chunk++;   // Always goto next
+        this->curr_chunk++; // Always goto next
         return sltProceed;  // Always proceed
     }
 public:

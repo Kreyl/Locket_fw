@@ -5,6 +5,9 @@
 #include "radio_lvl1.h"
 #include "App.h"
 #include "beeper.h"
+#include "pill_mgr.h"
+
+#include "Sequences.h"
 
 #pragma region // ======================== Variables and defines ========================
 // Forever
@@ -32,14 +35,14 @@ void SleepNow(uint32_t Delay) {
     chSysUnlock();
 }
 
-static const LedRGBChunk_t lsqFailure[] = {
-    {csSetup, 0, clRed},
-    {csWait, 45},
-    {csSetup, 0, clBlack},
-    {csWait, 45},
-    {csRepeat, 1},
-    {csEnd}
-};
+// static const LedRGBChunk_t lsqFailure[] = {
+//     {csSetup, 0, clRed},
+//     {csWait, 45},
+//     {csSetup, 0, clBlack},
+//     {csWait, 45},
+//     {csRepeat, 1},
+//     {csEnd}
+// };
 #pragma endregion
 
 void main(void) {
@@ -51,19 +54,18 @@ void main(void) {
     halInit();
     chSysInit();
     evt_q_main.Init();
+
     // ==== Init hardware ====
     Uart.Init();
     cfg.id = GetUniqID32();
     Printf("\r%S %S; ID: 0x%08X\r", APP_NAME, kBuildTime, cfg.id);
     Clk.PrintFreqs();
 
-    Printf("rpkt sz: %u\r", kRPktSz);
-
-
     Random::SeedWithUniqID();
     Led.Init();
     vibro.Init();
     beeper.Init();
+    PillMgr::Init();
 
     if(Radio::Init().NotOk()) {
         Led.StartOrRestart(lsqFailure);
@@ -95,6 +97,16 @@ void ITask() {
 
             case EvtId::CheckRxTable:
                 ProcessRxTbl(*static_cast<RxTable*>(msg.ptr));
+                break;
+
+            // Pill
+            case EvtId::CheckPill: PillMgr::Check(); break;
+            case EvtId::PillConnected:
+                Printf("Pill connected: %u\r", PillMgr::pill_data.type);
+                ApplyPill(PillMgr::pill_data.type);
+                break;
+            case EvtId::PillDisconnected:
+                Printf("Pill disconnected\r");
                 break;
 
 #if ADC_REQUIRED
@@ -180,39 +192,41 @@ else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();
 
 #if PILL_ENABLED // ==== Pills ====
 else if(pcmd->NameIs("PillRead32")) {
-    int32_t Cnt = 0;
-    if(pcmd->GetNextInt32(&Cnt) != OK) { pshell->Ack(CMD_ERROR); return; }
-    uint8_t MemAddr = 0, b = OK;
-    pshell->Printf("#PillData32 ");
-    for(int32_t i=0; i<Cnt; i++) {
-        b = PillMgr.Read(MemAddr, &dw32, 4);
-        if(b != OK) break;
-        pshell->Printf("%d ", dw32);
-        MemAddr += 4;
+    uint32_t cnt = 0, dw32 = 0;
+    if(pcmd->GetNext(&cnt).NotOk()) { pshell->BadParam(); return; }
+    uint8_t mem_addr = 0;
+    pshell->Print("#PillData32 ");
+    for(uint32_t i=0; i<cnt; i++) {
+        if(PillMgr::Read32(mem_addr, &dw32, 1).NotOk()) break;
+        pshell->Print("%u ", dw32);
+        mem_addr += 4;
     }
-    Uart.Printf("\r\n");
-    pshell->Ack(b);
+    pshell->EOL();
+    pshell->Ok();
 }
 
 else if(pcmd->NameIs("PillWrite32")) {
-    uint8_t b = CMD_ERROR;
-    uint8_t MemAddr = 0;
-    // Iterate data
+    uint32_t dw32, mem_addr = 0;
     while(true) {
-        if(pcmd->GetNextInt32(&dw32) != OK) break;
-//            Uart.Printf("%X ", Data);
-        b = PillMgr.Write(MemAddr, &dw32, 4);
-        if(b != OK) break;
-        MemAddr += 4;
+        if(pcmd->GetNext(&dw32).NotOk()) break;
+        Printf("%u ", dw32);
+        if(PillMgr::Write32(mem_addr, &dw32, 1).NotOk()) break;
+        mem_addr += 4;
     } // while
-    Uart.Ack(b);
+    pshell->Ok();
 }
-else if(pcmd->NameIs("Pill")) {
-    if(pcmd->GetNextInt32(&dw32) != OK) { pshell->Ack(CMD_ERROR); return; }
-    PillType = (PillType_t)dw32;
-    App.SignalEvt(EVT_PILL_CHECK);
+
+else if(pcmd->NameIs("ApplyPill")) {
+    int32_t dw32;
+    if(pcmd->GetNext(&dw32).IsOk()) {
+        pshell->Ok();
+        ApplyPill(dw32);
+    }
+    else pshell->BadParam();
 }
 #endif
+
+    else if(pcmd->NameIs("GetState")) GetState();
 
     else pshell->CmdUnknown();
 }
