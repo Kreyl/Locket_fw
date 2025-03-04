@@ -1,7 +1,7 @@
 /*
  * shell.h
  *
- *  Created on: 25 ���. 2015 �.
+ *  Created on: 2015
  *      Author: Kreyl
  */
 

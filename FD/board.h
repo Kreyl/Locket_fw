@@ -3,7 +3,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Fallout"
-#define APP_NAME            "ConceptOfGoodness"
+#define APP_NAME            "ConceptOfGoodness_FD"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        TRUE
@@ -38,11 +38,11 @@
 #define LED_B_PIN       { GPIOB, 5, TIM3, 2, Inv::NotInverted, omPushPull, 255 }
 
 // Vibro
-#define VIBRO_SETUP     { GPIOB, 6, TIM4, 1, invNotInverted, omPushPull, 99 }
+#define VIBRO_SETUP     { GPIOB, 6, TIM4, 1, Inv::NotInverted, omPushPull, 99 }
 
 // Beeper
 #define BEEPER_TOP      22
-#define BEEPER_PIN      { GPIOB, 3, TIM2, 2, invNotInverted, omPushPull, BEEPER_TOP }
+#define BEEPER_PIN      { GPIOB, 3, TIM2, 2, Inv::NotInverted, omPushPull, BEEPER_TOP }
 
 // I2C
 #if I2C1_ENABLED
@@ -52,7 +52,7 @@
 #endif
 
 // Pill power
-#define PILL_PWR_PIN    { GPIOB, 7, omPushPull }
+#define PILL_PWR_PIN    GPIOB, 7, omPushPull
 
 // Radio: SPI, PGpio, Sck, Miso, Mosi, Cs, Gdo0
 #define CC_Setup0       SPI1, GPIOA, 5,6,7, GPIOA,4, GPIOA,3

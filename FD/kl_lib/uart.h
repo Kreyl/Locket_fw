@@ -18,7 +18,7 @@ void DmaUartTxIrq(void *p, uint32_t flags);
 
 struct UartParams_t {
     uint32_t Baudrate;
-    USART_TypeDef* Uart;
+    USART_TypeDef* puart;
     GPIO_TypeDef *PGpioTx;
     uint16_t PinTx;
     GPIO_TypeDef *PGpioRx;
@@ -38,7 +38,7 @@ struct UartParams_t {
 #if defined STM32F072xB || defined STM32L4XX
     , bool AUseIndependedClock
 #endif
-    ) : Baudrate(ABaudrate), Uart(AUart),
+    ) : Baudrate(ABaudrate), puart(AUart),
             PGpioTx(APGpioTx), PinTx(APinTx), PGpioRx(APGpioRx), PinRx(APinRx),
             DmaTxID(ADmaTxID), DmaRxID(ADmaRxID),
             DmaModeTx(ADmaModeTx), DmaModeRx(ADmaModeRx)
@@ -88,10 +88,10 @@ public:
     void Shutdown();
     void OnClkChange();
     // Enable/Disable
-    void EnableTx()  { Params->Uart->CR1 |= USART_CR1_TE; }
-    void DisableTx() { Params->Uart->CR1 &= ~USART_CR1_TE; }
-    void EnableRx()  { Params->Uart->CR1 |= USART_CR1_RE; }
-    void DisableRx() { Params->Uart->CR1 &= ~USART_CR1_RE; }
+    void EnableTx()  { Params->puart->CR1 |= USART_CR1_TE; }
+    void DisableTx() { Params->puart->CR1 &= ~USART_CR1_TE; }
+    void EnableRx()  { Params->puart->CR1 |= USART_CR1_RE; }
+    void DisableRx() { Params->puart->CR1 &= ~USART_CR1_RE; }
 #if UART_USE_DMA
     void FlushTx() { while(!IDmaIsIdle) chThdSleepMilliseconds(1); }  // wait DMA
 #endif
@@ -130,7 +130,7 @@ private:
     }
     void IOnTxEnd() {
 #ifdef USART_SR_TC
-        while(!(Params->Uart->SR & USART_SR_TC)); // wait last bit to be shifted out
+        while(!(Params->puart->SR & USART_SR_TC)); // wait last bit to be shifted out
 #else
         while(!(Params->Uart->ISR & USART_ISR_TC)); // wait last bit to be shifted out
 #endif

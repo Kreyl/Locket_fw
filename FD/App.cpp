@@ -6,7 +6,11 @@
 #include "beeper.h"
 #include "kl_lib.h"
 
-extern LedRGBwPower_t<11> Led;
+#ifdef LED_EN_PIN // Locket
+extern LedRGBwPower_t<11> led;
+#else // FD
+extern LedRGB_t<11> led;
+#endif
 extern Vibro_t<4> vibro;
 extern Beeper_t<4> beeper;
 Config cfg;
@@ -57,7 +61,7 @@ static void ShowSelfType() {
     RetvValU32 r = DevTypeToIndx(cfg.type);
     if(r.IsOk()) {
         Printf("DevType: %s\r", dev_id_names[*r].name);
-        Led.StartOrAddToQueue(dev_id_names[*r].lsq_self);
+        led.StartOrAddToQueue(dev_id_names[*r].lsq_self);
     }
     else Printf("DevType: Unknown\r");
 }
@@ -202,16 +206,47 @@ static Modifier modifier;
 // Goodness
 static const int32_t kGoodnessMax = 14400,  kGoodnessDefault = kGoodnessMax;
 static int32_t goodness = kGoodnessDefault;
+
 // Beast resource
-static const int32_t kBeastMax = 21600, kBeaastMin = -600, kBeastDefault = kBeastMax;
-static int32_t beast_resource = kBeastDefault;
+namespace Beast {
+    static const int32_t kMax = 21600L, kHangerMin = -600L, kMadness = kHangerMin - 1L, kDefault = kMax;
+    static int32_t resource = kDefault;
+    enum class State { Calm, Worry, Thrill, Hunger, Madness };
+
+    State GetState() {
+        if     (resource >= 10800L)     return State::Calm;
+        else if(resource >= 3600L)      return State::Worry;
+        else if(resource >= 0L)         return State::Thrill;
+        else if(resource >= kHangerMin) return State::Hunger;
+        else return State::Madness;
+    }
+
+    void OnSecond() {
+        if(Beast::resource > 0) {
+            if(!modifier.IsFixed()) { // do not change if fixed
+                resource--; // Always decrease
+                // Positive influence decreases resource, negative one does nothing
+                if(influence.goodness_delta > 0) resource -= influence.goodness_delta * 5L;
+                // Keep resource in range
+                if(resource > kMax) resource = kMax;
+                else if(resource < 0) resource = 0; // Do not decrease under 0 too fast, do it slowly ignoring influence
+            }
+            // Process modifiers
+            if(modifier.fix_timed > 0) modifier.fix_timed--;
+        }
+        else { // beast_resource<=0 => no influence/modifiers are applicable
+            if(resource > kMadness) resource--;
+            modifier.fix_timed = 0;
+        }
+    }
+};
 
 #pragma region // ======== EEPROM ========
 inline constexpr const uint32_t kEEAddrType = 36, kEEAddrGoodness = 40, kEEAddrBeastRsrc = 44;
 inline constexpr const uint32_t kEEAddrFixTimed = 48, kEEAddrFixForever = 52;
 
 void EESaveGoodness()   { EE::WriteI32(kEEAddrGoodness, goodness); }
-void EESaveBeastRsrc()  { EE::WriteI32(kEEAddrBeastRsrc, beast_resource); }
+void EESaveBeastRsrc()  { EE::WriteI32(kEEAddrBeastRsrc, Beast::resource); }
 void EESaveFixTimed()   { EE::WriteI32(kEEAddrFixTimed, modifier.fix_timed); }
 void EESaveFixForever() { EE::WriteI32(kEEAddrFixForever, modifier.fix_forever); }
 
@@ -227,8 +262,8 @@ void EELoadState() {
     if(v >= 0 and v <= kGoodnessMax) goodness = v;
     else goodness = kGoodnessDefault;
     v = EE::ReadI32(kEEAddrBeastRsrc);
-    if(v >= kBeaastMin and v <= kBeastMax) beast_resource = v;
-    else beast_resource = kBeastDefault;
+    if(v >= Beast::kMadness and v <= Beast::kMax) Beast::resource = v;
+    else Beast::resource = Beast::kDefault;
     v = EE::ReadI32(kEEAddrFixTimed);
     if(v >= 0 and v <= kFixTimedVulueMax) modifier.fix_timed = v;
     else modifier.fix_timed = 0;
@@ -238,7 +273,7 @@ void EELoadState() {
 }
 #pragma endregion
 
-void InjectGoodnessUnconditional(int32_t goodness_value) {
+retv InjectGoodnessUnconditional(int32_t goodness_value) {
     switch(cfg.type) {
         case DevType::Searcher:
         case DevType::Particle:
@@ -246,20 +281,20 @@ void InjectGoodnessUnconditional(int32_t goodness_value) {
             if(goodness > kGoodnessMax) goodness = kGoodnessMax;
             else if(goodness < 0) goodness = 0;
             EESaveGoodness();
-            break;
+            return retv::New;
         case DevType::Beast:
-            beast_resource -= goodness_value;
-            if(beast_resource < 0) beast_resource = 0;
+            Beast::resource -= goodness_value;
+            if(Beast::resource < 0) Beast::resource = 0;
             EESaveBeastRsrc();
-            break;
+            return retv::New;
         default:
-            break;
+            return retv::NoChanges;
     } // switch(cfg.type)
 }
 
-void InjectGoodnessConditional(int32_t goodness_value) {
+void InjectGoodnessIfNotFixed(int32_t goodness_value) {
     if(!modifier.IsFixed()) {
-        InjectGoodnessUnconditional(goodness_value);
+        if(InjectGoodnessUnconditional(goodness_value) == retv::New) vibro.StartOrRestart(vsqBrrBrr);
     }
 }
 
@@ -275,36 +310,17 @@ void ProcessGoodnessForParticle() {
     // Process modifiers
     if(modifier.fix_timed > 0) modifier.fix_timed--;
 }
-
-void ProcessGoodnessForBeast() {
-    if(beast_resource > 0) {
-        if(!modifier.IsFixed()) { // do not change if fixed
-            beast_resource--; // Always decrease
-            // Positive influence decreases resource, negative one does nothing
-            if(influence.goodness_delta > 0) beast_resource -= influence.goodness_delta * 5L;
-            // Keep resource in range
-            if(beast_resource > kBeastMax) beast_resource = kBeastMax;
-            else if(beast_resource < 0) beast_resource = 0;
-        }
-        // Process modifiers
-        if(modifier.fix_timed > 0) modifier.fix_timed--;
-    }
-    else { // beast_resource<=0 => no influence/modifiers are applicable
-        if(beast_resource > kBeaastMin) beast_resource--;
-        modifier.fix_timed = 0;
-    }
-}
 #pragma endregion
 
 // ==== Indication ====
 void IndicateGoodness() {
     bool is_frozen = modifier.fix_forever or modifier.fix_timed > 0;
     if(goodness >= 9599)
-        Led.StartOrAddToQueue(is_frozen? lsqGoodnessBlueFrozen : lsqGoodnessBlue);
+        led.StartOrAddToQueue(is_frozen? lsqGoodnessBlueFrozen : lsqGoodnessBlue);
     else if(goodness >= 4800)
-        Led.StartOrAddToQueue(is_frozen? lsqGoodnessYellowFrozen : lsqGoodnessYellow);
+        led.StartOrAddToQueue(is_frozen? lsqGoodnessYellowFrozen : lsqGoodnessYellow);
     else
-        Led.StartOrAddToQueue(is_frozen? lsqGoodnessRedFrozen : lsqGoodnessRed);
+        led.StartOrAddToQueue(is_frozen? lsqGoodnessRedFrozen : lsqGoodnessRed);
 }
 
 void Indicate() {
@@ -317,86 +333,89 @@ void Indicate() {
             if(influence.cyan_beast > 0) vibro.StartOrAddToQueue(vsqBrr);
             break;
 
-        case DevType::PlacePlus1: Led.StartOrAddToQueue(lsqPlacePlus1_inwork); break;
-        case DevType::PlacePlus2: Led.StartOrAddToQueue(lsqPlacePlus2_inwork); break;
-        case DevType::PlacePlus3: Led.StartOrAddToQueue(lsqPlacePlus3_inwork); break;
+        case DevType::PlacePlus1: led.StartOrAddToQueue(lsqPlacePlus1_inwork); break;
+        case DevType::PlacePlus2: led.StartOrAddToQueue(lsqPlacePlus2_inwork); break;
+        case DevType::PlacePlus3: led.StartOrAddToQueue(lsqPlacePlus3_inwork); break;
 
         case DevType::Master:
             switch(influence.goodness_plus) {
-                case 1: Led.StartOrAddToQueue(lsqPlacePlus1); break;
-                case 2: Led.StartOrAddToQueue(lsqPlacePlus2); break;
-                case 3: Led.StartOrAddToQueue(lsqPlacePlus3); break;
+                case 1: led.StartOrAddToQueue(lsqPlacePlus1); break;
+                case 2: led.StartOrAddToQueue(lsqPlacePlus2); break;
+                case 3: led.StartOrAddToQueue(lsqPlacePlus3); break;
                 default: break;
             }
             switch(influence.goodness_minus) {
-                case -1: Led.StartOrAddToQueue(lsqPlaceMinus1); break;
-                case -2: Led.StartOrAddToQueue(lsqPlaceMinus2); break;
-                case -3: Led.StartOrAddToQueue(lsqPlaceMinus3); break;
+                case -1: led.StartOrAddToQueue(lsqPlaceMinus1); break;
+                case -2: led.StartOrAddToQueue(lsqPlaceMinus2); break;
+                case -3: led.StartOrAddToQueue(lsqPlaceMinus3); break;
                 default: break;
             }
             switch(influence.green_evil) {
-                case 1: Led.StartOrAddToQueue(lsqGreenEvil1); break;
-                case 2: Led.StartOrAddToQueue(lsqGreenEvil2); break;
-                case 3: Led.StartOrAddToQueue(lsqGreenEvil3); break;
+                case 1: led.StartOrAddToQueue(lsqGreenEvil1); break;
+                case 2: led.StartOrAddToQueue(lsqGreenEvil2); break;
+                case 3: led.StartOrAddToQueue(lsqGreenEvil3); break;
                 default: break;
             }
             switch(influence.artifact) {
-                case 1: Led.StartOrAddToQueue(lsqArtifact1); break;
-                case 2: Led.StartOrAddToQueue(lsqArtifact2); break;
-                case 3: Led.StartOrAddToQueue(lsqArtifact3); break;
+                case 1: led.StartOrAddToQueue(lsqArtifact1); break;
+                case 2: led.StartOrAddToQueue(lsqArtifact2); break;
+                case 3: led.StartOrAddToQueue(lsqArtifact3); break;
                 default: break;
             }
             switch(influence.cyan_beast) {
-                case 1: Led.StartOrAddToQueue(lsqCyanBeast1); break;
-                case 2: Led.StartOrAddToQueue(lsqCyanBeast2); break;
-                case 3: Led.StartOrAddToQueue(lsqCyanBeast3); break;
+                case 1: led.StartOrAddToQueue(lsqCyanBeast1); break;
+                case 2: led.StartOrAddToQueue(lsqCyanBeast2); break;
+                case 3: led.StartOrAddToQueue(lsqCyanBeast3); break;
                 default: break;
             }
             switch(influence.searcher) {
-                case 1: Led.StartOrAddToQueue(lsqSearcher1); break;
-                case 2: Led.StartOrAddToQueue(lsqSearcher2); break;
-                case 3: Led.StartOrAddToQueue(lsqSearcher3); break;
+                case 1: led.StartOrAddToQueue(lsqSearcher1); break;
+                case 2: led.StartOrAddToQueue(lsqSearcher2); break;
+                case 3: led.StartOrAddToQueue(lsqSearcher3); break;
                 default: break;
             }
-            Led.StartOrAddToQueue(lsqMaster_inwork);
+            led.StartOrAddToQueue(lsqMaster_inwork);
             break;
 
-        case DevType::PlaceMinus1: Led.StartOrAddToQueue(lsqPlaceMinus1_inwork); break;
-        case DevType::PlaceMinus2: Led.StartOrAddToQueue(lsqPlaceMinus2_inwork); break;
-        case DevType::PlaceMinus3: Led.StartOrAddToQueue(lsqPlaceMinus3_inwork); break;
+        case DevType::PlaceMinus1: led.StartOrAddToQueue(lsqPlaceMinus1_inwork); break;
+        case DevType::PlaceMinus2: led.StartOrAddToQueue(lsqPlaceMinus2_inwork); break;
+        case DevType::PlaceMinus3: led.StartOrAddToQueue(lsqPlaceMinus3_inwork); break;
 
-        case DevType::Artifact: Led.StartOrAddToQueue(lsqArtifact_inwork); break;
+        case DevType::Artifact: led.StartOrAddToQueue(lsqArtifact_inwork); break;
 
-        case DevType::Beast:
-            if(beast_resource > 10800) {
-                Led.StartOrAddToQueue(lsqBeast1_inwork);
-            }
-            else if(beast_resource > 3600) {
-                Led.StartOrAddToQueue(lsqBeast2_inwork);
-                if(time_s % 60 == 0) vibro.StartOrAddToQueue(vsqBrr); // Every minute
-            }
-            else if(beast_resource > 0) {
-                Led.StartOrAddToQueue(lsqBeast3_inwork);
-                if(time_s % 30 == 0) vibro.StartOrAddToQueue(vsqBrrBrr); // Every 30 seconds
-            }
-            else if(beast_resource > -kBeaastMin) { // Out of Control
-                Led.StartOrAddToQueue(lsqBeast4_inwork);
-                vibro.StartOrAddToQueue(vsqBrrBrrBrr);
-            }
-            else { // Madness
-                Led.StartOrAddToQueue(lsqBeastMadness);
-            }
-            break;
+        case DevType::Beast: {
+            Beast::State state = Beast::GetState();
+            switch(state) {
+                case Beast::State::Calm:
+                    led.StartOrAddToQueue(lsqBeast1_inwork);
+                    break;
+                case Beast::State::Worry:
+                    led.StartOrAddToQueue(lsqBeast2_inwork);
+                    if(time_s % 60 == 0) vibro.StartOrAddToQueue(vsqBrr); // Every minute
+                    break;
+                case Beast::State::Thrill:
+                    led.StartOrAddToQueue(lsqBeast3_inwork);
+                    if(time_s % 30 == 0) vibro.StartOrAddToQueue(vsqBrrBrr); // Every 30 seconds
+                    break;
+                case Beast::State::Hunger:
+                    led.StartOrAddToQueue(lsqBeast4_inwork);
+                    vibro.StartOrAddToQueue(vsqBrrBrrBrr);
+                    break;
+                case Beast::State::Madness:
+                    led.StartOrAddToQueue(lsqBeastMadness);
+                    break;
+            } // switch state
+        } break;
 
-        case DevType::PlaceMinus1Magic: Led.StartOrAddToQueue(lsqPlaceMinus1Magic_inwork); break;
-        case DevType::PlaceMinus2Magic: Led.StartOrAddToQueue(lsqPlaceMinus2Magic_inwork); break;
-        case DevType::PlaceMinus3Magic: Led.StartOrAddToQueue(lsqPlaceMinus3Magic_inwork); break;
+        case DevType::PlaceMinus1Magic: led.StartOrAddToQueue(lsqPlaceMinus1Magic_inwork); break;
+        case DevType::PlaceMinus2Magic: led.StartOrAddToQueue(lsqPlaceMinus2Magic_inwork); break;
+        case DevType::PlaceMinus3Magic: led.StartOrAddToQueue(lsqPlaceMinus3Magic_inwork); break;
 
         case DevType::Particle: IndicateGoodness(); break;
 
         case DevType::Path:
-            if(influence.searcher > 0) Led.StartOrAddToQueue(lsqPathFadeIn);
-            else Led.StartOrAddToQueue(lsqPathFadeOut);
+            if(influence.searcher > 0) led.StartOrAddToQueue(lsqPathFadeIn);
+            else led.StartOrAddToQueue(lsqPathFadeOut);
             break;
     } // switch
 }
@@ -405,7 +424,7 @@ void Indicate() {
 void Reset() {
     time_s = 0;
     goodness = kGoodnessDefault;
-    beast_resource = kBeastDefault;
+    Beast::resource = Beast::kDefault;
     modifier.Reset();
     tx_params.Reset();
     influence.Reset();
@@ -451,7 +470,7 @@ void OnSecond() {
             if(time_s % 64 == 0) EESaveGoodness();
             break;
         case DevType::Beast:
-            ProcessGoodnessForBeast();
+            Beast::OnSecond();
             if(time_s % 64 == 0) EESaveBeastRsrc();
             break;
         default: // Places, master, artifact, path
@@ -465,35 +484,35 @@ void ApplyPill(int32_t pill_id) {
     Printf("Pill");
     switch(pill_id) {
         case 1:
-            Led.StartOrAddToQueue(lsqPillReset);
+            led.StartOrAddToQueue(lsqPillReset);
             Printf("Reset\r");
             Reset();
             EESaveState();
             break;
         case 2:
-            Led.StartOrAddToQueue(lsqPillGoodnessPlus);
+            led.StartOrAddToQueue(lsqPillGoodnessPlus);
             Printf("GPlus\r");
             InjectGoodnessUnconditional(+1200); // Saved inside
             break;
         case 3:
-            Led.StartOrAddToQueue(lsqPillGoodnessMinus);
+            led.StartOrAddToQueue(lsqPillGoodnessMinus);
             Printf("GMinus\r");
             InjectGoodnessUnconditional(-1200); // Saved inside
             break;
         case 4:
-            Led.StartOrAddToQueue(lsqPillFixForever);
+            led.StartOrAddToQueue(lsqPillFixForever);
             Printf("FixForever\r");
             modifier.fix_forever = true;
             EESaveFixForever();
             break;
         case 5:
-            Led.StartOrAddToQueue(lsqPillFixTimed);
+            led.StartOrAddToQueue(lsqPillFixTimed);
             Printf("FixTimed\r");
             modifier.fix_timed = 3600;
             EESaveFixTimed();
             break;
         case 6:
-            Led.StartOrAddToQueue(lsqPillDisableFix);
+            led.StartOrAddToQueue(lsqPillDisableFix);
             Printf("DisableFix\r");
             modifier.Reset();
             EESaveFixTimed();
@@ -508,7 +527,7 @@ void ApplyPill(int32_t pill_id) {
 
         default:
             Printf("Bad: %d\r", pill_id);
-            Led.StartOrAddToQueue(lsqPillBad);
+            led.StartOrAddToQueue(lsqPillBad);
             beeper.StartOrRestart(bsqBeepPillBad);
             return; // Get out before switch ends
     } // switch
@@ -583,7 +602,7 @@ void ProcessRxTbl(RxTable &tbl) {
         // Goodness: add it even if its value is zero, because who cares?
         if(pkt.single_transaction) { // Master's whim
             if(g_trans_list.ProcessId(pkt.id) == retv::New) {
-                InjectGoodnessConditional(pkt.goodness);
+                InjectGoodnessIfNotFixed(pkt.goodness);
             }
         }
         else { // Not a single ransaction, just field
@@ -637,7 +656,10 @@ bool CheckIfTxAndPrepareRPkt(rPkt *ppkt) {
         case DevType::PlaceMinus3: ppkt->goodness = -3; break;
 
         case DevType::Artifact:    ppkt->artifact = 1; break;
-        case DevType::Beast:       ppkt->cyan_beast = 1; break;
+        case DevType::Beast: {
+            Beast::State state = Beast::GetState();
+            if(state == Beast::State::Hunger or state == Beast::State::Madness) ppkt->cyan_beast = 1;
+        } break;
 
         case DevType::PlaceMinus1Magic: ppkt->goodness = -1; ppkt->green_evil = 1; break;
         case DevType::PlaceMinus2Magic: ppkt->goodness = -2; ppkt->green_evil = 1; break;
@@ -654,13 +676,13 @@ void GetState() {
     if(r.NotOk()) { Printf("Bad Type: %u\r", cfg.type); return; }
     Printf("DevType: %s\r", dev_id_names[*r].name);
     Printf("Goodness: %d\r", goodness);
-    Printf("BeastRsrc: %d\r", beast_resource);
+    Printf("BeastRsrc: %d\r", Beast::resource);
     modifier.Print();
     influence.Print();
     g_trans_list.Print();
 }
 
 void SetGoodness(int32_t agoodness) { goodness = agoodness; }
-void SetBeastRsrc(int32_t rsrc) { beast_resource = rsrc; }
+void SetBeastRsrc(int32_t rsrc) { Beast::resource = rsrc; }
 
 } // namespace App

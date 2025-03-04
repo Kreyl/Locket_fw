@@ -44,7 +44,9 @@ void SetDevtypeResetSaveState(uint32_t type32);
 void SetDevtypeResetSaveState(DevType type);
 
 // Evt processing
+#if BUTTONS_ENABLED
 void OnBtnEvt(BtnEvtInfo_t btn_info);
+#endif
 void OnSecond();
 void ApplyPill(int32_t pill_id);
 

@@ -6,7 +6,11 @@
 #include "beeper.h"
 #include "kl_lib.h"
 
-extern LedRGBwPower_t<11> Led;
+#ifdef LED_EN_PIN // Locket
+extern LedRGBwPower_t<11> led;
+#else // FD
+extern LedRGB_t<11> led;
+#endif
 extern Vibro_t<4> vibro;
 extern Beeper_t<4> beeper;
 Config cfg;
@@ -57,7 +61,7 @@ static void ShowSelfType() {
     RetvValU32 r = DevTypeToIndx(cfg.type);
     if(r.IsOk()) {
         Printf("DevType: %s\r", dev_id_names[*r].name);
-        Led.StartOrAddToQueue(dev_id_names[*r].lsq_self);
+        led.StartOrAddToQueue(dev_id_names[*r].lsq_self);
     }
     else Printf("DevType: Unknown\r");
 }
@@ -312,11 +316,11 @@ void ProcessGoodnessForParticle() {
 void IndicateGoodness() {
     bool is_frozen = modifier.fix_forever or modifier.fix_timed > 0;
     if(goodness >= 9599)
-        Led.StartOrAddToQueue(is_frozen? lsqGoodnessBlueFrozen : lsqGoodnessBlue);
+        led.StartOrAddToQueue(is_frozen? lsqGoodnessBlueFrozen : lsqGoodnessBlue);
     else if(goodness >= 4800)
-        Led.StartOrAddToQueue(is_frozen? lsqGoodnessYellowFrozen : lsqGoodnessYellow);
+        led.StartOrAddToQueue(is_frozen? lsqGoodnessYellowFrozen : lsqGoodnessYellow);
     else
-        Led.StartOrAddToQueue(is_frozen? lsqGoodnessRedFrozen : lsqGoodnessRed);
+        led.StartOrAddToQueue(is_frozen? lsqGoodnessRedFrozen : lsqGoodnessRed);
 }
 
 void Indicate() {
@@ -329,89 +333,89 @@ void Indicate() {
             if(influence.cyan_beast > 0) vibro.StartOrAddToQueue(vsqBrr);
             break;
 
-        case DevType::PlacePlus1: Led.StartOrAddToQueue(lsqPlacePlus1_inwork); break;
-        case DevType::PlacePlus2: Led.StartOrAddToQueue(lsqPlacePlus2_inwork); break;
-        case DevType::PlacePlus3: Led.StartOrAddToQueue(lsqPlacePlus3_inwork); break;
+        case DevType::PlacePlus1: led.StartOrAddToQueue(lsqPlacePlus1_inwork); break;
+        case DevType::PlacePlus2: led.StartOrAddToQueue(lsqPlacePlus2_inwork); break;
+        case DevType::PlacePlus3: led.StartOrAddToQueue(lsqPlacePlus3_inwork); break;
 
         case DevType::Master:
             switch(influence.goodness_plus) {
-                case 1: Led.StartOrAddToQueue(lsqPlacePlus1); break;
-                case 2: Led.StartOrAddToQueue(lsqPlacePlus2); break;
-                case 3: Led.StartOrAddToQueue(lsqPlacePlus3); break;
+                case 1: led.StartOrAddToQueue(lsqPlacePlus1); break;
+                case 2: led.StartOrAddToQueue(lsqPlacePlus2); break;
+                case 3: led.StartOrAddToQueue(lsqPlacePlus3); break;
                 default: break;
             }
             switch(influence.goodness_minus) {
-                case -1: Led.StartOrAddToQueue(lsqPlaceMinus1); break;
-                case -2: Led.StartOrAddToQueue(lsqPlaceMinus2); break;
-                case -3: Led.StartOrAddToQueue(lsqPlaceMinus3); break;
+                case -1: led.StartOrAddToQueue(lsqPlaceMinus1); break;
+                case -2: led.StartOrAddToQueue(lsqPlaceMinus2); break;
+                case -3: led.StartOrAddToQueue(lsqPlaceMinus3); break;
                 default: break;
             }
             switch(influence.green_evil) {
-                case 1: Led.StartOrAddToQueue(lsqGreenEvil1); break;
-                case 2: Led.StartOrAddToQueue(lsqGreenEvil2); break;
-                case 3: Led.StartOrAddToQueue(lsqGreenEvil3); break;
+                case 1: led.StartOrAddToQueue(lsqGreenEvil1); break;
+                case 2: led.StartOrAddToQueue(lsqGreenEvil2); break;
+                case 3: led.StartOrAddToQueue(lsqGreenEvil3); break;
                 default: break;
             }
             switch(influence.artifact) {
-                case 1: Led.StartOrAddToQueue(lsqArtifact1); break;
-                case 2: Led.StartOrAddToQueue(lsqArtifact2); break;
-                case 3: Led.StartOrAddToQueue(lsqArtifact3); break;
+                case 1: led.StartOrAddToQueue(lsqArtifact1); break;
+                case 2: led.StartOrAddToQueue(lsqArtifact2); break;
+                case 3: led.StartOrAddToQueue(lsqArtifact3); break;
                 default: break;
             }
             switch(influence.cyan_beast) {
-                case 1: Led.StartOrAddToQueue(lsqCyanBeast1); break;
-                case 2: Led.StartOrAddToQueue(lsqCyanBeast2); break;
-                case 3: Led.StartOrAddToQueue(lsqCyanBeast3); break;
+                case 1: led.StartOrAddToQueue(lsqCyanBeast1); break;
+                case 2: led.StartOrAddToQueue(lsqCyanBeast2); break;
+                case 3: led.StartOrAddToQueue(lsqCyanBeast3); break;
                 default: break;
             }
             switch(influence.searcher) {
-                case 1: Led.StartOrAddToQueue(lsqSearcher1); break;
-                case 2: Led.StartOrAddToQueue(lsqSearcher2); break;
-                case 3: Led.StartOrAddToQueue(lsqSearcher3); break;
+                case 1: led.StartOrAddToQueue(lsqSearcher1); break;
+                case 2: led.StartOrAddToQueue(lsqSearcher2); break;
+                case 3: led.StartOrAddToQueue(lsqSearcher3); break;
                 default: break;
             }
-            Led.StartOrAddToQueue(lsqMaster_inwork);
+            led.StartOrAddToQueue(lsqMaster_inwork);
             break;
 
-        case DevType::PlaceMinus1: Led.StartOrAddToQueue(lsqPlaceMinus1_inwork); break;
-        case DevType::PlaceMinus2: Led.StartOrAddToQueue(lsqPlaceMinus2_inwork); break;
-        case DevType::PlaceMinus3: Led.StartOrAddToQueue(lsqPlaceMinus3_inwork); break;
+        case DevType::PlaceMinus1: led.StartOrAddToQueue(lsqPlaceMinus1_inwork); break;
+        case DevType::PlaceMinus2: led.StartOrAddToQueue(lsqPlaceMinus2_inwork); break;
+        case DevType::PlaceMinus3: led.StartOrAddToQueue(lsqPlaceMinus3_inwork); break;
 
-        case DevType::Artifact: Led.StartOrAddToQueue(lsqArtifact_inwork); break;
+        case DevType::Artifact: led.StartOrAddToQueue(lsqArtifact_inwork); break;
 
         case DevType::Beast: {
             Beast::State state = Beast::GetState();
             switch(state) {
                 case Beast::State::Calm:
-                    Led.StartOrAddToQueue(lsqBeast1_inwork);
+                    led.StartOrAddToQueue(lsqBeast1_inwork);
                     break;
                 case Beast::State::Worry:
-                    Led.StartOrAddToQueue(lsqBeast2_inwork);
+                    led.StartOrAddToQueue(lsqBeast2_inwork);
                     if(time_s % 60 == 0) vibro.StartOrAddToQueue(vsqBrr); // Every minute
                     break;
                 case Beast::State::Thrill:
-                    Led.StartOrAddToQueue(lsqBeast3_inwork);
+                    led.StartOrAddToQueue(lsqBeast3_inwork);
                     if(time_s % 30 == 0) vibro.StartOrAddToQueue(vsqBrrBrr); // Every 30 seconds
                     break;
                 case Beast::State::Hunger:
-                    Led.StartOrAddToQueue(lsqBeast4_inwork);
+                    led.StartOrAddToQueue(lsqBeast4_inwork);
                     vibro.StartOrAddToQueue(vsqBrrBrrBrr);
                     break;
                 case Beast::State::Madness:
-                    Led.StartOrAddToQueue(lsqBeastMadness);
+                    led.StartOrAddToQueue(lsqBeastMadness);
                     break;
             } // switch state
         } break;
 
-        case DevType::PlaceMinus1Magic: Led.StartOrAddToQueue(lsqPlaceMinus1Magic_inwork); break;
-        case DevType::PlaceMinus2Magic: Led.StartOrAddToQueue(lsqPlaceMinus2Magic_inwork); break;
-        case DevType::PlaceMinus3Magic: Led.StartOrAddToQueue(lsqPlaceMinus3Magic_inwork); break;
+        case DevType::PlaceMinus1Magic: led.StartOrAddToQueue(lsqPlaceMinus1Magic_inwork); break;
+        case DevType::PlaceMinus2Magic: led.StartOrAddToQueue(lsqPlaceMinus2Magic_inwork); break;
+        case DevType::PlaceMinus3Magic: led.StartOrAddToQueue(lsqPlaceMinus3Magic_inwork); break;
 
         case DevType::Particle: IndicateGoodness(); break;
 
         case DevType::Path:
-            if(influence.searcher > 0) Led.StartOrAddToQueue(lsqPathFadeIn);
-            else Led.StartOrAddToQueue(lsqPathFadeOut);
+            if(influence.searcher > 0) led.StartOrAddToQueue(lsqPathFadeIn);
+            else led.StartOrAddToQueue(lsqPathFadeOut);
             break;
     } // switch
 }
@@ -480,35 +484,35 @@ void ApplyPill(int32_t pill_id) {
     Printf("Pill");
     switch(pill_id) {
         case 1:
-            Led.StartOrAddToQueue(lsqPillReset);
+            led.StartOrAddToQueue(lsqPillReset);
             Printf("Reset\r");
             Reset();
             EESaveState();
             break;
         case 2:
-            Led.StartOrAddToQueue(lsqPillGoodnessPlus);
+            led.StartOrAddToQueue(lsqPillGoodnessPlus);
             Printf("GPlus\r");
             InjectGoodnessUnconditional(+1200); // Saved inside
             break;
         case 3:
-            Led.StartOrAddToQueue(lsqPillGoodnessMinus);
+            led.StartOrAddToQueue(lsqPillGoodnessMinus);
             Printf("GMinus\r");
             InjectGoodnessUnconditional(-1200); // Saved inside
             break;
         case 4:
-            Led.StartOrAddToQueue(lsqPillFixForever);
+            led.StartOrAddToQueue(lsqPillFixForever);
             Printf("FixForever\r");
             modifier.fix_forever = true;
             EESaveFixForever();
             break;
         case 5:
-            Led.StartOrAddToQueue(lsqPillFixTimed);
+            led.StartOrAddToQueue(lsqPillFixTimed);
             Printf("FixTimed\r");
             modifier.fix_timed = 3600;
             EESaveFixTimed();
             break;
         case 6:
-            Led.StartOrAddToQueue(lsqPillDisableFix);
+            led.StartOrAddToQueue(lsqPillDisableFix);
             Printf("DisableFix\r");
             modifier.Reset();
             EESaveFixTimed();
@@ -523,7 +527,7 @@ void ApplyPill(int32_t pill_id) {
 
         default:
             Printf("Bad: %d\r", pill_id);
-            Led.StartOrAddToQueue(lsqPillBad);
+            led.StartOrAddToQueue(lsqPillBad);
             beeper.StartOrRestart(bsqBeepPillBad);
             return; // Get out before switch ends
     } // switch
@@ -531,6 +535,7 @@ void ApplyPill(int32_t pill_id) {
     beeper.StartOrRestart(bsqBeepPillOk);
 }
 
+#if BUTTONS_ENABLED
 void OnBtnEvt(BtnEvtInfo_t btn_info) {
     if(cfg.type == DevType::Master) {
         // Indicate by vibro
@@ -554,6 +559,7 @@ void OnBtnEvt(BtnEvtInfo_t btn_info) {
         } // switch
     } // If master
 }
+#endif
 
 #pragma region // ==== Radio related ====
 // RX. Called from radio lvl

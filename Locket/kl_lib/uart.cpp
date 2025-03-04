@@ -214,9 +214,9 @@ void Uart_t::IStartTransmissionIfNotYet() { }
 
 retv BaseUart_t::IPutByteNow(uint8_t b) {
 #if defined STM32L1XX || defined STM32F2XX || defined STM32F4XX || defined STM32F10X_LD_VL
-    while(!(Params->Uart->SR & USART_SR_TXE));
-    Params->Uart->UART_TX_REG = b;
-    while(!(Params->Uart->SR & USART_SR_TXE));
+    while(!(Params->puart->SR & USART_SR_TXE));
+    Params->puart->UART_TX_REG = b;
+    while(!(Params->puart->SR & USART_SR_TXE));
 #elif defined STM32F0XX || defined STM32L4XX
     while(!(Params->Uart->ISR & USART_ISR_TXE));
     Params->Uart->UART_TX_REG = b;
@@ -283,10 +283,10 @@ void BaseUart_t::Init() {
 #endif
     PinSetupAlterFunc(Params->PGpioTx, Params->PinTx, omPushPull, pudNone, PinAF);
     // ==== Clock ====
-    if     (Params->Uart == USART1) { rccEnableUSART1(FALSE); }
-    else if(Params->Uart == USART2) { rccEnableUSART2(FALSE); }
+    if     (Params->puart == USART1) { rccEnableUSART1(FALSE); }
+    else if(Params->puart == USART2) { rccEnableUSART2(FALSE); }
 #if defined USART3
-    else if(Params->Uart == USART3) { rccEnableUSART3(FALSE); }
+    else if(Params->puart == USART3) { rccEnableUSART3(FALSE); }
 #endif
 #if defined UART4
     else if(Params->Uart == UART4) { rccEnableUART4(FALSE); }
@@ -320,21 +320,21 @@ void BaseUart_t::Init() {
 #endif
     OnClkChange();  // Setup baudrate
 
-    Params->Uart->CR2 = 0;  // Nothing that interesting there
+    Params->puart->CR2 = 0;  // Nothing that interesting there
 #if UART_USE_DMA    // ==== DMA ====
     // Remap DMA request if needed
 #if defined STM32F0XX
     if(Params->PDmaTx == STM32_DMA1_STREAM4) SYSCFG->CFGR1 |= SYSCFG_CFGR1_USART1TX_DMA_RMP;
 #endif
     PDmaTx = dmaStreamAlloc(Params->DmaTxID, IRQ_PRIO_MEDIUM, DmaUartTxIrq, this);
-    dmaStreamSetPeripheral(PDmaTx, &Params->Uart->UART_TX_REG);
+    dmaStreamSetPeripheral(PDmaTx, &Params->puart->UART_TX_REG);
     dmaStreamSetMode      (PDmaTx, Params->DmaModeTx);
     IDmaIsIdle = true;
 #endif
 
     // ==== RX ====
-    Params->Uart->CR1 = USART_CR1_TE | USART_CR1_RE;        // TX & RX enable
-    Params->Uart->CR3 = USART_CR3_DMAT | USART_CR3_DMAR;    // Enable DMA at TX & RX
+    Params->puart->CR1 = USART_CR1_TE | USART_CR1_RE;        // TX & RX enable
+    Params->puart->CR3 = USART_CR3_DMAT | USART_CR3_DMAR;    // Enable DMA at TX & RX
     // ==== Rx pin ====
 #if defined STM32L4XX || defined STM32L1XX || defined STM32F2XX
     PinAF = AF7; // for all USARTs save 4/5/6
@@ -366,12 +366,12 @@ void BaseUart_t::Init() {
 #endif
     // DMA
     PDmaRx = dmaStreamAlloc(Params->DmaRxID, IRQ_PRIO_MEDIUM, nullptr, NULL);
-    dmaStreamSetPeripheral(PDmaRx, &Params->Uart->UART_RX_REG);
+    dmaStreamSetPeripheral(PDmaRx, &Params->puart->UART_RX_REG);
     dmaStreamSetMemory0   (PDmaRx, IRxBuf);
     dmaStreamSetTransactionSize(PDmaRx, UART_RXBUF_SZ);
     dmaStreamSetMode      (PDmaRx, Params->DmaModeRx);
     dmaStreamEnable       (PDmaRx);
-    Params->Uart->CR1 |= USART_CR1_UE;    // Enable USART
+    Params->puart->CR1 |= USART_CR1_UE;    // Enable USART
 
     // Prepare and start RX
     for(int i=0; i<UARTS_CNT; i++) {
@@ -386,11 +386,11 @@ void BaseUart_t::Init() {
 }
 
 void BaseUart_t::Shutdown() {
-    Params->Uart->CR1 &= ~USART_CR1_UE; // UART Disable
-    if     (Params->Uart == USART1) { rccDisableUSART1(); }
-    else if(Params->Uart == USART2) { rccDisableUSART2(); }
+    Params->puart->CR1 &= ~USART_CR1_UE; // UART Disable
+    if     (Params->puart == USART1) { rccDisableUSART1(); }
+    else if(Params->puart == USART2) { rccDisableUSART2(); }
 #if defined USART3
-    else if(Params->Uart == USART3) { rccDisableUSART3(); }
+    else if(Params->puart == USART3) { rccDisableUSART3(); }
 #endif
 #if defined UART4
     else if(Params->Uart == UART4) { rccDisableUART4(FALSE); }
@@ -402,8 +402,8 @@ void BaseUart_t::Shutdown() {
 
 void BaseUart_t::OnClkChange() {
 #if defined STM32L1XX || defined STM32F1XX
-    if(Params->Uart == USART1) Params->Uart->BRR = Clk.APB2FreqHz / Params->Baudrate;
-    else                       Params->Uart->BRR = Clk.APB1FreqHz / Params->Baudrate;
+    if(Params->puart == USART1) Params->puart->BRR = Clk.APB2FreqHz / Params->Baudrate;
+    else                       Params->puart->BRR = Clk.APB1FreqHz / Params->Baudrate;
 #elif defined STM32F072xB
     if(Params->Uart == USART1 or Params->Uart == USART2) Params->Uart->BRR = HSI_FREQ_HZ / Params->Baudrate;
     else Params->Uart->BRR = Clk.APBFreqHz / Params->Baudrate;
@@ -526,9 +526,9 @@ void ModbusUart485_t::ProcessByteIfReceived() {
 
 void ModbusUart485_t::IOnTxEnd() {
 #ifdef USART_SR_TC
-    Params->Uart->SR &= ~USART_SR_TC; // Clear TxCompleted flag
+    Params->puart->SR &= ~USART_SR_TC; // Clear TxCompleted flag
     for(volatile uint32_t i=0; i<1000; i++) {
-        if(Params->Uart->SR & USART_SR_TC) break; // wait last bit to be shifted out
+        if(Params->puart->SR & USART_SR_TC) break; // wait last bit to be shifted out
     }
 #else
     Params->Uart->ISR &= ~USART_ISR_TC; // Clear TxCompleted flag

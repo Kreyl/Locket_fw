@@ -13,23 +13,16 @@
 // Forever
 extern const char *kBuildTime, *kBuildCfgName;
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> evt_q_main;
-static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
-CmdUart_t Uart { &CmdUartParams };
+static const UartParams_t kCmdUartParams(115200, CMD_UART_PARAMS);
+CmdUart_t uart { &kCmdUartParams };
 static void ITask();
 static void OnCmd(Shell_t *pshell);
 
-LedRGB_t<11> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN };
+LedRGB_t<11> led { LED_R_PIN, LED_G_PIN, LED_B_PIN };
 Vibro_t<4> vibro { VIBRO_SETUP };
 Beeper_t<4> beeper { BEEPER_PIN };
 
 static TmrKL_t tmr_every_second {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
-
-void SleepNow(uint32_t Delay) {
-    chSysLock();
-    Iwdg::InitAndStart(Delay);
-    Sleep::EnterStandby();
-    chSysUnlock();
-}
 #pragma endregion
 
 void main(void) {
@@ -43,23 +36,23 @@ void main(void) {
     evt_q_main.Init();
 
     // ==== Init hardware ====
-    Uart.Init();
+    uart.Init();
     cfg.id = GetUniqID32();
     Printf("\r%S %S; ID: 0x%08X\r", APP_NAME, kBuildTime, cfg.id);
     Clk.PrintFreqs();
 
     Random::SeedWithUniqID();
-    Led.Init();
+    led.Init();
     vibro.Init();
     beeper.Init();
     PillMgr::Init();
 
-    if(Radio::Init().IsOk()) Led.StartOrRestart(lsqStart);
-    else Led.StartOrRestart(lsqFailure);
+    if(Radio::Init().IsOk()) led.StartOrRestart(lsqStart);
+    else led.StartOrRestart(lsqFailure);
     chThdSleepMilliseconds(1008);
 
-    // Read dev type and tx pwr from dip, and load state
-    ReadModeFromDip();
+    // Read dev type and tx pwr from EE, and load state
+    // XXX
     tmr_every_second.StartOrRestart();
 
     // Main cycle
@@ -72,12 +65,11 @@ void ITask() {
         EvtMsg_t msg = evt_q_main.Fetch(TIME_INFINITE);
         switch(msg.id) {
             case EvtId::EverySecond:
-                if(ReadModeFromDip() == retv::New) chThdSleepMilliseconds(810);
                 App::OnSecond();
                 break;
 
             case EvtId::CheckRxTable:
-            App::ProcessRxTbl(*static_cast<RxTable*>(msg.ptr));
+                App::ProcessRxTbl(*static_cast<RxTable*>(msg.ptr));
                 break;
 
             // Pill
@@ -113,25 +105,6 @@ void OnCmd(Shell_t *pshell) {
     else if(pcmd->NameIs("Version"))
         pshell->Print("%S %S\r", APP_NAME, kBuildTime);
 
-    else if(pcmd->NameIs("GetID")) {
-        // rPkt pkt;
-        // pkt.Reset(0x12345678);
-        // pkt.goodness = -1200;
-        // pkt
-        // uint32_t seed;
-        // if(pcmd->GetNext<uint32_t>(&seed).IsOk()) {
-        //     char* S = pcmd->GetNextString();
-        //     uint32_t h = HashMurmur3_32(S, strlen(S), seed);
-        //     pshell->Print("ID: 0x%08X\r", h);
-        // }
-        // if(pcmd->GetNext<uint32_t>(&x).IsOk() && pcmd->GetNext<uint32_t>(&y).IsOk() && pcmd->GetNext<uint32_t>(&z).IsOk())
-        //     pshell->Print("ID: 0x%08X\r", GetUniqID32(x, y, z));
-        // else pshell->BadParam();
-        // pshell->Print("ID: %u\r", Cfg.ID);
-    }
-
-
-
 #if ADC_REQUIRED
 else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();
 #endif
@@ -143,16 +116,6 @@ else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();
         }
         else pshell->BadParam();
     }
-
-    // else if(pcmd->NameIs("SetID")) {
-    //     int32_t new_id = 0;
-    //     if(pcmd->GetNext<int32_t>(&new_id) != retv::Ok) {
-    //         pshell->CmdError();
-    //         return;
-    //     }
-    //     if(ISetID(new_id) == retv::Ok) pshell->Ok();
-    //     else pshell->Failure();
-    // }
 
 #if PILL_ENABLED // ==== Pills ====
 else if(pcmd->NameIs("PillRead32")) {

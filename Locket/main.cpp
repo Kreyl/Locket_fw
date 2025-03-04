@@ -13,25 +13,25 @@
 // Forever
 extern const char *kBuildTime, *kBuildCfgName;
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> evt_q_main;
-static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
-CmdUart_t Uart { &CmdUartParams };
+static const UartParams_t kCmdUartParams(115200, CMD_UART_PARAMS);
+CmdUart_t uart { &kCmdUartParams };
 static void ITask();
 static void OnCmd(Shell_t *pshell);
 
 static retv ReadModeFromDip();
 
-static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
+static const PinInputSetup_t dip_sw_pin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
 
-LedRGBwPower_t<11> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+LedRGBwPower_t<11> led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t<4> vibro { VIBRO_SETUP };
 Beeper_t<4> beeper { BEEPER_PIN };
 
 static TmrKL_t tmr_every_second {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
 
-void SleepNow(uint32_t Delay) {
+void SleepNow(uint32_t delay) {
     chSysLock();
-    Iwdg::InitAndStart(Delay);
+    Iwdg::InitAndStart(delay);
     Sleep::EnterStandby();
     chSysUnlock();
 }
@@ -48,19 +48,19 @@ void main(void) {
     evt_q_main.Init();
 
     // ==== Init hardware ====
-    Uart.Init();
+    uart.Init();
     cfg.id = GetUniqID32();
     Printf("\r%S %S; ID: 0x%08X\r", APP_NAME, kBuildTime, cfg.id);
     Clk.PrintFreqs();
 
     Random::SeedWithUniqID();
-    Led.Init();
+    led.Init();
     vibro.Init();
     beeper.Init();
     PillMgr::Init();
 
-    if(Radio::Init().IsOk()) Led.StartOrRestart(lsqStart);
-    else Led.StartOrRestart(lsqFailure);
+    if(Radio::Init().IsOk()) led.StartOrRestart(lsqStart);
+    else led.StartOrRestart(lsqFailure);
     chThdSleepMilliseconds(1008);
 
     // Read dev type and tx pwr from dip, and load state
@@ -88,7 +88,7 @@ void ITask() {
                 break;
 
             case EvtId::CheckRxTable:
-            App::ProcessRxTbl(*static_cast<RxTable*>(msg.ptr));
+                App::ProcessRxTbl(*static_cast<RxTable*>(msg.ptr));
                 break;
 
             // Pill
@@ -252,11 +252,11 @@ else if(pcmd->NameIs("ApplyPill")) {
 uint8_t GetDipSwitch() {
     uint8_t Rslt = 0;
     for(int i = 0; i < DIP_SW_CNT; i++)
-        PinSetupInput(DipSwPin[i].PGpio, DipSwPin[i].Pin,
-                DipSwPin[i].PullUpDown);
+        PinSetupInput(dip_sw_pin[i].PGpio, dip_sw_pin[i].Pin,
+                dip_sw_pin[i].PullUpDown);
     for(int i = 0; i < DIP_SW_CNT; i++) {
-        if(!PinIsHi(DipSwPin[i].PGpio, DipSwPin[i].Pin)) Rslt |= (1 << i);
-        PinSetupAnalog(DipSwPin[i].PGpio, DipSwPin[i].Pin);
+        if(!PinIsHi(dip_sw_pin[i].PGpio, dip_sw_pin[i].Pin)) Rslt |= (1 << i);
+        PinSetupAnalog(dip_sw_pin[i].PGpio, dip_sw_pin[i].Pin);
     }
     return Rslt;
 }
