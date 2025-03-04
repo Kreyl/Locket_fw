@@ -237,7 +237,6 @@ namespace Beast {
     }
 };
 
-
 #pragma region // ======== EEPROM ========
 inline constexpr const uint32_t kEEAddrType = 36, kEEAddrGoodness = 40, kEEAddrBeastRsrc = 44;
 inline constexpr const uint32_t kEEAddrFixTimed = 48, kEEAddrFixForever = 52;
@@ -270,7 +269,7 @@ void EELoadState() {
 }
 #pragma endregion
 
-void InjectGoodnessUnconditional(int32_t goodness_value) {
+retv InjectGoodnessUnconditional(int32_t goodness_value) {
     switch(cfg.type) {
         case DevType::Searcher:
         case DevType::Particle:
@@ -278,20 +277,20 @@ void InjectGoodnessUnconditional(int32_t goodness_value) {
             if(goodness > kGoodnessMax) goodness = kGoodnessMax;
             else if(goodness < 0) goodness = 0;
             EESaveGoodness();
-            break;
+            return retv::New;
         case DevType::Beast:
             Beast::resource -= goodness_value;
             if(Beast::resource < 0) Beast::resource = 0;
             EESaveBeastRsrc();
-            break;
+            return retv::New;
         default:
-            break;
+            return retv::NoChanges;
     } // switch(cfg.type)
 }
 
-void InjectGoodnessConditional(int32_t goodness_value) {
+void InjectGoodnessIfNotFixed(int32_t goodness_value) {
     if(!modifier.IsFixed()) {
-        InjectGoodnessUnconditional(goodness_value);
+        if(InjectGoodnessUnconditional(goodness_value) == retv::New) vibro.StartOrRestart(vsqBrrBrr);
     }
 }
 
@@ -597,7 +596,7 @@ void ProcessRxTbl(RxTable &tbl) {
         // Goodness: add it even if its value is zero, because who cares?
         if(pkt.single_transaction) { // Master's whim
             if(g_trans_list.ProcessId(pkt.id) == retv::New) {
-                InjectGoodnessConditional(pkt.goodness);
+                InjectGoodnessIfNotFixed(pkt.goodness);
             }
         }
         else { // Not a single ransaction, just field
