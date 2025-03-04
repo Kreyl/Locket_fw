@@ -2,15 +2,12 @@
 #define BOARD_H__
 
 // ==== General ====
-#define BOARD_NAME          "Locket5"
+#define BOARD_NAME          "Fallout"
 #define APP_NAME            "ConceptOfGoodness"
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        TRUE
 #define BEEPER_ENABLED      TRUE
-#define BUTTONS_ENABLED     TRUE
-
-#define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
 // MCU type as defined in the ST header.
 #define STM32L151xB
@@ -36,43 +33,26 @@
 #define UART_RX_PIN     10
 
 // LED
-#define LED_EN_PIN      { GPIOB, 2, omPushPull }
-#define LED_G_PIN       { GPIOB, 1, TIM3, 4, Inv::Inverted, omOpenDrain, 255 }
-#define LED_B_PIN       { GPIOB, 0, TIM3, 3, Inv::Inverted, omOpenDrain, 255 }
-#define LED_R_PIN       { GPIOB, 5, TIM3, 2, Inv::Inverted, omOpenDrain, 255 }
-
-// Buttons
-#define BTN1_PIN        GPIOA, 0
-#define BTN2_PIN        GPIOA, 1
-#define BTN3_PIN        GPIOB, 8
+#define LED_R_PIN       { GPIOB, 1, TIM3, 4, Inv::NotInverted, omPushPull, 255 }
+#define LED_G_PIN       { GPIOB, 0, TIM3, 3, Inv::NotInverted, omPushPull, 255 }
+#define LED_B_PIN       { GPIOB, 5, TIM3, 2, Inv::NotInverted, omPushPull, 255 }
 
 // Vibro
-#define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, Inv::NotInverted, omPushPull, 99 }
+#define VIBRO_SETUP     { GPIOB, 6, TIM4, 1, invNotInverted, omPushPull, 99 }
 
 // Beeper
 #define BEEPER_TOP      22
-#define BEEPER_PIN      { GPIOB, 15, TIM11, 1, Inv::NotInverted, omPushPull, BEEPER_TOP }
-
-// DIP switch
-#define DIP_SW_CNT      8
-#define DIP_SW1         { GPIOB, 13, pudPullUp }
-#define DIP_SW2         { GPIOB, 14, pudPullUp }
-#define DIP_SW3         { GPIOA,  8, pudPullUp }
-#define DIP_SW4         { GPIOA, 11, pudPullUp }
-#define DIP_SW5         { GPIOA, 15, pudPullUp }
-#define DIP_SW6         { GPIOA, 12, pudPullUp }
-#define DIP_SW7         { GPIOC, 13, pudPullUp }
-#define DIP_SW8         { GPIOC, 14, pudPullUp }
+#define BEEPER_PIN      { GPIOB, 3, TIM2, 2, invNotInverted, omPushPull, BEEPER_TOP }
 
 // I2C
 #if I2C1_ENABLED
 #define I2C1_GPIO       GPIOB
-#define I2C1_SCL        6
-#define I2C1_SDA        7
+#define I2C1_SCL        8
+#define I2C1_SDA        9
 #endif
 
 // Pill power
-#define PILL_PWR_PIN    GPIOB, 3, omPushPull
+#define PILL_PWR_PIN    { GPIOB, 7, omPushPull }
 
 // Radio: SPI, PGpio, Sck, Miso, Mosi, Cs, Gdo0
 #define CC_Setup0       SPI1, GPIOA, 5,6,7, GPIOA,4, GPIOA,3

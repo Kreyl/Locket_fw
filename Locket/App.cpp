@@ -202,16 +202,48 @@ static Modifier modifier;
 // Goodness
 static const int32_t kGoodnessMax = 14400,  kGoodnessDefault = kGoodnessMax;
 static int32_t goodness = kGoodnessDefault;
+
 // Beast resource
-static const int32_t kBeastMax = 21600, kBeaastMin = -600, kBeastDefault = kBeastMax;
-static int32_t beast_resource = kBeastDefault;
+namespace Beast {
+    static const int32_t kMax = 21600L, kHangerMin = -600L, kMadness = kHangerMin - 1L, kDefault = kMax;
+    static int32_t resource = kDefault;
+    enum class State { Calm, Worry, Thrill, Hunger, Madness };
+
+    State GetState() {
+        if     (resource >= 10800L)     return State::Calm;
+        else if(resource >= 3600L)      return State::Worry;
+        else if(resource >= 0L)         return State::Thrill;
+        else if(resource >= kHangerMin) return State::Hunger;
+        else return State::Madness;
+    }
+
+    void OnSecond() {
+        if(Beast::resource > 0) {
+            if(!modifier.IsFixed()) { // do not change if fixed
+                resource--; // Always decrease
+                // Positive influence decreases resource, negative one does nothing
+                if(influence.goodness_delta > 0) resource -= influence.goodness_delta * 5L;
+                // Keep resource in range
+                if(resource > kMax) resource = kMax;
+                else if(resource < 0) resource = 0; // Do not decrease under 0 too fast, do it slowly ignoring influence
+            }
+            // Process modifiers
+            if(modifier.fix_timed > 0) modifier.fix_timed--;
+        }
+        else { // beast_resource<=0 => no influence/modifiers are applicable
+            if(resource > kMadness) resource--;
+            modifier.fix_timed = 0;
+        }
+    }
+};
+
 
 #pragma region // ======== EEPROM ========
 inline constexpr const uint32_t kEEAddrType = 36, kEEAddrGoodness = 40, kEEAddrBeastRsrc = 44;
 inline constexpr const uint32_t kEEAddrFixTimed = 48, kEEAddrFixForever = 52;
 
 void EESaveGoodness()   { EE::WriteI32(kEEAddrGoodness, goodness); }
-void EESaveBeastRsrc()  { EE::WriteI32(kEEAddrBeastRsrc, beast_resource); }
+void EESaveBeastRsrc()  { EE::WriteI32(kEEAddrBeastRsrc, Beast::resource); }
 void EESaveFixTimed()   { EE::WriteI32(kEEAddrFixTimed, modifier.fix_timed); }
 void EESaveFixForever() { EE::WriteI32(kEEAddrFixForever, modifier.fix_forever); }
 
@@ -227,8 +259,8 @@ void EELoadState() {
     if(v >= 0 and v <= kGoodnessMax) goodness = v;
     else goodness = kGoodnessDefault;
     v = EE::ReadI32(kEEAddrBeastRsrc);
-    if(v >= kBeaastMin and v <= kBeastMax) beast_resource = v;
-    else beast_resource = kBeastDefault;
+    if(v >= Beast::kMadness and v <= Beast::kMax) Beast::resource = v;
+    else Beast::resource = Beast::kDefault;
     v = EE::ReadI32(kEEAddrFixTimed);
     if(v >= 0 and v <= kFixTimedVulueMax) modifier.fix_timed = v;
     else modifier.fix_timed = 0;
@@ -248,8 +280,8 @@ void InjectGoodnessUnconditional(int32_t goodness_value) {
             EESaveGoodness();
             break;
         case DevType::Beast:
-            beast_resource -= goodness_value;
-            if(beast_resource < 0) beast_resource = 0;
+            Beast::resource -= goodness_value;
+            if(Beast::resource < 0) Beast::resource = 0;
             EESaveBeastRsrc();
             break;
         default:
@@ -274,25 +306,6 @@ void ProcessGoodnessForParticle() {
     }
     // Process modifiers
     if(modifier.fix_timed > 0) modifier.fix_timed--;
-}
-
-void ProcessGoodnessForBeast() {
-    if(beast_resource > 0) {
-        if(!modifier.IsFixed()) { // do not change if fixed
-            beast_resource--; // Always decrease
-            // Positive influence decreases resource, negative one does nothing
-            if(influence.goodness_delta > 0) beast_resource -= influence.goodness_delta * 5L;
-            // Keep resource in range
-            if(beast_resource > kBeastMax) beast_resource = kBeastMax;
-            else if(beast_resource < 0) beast_resource = 0;
-        }
-        // Process modifiers
-        if(modifier.fix_timed > 0) modifier.fix_timed--;
-    }
-    else { // beast_resource<=0 => no influence/modifiers are applicable
-        if(beast_resource > kBeaastMin) beast_resource--;
-        modifier.fix_timed = 0;
-    }
 }
 #pragma endregion
 
@@ -367,26 +380,29 @@ void Indicate() {
 
         case DevType::Artifact: Led.StartOrAddToQueue(lsqArtifact_inwork); break;
 
-        case DevType::Beast:
-            if(beast_resource > 10800) {
-                Led.StartOrAddToQueue(lsqBeast1_inwork);
-            }
-            else if(beast_resource > 3600) {
-                Led.StartOrAddToQueue(lsqBeast2_inwork);
-                if(time_s % 60 == 0) vibro.StartOrAddToQueue(vsqBrr); // Every minute
-            }
-            else if(beast_resource > 0) {
-                Led.StartOrAddToQueue(lsqBeast3_inwork);
-                if(time_s % 30 == 0) vibro.StartOrAddToQueue(vsqBrrBrr); // Every 30 seconds
-            }
-            else if(beast_resource > -kBeaastMin) { // Out of Control
-                Led.StartOrAddToQueue(lsqBeast4_inwork);
-                vibro.StartOrAddToQueue(vsqBrrBrrBrr);
-            }
-            else { // Madness
-                Led.StartOrAddToQueue(lsqBeastMadness);
-            }
-            break;
+        case DevType::Beast: {
+            Beast::State state = Beast::GetState();
+            switch(state) {
+                case Beast::State::Calm:
+                    Led.StartOrAddToQueue(lsqBeast1_inwork);
+                    break;
+                case Beast::State::Worry:
+                    Led.StartOrAddToQueue(lsqBeast2_inwork);
+                    if(time_s % 60 == 0) vibro.StartOrAddToQueue(vsqBrr); // Every minute
+                    break;
+                case Beast::State::Thrill:
+                    Led.StartOrAddToQueue(lsqBeast3_inwork);
+                    if(time_s % 30 == 0) vibro.StartOrAddToQueue(vsqBrrBrr); // Every 30 seconds
+                    break;
+                case Beast::State::Hunger:
+                    Led.StartOrAddToQueue(lsqBeast4_inwork);
+                    vibro.StartOrAddToQueue(vsqBrrBrrBrr);
+                    break;
+                case Beast::State::Madness:
+                    Led.StartOrAddToQueue(lsqBeastMadness);
+                    break;
+            } // switch state
+        } break;
 
         case DevType::PlaceMinus1Magic: Led.StartOrAddToQueue(lsqPlaceMinus1Magic_inwork); break;
         case DevType::PlaceMinus2Magic: Led.StartOrAddToQueue(lsqPlaceMinus2Magic_inwork); break;
@@ -405,7 +421,7 @@ void Indicate() {
 void Reset() {
     time_s = 0;
     goodness = kGoodnessDefault;
-    beast_resource = kBeastDefault;
+    Beast::resource = Beast::kDefault;
     modifier.Reset();
     tx_params.Reset();
     influence.Reset();
@@ -451,7 +467,7 @@ void OnSecond() {
             if(time_s % 64 == 0) EESaveGoodness();
             break;
         case DevType::Beast:
-            ProcessGoodnessForBeast();
+            Beast::OnSecond();
             if(time_s % 64 == 0) EESaveBeastRsrc();
             break;
         default: // Places, master, artifact, path
@@ -635,7 +651,10 @@ bool CheckIfTxAndPrepareRPkt(rPkt *ppkt) {
         case DevType::PlaceMinus3: ppkt->goodness = -3; break;
 
         case DevType::Artifact:    ppkt->artifact = 1; break;
-        case DevType::Beast:       ppkt->cyan_beast = 1; break;
+        case DevType::Beast: {
+            Beast::State state = Beast::GetState();
+            if(state == Beast::State::Hunger or state == Beast::State::Madness) ppkt->cyan_beast = 1;
+        } break;
 
         case DevType::PlaceMinus1Magic: ppkt->goodness = -1; ppkt->green_evil = 1; break;
         case DevType::PlaceMinus2Magic: ppkt->goodness = -2; ppkt->green_evil = 1; break;
@@ -652,13 +671,13 @@ void GetState() {
     if(r.NotOk()) { Printf("Bad Type: %u\r", cfg.type); return; }
     Printf("DevType: %s\r", dev_id_names[*r].name);
     Printf("Goodness: %d\r", goodness);
-    Printf("BeastRsrc: %d\r", beast_resource);
+    Printf("BeastRsrc: %d\r", Beast::resource);
     modifier.Print();
     influence.Print();
     g_trans_list.Print();
 }
 
 void SetGoodness(int32_t agoodness) { goodness = agoodness; }
-void SetBeastRsrc(int32_t rsrc) { beast_resource = rsrc; }
+void SetBeastRsrc(int32_t rsrc) { Beast::resource = rsrc; }
 
 } // namespace App

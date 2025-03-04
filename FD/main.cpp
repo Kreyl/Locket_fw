@@ -18,12 +18,7 @@ CmdUart_t Uart { &CmdUartParams };
 static void ITask();
 static void OnCmd(Shell_t *pshell);
 
-static retv ReadModeFromDip();
-
-static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
-static uint8_t GetDipSwitch();
-
-LedRGBwPower_t<11> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+LedRGB_t<11> Led { LED_R_PIN, LED_G_PIN, LED_B_PIN };
 Vibro_t<4> vibro { VIBRO_SETUP };
 Beeper_t<4> beeper { BEEPER_PIN };
 
@@ -66,7 +61,6 @@ void main(void) {
     // Read dev type and tx pwr from dip, and load state
     ReadModeFromDip();
     tmr_every_second.StartOrRestart();
-    SimpleSensors::Init();
 
     // Main cycle
     ITask();
@@ -80,11 +74,6 @@ void ITask() {
             case EvtId::EverySecond:
                 if(ReadModeFromDip() == retv::New) chThdSleepMilliseconds(810);
                 App::OnSecond();
-                break;
-
-            case EvtId::Buttons:
-                Printf("Btn %u %u\r", msg.btn_info.btn_indx, msg.btn_info.type);
-                App::OnBtnEvt(msg.btn_info);
                 break;
 
             case EvtId::CheckRxTable:
@@ -114,23 +103,6 @@ void ITask() {
         } // Switch
     } // while true
 } // ITask()
-
-
-retv ReadModeFromDip() {
-    static uint32_t old_dip_settings = 0xFFFF;
-    uint32_t dw32 = GetDipSwitch();
-    if(dw32 == old_dip_settings) return retv::NoChanges;
-    // Something has changed
-    Printf("Dip: 0x%02X; ", dw32);
-    old_dip_settings = dw32;
-    // Select power
-    uint32_t bits = dw32 & 0b1111; // Remove high bits = group 5678
-    cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : PwrTable[bits];
-    // Select dev type: group 5678
-    App::SetDevtypeResetLoadState((dw32 >> 4) & 0b1111UL);
-    cfg.PrintTxPwr();
-    return retv::New;
-}
 
 #if 1 // ================= Command processing ====================
 void OnCmd(Shell_t *pshell) {
@@ -247,16 +219,3 @@ else if(pcmd->NameIs("ApplyPill")) {
 //     }
 // }
 #endif
-
-// ====== DIP switch ======
-uint8_t GetDipSwitch() {
-    uint8_t Rslt = 0;
-    for(int i = 0; i < DIP_SW_CNT; i++)
-        PinSetupInput(DipSwPin[i].PGpio, DipSwPin[i].Pin,
-                DipSwPin[i].PullUpDown);
-    for(int i = 0; i < DIP_SW_CNT; i++) {
-        if(!PinIsHi(DipSwPin[i].PGpio, DipSwPin[i].Pin)) Rslt |= (1 << i);
-        PinSetupAnalog(DipSwPin[i].PGpio, DipSwPin[i].Pin);
-    }
-    return Rslt;
-}

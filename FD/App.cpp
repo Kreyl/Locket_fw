@@ -516,6 +516,7 @@ void ApplyPill(int32_t pill_id) {
     beeper.StartOrRestart(bsqBeepPillOk);
 }
 
+#if BUTTONS_ENABLED
 void OnBtnEvt(BtnEvtInfo_t btn_info) {
     if(cfg.type == DevType::Master) {
         // Indicate by vibro
@@ -539,6 +540,7 @@ void OnBtnEvt(BtnEvtInfo_t btn_info) {
         } // switch
     } // If master
 }
+#endif
 
 #pragma region // ==== Radio related ====
 // RX. Called from radio lvl
