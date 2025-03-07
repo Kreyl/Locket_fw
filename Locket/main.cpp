@@ -14,9 +14,9 @@
 extern const char *kBuildTime, *kBuildCfgName;
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> evt_q_main;
 static const UartParams_t kCmdUartParams(115200, CMD_UART_PARAMS);
-CmdUart_t uart { &kCmdUartParams };
+CmdUart uart { &kCmdUartParams };
 static void ITask();
-static void OnCmd(Shell_t *pshell);
+static void OnCmd(Shell *pshell);
 
 static retv ReadModeFromDip();
 
@@ -28,6 +28,7 @@ Vibro_t<4> vibro { VIBRO_SETUP };
 Beeper_t<4> beeper { BEEPER_PIN };
 
 static TmrKL_t tmr_every_second {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
+static TmrKL_t tmr_check_uart {TIME_MS2I(UART_RX_POLLING_MS), EvtId::UartCheckTime, tktPeriodic};
 
 void SleepNow(uint32_t delay) {
     chSysLock();
@@ -66,6 +67,7 @@ void main(void) {
     // Read dev type and tx pwr from dip, and load state
     ReadModeFromDip();
     tmr_every_second.StartOrRestart();
+    tmr_check_uart.StartOrRestart();
     SimpleSensors::Init();
 
     // Main cycle
@@ -77,6 +79,10 @@ void ITask() {
     while(true) {
         EvtMsg_t msg = evt_q_main.Fetch(TIME_INFINITE);
         switch(msg.id) {
+            case EvtId::UartCheckTime:
+                while(uart.TryParseRxBuff() == retv::Ok) { OnCmd((Shell*)&uart); }
+                break;
+
             case EvtId::EverySecond:
                 if(ReadModeFromDip() == retv::New) chThdSleepMilliseconds(810);
                 App::OnSecond();
@@ -104,10 +110,7 @@ void ITask() {
 #if ADC_REQUIRED
             case evtIdAdcRslt: Printf("Battery: %u mV\r", Adc.GetVDAmV(Adc.GetResultMedian(0))); break;
 #endif
-            case EvtId::ShellCmd:
-                OnCmd((Shell_t*) msg.ptr);
-                ((Shell_t*)msg.ptr)->SignalCmdProcessed();
-                break;
+
             default:
                 Printf("Unhandled msg %u\r", msg.id);
                 break;
@@ -125,7 +128,7 @@ retv ReadModeFromDip() {
     old_dip_settings = dw32;
     // Select power
     uint32_t bits = dw32 & 0b1111; // Remove high bits = group 5678
-    cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : PwrTable[bits];
+    cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : kPwrTable[bits];
     // Select dev type: group 5678
     App::SetDevtypeResetLoadState((dw32 >> 4) & 0b1111UL);
     cfg.PrintTxPwr();
@@ -133,32 +136,13 @@ retv ReadModeFromDip() {
 }
 
 #if 1 // ================= Command processing ====================
-void OnCmd(Shell_t *pshell) {
-    Cmd_t *pcmd = &pshell->Cmd;
+void OnCmd(Shell *pshell) {
+    Cmd_t *pcmd = &pshell->cmd;
     // Handle command
     if(pcmd->NameIs("Ping"))
         pshell->Ok();
     else if(pcmd->NameIs("Version"))
         pshell->Print("%S %S\r", APP_NAME, kBuildTime);
-
-    else if(pcmd->NameIs("GetID")) {
-        // rPkt pkt;
-        // pkt.Reset(0x12345678);
-        // pkt.goodness = -1200;
-        // pkt
-        // uint32_t seed;
-        // if(pcmd->GetNext<uint32_t>(&seed).IsOk()) {
-        //     char* S = pcmd->GetNextString();
-        //     uint32_t h = HashMurmur3_32(S, strlen(S), seed);
-        //     pshell->Print("ID: 0x%08X\r", h);
-        // }
-        // if(pcmd->GetNext<uint32_t>(&x).IsOk() && pcmd->GetNext<uint32_t>(&y).IsOk() && pcmd->GetNext<uint32_t>(&z).IsOk())
-        //     pshell->Print("ID: 0x%08X\r", GetUniqID32(x, y, z));
-        // else pshell->BadParam();
-        // pshell->Print("ID: %u\r", Cfg.ID);
-    }
-
-
 
 #if ADC_REQUIRED
 else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();
@@ -172,16 +156,6 @@ else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();
         else pshell->BadParam();
     }
 
-    // else if(pcmd->NameIs("SetID")) {
-    //     int32_t new_id = 0;
-    //     if(pcmd->GetNext<int32_t>(&new_id) != retv::Ok) {
-    //         pshell->CmdError();
-    //         return;
-    //     }
-    //     if(ISetID(new_id) == retv::Ok) pshell->Ok();
-    //     else pshell->Failure();
-    // }
-
 #if PILL_ENABLED // ==== Pills ====
 else if(pcmd->NameIs("PillRead32")) {
     uint32_t cnt = 0, dw32 = 0;
@@ -193,7 +167,7 @@ else if(pcmd->NameIs("PillRead32")) {
         pshell->Print("%u ", dw32);
         mem_addr += 4;
     }
-    pshell->EOL();
+    pshell->PrintEOL();
     pshell->Ok();
 }
 
@@ -218,7 +192,7 @@ else if(pcmd->NameIs("ApplyPill")) {
 }
 #endif
 
-    else if(pcmd->NameIs("GetState")) App::GetState();
+    else if(pcmd->NameIs("State")) App::PrintState();
 
     else pshell->CmdUnknown();
 }

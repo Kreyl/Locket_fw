@@ -193,7 +193,7 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 inline constexpr const uint32_t kBlinkDuration = 108, kBlinkDark = 180, kPauseNextLsq = 450;
 
 #pragma region // ==== Start-up indication ====
-const LedRGBChunk_t lsqSearcher[] = {
+static const LedRGBChunk_t lsqSearcher[] = {
         {csSetup, 0, clYellow},  {csWait, kBlinkDuration},
         {csSetup, 0, clBlack},   {csWait, kBlinkDuration},
         {csRepeat, 1},
@@ -201,19 +201,19 @@ const LedRGBChunk_t lsqSearcher[] = {
         {csEnd},
 };
 
-const LedRGBChunk_t lsqPlacePlus1[] = {
+static const LedRGBChunk_t lsqPlacePlus1[] = {
         {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
         {csEnd},
 };
-const LedRGBChunk_t lsqPlacePlus2[] = {
+static const LedRGBChunk_t lsqPlacePlus2[] = {
         {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
         {csWait, kPauseNextLsq},
         {csEnd},
 };
-const LedRGBChunk_t lsqPlacePlus3[] = {
+static const LedRGBChunk_t lsqPlacePlus3[] = {
         {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 2},
@@ -221,25 +221,25 @@ const LedRGBChunk_t lsqPlacePlus3[] = {
         {csEnd},
 };
 
-const LedRGBChunk_t lsqMaster[] = {
+static const LedRGBChunk_t lsqMaster[] = {
         {csSetup, 0, clWhite},  {csWait, kBlinkDuration},
         {csSetup, 0, {1,1,1}},
         {csEnd},
 };
 
-const LedRGBChunk_t lsqPlaceMinus1[] = {
+static const LedRGBChunk_t lsqPlaceMinus1[] = {
         {csSetup, 0, clRed},   {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
         {csEnd},
 };
-const LedRGBChunk_t lsqPlaceMinus2[] = {
+static const LedRGBChunk_t lsqPlaceMinus2[] = {
         {csSetup, 0, clRed},   {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
         {csWait, kPauseNextLsq},
         {csEnd},
 };
-const LedRGBChunk_t lsqPlaceMinus3[] = {
+static const LedRGBChunk_t lsqPlaceMinus3[] = {
         {csSetup, 0, clRed},   {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 2},
@@ -247,26 +247,26 @@ const LedRGBChunk_t lsqPlaceMinus3[] = {
         {csEnd},
 };
 
-const LedRGBChunk_t lsqArtifact[] = {
+static const LedRGBChunk_t lsqArtifact[] = {
         {csSetup, 0, clMagenta},  {csWait, kBlinkDuration},
         {csSetup, 0, clBlack},    {csWait, kPauseNextLsq},
         {csEnd},
 };
 
-const LedRGBChunk_t lsqBeast[] = {
+static const LedRGBChunk_t lsqBeast[] = {
         {csSetup, 0, clCyan},  {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
         {csEnd},
 };
 
-const LedRGBChunk_t lsqPlaceMinus1Magic[] = {
+static const LedRGBChunk_t lsqPlaceMinus1Magic[] = {
         {csSetup, 0, clRed},   {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csSetup, 0, clGreen}, {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
         {csEnd},
 };
-const LedRGBChunk_t lsqPlaceMinus2Magic[] = {
+static const LedRGBChunk_t lsqPlaceMinus2Magic[] = {
         {csSetup, 0, clRed},   {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
@@ -274,7 +274,7 @@ const LedRGBChunk_t lsqPlaceMinus2Magic[] = {
         {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
         {csEnd},
 };
-const LedRGBChunk_t lsqPlaceMinus3Magic[] = {
+static const LedRGBChunk_t lsqPlaceMinus3Magic[] = {
         {csSetup, 0, clRed},   {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 2},
@@ -283,13 +283,13 @@ const LedRGBChunk_t lsqPlaceMinus3Magic[] = {
         {csEnd},
 };
 
-const LedRGBChunk_t lsqParticle[] = {
+static const LedRGBChunk_t lsqParticle[] = {
         {csSetup, 0, clYellow},  {csWait, kBlinkDuration},
         {csSetup, 0, clBlack},   {csWait, kPauseNextLsq},
         {csEnd},
 };
 
-const LedRGBChunk_t lsqPath[] = {
+static const LedRGBChunk_t lsqPath[] = {
         {csSetup, 0, clGreen}, {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
         {csEnd},
@@ -302,19 +302,19 @@ const LedRGBChunk_t lsqPath[] = {
 #define DARK_GREEN      (Color_t){0,DARK_VALUE,0}
 #define DARK_BLUE       (Color_t){0,0,DARK_VALUE}
 
-const LedRGBChunk_t lsqPlacePlus1_inwork[] = {
+static const LedRGBChunk_t lsqPlacePlus1_inwork[] = {
         {csSetup, 0, DARK_BLUE}, {csWait, kBlinkDuration},
         {csSetup, 0, clBlack},   {csWait, kPauseNextLsq},
         {csEnd},
 };
-const LedRGBChunk_t lsqPlacePlus2_inwork[] = {
+static const LedRGBChunk_t lsqPlacePlus2_inwork[] = {
         {csSetup, 0, DARK_BLUE}, {csWait, kBlinkDuration},
         {csSetup, 0, clBlack},   {csWait, kBlinkDark},
         {csRepeat, 1},
         {csWait, kPauseNextLsq},
         {csEnd},
 };
-const LedRGBChunk_t lsqPlacePlus3_inwork[] = {
+static const LedRGBChunk_t lsqPlacePlus3_inwork[] = {
         {csSetup, 0, DARK_BLUE}, {csWait, kBlinkDuration},
         {csSetup, 0, clBlack},   {csWait, kBlinkDark},
         {csRepeat, 2},
@@ -322,17 +322,17 @@ const LedRGBChunk_t lsqPlacePlus3_inwork[] = {
         {csEnd},
 };
 
-const LedRGBChunk_t lsqMaster_inwork[] = {
+static const LedRGBChunk_t lsqMaster_inwork[] = {
         {csSetup, 0, {1,1,1}},
         {csEnd},
 };
 
-const LedRGBChunk_t lsqPlaceMinus1_inwork[] = {
+static const LedRGBChunk_t lsqPlaceMinus1_inwork[] = {
         {csSetup, 0, DARK_RED}, {csWait, kBlinkDuration},
         {csSetup, 0, clBlack},  {csWait, kPauseNextLsq},
         {csEnd},
 };
-const LedRGBChunk_t lsqPlaceMinus2_inwork[] = {
+static const LedRGBChunk_t lsqPlaceMinus2_inwork[] = {
         {csSetup, 0, DARK_RED}, {csWait, kBlinkDuration},
         {csSetup, 0, clBlack},  {csWait, kBlinkDark},
         {csRepeat, 1},

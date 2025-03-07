@@ -12,7 +12,7 @@ enum class EvtId : uint8_t {
     None = 0, // Always
 
     // Pretending to eternity
-    ShellCmd,
+    UartCheckTime,
     EverySecond,
     AdcRslt,
 

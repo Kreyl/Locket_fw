@@ -203,6 +203,8 @@ static Modifier modifier;
 #pragma endregion
 
 #pragma region // ==== Goodness & Beast resource ====
+void EESaveGoodness();
+void EESaveBeastRsrc();
 // Goodness
 static const int32_t kGoodnessMax = 14400,  kGoodnessDefault = kGoodnessMax;
 static int32_t goodness = kGoodnessDefault;
@@ -241,38 +243,6 @@ namespace Beast {
     }
 };
 
-#pragma region // ======== EEPROM ========
-inline constexpr const uint32_t kEEAddrType = 36, kEEAddrGoodness = 40, kEEAddrBeastRsrc = 44;
-inline constexpr const uint32_t kEEAddrFixTimed = 48, kEEAddrFixForever = 52;
-
-void EESaveGoodness()   { EE::WriteI32(kEEAddrGoodness, goodness); }
-void EESaveBeastRsrc()  { EE::WriteI32(kEEAddrBeastRsrc, Beast::resource); }
-void EESaveFixTimed()   { EE::WriteI32(kEEAddrFixTimed, modifier.fix_timed); }
-void EESaveFixForever() { EE::WriteI32(kEEAddrFixForever, modifier.fix_forever); }
-
-void EESaveState() {
-    EESaveGoodness();
-    EESaveBeastRsrc();
-    EESaveFixTimed();
-    EESaveFixForever();
-}
-
-void EELoadState() {
-    int32_t v = EE::ReadI32(kEEAddrGoodness);
-    if(v >= 0 and v <= kGoodnessMax) goodness = v;
-    else goodness = kGoodnessDefault;
-    v = EE::ReadI32(kEEAddrBeastRsrc);
-    if(v >= Beast::kMadness and v <= Beast::kMax) Beast::resource = v;
-    else Beast::resource = Beast::kDefault;
-    v = EE::ReadI32(kEEAddrFixTimed);
-    if(v >= 0 and v <= kFixTimedVulueMax) modifier.fix_timed = v;
-    else modifier.fix_timed = 0;
-    v = EE::ReadI32(kEEAddrFixForever);
-    if(v == 1) modifier.fix_forever = true;
-    else modifier.fix_forever = false;
-}
-#pragma endregion
-
 retv InjectGoodnessUnconditional(int32_t goodness_value) {
     switch(cfg.type) {
         case DevType::Searcher:
@@ -309,6 +279,41 @@ void ProcessGoodnessForParticle() {
     }
     // Process modifiers
     if(modifier.fix_timed > 0) modifier.fix_timed--;
+}
+#pragma endregion
+
+#pragma region // ======== EEPROM ========
+inline constexpr const uint32_t kEEAddrType = 36, kEEAddrGoodness = 40, kEEAddrBeastRsrc = 44;
+inline constexpr const uint32_t kEEAddrFixTimed = 48, kEEAddrFixForever = 52;
+inline constexpr const uint32_t kEEAddrTxPwr = 54;
+
+void EESaveType()       { EE::WriteI32(kEEAddrType,       static_cast<int32_t>(cfg.type)); }
+void EESaveGoodness()   { EE::WriteI32(kEEAddrGoodness,   goodness); }
+void EESaveBeastRsrc()  { EE::WriteI32(kEEAddrBeastRsrc,  Beast::resource); }
+void EESaveFixTimed()   { EE::WriteI32(kEEAddrFixTimed,   modifier.fix_timed); }
+void EESaveFixForever() { EE::WriteI32(kEEAddrFixForever, modifier.fix_forever); }
+void EESaveTxPwr()      { EE::WriteI32(kEEAddrTxPwr,      cfg.tx_power); }
+
+void EESaveState() {
+    EESaveGoodness();
+    EESaveBeastRsrc();
+    EESaveFixTimed();
+    EESaveFixForever();
+}
+
+void EELoadState() {
+    int32_t v = EE::ReadI32(kEEAddrGoodness);
+    if(v >= 0 and v <= kGoodnessMax) goodness = v;
+    else goodness = kGoodnessDefault;
+    v = EE::ReadI32(kEEAddrBeastRsrc);
+    if(v >= Beast::kMadness and v <= Beast::kMax) Beast::resource = v;
+    else Beast::resource = Beast::kDefault;
+    v = EE::ReadI32(kEEAddrFixTimed);
+    if(v >= 0 and v <= kFixTimedVulueMax) modifier.fix_timed = v;
+    else modifier.fix_timed = 0;
+    v = EE::ReadI32(kEEAddrFixForever);
+    if(v == 1) modifier.fix_forever = true;
+    else modifier.fix_forever = false;
 }
 #pragma endregion
 
@@ -434,7 +439,29 @@ void Reset() {
 
 namespace App {
 
-// Set type, reset and LOAD params
+// Load type, state and tx power from EEPROM. Called at pwr on from main of FD.
+void LoadDevtypeAndStateFromEE() {
+    int32_t v = EE::ReadI32(kEEAddrType);
+    if(IsDevTypeValid(v)) cfg.type = static_cast<DevType>(v);
+    else {
+        cfg.type = DevType::Particle;
+        Printf("Bad EE dev type: %u; using default\r", v);
+    }
+    Reset();
+    EELoadState();
+    v = EE::ReadI32(kEEAddrTxPwr);
+    if(v >= kPwrTable[0] and v <= kPwrTable[11]) cfg.tx_power = v;
+    else cfg.tx_power = CC_PwrMinus10dBm;
+    PrintState();
+}
+
+void SetAndSaveTxPwr(uint8_t tx_pwr) {
+    cfg.tx_power = tx_pwr;
+    EESaveTxPwr();
+    cfg.PrintTxPwr();
+}
+
+// Set type, reset and LOAD params. Called from SetTypeByDIP of Locket.
 void SetDevtypeResetLoadState(uint32_t type32) {
     if(IsDevTypeValid(type32)) {
         cfg.type = static_cast<DevType>(type32);
@@ -444,11 +471,13 @@ void SetDevtypeResetLoadState(uint32_t type32) {
     else Printf("Invalid dev type: %u\r", type32);
 }
 
+// Set type, reset and SAVE params. Called from shell.
 void SetDevtypeResetSaveState(uint32_t type32) {
     if(IsDevTypeValid(type32)) {
         cfg.type = static_cast<DevType>(type32);
         Reset();
         EESaveState();
+        EESaveType(); // Makes sense for FD only
     }
     else Printf("Invalid dev type: %u\r", type32);
 }
@@ -671,7 +700,7 @@ bool CheckIfTxAndPrepareRPkt(rPkt *ppkt) {
 }
 #pragma endregion
 
-void GetState() {
+void PrintState() {
     RetvValU32 r = DevTypeToIndx(cfg.type);
     if(r.NotOk()) { Printf("Bad Type: %u\r", cfg.type); return; }
     Printf("DevType: %s\r", dev_id_names[*r].name);
@@ -680,6 +709,7 @@ void GetState() {
     modifier.Print();
     influence.Print();
     g_trans_list.Print();
+    cfg.PrintTxPwr();
 }
 
 void SetGoodness(int32_t agoodness) { goodness = agoodness; }

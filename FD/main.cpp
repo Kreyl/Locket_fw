@@ -43,17 +43,18 @@ void main(void) {
 
     Random::SeedWithUniqID();
     led.Init();
-    vibro.Init();
+    // vibro.Init();
     beeper.Init();
-    PillMgr::Init();
+    // PillMgr::Init();
 
-    if(Radio::Init().IsOk()) led.StartOrRestart(lsqStart);
-    else led.StartOrRestart(lsqFailure);
-    chThdSleepMilliseconds(1008);
+    // if(Radio::Init().IsOk())
+    led.StartOrRestart(lsqStart);
+    // else led.StartOrRestart(lsqFailure);
+    // chThdSleepMilliseconds(1008);
 
     // Read dev type and tx pwr from EE, and load state
-    // XXX
-    tmr_every_second.StartOrRestart();
+    // App::LoadDevtypeAndStateFromEE();
+    // tmr_every_second.StartOrRestart();
 
     // Main cycle
     ITask();
@@ -117,6 +118,15 @@ else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();
         else pshell->BadParam();
     }
 
+    else if(pcmd->NameIs("SetTxPwr")) {
+        uint8_t tx_pwr_indx = 0;
+        if(pcmd->GetNext<uint8_t>(&tx_pwr_indx).IsOk()) {
+            if(tx_pwr_indx <= 11) App::SetAndSaveTxPwr(kPwrTable[tx_pwr_indx]);
+            else pshell->BadParam();
+        }
+        else pshell->BadParam();
+    }
+
 #if PILL_ENABLED // ==== Pills ====
 else if(pcmd->NameIs("PillRead32")) {
     uint32_t cnt = 0, dw32 = 0;
@@ -153,32 +163,8 @@ else if(pcmd->NameIs("ApplyPill")) {
 }
 #endif
 
-    else if(pcmd->NameIs("GetState")) App::GetState();
+    else if(pcmd->NameIs("State")) App::PrintState();
 
     else pshell->CmdUnknown();
 }
-#endif
-
-#if 1 // =========================== ID management =============================
-// void ReadIDfromEE() {
-    // cfg.id = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
-    // if(cfg.id < Config::kIdMin or cfg.id > Config::kIdMax) {
-    //     Printf("\rUsing default ID\r");
-    //     cfg.id = Config::kIdDefault;
-    // }
-// }
-
-// retv ISetID(int32_t new_id) {
-//     if(new_id < Config::kIdMin or new_id > Config::kIdMax) return retv::BadValue;
-//     retv rslt = EE::Write32(EE_ADDR_DEVICE_ID, new_id);
-//     if(rslt == retv::Ok) {
-//         cfg.id = new_id;
-//         Printf("New ID: %u\r", new_id);
-//         return retv::Ok;
-//     }
-//     else {
-//         Printf("EE error: %u\r", rslt);
-//         return retv::Fail;
-//     }
-// }
 #endif

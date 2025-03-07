@@ -31,6 +31,9 @@
         // now for a more complex example
         {
             "text": "DEBUG",
+            "regex": {
+                "pattern": "\\bDEBUG\\b"
+            },
             "before": { "contentText": "⚠️" },
             "after":  { "contentText": "⚠️" },
             "color": "yellow",

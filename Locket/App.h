@@ -36,7 +36,9 @@ extern Config cfg;
 
 namespace App {
 
-retv LoadAndSetTypeFromEE();
+// Used for FD
+void LoadDevtypeAndStateFromEE();
+void SetAndSaveTxPwr(uint8_t tx_pwr);
 // With loading state: by dip or by saved type for FD
 void SetDevtypeResetLoadState(uint32_t type32);
 // With saving resetted state: by pill or cmd
@@ -56,7 +58,7 @@ bool CheckIfRx();
 void ProcessRxTbl(RxTable &tbl);
 
 // Dbg
-void GetState();
+void PrintState();
 void SetGoodness(int32_t goodness);
 void SetBeastRsrc(int32_t goodness);
 

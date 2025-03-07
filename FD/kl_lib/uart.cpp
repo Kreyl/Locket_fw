@@ -228,7 +228,7 @@ retv BaseUart_t::IPutByteNow(uint8_t b) {
 
 #if 1 // ==== RX ====
 static thread_reference_t RXThread = nullptr;
-static THD_WORKING_AREA(waUartRxThread, 128);
+static THD_WORKING_AREA(waUartRxThread, 64);
 
 __noreturn
 static void UartRxThread(void *arg) {
