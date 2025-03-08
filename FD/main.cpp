@@ -44,18 +44,18 @@ void main(void) {
 
     Random::SeedWithUniqID();
     led.Init();
-    // vibro.Init();
+    vibro.Init();
     beeper.Init();
-    // PillMgr::Init();
+    PillMgr::Init();
 
-    // if(Radio::Init().IsOk())
-    led.StartOrRestart(lsqStart);
-    // else led.StartOrRestart(lsqFailure);
-    // chThdSleepMilliseconds(1008);
+    if(Radio::Init().IsOk()) led.StartOrRestart(lsqStart);
+    else led.StartOrRestart(lsqFailure);
+    chThdSleepMilliseconds(1008);
 
     // Read dev type and tx pwr from EE, and load state
-    // App::LoadDevtypeAndStateFromEE();
-    // tmr_every_second.StartOrRestart();
+    App::LoadDevtypeAndStateFromEE();
+
+    tmr_every_second.StartOrRestart();
     tmr_check_uart.StartOrRestart();
     // Main cycle
     ITask();

@@ -198,29 +198,6 @@ else if(pcmd->NameIs("ApplyPill")) {
 }
 #endif
 
-#if 1 // =========================== ID management =============================
-// void ReadIDfromEE() {
-    // cfg.id = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
-    // if(cfg.id < Config::kIdMin or cfg.id > Config::kIdMax) {
-    //     Printf("\rUsing default ID\r");
-    //     cfg.id = Config::kIdDefault;
-    // }
-// }
-
-// retv ISetID(int32_t new_id) {
-//     if(new_id < Config::kIdMin or new_id > Config::kIdMax) return retv::BadValue;
-//     retv rslt = EE::Write32(EE_ADDR_DEVICE_ID, new_id);
-//     if(rslt == retv::Ok) {
-//         cfg.id = new_id;
-//         Printf("New ID: %u\r", new_id);
-//         return retv::Ok;
-//     }
-//     else {
-//         Printf("EE error: %u\r", rslt);
-//         return retv::Fail;
-//     }
-// }
-#endif
 
 // ====== DIP switch ======
 uint8_t GetDipSwitch() {
