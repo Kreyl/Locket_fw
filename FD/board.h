@@ -17,10 +17,9 @@
 
 // OS timer settings
 #define STM32_ST_IRQ_PRIORITY   8
-#define STM32_ST_USE_TIMER      2
-#define STM32_TIMCLK1           (Clk.APB1FreqHz)
-
+#define STM32_ST_USE_TIMER      9
 #define SYS_TIM_CLK         (Clk.APB1FreqHz)
+
 #define I2C1_ENABLED        PILL_ENABLED
 #define I2C_USE_SEMAPHORE   FALSE
 #define ADC_REQUIRED        FALSE

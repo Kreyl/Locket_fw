@@ -101,6 +101,9 @@
 #elif STM32_ST_USE_TIMER == 5
 #define STM32_ST_TIM                        STM32_TIM5
 
+#elif STM32_ST_USE_TIMER == 9
+#define STM32_ST_TIM                        STM32_TIM9
+
 #elif STM32_ST_USE_TIMER == 21
 #define STM32_ST_TIM                        STM32_TIM21
 
