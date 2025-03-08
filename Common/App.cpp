@@ -508,11 +508,17 @@ void OnSecond() {
         case DevType::Searcher:
         case DevType::Particle:
             ProcessGoodnessForParticle();
-            if(time_s % 64 == 0) EESaveGoodness();
+            if(time_s % 64 == 0) {
+                EESaveGoodness();
+                if(modifier.fix_timed != 0) EESaveFixTimed();
+            }
             break;
         case DevType::Beast:
             Beast::OnSecond();
-            if(time_s % 64 == 0) EESaveBeastRsrc();
+            if(time_s % 64 == 0) {
+                EESaveBeastRsrc();
+                if(modifier.fix_timed != 0) EESaveFixTimed();
+            }
             break;
         default: // Places, master, artifact, path
             break;
