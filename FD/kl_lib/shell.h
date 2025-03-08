@@ -15,7 +15,6 @@
 #include "kl_string.h"
 #include "board.h"
 
-#define DELIMITERS      " ,"
 #define PREV_CHAR_TIMEOUT_ms    99UL
 
 enum ProcessDataResult_t {pdrProceed, pdrNewCmd};
@@ -30,6 +29,7 @@ private:
     bool IsSpace(char c) { return (c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r' || c == ' '); }
     bool IsDigit(char c) { return c >= '0' and c <= '9'; }
 public:
+    const char *kDelimiters = " ,";
     char *name;
     ProcessDataResult_t PutChar(char c) {
         // Reset cmd: (1) if it was completed and after that new char arrived (2) if new char has come after long pause
@@ -43,7 +43,7 @@ public:
         else if((c == '\r') or (c == '\n')) {   // end of line, check if cmd completed
             if(Cnt != 0) {  // if cmd is not empty
                 istring[Cnt] = 0; // End of string
-                name = kl_strtok(istring, DELIMITERS, &remainer);
+                name = Str::Tokens(istring, kDelimiters, &remainer);
                 completed = true;
                 return pdrNewCmd;
             }
@@ -52,7 +52,7 @@ public:
         return pdrProceed;
     }
 
-    char* GetNextString() { return kl_strtok(nullptr, DELIMITERS, &remainer); }
+    char* GetNextString() { return Str::Tokens(nullptr, kDelimiters, &remainer); }
 
     char* GetRemainder() { return remainer; }
 
@@ -96,7 +96,7 @@ public:
             }
 
             // Get next token
-            char *tok = kl_strtok(nullptr, DELIMITERS, &remainer);
+            char *tok = Str::Tokens(nullptr, kDelimiters, &remainer);
             if(tok == nullptr) goto End;
 
             // Command decoding
@@ -249,32 +249,16 @@ public:
         return Rslt;
     }
 
-    bool NameIs(const char *SCmd) { return (kl_strcasecmp(name, SCmd) == 0); }
+    bool NameIs(const char *SCmd) { return (Str::CmpCase(name, SCmd) == 0); }
     Cmd_t() {
         Cnt = 0;
         completed = false;
         name = nullptr;
     }
 };
-class Shell_t {
-public:
-	Cmd_t Cmd;
-	virtual void SignalCmdProcessed() = 0;
-	virtual void Print(const char *format, ...) = 0;
-    void Ok()  { Print("Ok\r\n"); }
-    void BadParam() { Print("BadParam\r\n"); }
-    void CRCError() { Print("CRCError\r\n"); }
-    void CmdError() { Print("CmdError\r\n"); }
-    void CmdUnknown() { Print("CmdUnknown\r\n"); }
-    void Failure() { Print("Failure\r\n"); }
-    void Timeout() { Print("Timeout\r\n"); }
-    void NoAnswer() { Print("NoAnswer\r\n"); }
-    void EOL() { Print("\r\n"); }
-};
-
 
 // Parent class for everything that prints
-class PrintfHelper_t {
+class PrintfHelper {
 private:
     retv IPutUint(uint32_t n, uint32_t base, uint32_t width, char filler);
 protected:
@@ -282,7 +266,35 @@ protected:
     virtual void IStartTransmissionIfNotYet() = 0;
 public:
     void IVsPrintf(const char *format, va_list args);
-    void PrintEOL();
+    void Print(const char *format, ...) {
+        va_list args;
+        va_start(args, format);
+        IVsPrintf(format, args);
+        va_end(args);
+    }
+    void PrintEOL() {
+        IPutChar('\r');
+        IPutChar('\n');
+        IStartTransmissionIfNotYet();
+    }
+};
+
+
+class Shell : public PrintfHelper {
+public:
+	Cmd_t cmd;
+    void Ok()         { Print("Ok\r\n"); }
+    void BadParam(const char* S = nullptr) {
+        if(S and *S) Print("BadParam %S\r\n", S);
+        else Print("BadParam\r\n");
+    }
+    void CRCError()   { Print("CRCError\r\n"); }
+    void CmdError()   { Print("CmdError\r\n"); }
+    void CmdUnknown() { Print("CmdUnknown: %S\r\n", cmd.name); }
+    void Failure()    { Print("Failure\r\n");  }
+    void Timeout()    { Print("Timeout\r\n");  }
+    void NoAnswer()   { Print("NoAnswer\r\n"); }
+    void Overflow()   { Print("Overflow\r\n"); }
 };
 
 #if 0 // ========================= Byte protocol ===============================
@@ -365,10 +377,10 @@ public:
 #endif
 
 // Functions
-class CmdUart_t;
+class CmdUart;
 
 void Printf(const char *format, ...);
-void Printf(CmdUart_t &AUart, const char *format, ...);
+void Printf(CmdUart &AUart, const char *format, ...);
 void PrintfI(const char *format, ...);
 void PrintfEOL();
 //void PrintfNow(const char *format, ...);

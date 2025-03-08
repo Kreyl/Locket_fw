@@ -14,15 +14,16 @@
 extern const char *kBuildTime, *kBuildCfgName;
 EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> evt_q_main;
 static const UartParams_t kCmdUartParams(115200, CMD_UART_PARAMS);
-CmdUart_t uart { &kCmdUartParams };
+CmdUart uart { &kCmdUartParams };
 static void ITask();
-static void OnCmd(Shell_t *pshell);
+static void OnCmd(Shell *pshell);
 
 LedRGB_t<11> led { LED_R_PIN, LED_G_PIN, LED_B_PIN };
 Vibro_t<4> vibro { VIBRO_SETUP };
 Beeper_t<4> beeper { BEEPER_PIN };
 
 static TmrKL_t tmr_every_second {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
+static TmrKL_t tmr_check_uart {TIME_MS2I(UART_RX_POLLING_MS), EvtId::UartCheckTime, tktPeriodic};
 #pragma endregion
 
 void main(void) {
@@ -55,7 +56,7 @@ void main(void) {
     // Read dev type and tx pwr from EE, and load state
     // App::LoadDevtypeAndStateFromEE();
     // tmr_every_second.StartOrRestart();
-
+    tmr_check_uart.StartOrRestart();
     // Main cycle
     ITask();
 }
@@ -65,6 +66,10 @@ void ITask() {
     while(true) {
         EvtMsg_t msg = evt_q_main.Fetch(TIME_INFINITE);
         switch(msg.id) {
+            case EvtId::UartCheckTime:
+                while(uart.TryParseRxBuff() == retv::Ok) { OnCmd((Shell*)&uart); }
+            break;
+
             case EvtId::EverySecond:
                 App::OnSecond();
                 break;
@@ -86,10 +91,7 @@ void ITask() {
 #if ADC_REQUIRED
             case evtIdAdcRslt: Printf("Battery: %u mV\r", Adc.GetVDAmV(Adc.GetResultMedian(0))); break;
 #endif
-            case EvtId::ShellCmd:
-                OnCmd((Shell_t*) msg.ptr);
-                ((Shell_t*)msg.ptr)->SignalCmdProcessed();
-                break;
+
             default:
                 Printf("Unhandled msg %u\r", msg.id);
                 break;
@@ -98,8 +100,8 @@ void ITask() {
 } // ITask()
 
 #if 1 // ================= Command processing ====================
-void OnCmd(Shell_t *pshell) {
-    Cmd_t *pcmd = &pshell->Cmd;
+void OnCmd(Shell *pshell) {
+    Cmd_t *pcmd = &pshell->cmd;
     // Handle command
     if(pcmd->NameIs("Ping"))
         pshell->Ok();
@@ -138,7 +140,7 @@ else if(pcmd->NameIs("PillRead32")) {
         pshell->Print("%u ", dw32);
         mem_addr += 4;
     }
-    pshell->EOL();
+    pshell->PrintEOL();
     pshell->Ok();
 }
 
