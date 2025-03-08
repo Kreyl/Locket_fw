@@ -22,7 +22,7 @@ void Reset();
 struct DevIdName {
     DevType type;
     const char* name;
-    const LedRGBChunk_t *lsq_self;
+    const LedRGBChunk *lsq_self;
 };
 
 static const DevIdName dev_id_names[kDevTypeCnt] = {
@@ -459,6 +459,18 @@ void SetAndSaveTxPwr(uint8_t tx_pwr) {
     cfg.tx_power = tx_pwr;
     EESaveTxPwr();
     cfg.PrintTxPwr();
+    // Indication
+    switch(cfg.tx_power) {
+        case CC_PwrMinus15dBm: led.StartOrAddToQueue(lsqTxPwrM15); break;
+        case CC_PwrMinus10dBm: led.StartOrAddToQueue(lsqTxPwrM10); break;
+        case CC_PwrMinus6dBm:  led.StartOrAddToQueue(lsqTxPwrM6);  break;
+        case CC_Pwr0dBm:       led.StartOrAddToQueue(lsqTxPwr0);   break;
+        case CC_PwrPlus5dBm:   led.StartOrAddToQueue(lsqTxPwrP5);  break;
+        case CC_PwrPlus7dBm:   led.StartOrAddToQueue(lsqTxPwrP7);  break;
+        case CC_PwrPlus10dBm:  led.StartOrAddToQueue(lsqTxPwrP10); break;
+        case CC_PwrPlus12dBm:  led.StartOrAddToQueue(lsqTxPwrP12); break;
+        default: break;
+    } // switch
 }
 
 // Set type, reset and LOAD params. Called from SetTypeByDIP of Locket.
@@ -553,6 +565,16 @@ void ApplyPill(int32_t pill_id) {
         case  8: Printf("SetType: Searcher\r"); SetDevtypeResetSaveState(DevType::Searcher); break;
         case  9: Printf("SetType: Beast\r");    SetDevtypeResetSaveState(DevType::Beast);    break;
         case 10: Printf("SetType: Path\r");     SetDevtypeResetSaveState(DevType::Path);     break;
+
+        // Set Tx Pwr. Indication inside.
+        case 11: Printf("SetTxPwr: -15dBm\r"); SetAndSaveTxPwr(CC_PwrMinus15dBm); break;
+        case 12: Printf("SetTxPwr: -10dBm\r"); SetAndSaveTxPwr(CC_PwrMinus10dBm); break;
+        case 13: Printf("SetTxPwr: -6dBm\r");  SetAndSaveTxPwr(CC_PwrMinus6dBm);  break;
+        case 14: Printf("SetTxPwr:  0dBm\r");  SetAndSaveTxPwr(CC_Pwr0dBm);       break;
+        case 15: Printf("SetTxPwr: +5dBm\r");  SetAndSaveTxPwr(CC_PwrPlus5dBm);   break;
+        case 16: Printf("SetTxPwr: +7dBm\r");  SetAndSaveTxPwr(CC_PwrPlus7dBm);   break;
+        case 17: Printf("SetTxPwr: +10dBm\r"); SetAndSaveTxPwr(CC_PwrPlus10dBm);  break;
+        case 18: Printf("SetTxPwr: +12dBm\r"); SetAndSaveTxPwr(CC_PwrPlus12dBm);  break;
 
         default:
             Printf("Bad: %d\r", pill_id);

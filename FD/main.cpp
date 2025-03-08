@@ -6,7 +6,6 @@
 #include "App.h"
 #include "beeper.h"
 #include "pill_mgr.h"
-
 #include "Sequences.h"
 
 #pragma region // ======================== Variables and defines ========================
@@ -25,6 +24,7 @@ Beeper_t<4> beeper { BEEPER_PIN };
 static TmrKL_t tmr_every_second {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
 static TmrKL_t tmr_check_uart {TIME_MS2I(UART_RX_POLLING_MS), EvtId::UartCheckTime, tktPeriodic};
 #pragma endregion
+
 
 void main(void) {
     // ==== Init Vcore & clock system ====

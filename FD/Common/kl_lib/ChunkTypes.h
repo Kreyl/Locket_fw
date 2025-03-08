@@ -32,12 +32,9 @@ struct BaseChunk_t {
 };
 
 // RGB LED chunk
-struct LedRGBChunk_t {
+struct LedRGBChunk {
     BaseChunk_Vars;
     Color_t Color;
-    LedRGBChunk_t(ChunkSort_t ASort, uint32_t AValue, Color_t AColor) : ChunkSort(ASort), Value(AValue), Color(AColor) {}
-    LedRGBChunk_t(ChunkSort_t ASort, uint32_t AValue) : ChunkSort(ASort), Value(AValue), Color(0,0,0) {}
-    LedRGBChunk_t(ChunkSort_t ASort) : ChunkSort(ASort), Value(0), Color(0,0,0) {}
 } __attribute__((packed));
 
 // HSV LED chunk
