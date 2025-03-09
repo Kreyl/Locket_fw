@@ -42,7 +42,7 @@ void SetAndSaveTxPwr(uint8_t tx_pwr);
 // With loading state: by dip or by saved type for FD
 void SetDevtypeResetLoadState(uint32_t type32);
 // With saving resetted state: by pill or cmd
-void SetDevtypeResetSaveState(uint32_t type32);
+void SetDevtypeResetSaveStateU32(uint32_t type32);
 void SetDevtypeResetSaveState(DevType type);
 
 // Evt processing

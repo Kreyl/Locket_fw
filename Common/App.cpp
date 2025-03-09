@@ -205,15 +205,61 @@ static Modifier modifier;
 #pragma region // ==== Goodness & Beast resource ====
 void EESaveGoodness();
 void EESaveBeastRsrc();
-// Goodness
-static const int32_t kGoodnessMax = 14400,  kGoodnessDefault = kGoodnessMax;
-static int32_t goodness = kGoodnessDefault;
+void EESaveFixTimed();
+
+namespace Particle { // And searcher is Particle, too
+    static const int32_t kMax = 14400,  kDefault = kMax;
+    static int32_t goodness = kDefault;
+
+    void InjectGoodness(int32_t delta) {
+        int32_t new_goodness = goodness;
+        new_goodness += delta;
+        // Keep goodness in range [0..kMax]
+        if(new_goodness > kMax) new_goodness = kMax;
+        else if(new_goodness < 0) new_goodness = 0;
+        if(goodness == new_goodness) return; // No changes
+        goodness = new_goodness;
+        EESaveGoodness();
+        vibro.StartOrRestart(vsqBrrBrr);
+    }
+
+    void OnSecond() {
+        if(!modifier.IsFixed()) { // do not change if fixed
+            // Add influence if positive: Lustra(+1) must increment goodness by 1, Lustra(+2) - by 2 etc.
+            if(influence.goodness_delta > 0) goodness += influence.goodness_delta;
+            // Otherwise, decrement goodness by 1 AND influence delta
+            else goodness = goodness - 1L + influence.goodness_delta;
+            // Keep goodness in range
+            if(goodness > kMax) goodness = kMax;
+            else if(goodness < 0) goodness = 0;
+        }
+        // Process modifiers
+        if(modifier.fix_timed > 0) modifier.fix_timed--;
+        // Save goodness every 64 seconds
+        if(time_s % 64 == 0)  {
+            EESaveGoodness();
+            if(modifier.fix_timed != 0) EESaveFixTimed();
+        }
+    }
+} // namespace Goodness
 
 // Beast resource
 namespace Beast {
     static const int32_t kMax = 21600L, kHangerMin = -600L, kMadness = kHangerMin - 1L, kDefault = kMax;
     static int32_t resource = kDefault;
     enum class State { Calm, Worry, Thrill, Hunger, Madness };
+
+    void InjectGoodness(int32_t delta) {
+        int32_t new_resource = resource;
+        new_resource -= delta; // Positive goodness decreases resource, negative one increases it
+        // Keep resource in range [0..kMax]
+        if(new_resource > kMax) new_resource = kMax;
+        else if(new_resource < 0) new_resource = 0; // Injection must not put to Hunger or Madness
+        if(resource == new_resource) return; // No changes
+        resource = new_resource;
+        EESaveBeastRsrc();
+        vibro.StartOrRestart(vsqBrrBrr);
+    }
 
     State GetState() {
         if     (resource >= 10800L)     return State::Calm;
@@ -236,50 +282,17 @@ namespace Beast {
             // Process modifiers
             if(modifier.fix_timed > 0) modifier.fix_timed--;
         }
-        else { // beast_resource<=0 => no influence/modifiers are applicable
+        else { // beast_resource <= 0 => no influence/modifiers are applicable
             if(resource > kMadness) resource--;
             modifier.fix_timed = 0;
         }
+        // Save resource every 64 seconds
+        if(time_s % 64 == 0) {
+            EESaveBeastRsrc();
+            if(modifier.fix_timed != 0) EESaveFixTimed();
+        }
     }
 };
-
-retv InjectGoodnessUnconditional(int32_t goodness_value) {
-    switch(cfg.type) {
-        case DevType::Searcher:
-        case DevType::Particle:
-            goodness += goodness_value;
-            if(goodness > kGoodnessMax) goodness = kGoodnessMax;
-            else if(goodness < 0) goodness = 0;
-            EESaveGoodness();
-            return retv::New;
-        case DevType::Beast:
-            Beast::resource -= goodness_value;
-            if(Beast::resource < 0) Beast::resource = 0;
-            EESaveBeastRsrc();
-            return retv::New;
-        default:
-            return retv::NoChanges;
-    } // switch(cfg.type)
-}
-
-void InjectGoodnessIfNotFixed(int32_t goodness_value) {
-    if(!modifier.IsFixed()) {
-        if(InjectGoodnessUnconditional(goodness_value) == retv::New) vibro.StartOrRestart(vsqBrrBrr);
-    }
-}
-
-void ProcessGoodnessForParticle() {
-    if(!modifier.IsFixed()) { // do not change if fixed
-        // Add influence if > 0: Lustra(+1) must increment goodness by 1, Lustra(+2) - by 2 etc.
-        if(influence.goodness_delta > 0) goodness += influence.goodness_delta;
-        else goodness = goodness - 1L + influence.goodness_delta;
-        // Keep goodness in range
-        if(goodness > kGoodnessMax) goodness = kGoodnessMax;
-        else if(goodness < 0) goodness = 0;
-    }
-    // Process modifiers
-    if(modifier.fix_timed > 0) modifier.fix_timed--;
-}
 #pragma endregion
 
 #pragma region // ======== EEPROM ========
@@ -288,7 +301,7 @@ inline constexpr const uint32_t kEEAddrFixTimed = 48, kEEAddrFixForever = 52;
 inline constexpr const uint32_t kEEAddrTxPwr = 54;
 
 void EESaveType()       { EE::WriteI32(kEEAddrType,       static_cast<int32_t>(cfg.type)); }
-void EESaveGoodness()   { EE::WriteI32(kEEAddrGoodness,   goodness); }
+void EESaveGoodness()   { EE::WriteI32(kEEAddrGoodness,   Particle::goodness); }
 void EESaveBeastRsrc()  { EE::WriteI32(kEEAddrBeastRsrc,  Beast::resource); }
 void EESaveFixTimed()   { EE::WriteI32(kEEAddrFixTimed,   modifier.fix_timed); }
 void EESaveFixForever() { EE::WriteI32(kEEAddrFixForever, modifier.fix_forever); }
@@ -303,8 +316,8 @@ void EESaveState() {
 
 void EELoadState() {
     int32_t v = EE::ReadI32(kEEAddrGoodness);
-    if(v >= 0 and v <= kGoodnessMax) goodness = v;
-    else goodness = kGoodnessDefault;
+    if(v >= 0 and v <= Particle::kMax) Particle::goodness = v;
+    else Particle::goodness = Particle::kDefault;
     v = EE::ReadI32(kEEAddrBeastRsrc);
     if(v >= Beast::kMadness and v <= Beast::kMax) Beast::resource = v;
     else Beast::resource = Beast::kDefault;
@@ -320,9 +333,9 @@ void EELoadState() {
 // ==== Indication ====
 void IndicateGoodness() {
     bool is_frozen = modifier.fix_forever or modifier.fix_timed > 0;
-    if(goodness >= 9599)
+    if(Particle::goodness >= 9599)
         led.StartOrAddToQueue(is_frozen? lsqGoodnessBlueFrozen : lsqGoodnessBlue);
-    else if(goodness >= 4800)
+    else if(Particle::goodness >= 4800)
         led.StartOrAddToQueue(is_frozen? lsqGoodnessYellowFrozen : lsqGoodnessYellow);
     else
         led.StartOrAddToQueue(is_frozen? lsqGoodnessRedFrozen : lsqGoodnessRed);
@@ -428,7 +441,7 @@ void Indicate() {
 
 void Reset() {
     time_s = 0;
-    goodness = kGoodnessDefault;
+    Particle::goodness = Particle::kDefault;
     Beast::resource = Beast::kDefault;
     modifier.Reset();
     tx_params.Reset();
@@ -483,23 +496,20 @@ void SetDevtypeResetLoadState(uint32_t type32) {
     else Printf("Invalid dev type: %u\r", type32);
 }
 
-// Set type, reset and SAVE params. Called from shell.
-void SetDevtypeResetSaveState(uint32_t type32) {
-    if(IsDevTypeValid(type32)) {
-        cfg.type = static_cast<DevType>(type32);
-        Reset();
-        EESaveState();
-        EESaveType(); // Makes sense for FD only
-    }
-    else Printf("Invalid dev type: %u\r", type32);
-}
-
 void SetDevtypeResetSaveState(DevType type) {
     cfg.type = type;
     Reset();
     EESaveState();
+    EESaveType(); // Makes sense for FD only
 }
 
+// Set type, reset and SAVE params. Called from shell.
+void SetDevtypeResetSaveStateU32(uint32_t type32) {
+    if(IsDevTypeValid(type32)) {
+        SetDevtypeResetSaveState(static_cast<DevType>(type32));
+    }
+    else Printf("Invalid dev type: %u\r", type32);
+}
 
 void OnSecond() {
     time_s++;
@@ -507,24 +517,22 @@ void OnSecond() {
     switch(cfg.type) {
         case DevType::Searcher:
         case DevType::Particle:
-            ProcessGoodnessForParticle();
-            if(time_s % 64 == 0) {
-                EESaveGoodness();
-                if(modifier.fix_timed != 0) EESaveFixTimed();
-            }
+            Particle::OnSecond();
             break;
         case DevType::Beast:
             Beast::OnSecond();
-            if(time_s % 64 == 0) {
-                EESaveBeastRsrc();
-                if(modifier.fix_timed != 0) EESaveFixTimed();
-            }
             break;
         default: // Places, master, artifact, path
             break;
     } // switch
     // Indicate every 4 seconds
     if(time_s % 4 == 0) Indicate();
+}
+
+static void SignalPillIsNotApplicable() {
+    Printf("Not applicable\r");
+    led.StartOrAddToQueue(lsqPillBad);
+    beeper.StartOrRestart(bsqBeepPillBad);
 }
 
 void ApplyPill(int32_t pill_id) {
@@ -539,24 +547,52 @@ void ApplyPill(int32_t pill_id) {
         case 2:
             led.StartOrAddToQueue(lsqPillGoodnessPlus);
             Printf("GPlus\r");
-            InjectGoodnessUnconditional(+1200); // Saved inside
+            switch(cfg.type) {
+                case DevType::Particle:
+                case DevType::Searcher:
+                    Particle::InjectGoodness(+1200);
+                    break;
+                case DevType::Beast:
+                    Beast::InjectGoodness(+1200);
+                    break;
+                default:
+                    SignalPillIsNotApplicable();
+                    break;
+            } // switch cfg.type
             break;
         case 3:
             led.StartOrAddToQueue(lsqPillGoodnessMinus);
             Printf("GMinus\r");
-            InjectGoodnessUnconditional(-1200); // Saved inside
+            switch(cfg.type) {
+                case DevType::Particle:
+                case DevType::Searcher:
+                    Particle::InjectGoodness(-1200);
+                    break;
+                case DevType::Beast:
+                    Beast::InjectGoodness(-1200);
+                    break;
+                default:
+                    SignalPillIsNotApplicable();
+                    break;
+            } // switch cfg.type
             break;
         case 4:
-            led.StartOrAddToQueue(lsqPillFixForever);
             Printf("FixForever\r");
-            modifier.fix_forever = true;
-            EESaveFixForever();
+            if(cfg.type == DevType::Particle or cfg.type == DevType::Searcher or cfg.type == DevType::Beast) {
+                led.StartOrAddToQueue(lsqPillFixForever);
+                modifier.fix_forever = true;
+                EESaveFixForever();
+            }
+            else SignalPillIsNotApplicable();
             break;
         case 5:
-            led.StartOrAddToQueue(lsqPillFixTimed);
             Printf("FixTimed\r");
-            modifier.fix_timed = 3600;
-            EESaveFixTimed();
+            if(cfg.type == DevType::Particle or cfg.type == DevType::Searcher or cfg.type == DevType::Beast) {
+                led.StartOrAddToQueue(lsqPillFixTimed);
+                modifier.fix_timed = 3600;
+                EESaveFixTimed();
+            }
+            else SignalPillIsNotApplicable();
             break;
         case 6:
             led.StartOrAddToQueue(lsqPillDisableFix);
@@ -658,11 +694,21 @@ void ProcessRxTbl(RxTable &tbl) {
         pkt.Print();
         // Goodness: add it even if its value is zero, because who cares?
         if(pkt.single_transaction) { // Master's whim
-            if(g_trans_list.ProcessId(pkt.id) == retv::New) {
-                InjectGoodnessIfNotFixed(pkt.goodness);
+            if(g_trans_list.ProcessId(pkt.id) == retv::New) { // New whim from this ID in the last minute
+                switch(cfg.type) {
+                    case DevType::Particle:
+                    case DevType::Searcher:
+                        if(!modifier.IsFixed()) Particle::InjectGoodness(pkt.goodness);
+                        break;
+                    case DevType::Beast:
+                        // Beast is only affected by positive values of the master's whim
+                        if(pkt.goodness > 0 and !modifier.IsFixed()) Beast::InjectGoodness(pkt.goodness * 2L);
+                        break;
+                    default: break;
+                } // switch
             }
         }
-        else { // Not a single ransaction, just field
+        else { // Not a single transaction, just field
             new_influence.goodness_delta += pkt.goodness;
             // For master's indication
             switch(pkt.goodness) {
@@ -732,7 +778,7 @@ void PrintState() {
     RetvValU32 r = DevTypeToIndx(cfg.type);
     if(r.NotOk()) { Printf("Bad Type: %u\r", cfg.type); return; }
     Printf("DevType: %s\r", dev_id_names[*r].name);
-    Printf("Goodness: %d\r", goodness);
+    Printf("Goodness: %d\r", Particle::goodness);
     Printf("BeastRsrc: %d\r", Beast::resource);
     modifier.Print();
     influence.Print();
@@ -740,7 +786,7 @@ void PrintState() {
     cfg.PrintTxPwr();
 }
 
-void SetGoodness(int32_t agoodness) { goodness = agoodness; }
+void SetGoodness(int32_t agoodness) { Particle::goodness = agoodness; }
 void SetBeastRsrc(int32_t rsrc) { Beast::resource = rsrc; }
 
 } // namespace App
