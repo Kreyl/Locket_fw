@@ -5,6 +5,7 @@
 #include "ch.h"
 #include "beeper.h"
 #include "kl_lib.h"
+#include "pill_mgr.h"
 
 #ifdef LED_EN_PIN // Locket
 extern LedRGBwPower_t<11> led;
@@ -17,6 +18,7 @@ Config cfg;
 static uint32_t time_s = 0;
 
 void Reset();
+void PrintState();
 void EESaveGoodness();
 void EESaveBeastRsrc();
 void EESaveFixTimed();
@@ -143,7 +145,7 @@ struct Influence {
 static Influence influence, new_influence;
 
 // ==== Single goodness injection by master ====
-inline constexpr const uint32_t kMinDelayBetweenInjs_s = 18; // TODO Set 60s here
+inline constexpr const uint32_t kMinDelayBetweenInjs_s = 27;
 static class GTransaction {
 private:
     static const uint32_t kCntMax = 9;
@@ -672,6 +674,7 @@ void OnBtnEvt(BtnEvtInfo_t btn_info) {
 #endif
 
 #pragma region // ==== Radio related ====
+static bool rx_pkt_printing = false;
 // RX. Called from radio lvl
 bool CheckIfRx() {
     switch(cfg.type) {
@@ -708,7 +711,7 @@ void ProcessRxTbl(RxTable &tbl) {
     new_influence.Reset();
     for(uint32_t i=0; i<tbl.cnt; i++) {
         rPkt &pkt = tbl[i]; // Single pkt from one ID
-        // pkt.Print();
+        if(rx_pkt_printing) pkt.Print();
         // Goodness: add it even if its value is zero, because who cares?
         if(pkt.single_transaction) { // Master's whim
             if(g_trans_list.ProcessId(pkt.id) == retv::New) { // New whim from this ID in the last minute
@@ -804,7 +807,89 @@ void PrintState() {
     cfg.PrintTxPwr();
 }
 
-void SetGoodness(int32_t agoodness) { Particle::goodness = agoodness; }
-void SetBeastRsrc(int32_t rsrc) { Beast::resource = rsrc; }
+void OnCmd(Shell *pshell) {
+    Cmd_t *pcmd = &pshell->cmd;
+    if(pcmd->NameIs("SetType")) {
+        uint32_t new_type = 0;
+        if(pcmd->GetNext<uint32_t>(&new_type).IsOk()) {
+            SetDevtypeResetSaveStateU32(new_type);
+        }
+        else pshell->BadParam();
+    }
+
+#if PILL_ENABLED // ==== Pills ====
+else if(pcmd->NameIs("PillRead32")) {
+    uint32_t cnt = 0, dw32 = 0;
+    if(pcmd->GetNext(&cnt).NotOk()) { pshell->BadParam(); return; }
+    uint8_t mem_addr = 0;
+    pshell->Print("#PillData32 ");
+    for(uint32_t i=0; i<cnt; i++) {
+        if(PillMgr::Read32(mem_addr, &dw32, 1).NotOk()) break;
+        pshell->Print("%u ", dw32);
+        mem_addr += 4;
+    }
+    pshell->PrintEOL();
+    pshell->Ok();
+}
+
+else if(pcmd->NameIs("PillWrite32")) {
+    uint32_t dw32, mem_addr = 0;
+    while(true) {
+        if(pcmd->GetNext(&dw32).NotOk()) break;
+        Printf("%u ", dw32);
+        if(PillMgr::Write32(mem_addr, &dw32, 1).NotOk()) break;
+        mem_addr += 4;
+    } // while
+    pshell->Ok();
+}
+
+else if(pcmd->NameIs("ApplyPill")) {
+    int32_t dw32;
+    if(pcmd->GetNext(&dw32).IsOk()) {
+        pshell->Ok();
+        ApplyPill(dw32);
+    }
+    else pshell->BadParam();
+}
+#endif
+
+    else if(pcmd->NameIs("State")) PrintState();
+
+    else if(pcmd->NameIs("SetGoodness")) {
+        int32_t v;
+        if(pcmd->GetNext(&v).IsOk()) {
+            Particle::goodness = v;
+            pshell->Ok();
+        }
+        else pshell->BadParam();
+    }
+
+    else if(pcmd->NameIs("SetBeastRsrc")) {
+        int32_t v;
+        if(pcmd->GetNext(&v).IsOk()) {
+            Beast::resource = v;
+            pshell->Ok();
+        }
+        else pshell->BadParam();
+    }
+
+    else if(pcmd->NameIs("SetTxPwr")) {
+        uint8_t tx_pwr_indx = 0;
+        if(pcmd->GetNext<uint8_t>(&tx_pwr_indx).IsOk()) {
+            if(tx_pwr_indx <= 11) App::SetAndSaveTxPwr(kPwrTable[tx_pwr_indx]);
+            else pshell->BadParam();
+        }
+        else pshell->BadParam();
+    }
+
+    else if(pcmd->NameIs("RxPktPrinting")) {
+        uint32_t v;
+        rx_pkt_printing = pcmd->GetNext(&v).IsOk() and v != 0;
+        Printf("RxPktPrinting: %s\r", rx_pkt_printing ? "Enabled" : "Disabled");
+        pshell->Ok();
+    }
+
+    else pshell->CmdUnknown();
+}
 
 } // namespace App

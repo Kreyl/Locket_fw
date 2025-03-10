@@ -116,61 +116,6 @@ void OnCmd(Shell *pshell) {
 else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();
 #endif
 
-    else if(pcmd->NameIs("SetType")) {
-        uint32_t new_type = 0;
-        if(pcmd->GetNext<uint32_t>(&new_type).IsOk()) {
-            App::SetDevtypeResetSaveStateU32(new_type);
-        }
-        else pshell->BadParam();
-    }
-
-    else if(pcmd->NameIs("SetTxPwr")) {
-        uint8_t tx_pwr_indx = 0;
-        if(pcmd->GetNext<uint8_t>(&tx_pwr_indx).IsOk()) {
-            if(tx_pwr_indx <= 11) App::SetAndSaveTxPwr(kPwrTable[tx_pwr_indx]);
-            else pshell->BadParam();
-        }
-        else pshell->BadParam();
-    }
-
-#if PILL_ENABLED // ==== Pills ====
-else if(pcmd->NameIs("PillRead32")) {
-    uint32_t cnt = 0, dw32 = 0;
-    if(pcmd->GetNext(&cnt).NotOk()) { pshell->BadParam(); return; }
-    uint8_t mem_addr = 0;
-    pshell->Print("#PillData32 ");
-    for(uint32_t i=0; i<cnt; i++) {
-        if(PillMgr::Read32(mem_addr, &dw32, 1).NotOk()) break;
-        pshell->Print("%u ", dw32);
-        mem_addr += 4;
-    }
-    pshell->PrintEOL();
-    pshell->Ok();
-}
-
-else if(pcmd->NameIs("PillWrite32")) {
-    uint32_t dw32, mem_addr = 0;
-    while(true) {
-        if(pcmd->GetNext(&dw32).NotOk()) break;
-        Printf("%u ", dw32);
-        if(PillMgr::Write32(mem_addr, &dw32, 1).NotOk()) break;
-        mem_addr += 4;
-    } // while
-    pshell->Ok();
-}
-
-else if(pcmd->NameIs("ApplyPill")) {
-    int32_t dw32;
-    if(pcmd->GetNext(&dw32).IsOk()) {
-        pshell->Ok();
-        App::ApplyPill(dw32);
-    }
-    else pshell->BadParam();
-}
-#endif
-
-    else if(pcmd->NameIs("State")) App::PrintState();
-
-    else pshell->CmdUnknown();
+    else App::OnCmd(pshell);
 }
 #endif

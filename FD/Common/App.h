@@ -57,9 +57,8 @@ bool CheckIfTxAndPrepareRPkt(rPkt *ppkt);
 bool CheckIfRx();
 void ProcessRxTbl(RxTable &tbl);
 
-// Dbg
+// App-specific commands parsing
 void PrintState();
-void SetGoodness(int32_t goodness);
-void SetBeastRsrc(int32_t goodness);
+void OnCmd(Shell *pshell);
 
 } // namespace App
