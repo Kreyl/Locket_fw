@@ -557,7 +557,7 @@ const LedRGBChunk lsqPillDisableFix[] = {
 #pragma endregion
 
 #pragma region // === Goodness ===
-inline constexpr const unsigned long kGBrt = 90;
+inline constexpr const unsigned long kGBrt = 45;
 const LedRGBChunk lsqGoodnessBlue[] = {
         {csSetup, 0, {0,0,kGBrt}}, {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},

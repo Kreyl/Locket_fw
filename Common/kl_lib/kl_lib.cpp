@@ -1074,6 +1074,7 @@ int32_t ReadI32(uint32_t addr)  { return *((int32_t*)(addr + EEPROM_BASE_ADDR));
 
 retv WriteU32(uint32_t addr, uint32_t dw32) {
     addr += EEPROM_BASE_ADDR;
+    if(*reinterpret_cast<uint32_t*>(addr) == dw32) return retv::Ok;
 //    Uart.Printf("EAdr=%u\r", Addr);
     Flash::UnlockEEAndPECR();
     // Wait for last operation to be completed

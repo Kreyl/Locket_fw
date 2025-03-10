@@ -17,6 +17,9 @@ Config cfg;
 static uint32_t time_s = 0;
 
 void Reset();
+void EESaveGoodness();
+void EESaveBeastRsrc();
+void EESaveFixTimed();
 
 #pragma region // ==== DevType related ====
 struct DevIdName {
@@ -140,7 +143,7 @@ struct Influence {
 static Influence influence, new_influence;
 
 // ==== Single goodness injection by master ====
-inline constexpr const uint32_t kMinDelayBetweenInjs_s = 18;
+inline constexpr const uint32_t kMinDelayBetweenInjs_s = 18; // TODO Set 60s here
 static class GTransaction {
 private:
     static const uint32_t kCntMax = 9;
@@ -198,15 +201,17 @@ struct Modifier {
     bool IsFixed() { return fix_forever or fix_timed > 0; }
     void Reset() { fix_forever = false; fix_timed = 0; }
     void Print() { Printf("FixForever: %d; FixTimed: %d\r", fix_forever, fix_timed); }
+    void DecreaseFixTimedAndSaveIfZero() {
+        if(fix_timed > 0) {
+            fix_timed--;
+            if(fix_timed == 0) EESaveFixTimed();
+        }
+    }
 };
 static Modifier modifier;
 #pragma endregion
 
 #pragma region // ==== Goodness & Beast resource ====
-void EESaveGoodness();
-void EESaveBeastRsrc();
-void EESaveFixTimed();
-
 namespace Particle { // And searcher is Particle, too
     static const int32_t kMax = 14400,  kDefault = kMax;
     static int32_t goodness = kDefault;
@@ -234,7 +239,7 @@ namespace Particle { // And searcher is Particle, too
             else if(goodness < 0) goodness = 0;
         }
         // Process modifiers
-        if(modifier.fix_timed > 0) modifier.fix_timed--;
+        modifier.DecreaseFixTimedAndSaveIfZero();
         // Save goodness every 64 seconds
         if(time_s % 64 == 0)  {
             EESaveGoodness();
@@ -280,7 +285,7 @@ namespace Beast {
                 else if(resource < 0) resource = 0; // Do not decrease under 0 too fast, do it slowly ignoring influence
             }
             // Process modifiers
-            if(modifier.fix_timed > 0) modifier.fix_timed--;
+            modifier.DecreaseFixTimedAndSaveIfZero();
         }
         else { // beast_resource <= 0 => no influence/modifiers are applicable
             if(resource > kMadness) resource--;
@@ -300,12 +305,12 @@ inline constexpr const uint32_t kEEAddrType = 36, kEEAddrGoodness = 40, kEEAddrB
 inline constexpr const uint32_t kEEAddrFixTimed = 48, kEEAddrFixForever = 52;
 inline constexpr const uint32_t kEEAddrTxPwr = 54;
 
-void EESaveType()       { EE::WriteI32(kEEAddrType,       static_cast<int32_t>(cfg.type)); }
-void EESaveGoodness()   { EE::WriteI32(kEEAddrGoodness,   Particle::goodness); }
-void EESaveBeastRsrc()  { EE::WriteI32(kEEAddrBeastRsrc,  Beast::resource); }
-void EESaveFixTimed()   { EE::WriteI32(kEEAddrFixTimed,   modifier.fix_timed); }
-void EESaveFixForever() { EE::WriteI32(kEEAddrFixForever, modifier.fix_forever); }
-void EESaveTxPwr()      { EE::WriteI32(kEEAddrTxPwr,      cfg.tx_power); }
+void EESaveType()       { EE::WriteI32(kEEAddrType,       static_cast<int32_t>(cfg.type)); Printf("# %S\r", __FUNCTION__); }
+void EESaveGoodness()   { EE::WriteI32(kEEAddrGoodness,   Particle::goodness);             Printf("# %S\r", __FUNCTION__); }
+void EESaveBeastRsrc()  { EE::WriteI32(kEEAddrBeastRsrc,  Beast::resource);                Printf("# %S\r", __FUNCTION__); }
+void EESaveFixTimed()   { EE::WriteI32(kEEAddrFixTimed,   modifier.fix_timed);             Printf("# %S\r", __FUNCTION__); }
+void EESaveFixForever() { EE::WriteI32(kEEAddrFixForever, modifier.fix_forever);           Printf("# %S\r", __FUNCTION__); }
+void EESaveTxPwr()      { EE::WriteI32(kEEAddrTxPwr,      cfg.tx_power);                   Printf("# %S\r", __FUNCTION__); }
 
 void EESaveState() {
     EESaveGoodness();
@@ -538,6 +543,7 @@ static void SignalPillIsNotApplicable() {
 void ApplyPill(int32_t pill_id) {
     Printf("Pill");
     switch(pill_id) {
+        #pragma region // === Reset, Goodness ===
         case 1:
             led.StartOrAddToQueue(lsqPillReset);
             Printf("Reset\r");
@@ -601,23 +607,34 @@ void ApplyPill(int32_t pill_id) {
             EESaveFixTimed();
             EESaveFixForever();
             break;
+        #pragma endregion
 
-        // Type switch
+        #pragma region // === Type switch ===
         case  7: Printf("SetType: Particle\r"); SetDevtypeResetSaveState(DevType::Particle); break;
         case  8: Printf("SetType: Searcher\r"); SetDevtypeResetSaveState(DevType::Searcher); break;
         case  9: Printf("SetType: Beast\r");    SetDevtypeResetSaveState(DevType::Beast);    break;
         case 10: Printf("SetType: Path\r");     SetDevtypeResetSaveState(DevType::Path);     break;
+        case 11: Printf("SetType: PlacePlus1\r"); SetDevtypeResetSaveState(DevType::PlacePlus1); break;
+        case 12: Printf("SetType: PlacePlus2\r"); SetDevtypeResetSaveState(DevType::PlacePlus2); break;
+        case 13: Printf("SetType: PlacePlus3\r"); SetDevtypeResetSaveState(DevType::PlacePlus3); break;
+        case 14: Printf("SetType: PlaceMinus1\r"); SetDevtypeResetSaveState(DevType::PlaceMinus1); break;
+        case 15: Printf("SetType: PlaceMinus2\r"); SetDevtypeResetSaveState(DevType::PlaceMinus2); break;
+        case 16: Printf("SetType: PlaceMinus3\r"); SetDevtypeResetSaveState(DevType::PlaceMinus3); break;
+        case 17: Printf("SetType: PlaceMinus1Magic\r"); SetDevtypeResetSaveState(DevType::PlaceMinus1Magic); break;
+        case 18: Printf("SetType: PlaceMinus2Magic\r"); SetDevtypeResetSaveState(DevType::PlaceMinus2Magic); break;
+        case 19: Printf("SetType: PlaceMinus3Magic\r"); SetDevtypeResetSaveState(DevType::PlaceMinus3Magic); break;
+        #pragma endregion
 
-        // Set Tx Pwr. Indication inside.
-        case 11: Printf("SetTxPwr: -15dBm\r"); SetAndSaveTxPwr(CC_PwrMinus15dBm); break;
-        case 12: Printf("SetTxPwr: -10dBm\r"); SetAndSaveTxPwr(CC_PwrMinus10dBm); break;
-        case 13: Printf("SetTxPwr: -6dBm\r");  SetAndSaveTxPwr(CC_PwrMinus6dBm);  break;
-        case 14: Printf("SetTxPwr:  0dBm\r");  SetAndSaveTxPwr(CC_Pwr0dBm);       break;
-        case 15: Printf("SetTxPwr: +5dBm\r");  SetAndSaveTxPwr(CC_PwrPlus5dBm);   break;
-        case 16: Printf("SetTxPwr: +7dBm\r");  SetAndSaveTxPwr(CC_PwrPlus7dBm);   break;
-        case 17: Printf("SetTxPwr: +10dBm\r"); SetAndSaveTxPwr(CC_PwrPlus10dBm);  break;
-        case 18: Printf("SetTxPwr: +12dBm\r"); SetAndSaveTxPwr(CC_PwrPlus12dBm);  break;
-
+        #pragma region // === Set Tx Pwr === Indication inside.
+        case 20: Printf("SetTxPwr: -15dBm\r"); SetAndSaveTxPwr(CC_PwrMinus15dBm); break;
+        case 21: Printf("SetTxPwr: -10dBm\r"); SetAndSaveTxPwr(CC_PwrMinus10dBm); break;
+        case 22: Printf("SetTxPwr: -6dBm\r");  SetAndSaveTxPwr(CC_PwrMinus6dBm);  break;
+        case 23: Printf("SetTxPwr:  0dBm\r");  SetAndSaveTxPwr(CC_Pwr0dBm);       break;
+        case 24: Printf("SetTxPwr: +5dBm\r");  SetAndSaveTxPwr(CC_PwrPlus5dBm);   break;
+        case 25: Printf("SetTxPwr: +7dBm\r");  SetAndSaveTxPwr(CC_PwrPlus7dBm);   break;
+        case 26: Printf("SetTxPwr: +10dBm\r"); SetAndSaveTxPwr(CC_PwrPlus10dBm);  break;
+        case 27: Printf("SetTxPwr: +12dBm\r"); SetAndSaveTxPwr(CC_PwrPlus12dBm);  break;
+        #pragma endregion
         default:
             Printf("Bad: %d\r", pill_id);
             led.StartOrAddToQueue(lsqPillBad);
@@ -691,7 +708,7 @@ void ProcessRxTbl(RxTable &tbl) {
     new_influence.Reset();
     for(uint32_t i=0; i<tbl.cnt; i++) {
         rPkt &pkt = tbl[i]; // Single pkt from one ID
-        pkt.Print();
+        // pkt.Print();
         // Goodness: add it even if its value is zero, because who cares?
         if(pkt.single_transaction) { // Master's whim
             if(g_trans_list.ProcessId(pkt.id) == retv::New) { // New whim from this ID in the last minute
@@ -701,8 +718,9 @@ void ProcessRxTbl(RxTable &tbl) {
                         if(!modifier.IsFixed()) Particle::InjectGoodness(pkt.goodness);
                         break;
                     case DevType::Beast:
-                        // Beast is only affected by positive values of the master's whim
-                        if(pkt.goodness > 0 and !modifier.IsFixed()) Beast::InjectGoodness(pkt.goodness * 2L);
+                        // Beast is only affected by positive values of the master's whim, when Beast's rsr is positive
+                        if(!modifier.IsFixed() and pkt.goodness > 0 and Beast::resource > 0)
+                            Beast::InjectGoodness(pkt.goodness * 2L);
                         break;
                     default: break;
                 } // switch

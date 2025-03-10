@@ -151,7 +151,7 @@ else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();
     else if(pcmd->NameIs("SetType")) {
         uint32_t new_type = 0;
         if(pcmd->GetNext<uint32_t>(&new_type).IsOk()) {
-            App::SetDevtypeResetSaveState(new_type);
+            App::SetDevtypeResetSaveStateU32(new_type);
         }
         else pshell->BadParam();
     }
