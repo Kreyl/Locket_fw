@@ -5,6 +5,13 @@
 #define BOARD_NAME          "Locket5"
 #define APP_NAME            "Highlander"
 
+#ifndef TRUE
+#define TRUE    1
+#endif
+#ifndef FALSE
+#define FALSE   0
+#endif
+
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      FALSE
@@ -26,7 +33,7 @@
 #define SYS_TIM_CLK         (Clk.APB1FreqHz)
 #define I2C1_ENABLED        PILL_ENABLED
 #define I2C_USE_SEMAPHORE   FALSE
-#define ADC_REQUIRED        FALSE
+#define ADC_REQUIRED        TRUE
 
 #if 1 // ========================== GPIO =======================================
 // PortMinTim_t: GPIO, Pin, Tim, TimChnl, invInverted, omPushPull, TopValue
