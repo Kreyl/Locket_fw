@@ -101,9 +101,8 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
-        bool must_tx = App::CheckIfTxAndPrepareRPkt(&pkt_tx);
-        bool must_rx = App::CheckIfRx();
-        TaskFeelEachOther(must_tx, must_rx);
+        App::PrepareRPkt(&pkt_tx);
+        TaskFeelEachOther(true, true);
         // Set new tx pwr if changed
         if(tx_power != cfg.tx_power) {
             tx_power = cfg.tx_power;
@@ -134,9 +133,9 @@ retv Init() {
         CC.SetPktSize(kRPktSz);
         CC.SetChannel(0);
         CC.SetTxPower(cfg.tx_power);
-        CC.SetBitrate(CCBitrate500k);
+        // CC.SetBitrate(CCBitrate500k);
         // CC.SetBitrate(CCBitrate250k);
-        // CC.SetBitrate(CCBitrate100k);
+        CC.SetBitrate(CCBitrate100k);
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return retv::Ok;

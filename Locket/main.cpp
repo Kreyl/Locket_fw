@@ -25,7 +25,7 @@ static uint8_t GetDipSwitch();
 
 LedRGBwPower_t<11> led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t<4> vibro { VIBRO_SETUP };
-Beeper_t<4> beeper { BEEPER_PIN };
+// Beeper_t<4> beeper { BEEPER_PIN };
 
 static TmrKL_t tmr_every_second {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
 static TmrKL_t tmr_check_uart {TIME_MS2I(UART_RX_POLLING_MS), EvtId::UartCheckTime, tktPeriodic};
@@ -57,8 +57,8 @@ void main(void) {
     Random::SeedWithUniqID();
     led.Init();
     vibro.Init();
-    beeper.Init();
-    PillMgr::Init();
+    // beeper.Init();
+    // PillMgr::Init();
 
     if(Radio::Init().IsOk()) led.StartOrRestart(lsqStart);
     else led.StartOrRestart(lsqFailure);
@@ -155,13 +155,12 @@ void OnCmd(Shell *pshell) {
 
 // ====== DIP switch ======
 uint8_t GetDipSwitch() {
-    uint8_t Rslt = 0;
+    uint8_t rslt = 0;
     for(int i = 0; i < DIP_SW_CNT; i++)
-        PinSetupInput(dip_sw_pin[i].PGpio, dip_sw_pin[i].Pin,
-                dip_sw_pin[i].PullUpDown);
+        PinSetupInput(dip_sw_pin[i].PGpio, dip_sw_pin[i].Pin, dip_sw_pin[i].PullUpDown);
     for(int i = 0; i < DIP_SW_CNT; i++) {
-        if(!PinIsHi(dip_sw_pin[i].PGpio, dip_sw_pin[i].Pin)) Rslt |= (1 << i);
+        if(!PinIsHi(dip_sw_pin[i].PGpio, dip_sw_pin[i].Pin)) rslt |= (1 << i);
         PinSetupAnalog(dip_sw_pin[i].PGpio, dip_sw_pin[i].Pin);
     }
-    return Rslt;
+    return rslt;
 }
