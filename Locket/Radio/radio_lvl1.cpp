@@ -136,6 +136,9 @@ retv Init() {
         // CC.SetBitrate(CCBitrate500k);
         // CC.SetBitrate(CCBitrate250k);
         CC.SetBitrate(CCBitrate100k);
+        // CC.SetBitrate(CCBitrate38k4);
+        // CC.SetBitrate(CCBitrate10k);
+        // CC.SetBitrate(CCBitrate2k4);
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
         return retv::Ok;

@@ -1,9 +1,7 @@
 ######################### Project Settings #########################
 PRJ_NAME = Prj
-# Common dir
-COMMON_DIR = ../Common
 # What to include, in form dir1 dir2 dir3...
-INCLUDE_DIRS = ./ $(COMMON_DIR) $(COMMON_DIR)/kl_lib $(COMMON_DIR)/os $(COMMON_DIR)/os/hal $(COMMON_DIR)/os/include $(COMMON_DIR)/os/stm32l15x $(COMMON_DIR)/Radio
+INCLUDE_DIRS = ./ kl_lib os os/hal os/include os/stm32l15x Radio
 # What to define in form MYDEF1 MYDEF2=18 MYDEF3... $(MAKECMDGOALS) is name of requested action
 DEFINS =
 
@@ -37,7 +35,7 @@ LINKER_FLAGS = -Xlinker --gc-sections --specs=nano.specs --specs=nosys.specs -no
 ifeq "$(GOAL_NAME)" "Release"
 COMMON_FLAGS += -Os -flto
 LINKER_FLAGS +=
-LD_SCRIPT = $(COMMON_DIR)/STM32L151x8.ld
+LD_SCRIPT = STM32L151x8.ld
 # Comment / uncomment the following lines to produce .hex and/or .bin output
 HEX_NAME = $(OUT_DIR)/$(PRJ_NAME).hex
 # BIN_NAME = $(OUT_DIR)/$(PRJ_NAME).bin
@@ -47,7 +45,7 @@ HEX_NAME = $(OUT_DIR)/$(PRJ_NAME).hex
 else ifeq "$(GOAL_NAME)" "Debug"
 COMMON_FLAGS += -O0 -g3
 LINKER_FLAGS +=
-LD_SCRIPT = $(COMMON_DIR)/STM32L151x8.ld
+LD_SCRIPT = STM32L151x8.ld
 # Comment / uncomment the following lines to produce .hex and/or .bin output
 HEX_NAME = $(OUT_DIR)/$(PRJ_NAME).hex
 # BIN_NAME = $(OUT_DIR)/$(PRJ_NAME).bin

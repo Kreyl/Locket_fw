@@ -9,7 +9,6 @@
 extern LedRGBwPower_t<11> led;
 extern Vibro_t<4> vibro;
 Config cfg;
-static uint32_t time_s = 0;
 
 void Config::PrintTxPwr() {
     Printf("TxPwr: %S\r", CC_PwrToString(tx_power));
@@ -35,13 +34,15 @@ static void SetupAndShowBrightness() {
     lsqDischarged   [0].Color.R = v;
     led.StartOrRestart(lsqOneImmortal);
     ShowSelfTypeWhenIdle();
+    // Printf("Brt: %d\r", v);
 }
 
 namespace App {
 
 void SetDevtype(uint32_t type32) {
-    if(type32 == 1) cfg.type = DevType::Immortal;
+    if(type32 > 0) cfg.type = DevType::Immortal;
     else cfg.type = DevType::Preimmortal;
+    cfg.PrintType();
     SetupAndShowBrightness();
 }
 
@@ -95,7 +96,7 @@ void ProcessRxTbl(RxTable &tbl) {
     // Present preimmortals
     if(ipreimmortals_cnt > 0) {
         led.StartOrRestart(lsqPreImmortal);
-        if(cfg.VibroEnabled()) vibro.StartOrRestart(vsqLongBrr);
+        if(cfg.VibroEnabled()) vibro.StartOrRestart(vsqBrrBrr);
     }
     // Show discharged
     if(Battery::IsDischarged()) led.StartOrRestart(lsqDischarged);
@@ -115,8 +116,7 @@ void PrepareTxPkt(rPkt *ppkt) {
 void OnCmd(Shell *pshell) {
     Cmd_t *pcmd = &pshell->cmd;
     if(pcmd->NameIs("State")) {
-        if(cfg.type == DevType::Immortal) Printf("Immortal\r");
-        else Printf("Preimmortal\r");
+
         Printf("Immortals: %d\r", immortals_cnt);
         Printf("Preimmortals: %d\r", preimmortals_cnt);
         cfg.PrintTxPwr();

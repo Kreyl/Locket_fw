@@ -85,26 +85,15 @@ void ITask() {
 
             case EvtId::EverySecond:
                 if(ReadModeFromDip() == retv::New) chThdSleepMilliseconds(810);
-                App::OnSecond();
                 break;
 
             case EvtId::Buttons:
-                Printf("Btn %u %u\r", msg.btn_info.btn_indx, msg.btn_info.type);
+                // Printf("Btn %u %u\r", msg.btn_info.btn_indx, msg.btn_info.type);
                 App::OnBtnEvt(msg.btn_info);
                 break;
 
             case EvtId::CheckRxTable:
                 App::ProcessRxTbl(*static_cast<RxTable*>(msg.ptr));
-                break;
-
-            // Pill
-            case EvtId::CheckPill: PillMgr::Check(); break;
-            case EvtId::PillConnected:
-                Printf("Pill connected: %u\r", PillMgr::pill_data.type);
-                App::ApplyPill(PillMgr::pill_data.type);
-                break;
-            case EvtId::PillDisconnected:
-                Printf("Pill disconnected\r");
                 break;
 
 #if ADC_REQUIRED
@@ -130,7 +119,7 @@ retv ReadModeFromDip() {
     uint32_t bits = dw32 & 0b1111; // Remove high bits = group 5678
     cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : kPwrTable[bits];
     // Select dev type: group 5678
-    App::SetDevtype((dw32 >> 4) & 0b1111UL);
+    App::SetDevtype(dw32 & 0x80UL);
     cfg.PrintTxPwr();
     return retv::New;
 }
@@ -139,10 +128,8 @@ retv ReadModeFromDip() {
 void OnCmd(Shell *pshell) {
     Cmd_t *pcmd = &pshell->cmd;
     // Handle command
-    if(pcmd->NameIs("Ping"))
-        pshell->Ok();
-    else if(pcmd->NameIs("Version"))
-        pshell->Print("%S %S\r", APP_NAME, kBuildTime);
+    if(pcmd->NameIs("Ping")) pshell->Ok();
+    else if(pcmd->NameIs("Version")) pshell->Print("%S %S\r", APP_NAME, kBuildTime);
 
     #if ADC_REQUIRED
     else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();

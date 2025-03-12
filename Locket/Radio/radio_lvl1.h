@@ -122,9 +122,12 @@ private:
 namespace Radio {
 
 #pragma region // ==== Constants ====
-inline constexpr const uint32_t kCycleCnt = 4U, kSlotCnt = 72U;
-inline constexpr const uint32_t kSlotDuration_ms = 3U; // for 500kBit/s
-// inline constexpr const uint32_t kSlotDuration_ms = 5U; // for 100 & 250kBit/s
+/* Durations for 8 bytes pkt (recalibrate + transmit):
+500k => 1.8mS; 250k => 2.3mS; 100k => 3.8mS; 38k4 => 8mS; 10k => 27mS; 2k4 => 109mS
+*/
+inline constexpr const uint32_t kCycleCnt = 4U, kSlotCnt = 63U;
+// inline constexpr const uint32_t kSlotDuration_ms = 3U; // for 500kBit/s
+inline constexpr const uint32_t kSlotDuration_ms = 4U; // for 500kBit/s
 inline constexpr const uint32_t kCycleDuration_ms = kSlotDuration_ms * kSlotCnt;
 // inline constexpr const uint32_t kSuperCycleDuration_ms = kCycleDuration_ms * kCycleCnt;
 inline constexpr const uint32_t kMinSleepDuration_ms = 18UL;

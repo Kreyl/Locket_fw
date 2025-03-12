@@ -4,8 +4,8 @@
 
 
 enum class DevType {
-    Immortal   = 0b1000,
-    Preimmortal = 0b1010,
+    Immortal   = 1,
+    Preimmortal = 0,
 };
 
 class Config {
@@ -24,6 +24,10 @@ public:
     void DisableVibro() { novibro_time_left_s = kNoVibroTime_s; }
     void EnableVibro()  { novibro_time_left_s = 0; }
     void PrintTxPwr();
+    void PrintType() {
+        if(type == DevType::Immortal) Printf("Immortal\r");
+        else Printf("Preimmortal\r");
+    }
 };
 
 extern Config cfg;
