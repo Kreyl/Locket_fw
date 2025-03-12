@@ -23,13 +23,8 @@ struct rPkt {
     union {
         uint32_t dw32;
         struct {
-            int16_t goodness;
-            uint8_t single_transaction : 1;
-            uint8_t green_evil : 1;
-            uint8_t artifact: 1;
-            uint8_t cyan_beast: 1;
-            uint8_t searcher: 1;
-            uint8_t : 3;
+            uint8_t IsImmortal;
+            uint16_t silt;
             int8_t rssi; // Will be set after RX. Transmitting is useless, but who cares.
         };
     };
@@ -43,7 +38,7 @@ struct rPkt {
         return *this;
     }
     void Print() {
-        Printf("id: %X; g=%d s=%d ge=%d a=%d cb=%d s=%d rssi=%d\r", id, goodness, single_transaction, green_evil, artifact, cyan_beast, searcher, rssi);
+        Printf("id: %X; Immortal=%d rssi=%d\r", id, IsImmortal, rssi);
     }
 };
 #pragma pack(pop)
@@ -56,7 +51,7 @@ inline constexpr const uint8_t kRPktSz = sizeof(rPkt);
 #define RXT_PKT_REQUIRED        TRUE
 class RxTable {
 public:
-    static const uint32_t kSize = 36;
+    static const uint32_t kSize = 54;
     uint32_t cnt = 0;
 #if RXT_PKT_REQUIRED
     void AddOrReplaceExistingPkt(rPkt &apkt) {

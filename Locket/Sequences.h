@@ -193,15 +193,42 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #if 1 // ============================ LED RGB ==================================
 inline constexpr const unsigned long kBlinkDuration = 108, kBlinkDark = 180, kPauseNextLsq = 450;
 
-#pragma region // ==== Start-up indication ====
-const LedRGBChunk lsqSearcher[] = {
-        {csSetup, 0, clYellow},  {csWait, kBlinkDuration},
-        {csSetup, 0, clBlack},   {csWait, kBlinkDuration},
+static LedRGBChunk lsqOneImmortal[] = {
+        {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
+        {csEnd},
+};
+
+static LedRGBChunk lsqTwoImmortals[] = {
+        {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
         {csRepeat, 1},
         {csWait, kPauseNextLsq},
         {csEnd},
 };
 
+static LedRGBChunk lsqManyImmortals[] = {
+        {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
+        {csRepeat, 2},
+        {csWait, kPauseNextLsq},
+        {csEnd},
+};
+
+static LedRGBChunk lsqPreImmortal[] = {
+        {csSetup, 0, clGreen},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
+        {csEnd},
+};
+
+static LedRGBChunk lsqDischarged[] = {
+        {csSetup, 0, clRed},  {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
+        {csEnd},
+};
+
+
+#pragma region // ==== Start-up indication ====
 const LedRGBChunk lsqPlacePlus1[] = {
         {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},

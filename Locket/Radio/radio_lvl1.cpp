@@ -101,7 +101,7 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
-        App::PrepareRPkt(&pkt_tx);
+        App::PrepareTxPkt(&pkt_tx);
         TaskFeelEachOther(true, true);
         // Set new tx pwr if changed
         if(tx_power != cfg.tx_power) {
