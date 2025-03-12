@@ -1,1 +1,1 @@
- C:\YaStudio\arm-none-eabi-gcc\bin\arm-none-eabi-gdb.exe -q -ex "target extended-remote COM5" -ex "mon swdp_scan" -ex "att 1" -ex "load FD_250311_0027.hex" -ex "det" -ex "quit"
+ C:\YaStudio\arm-none-eabi-gcc\bin\arm-none-eabi-gdb.exe -q -ex "target extended-remote COM5" -ex "mon swdp_scan" -ex "att 1" -ex "load FD_250311_2102.hex" -ex "det" -ex "quit"

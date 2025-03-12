@@ -84,17 +84,10 @@ static struct {
     bool green_evil = false;
     bool must_tx = false;
 
-    void EnableGoodness(int16_t agoodness) {
+    void Enable(int16_t agoodness, bool agreen_evil) {
         chSysLock();
         goodness = agoodness;
-        green_evil = false;
-        must_tx = true;
-        chSysUnlock();
-    }
-    void EnableGreenEvil() {
-        chSysLock();
-        goodness = 0;
-        green_evil = true;
+        green_evil = agreen_evil;
         must_tx = true;
         chSysUnlock();
     }
@@ -218,16 +211,16 @@ namespace Particle { // And searcher is Particle, too
     static const int32_t kMax = 14400,  kDefault = kMax;
     static int32_t goodness = kDefault;
 
-    void InjectGoodness(int32_t delta) {
+    retv InjectGoodness(int32_t delta) {
         int32_t new_goodness = goodness;
         new_goodness += delta;
         // Keep goodness in range [0..kMax]
         if(new_goodness > kMax) new_goodness = kMax;
         else if(new_goodness < 0) new_goodness = 0;
-        if(goodness == new_goodness) return; // No changes
+        if(goodness == new_goodness) return retv::NoChanges;
         goodness = new_goodness;
         EESaveGoodness();
-        vibro.StartOrRestart(vsqBrrBrr);
+        return retv::New;
     }
 
     void OnSecond() {
@@ -256,16 +249,16 @@ namespace Beast {
     static int32_t resource = kDefault;
     enum class State { Calm, Worry, Thrill, Hunger, Madness };
 
-    void InjectGoodness(int32_t delta) {
+    retv InjectGoodness(int32_t delta) {
         int32_t new_resource = resource;
         new_resource -= delta; // Positive goodness decreases resource, negative one increases it
         // Keep resource in range [0..kMax]
         if(new_resource > kMax) new_resource = kMax;
         else if(new_resource < 0) new_resource = 0; // Injection must not put to Hunger or Madness
-        if(resource == new_resource) return; // No changes
+        if(resource == new_resource) return retv::NoChanges; // No changes
         resource = new_resource;
         EESaveBeastRsrc();
-        vibro.StartOrRestart(vsqBrrBrr);
+        return retv::New;
     }
 
     State GetState() {
@@ -656,15 +649,15 @@ void OnBtnEvt(BtnEvtInfo_t btn_info) {
         // Get the job done
         switch(btn_info.btn_indx) {
             case 0:  // Top button
-                if(btn_info.type == beShortPress) tx_params.EnableGoodness(+1200);
+                if(btn_info.type == beShortPress) tx_params.Enable(+1200, false);
                 else tx_params.Disable(); // Release
                 break;
             case 1:  // Middle button
-                if(btn_info.type == beShortPress) tx_params.EnableGreenEvil();
+                if(btn_info.type == beShortPress) tx_params.Enable(0, true);
                 else tx_params.Disable(); // Release
                 break;
-            case 2:  // Bottom button
-                if(btn_info.type == beShortPress) tx_params.EnableGoodness(-1200);
+            case 2:  // Bottom button: both -1200 and Green Evil
+                if(btn_info.type == beShortPress) tx_params.Enable(-1200, true);
                 else tx_params.Disable(); // Release
                 break;
             default: break;
@@ -714,16 +707,22 @@ void ProcessRxTbl(RxTable &tbl) {
         if(rx_pkt_printing) pkt.Print();
         // Goodness: add it even if its value is zero, because who cares?
         if(pkt.single_transaction) { // Master's whim
-            if(g_trans_list.ProcessId(pkt.id) == retv::New) { // New whim from this ID in the last minute
+            // New whim from this ID in the last minute, and not fixed
+            if(g_trans_list.ProcessId(pkt.id) == retv::New and !modifier.IsFixed()) {
                 switch(cfg.type) {
                     case DevType::Particle:
+                        if(Particle::InjectGoodness(pkt.goodness) == retv::New)
+                            vibro.StartOrAddToQueue(vsqLongBrr);
+                        break;
                     case DevType::Searcher:
-                        if(!modifier.IsFixed()) Particle::InjectGoodness(pkt.goodness);
+                        Particle::InjectGoodness(pkt.goodness); // Just inject, do not vibrate
                         break;
                     case DevType::Beast:
                         // Beast is only affected by positive values of the master's whim, when Beast's rsr is positive
-                        if(!modifier.IsFixed() and pkt.goodness > 0 and Beast::resource > 0)
-                            Beast::InjectGoodness(pkt.goodness * 2L);
+                        if(pkt.goodness > 0 and Beast::resource > 0) {
+                            if(Beast::InjectGoodness(pkt.goodness * 2L) == retv::New)
+                                vibro.StartOrAddToQueue(vsqLongBrr);
+                        }
                         break;
                     default: break;
                 } // switch
@@ -767,11 +766,11 @@ bool CheckIfTxAndPrepareRPkt(rPkt *ppkt) {
         case DevType::Master:
             if(!tx_params.must_tx) return false;
             chSysLock();
+            if(tx_params.green_evil) ppkt->green_evil = 1;
             if(tx_params.goodness != 0) { // Transmit goodness with single transaction flag
                 ppkt->goodness = tx_params.goodness;
                 ppkt->single_transaction = 1;
             }
-            else if(tx_params.green_evil) ppkt->green_evil = 1;
             chSysUnlock();
             break;
 
