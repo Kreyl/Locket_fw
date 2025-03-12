@@ -1,7 +1,7 @@
 /*
  * adc_f2.cpp
  *
- *  Created on: 25 ���. 2013 �.
+ *  Created on: 2013
  *      Author: kreyl
  */
 
@@ -13,11 +13,13 @@
 #if ADC_REQUIRED
 
 Adc_t Adc;
-const uint8_t AdcChannels[ADC_CHANNEL_CNT] = ADC_CHANNELS;
+const uint8_t kAdcChannels[ADC_CHANNEL_CNT] = ADC_CHANNELS;
 static const stm32_dma_stream_t *PAdcDma = nullptr;
-
-#ifdef ADC_PERIODIC_MEASUREMENT
+#if defined ADC_MODE_PERIODIC_MEASUREMENT || defined  ADC_MODE_SYNC_MEASUREMENT
 static thread_reference_t ThdRef;
+#endif
+
+#ifdef ADC_MODE_PERIODIC_MEASUREMENT
 static THD_WORKING_AREA(waAdcThread, 128);
 __noreturn
 static void AdcThread(void *arg) {
@@ -36,19 +38,19 @@ static void AdcThread(void *arg) {
 //            Printf("VRef_adc=%u\r", VRef_adc);
             // Iterate all channels
             for(int i=0; i<ADC_CHANNEL_CNT; i++) {
-                if(AdcChannels[i] == ADC_VREFINT_CHNL) continue; // Ignore VrefInt channel
-                uint32_t Vadc = Adc.GetResult(AdcChannels[i]);
+                if(kAdcChannels[i] == ADC_VREFINT_CHNL) continue; // Ignore VrefInt channel
+                uint32_t Vadc = Adc.GetResult(kAdcChannels[i]);
 //                uint32_t Vmv = Adc.Adc2mV(Vadc, VRef_adc);
                 uint32_t Vmv = (Vadc * 3300UL) / 4095UL;
 //                Printf("N=%u; Vadc=%u; Vmv=%u\r", i, Vadc, Vmv);
-                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdAdcRslt, AdcChannels[i], Vmv));
+                EvtQMain.SendNowOrExit(EvtMsg_t(evtIdAdcRslt, kAdcChannels[i], Vmv));
             } // for
         } // not first conv
     } // while true
 }
 #endif
 
-// Wrapper for IRQ
+// ==== DMA completed IRQ Handler ====
 void AdcRdyIrq(void *p, uint32_t flags) {
     dmaStreamDisable(PAdcDma);
     Adc.Disable();
@@ -56,10 +58,10 @@ void AdcRdyIrq(void *p, uint32_t flags) {
     Clk.DisableHSI();
 #endif
     chSysLockFromISR();
-#ifdef ADC_PERIODIC_MEASUREMENT
+#if defined ADC_MODE_PERIODIC_MEASUREMENT || defined ADC_MODE_SYNC_MEASUREMENT
     chThdResumeI(&ThdRef, MSG_OK); // Wake thread
-#elif defined ADC_MEASURE_BY_REQUEST
-    EvtQMain.SendNowOrExitI(EvtMsg_t(evtIdAdcRslt));
+#elif defined ADC_MODE_MEASURE_BY_REQUEST
+    evt_q_main.SendNowOrExitI(EvtMsg_t(EvtId::AdcRslt));
 #endif
     chSysUnlockFromISR();
 
@@ -72,16 +74,15 @@ void Adc_t::Init() {
     SetSequenceLength(ADC_SEQ_LEN);
     uint8_t SeqIndx = 1;    // First sequence item is 1, not 0
     for(uint8_t i=0; i < ADC_CHANNEL_CNT; i++) {
-		SetChannelSampleTime(AdcChannels[i], ADC_SAMPLE_TIME_DEFAULT);
-		for(uint8_t j=0; j<ADC_SAMPLE_CNT; j++) SetSequenceItem(SeqIndx++, AdcChannels[i]);
+		SetChannelSampleTime(kAdcChannels[i], ADC_SAMPLE_TIME_DEFAULT);
+		for(uint8_t j=0; j<ADC_SAMPLE_CNT; j++) SetSequenceItem(SeqIndx++, kAdcChannels[i]);
 	}
     EnableVRef();
     // ==== DMA ====
     PAdcDma = dmaStreamAlloc(ADC_DMA, IRQ_PRIO_LOW, AdcRdyIrq, NULL);
     dmaStreamSetPeripheral(PAdcDma, &ADC1->DR);
     dmaStreamSetMode      (PAdcDma, ADC_DMA_MODE);
-
-#ifdef ADC_PERIODIC_MEASUREMENT // ==== Thread ====
+#ifdef ADC_MODE_PERIODIC_MEASUREMENT // ==== Thread ====
     chThdCreateStatic(waAdcThread, sizeof(waAdcThread), NORMALPRIO, (tfunc_t)AdcThread, NULL);
 #endif
 }
@@ -153,12 +154,33 @@ void Adc_t::StartMeasurement() {
     StartConversion();
 }
 
+#if defined ADC_MODE_PERIODIC_MEASUREMENT || defined ADC_MODE_SYNC_MEASUREMENT
+void Adc_t::StartMeasurementAndWaitCompletion() {
+#ifdef ADC_EN_AND_DIS_HSI
+    Clk.EnableHSI();
+#endif
+    // DMA
+    dmaStreamSetMemory0(PAdcDma, IBuf);
+    dmaStreamSetTransactionSize(PAdcDma, ADC_SEQ_LEN);
+    dmaStreamSetMode(PAdcDma, ADC_DMA_MODE);
+    dmaStreamEnable(PAdcDma);
+    // ADC
+    ADC1->CR1 = ADC_CR1_SCAN;               // Mode = scan
+    ADC1->CR2 = ADC_CR2_DMA | ADC_CR2_ADON; // Enable DMA, enable ADC
+    chSysLock();
+    ThdRef = chThdGetSelfX();
+    StartConversion();
+    chThdSleepS(TIME_INFINITE); // Will be waken by IRQ
+    chSysUnlock();
+}
+#endif
+
 uint32_t Adc_t::GetResultAverage(uint8_t AChannel) {
     uint32_t Indx = 0;
 #if (ADC_CHANNEL_CNT > 1)
     // Find Channel indx
     for(uint32_t i=0; i < ADC_CHANNEL_CNT; i++) {
-        if(AdcChannels[i] == AChannel) {
+        if(kAdcChannels[i] == AChannel) {
             Indx = i;
             break;
         }
@@ -178,7 +200,7 @@ uint32_t Adc_t::GetResultMedian(uint8_t AChannel) {
 #if (ADC_CHANNEL_CNT > 1)
     // Find Channel indx
     for(uint32_t i=0; i < ADC_CHANNEL_CNT; i++) {
-        if(AdcChannels[i] == AChannel) {
+        if(kAdcChannels[i] == AChannel) {
             Indx = i;
             break;
         }

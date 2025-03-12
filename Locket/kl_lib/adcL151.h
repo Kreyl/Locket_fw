@@ -16,23 +16,23 @@
 // ==== Config ====
 // Don't forget to enable HSI. It runs on HSI.
 // If defined, HSI will be enabled and disabled when required by ADC
-#define ADC_EN_AND_DIS_HSI
+// #define ADC_EN_AND_DIS_HSI
 
-//#define ADC_PERIODIC_MEASUREMENT
-#ifndef ADC_PERIODIC_MEASUREMENT
-#define ADC_MEASURE_BY_REQUEST
-#endif
+// Select one of the next modes
+// #define ADC_MODE_PERIODIC_MEASUREMENT
+// #define ADC_MODE_SYNC_MEASUREMENT  // Sleep until measurement done
+#define ADC_MODE_MEASURE_BY_REQUEST
 
 // Variables and consts
 #define ADC_MAX_VALUE           4095    // const: 2^12
-extern const uint8_t AdcChannels[ADC_CHANNEL_CNT];
+extern const uint8_t kAdcChannels[ADC_CHANNEL_CNT];
 #define ADC_MAX_SEQ_LEN     27  // 1...27; Const, see ref man p.301
 
 #if (ADC_SEQ_LEN > ADC_MAX_SEQ_LEN) || (ADC_SEQ_LEN == 0)
 #error "Wrong ADC channel count and sample count"
 #endif
 
-// See datasheet, search VREFINT_CAL
+// See datasheet, search VREFINT_CAL: Raw data acquired at temperature of 30 °C ±5 °C, VDDA= 3 V ±10 mV
 #define ADC_VREFINT_CAL     (*(volatile uint16_t*)0x1FF80078)
 
 enum AdcSampleTime_t {
@@ -69,12 +69,16 @@ public:
     uint32_t GetVDAmV(uint32_t VrefADC) { return ((ADC_VREFINT_CAL * 3000UL) / VrefADC); }
     void Init();
     void StartMeasurement();
+    void StartMeasurementAndWaitCompletion();
     void Disable() { ADC1->CR2 = 0; }
     void ClockOff() { rccDisableADC1(); }
     uint32_t GetResultAverage(uint8_t AChannel);
     uint32_t GetResultMedian(uint8_t AChannel);
     uint32_t Adc2mV(uint32_t AdcChValue, uint32_t VrefValue) {
-        return ((3300UL * ADC_VREFINT_CAL / ADC_MAX_VALUE) * AdcChValue) / VrefValue;
+        return ((3000UL * ADC_VREFINT_CAL / ADC_MAX_VALUE) * AdcChValue) / VrefValue;
+    }
+    uint32_t GetVdda_mv(uint32_t vref_value) {
+        return (3000UL * ADC_VREFINT_CAL) / vref_value;
     }
 };
 

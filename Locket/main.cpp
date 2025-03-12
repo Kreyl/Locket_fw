@@ -6,6 +6,7 @@
 #include "App.h"
 #include "beeper.h"
 #include "pill_mgr.h"
+#include "adcL151.h"
 
 #include "Sequences.h"
 
@@ -42,6 +43,7 @@ void main(void) {
     // ==== Init Vcore & clock system ====
     SetupVCore(vcore1V2);
     Clk.SetMSI4MHz();
+    Clk.EnableHSI(); // For ADC
     Clk.UpdateFreqValues();
     // === Init OS ===
     halInit();
@@ -64,6 +66,11 @@ void main(void) {
     else led.StartOrRestart(lsqFailure);
     chThdSleepMilliseconds(1008);
 
+    // Measure battery
+    Adc.Init();
+    uint32_t adc_v = Adc.GetResultMedian(0);
+    Printf("VDDA = %u mV\r", Adc.GetVdda_mv(adc_v));
+
     // Read dev type and tx pwr from dip, and load state
     ReadModeFromDip();
     tmr_every_second.StartOrRestart();
@@ -85,6 +92,7 @@ void ITask() {
 
             case EvtId::EverySecond:
                 if(ReadModeFromDip() == retv::New) chThdSleepMilliseconds(810);
+                Adc.StartMeasurement();
                 break;
 
             case EvtId::Buttons:
@@ -97,7 +105,9 @@ void ITask() {
                 break;
 
 #if ADC_REQUIRED
-            case evtIdAdcRslt: Printf("Battery: %u mV\r", Adc.GetVDAmV(Adc.GetResultMedian(0))); break;
+            case EvtId::AdcRslt:
+                Printf("Battery: %u mV\r", Adc.GetVDAmV(Adc.GetResultMedian(0)));
+                break;
 #endif
 
             default:
