@@ -18,7 +18,7 @@ public:
     static constexpr uint8_t kBrtTable[kBrtCnt] = { 4, 37, 115, 255 };
     uint8_t brt_indx = kBrtCnt - 1;
     // Vibro
-    static const int32_t kNoVibroTime_s = 15 * 60; // 15 minutes
+    static const int32_t kNoVibroTime_s = 20 * 60; // 20 minutes
     int32_t novibro_time_left_s = 0; // Vibro enabled
     bool VibroEnabled() { return novibro_time_left_s == 0; }
     void DisableVibro() { novibro_time_left_s = kNoVibroTime_s; }
@@ -39,6 +39,7 @@ void TakeBatteryVoltage(uint32_t vbat);
 
 // Evt processing
 void OnBtnEvt(BtnEvtInfo_t btn_info);
+void OnSecondEvt();
 
 // Radio
 void PrepareTxPkt(rPkt *ppkt);

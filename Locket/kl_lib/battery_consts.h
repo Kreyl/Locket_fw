@@ -21,7 +21,7 @@ struct mVPercent {
 };
 
 uint32_t mV2Percent(uint32_t mV, mVPercent *table, uint32_t tbl_sz) {
-    for (size_t i = 0; i < tbl_sz; ++i) {
+    for (uint32_t i = 0; i < tbl_sz; ++i) {
         if (mV >= table[i].mV) {
             return table[i].percent;
         }
@@ -51,7 +51,7 @@ static inline constexpr mVPercent mVPercentTblAlkaline3v0[] = {
     {1100 * 2, 5},
 };
 
-static inline constexpr uint32_t kLowVoltageAlkaline3v0_mV = mVPercentTblAlkaline3v0[6].mV;
+static inline constexpr uint32_t kLowVoltageAlkaline3v0_mV = mVPercentTblAlkaline3v0[7].mV;
 
 static inline constexpr mVPercent mVPercentTblAlkaline4v5[] = {
     {1550 * 3, 100},

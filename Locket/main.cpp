@@ -89,6 +89,7 @@ void ITask() {
             case EvtId::EverySecond:
                 if(ReadModeFromDip() == retv::New) chThdSleepMilliseconds(810);
                 Adc::StartMeasurement();
+                App::OnSecondEvt();
                 break;
 
             case EvtId::Buttons:

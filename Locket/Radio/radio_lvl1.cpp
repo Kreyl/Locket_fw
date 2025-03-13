@@ -102,6 +102,7 @@ static void TaskFeelEachOther() {
         if(sc_left_before_rare_mode > 0) sc_left_before_rare_mode--; // Decrement counter-to-rare-mode
         else cycle_cnt = Radio::kCycleCntRare; // Or receive rarely if zero
     }
+    // Printf("cycle_cnt=%u, sc_left_before_rare_mode=%u\r", cycle_cnt, sc_left_before_rare_mode);
     // Run remaining transmit-only cycles
     for(uint32_t cycle_n=1; cycle_n < cycle_cnt; cycle_n++) ProcessCycle(false);
 }

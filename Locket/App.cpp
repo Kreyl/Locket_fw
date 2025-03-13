@@ -14,7 +14,6 @@ static uint32_t iVbat = 3300UL;
 
 static bool IsBatteryLow() {
     return iVbat < Battery::kLowVoltageAlkaline3v0_mV;
-
 }
 
 void Config::PrintTxPwr() {
@@ -39,7 +38,7 @@ static void SetupAndShowBrightness() {
     lsqManyImmortals[0].Color.B = v;
     lsqPreImmortal  [0].Color.G = v;
     lsqDischarged   [0].Color.R = v;
-    led.StartOrRestart(lsqOneImmortal);
+    led.StartOrAddToQueue(lsqOneImmortal);
     ShowSelfTypeWhenIdle();
     // Printf("Brt: %d\r", v);
 }
@@ -63,35 +62,33 @@ void OnBtnEvt(BtnEvtInfo_t btn_info) {
             ShowSelfTypeWhenIdle(); // Indicate vibro state
             break;
         case 1: // Increase brt
-            if(cfg.brt_indx < Config::kBrtCnt - 1) {
-                cfg.brt_indx++;
-                SetupAndShowBrightness();
-            }
+            if(cfg.brt_indx < Config::kBrtCnt - 1) cfg.brt_indx++;
+            SetupAndShowBrightness();
             break;
         case 2: // Decrease brt
-            if(cfg.brt_indx > 0) {
-                cfg.brt_indx--;
-                SetupAndShowBrightness();
-            }
+            if(cfg.brt_indx > 0) cfg.brt_indx--;
+            SetupAndShowBrightness();
             break;
         default: break;
     } // switch
 }
 
+void OnSecondEvt() {
+    if(cfg.novibro_time_left_s > 0) cfg.novibro_time_left_s--;
+}
+
 #pragma region // ==== Radio related ====
-static bool rx_pkt_printing = true; // XXX false;
+static bool rx_pkt_printing = false;
 inline constexpr const uint8_t kImmortal = 18, kPreImmortal = 99;
 static uint32_t immortals_cnt = 0, preimmortals_cnt = 0;
 
 // RX. Called from main thread by evt which is periodically sent by radio
 void ProcessRxTbl(RxTable &tbl) {
-    Printf("ProcessRxTbl: %d\r", tbl.cnt);
-    return;
     // === Analyze table ===
     uint32_t iimmortals_cnt = 0, ipreimmortals_cnt = 0;
     for(uint32_t i=0; i<tbl.cnt; i++) {
         rPkt &pkt = tbl[i];
-        // if(rx_pkt_printing) pkt.Print();
+        if(rx_pkt_printing) pkt.Print();
         if(pkt.IsImmortal == kImmortal) iimmortals_cnt++;
         else if(pkt.IsImmortal == kPreImmortal) ipreimmortals_cnt++;
     }
@@ -101,18 +98,18 @@ void ProcessRxTbl(RxTable &tbl) {
     // Present immortals
     switch(iimmortals_cnt) {
         case 0:  break; // Noone near
-        case 1:  led.StartOrRestart(lsqOneImmortal);   break;
-        case 2:  led.StartOrRestart(lsqTwoImmortals);  break;
-        default: led.StartOrRestart(lsqManyImmortals); break;
+        case 1:  led.StartOrAddToQueue(lsqOneImmortal);   break;
+        case 2:  led.StartOrAddToQueue(lsqTwoImmortals);  break;
+        default: led.StartOrAddToQueue(lsqManyImmortals); break;
     } // switch
-    if(cfg.VibroEnabled() and iimmortals_cnt > 0) vibro.StartOrRestart(vsqBrr);
+    if(cfg.VibroEnabled() and iimmortals_cnt > 0) vibro.StartOrAddToQueue(vsqBrr);
     // Present preimmortals
     if(ipreimmortals_cnt > 0) {
-        led.StartOrRestart(lsqPreImmortal);
-        if(cfg.VibroEnabled()) vibro.StartOrRestart(vsqBrrBrr);
+        led.StartOrAddToQueue(lsqPreImmortal);
+        if(cfg.VibroEnabled()) vibro.StartOrAddToQueue(vsqBrrBrr);
     }
     // Show discharged
-    if(IsBatteryLow()) led.StartOrRestart(lsqDischarged);
+    if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
     // Present self
     ShowSelfTypeWhenIdle();
 }
