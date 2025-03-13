@@ -12,9 +12,92 @@
 
 #if ADC_REQUIRED
 
-Adc_t Adc;
+#define ADC_MAX_SEQ_LEN     27  // 1...27; Const, see ref man p.301
+
+#if (ADC_SEQ_LEN > ADC_MAX_SEQ_LEN) || (ADC_SEQ_LEN == 0)
+#error "Wrong ADC channel count and sample count"
+#endif
+
+inline constexpr const uint32_t kAdcMaxValue = 4096UL; // const: 2^12
+
+enum ADCDiv {
+    adcDiv1 = (uint32_t)(0b00 << 16),
+    adcDiv2 = (uint32_t)(0b01 << 16),
+    adcDiv4 = (uint32_t)(0b10 << 16),
+};
+
+// See datasheet, search VREFINT_CAL: Raw data acquired at temperature of 30 °C ±5 °C, VDDA= 3 V ±10 mV
+static inline uint32_t GetVRefIntCal() {
+    return static_cast<uint32_t>(*reinterpret_cast<volatile uint16_t*>(0x1FF80078UL));
+}
+inline constexpr const uint32_t kAdcVRefIntCalVoltage = 3000UL;
+
+static uint16_t ibuf[ADC_SEQ_LEN];
+
+static void SetupClk(ADCDiv div) {
+    ADC->CCR = (ADC->CCR & ~ADC_CCR_ADCPRE) | (uint32_t)div;
+}
+
+static void SetSequenceLength(uint32_t alen) {
+    ADC1->SQR1 &= ~ADC_SQR1_L;  // Clear count
+    ADC1->SQR1 |= (alen - 1) << 20;
+}
+
+static void SetChannelSampleTime(uint32_t channel, Adc::SampleTime sample_time) {
+    uint32_t offset, sample_time32 = static_cast<uint32_t>(sample_time);
+    if(channel <= 9UL) {
+        offset = channel * 3UL;
+        ADC1->SMPR3 &= ~(0b111UL << offset);    // Clear bits
+        ADC1->SMPR3 |= sample_time32 << offset; // Set new bits
+    }
+    else if(channel <= 19UL) {
+        offset = (channel - 10UL) * 3UL;
+        ADC1->SMPR2 &= ~(0b111UL << offset);    // Clear bits
+        ADC1->SMPR2 |= sample_time32 << offset; // Set new bits
+    }
+    else {
+        offset = (channel - 20UL) * 3UL;
+        ADC1->SMPR1 &= ~(0b111UL << offset);    // Clear bits
+        ADC1->SMPR1 |= sample_time32 << offset; // Set new bits
+    }
+}
+
+static void SetSequenceItem(uint32_t seq_indx, uint32_t channel) {
+    uint32_t offset;
+    if(seq_indx <= 6UL) {
+        offset = (seq_indx - 1UL) * 5UL;
+        ADC1->SQR5 &= ~(0b11111UL << offset);
+        ADC1->SQR5 |= channel << offset;
+    }
+    else if(seq_indx <= 12UL) {
+        offset = (seq_indx - 7UL) * 5UL;
+        ADC1->SQR4 &= ~(0b11111UL << offset);
+        ADC1->SQR4 |= channel << offset;
+    }
+    else if(seq_indx <= 18UL) {
+        offset = (seq_indx - 13UL) * 5UL;
+        ADC1->SQR3 &= ~(0b11111UL << offset);
+        ADC1->SQR3 |= channel << offset;
+    }
+    else if(seq_indx <= 24UL) {
+        offset = (seq_indx - 19UL) * 5UL;
+        ADC1->SQR2 &= ~(0b11111UL << offset);
+        ADC1->SQR2 |= channel << offset;
+    }
+    else if(seq_indx <= 28UL) {    // 28 in high and medium density, 27 in others
+        offset = (seq_indx - 25UL) * 5UL;
+        ADC1->SQR1 &= ~(0b11111UL << offset);
+        ADC1->SQR1 |= channel << offset;
+    }
+}
+
+
+namespace Adc {
+
+inline constexpr const SampleTime kAdcSampleTimeDefault = ast96Cycles;
+
 const uint8_t kAdcChannels[ADC_CHANNEL_CNT] = ADC_CHANNELS;
-static const stm32_dma_stream_t *PAdcDma = nullptr;
+static const stm32_dma_stream_t *pdma = nullptr;
 #if defined ADC_MODE_PERIODIC_MEASUREMENT || defined  ADC_MODE_SYNC_MEASUREMENT
 static thread_reference_t ThdRef;
 #endif
@@ -50,10 +133,20 @@ static void AdcThread(void *arg) {
 }
 #endif
 
+static void Disable() { ADC1->CR2 = 0; }
+static void EnableVRef()  { ADC->CCR |= (uint32_t)ADC_CCR_TSVREFE; }
+__attribute__((unused))
+static void DisableVRef() { ADC->CCR &= (uint32_t)(~ADC_CCR_TSVREFE); }
+static void StartConversion() { ADC1->CR2 |= ADC_CR2_SWSTART; }
+__attribute__((unused))
+static void WaitConversionCompletion() { while(!(ADC1->SR & ADC_SR_EOC)); }
+__attribute__((unused))
+void ClockOff() { rccDisableADC1(); }
+
 // ==== DMA completed IRQ Handler ====
 void AdcRdyIrq(void *p, uint32_t flags) {
-    dmaStreamDisable(PAdcDma);
-    Adc.Disable();
+    dmaStreamDisable(pdma);
+    Disable();
 #ifdef ADC_EN_AND_DIS_HSI
     Clk.DisableHSI();
 #endif
@@ -64,90 +157,39 @@ void AdcRdyIrq(void *p, uint32_t flags) {
     evt_q_main.SendNowOrExitI(EvtMsg_t(EvtId::AdcRslt));
 #endif
     chSysUnlockFromISR();
-
 }
 
-void Adc_t::Init() {
+
+void Init() {
     rccEnableADC1(FALSE);   	// Enable digital clock
     SetupClk(ADC_CLK_DIVIDER);  // Setup ADCCLK
     // Setup channels
     SetSequenceLength(ADC_SEQ_LEN);
-    uint8_t SeqIndx = 1;    // First sequence item is 1, not 0
-    for(uint8_t i=0; i < ADC_CHANNEL_CNT; i++) {
-		SetChannelSampleTime(kAdcChannels[i], ADC_SAMPLE_TIME_DEFAULT);
-		for(uint8_t j=0; j<ADC_SAMPLE_CNT; j++) SetSequenceItem(SeqIndx++, kAdcChannels[i]);
+    uint8_t seq_indx = 1;    // First sequence item is 1, not 0
+    for(uint32_t i=0; i < ADC_CHANNEL_CNT; i++) {
+		SetChannelSampleTime(kAdcChannels[i], kAdcSampleTimeDefault);
+		for(uint32_t j=0; j<ADC_SAMPLE_CNT; j++)
+            SetSequenceItem(seq_indx++, kAdcChannels[i]);
 	}
     EnableVRef();
     // ==== DMA ====
-    PAdcDma = dmaStreamAlloc(ADC_DMA, IRQ_PRIO_LOW, AdcRdyIrq, NULL);
-    dmaStreamSetPeripheral(PAdcDma, &ADC1->DR);
-    dmaStreamSetMode      (PAdcDma, ADC_DMA_MODE);
-#ifdef ADC_MODE_PERIODIC_MEASUREMENT // ==== Thread ====
+    pdma = dmaStreamAlloc(ADC_DMA, IRQ_PRIO_LOW, AdcRdyIrq, NULL);
+    dmaStreamSetPeripheral(pdma, &ADC1->DR);
+    dmaStreamSetMode      (pdma, ADC_DMA_MODE);
+#ifdef ADC_MODE_PERIODIC_MEASUREMENT // Thread
     chThdCreateStatic(waAdcThread, sizeof(waAdcThread), NORMALPRIO, (tfunc_t)AdcThread, NULL);
 #endif
 }
 
-void Adc_t::SetSequenceLength(uint32_t ALen) {
-    ADC1->SQR1 &= ~ADC_SQR1_L;  // Clear count
-    ADC1->SQR1 |= (ALen - 1) << 20;
-}
-
-void Adc_t::SetChannelSampleTime(uint32_t AChnl, AdcSampleTime_t ASampleTime) {
-    uint32_t Offset;
-    if(AChnl <= 9) {
-        Offset = AChnl * 3;
-        ADC1->SMPR3 &= ~((uint32_t)0b111 << Offset);    // Clear bits
-        ADC1->SMPR3 |= (uint32_t)ASampleTime << Offset; // Set new bits
-    }
-    else if(AChnl <= 19) {
-        Offset = (AChnl - 10) * 3;
-        ADC1->SMPR2 &= ~((uint32_t)0b111 << Offset);    // Clear bits
-        ADC1->SMPR2 |= (uint32_t)ASampleTime << Offset; // Set new bits
-    }
-    else {
-        Offset = (AChnl - 20) * 3;
-        ADC1->SMPR1 &= ~((uint32_t)0b111 << Offset);    // Clear bits
-        ADC1->SMPR1 |= (uint32_t)ASampleTime << Offset; // Set new bits
-    }
-}
-void Adc_t::SetSequenceItem(uint8_t SeqIndx, uint32_t AChnl) {
-    uint32_t Offset;
-    if(SeqIndx <= 6) {
-        Offset = (SeqIndx - 1) * 5;
-        ADC1->SQR5 &= ~(uint32_t)(0b11111 << Offset);
-        ADC1->SQR5 |= (uint32_t)(AChnl << Offset);
-    }
-    else if(SeqIndx <= 12) {
-        Offset = (SeqIndx - 7) * 5;
-        ADC1->SQR4 &= ~(uint32_t)(0b11111 << Offset);
-        ADC1->SQR4 |= (uint32_t)(AChnl << Offset);
-    }
-    else if(SeqIndx <= 18) {
-        Offset = (SeqIndx - 13) * 5;
-        ADC1->SQR3 &= ~(uint32_t)(0b11111 << Offset);
-        ADC1->SQR3 |= (uint32_t)(AChnl << Offset);
-    }
-    else if(SeqIndx <= 24) {
-        Offset = (SeqIndx - 19) * 5;
-        ADC1->SQR2 &= ~(uint32_t)(0b11111 << Offset);
-        ADC1->SQR2 |= (uint32_t)(AChnl << Offset);
-    }
-    else if(SeqIndx <= 28) {    // 28 in high and medium density, 27 in others
-        Offset = (SeqIndx - 25) * 5;
-        ADC1->SQR1 &= ~(uint32_t)(0b11111 << Offset);
-        ADC1->SQR1 |= (uint32_t)(AChnl << Offset);
-    }
-}
-
-void Adc_t::StartMeasurement() {
+void StartMeasurement() {
 #ifdef ADC_EN_AND_DIS_HSI
     Clk.EnableHSI();
 #endif
     // DMA
-    dmaStreamSetMemory0(PAdcDma, IBuf);
-    dmaStreamSetTransactionSize(PAdcDma, ADC_SEQ_LEN);
-    dmaStreamSetMode(PAdcDma, ADC_DMA_MODE);
-    dmaStreamEnable(PAdcDma);
+    dmaStreamSetMemory0(pdma, ibuf);
+    dmaStreamSetTransactionSize(pdma, ADC_SEQ_LEN);
+    dmaStreamSetMode(pdma, ADC_DMA_MODE);
+    dmaStreamEnable(pdma);
     // ADC
     ADC1->CR1 = ADC_CR1_SCAN;               // Mode = scan
     ADC1->CR2 = ADC_CR2_DMA | ADC_CR2_ADON; // Enable DMA, enable ADC
@@ -160,10 +202,10 @@ void Adc_t::StartMeasurementAndWaitCompletion() {
     Clk.EnableHSI();
 #endif
     // DMA
-    dmaStreamSetMemory0(PAdcDma, IBuf);
-    dmaStreamSetTransactionSize(PAdcDma, ADC_SEQ_LEN);
-    dmaStreamSetMode(PAdcDma, ADC_DMA_MODE);
-    dmaStreamEnable(PAdcDma);
+    dmaStreamSetMemory0(pdma, ibuf);
+    dmaStreamSetTransactionSize(pdma, ADC_SEQ_LEN);
+    dmaStreamSetMode(pdma, ADC_DMA_MODE);
+    dmaStreamEnable(pdma);
     // ADC
     ADC1->CR1 = ADC_CR1_SCAN;               // Mode = scan
     ADC1->CR2 = ADC_CR2_DMA | ADC_CR2_ADON; // Enable DMA, enable ADC
@@ -175,40 +217,53 @@ void Adc_t::StartMeasurementAndWaitCompletion() {
 }
 #endif
 
-uint32_t Adc_t::GetResultAverage(uint8_t AChannel) {
-    uint32_t Indx = 0;
+uint32_t GetResultAverage(uint8_t channel) {
+    uint32_t indx = 0;
 #if (ADC_CHANNEL_CNT > 1)
     // Find Channel indx
     for(uint32_t i=0; i < ADC_CHANNEL_CNT; i++) {
-        if(kAdcChannels[i] == AChannel) {
-            Indx = i;
+        if(kAdcChannels[i] == channel) {
+            indx = i;
             break;
         }
     }
 #endif
     // Find bounds
-    uint32_t Start = Indx * ADC_SAMPLE_CNT;
-    uint32_t Stop  = Start + ADC_SAMPLE_CNT;
+    uint32_t start = indx * ADC_SAMPLE_CNT;
+    uint32_t stop  = start + ADC_SAMPLE_CNT;
     // Average values
-    uint32_t Rslt = 0;
-    for(uint32_t i = Start; i < Stop; i++) Rslt += IBuf[i];
-    return Rslt / ADC_SAMPLE_CNT;
+    uint32_t rslt = 0;
+    for(uint32_t i = start; i < stop; i++) rslt += ibuf[i];
+    return rslt / ADC_SAMPLE_CNT;
 }
 
-uint32_t Adc_t::GetResultMedian(uint8_t AChannel) {
-    uint32_t Indx = 0;
+uint32_t GetResultMedian(uint8_t channel) {
+    uint32_t indx = 0;
 #if (ADC_CHANNEL_CNT > 1)
     // Find Channel indx
     for(uint32_t i=0; i < ADC_CHANNEL_CNT; i++) {
-        if(kAdcChannels[i] == AChannel) {
-            Indx = i;
+        if(kAdcChannels[i] == channel) {
+            indx = i;
             break;
         }
     }
 #endif
     // Find bounds
-    uint32_t Start = Indx * ADC_SAMPLE_CNT;
-    return FindMediana<uint16_t>(&IBuf[Start], ADC_SAMPLE_CNT);
+    uint32_t start = indx * ADC_SAMPLE_CNT;
+    return FindMediana<uint16_t>(&ibuf[start], ADC_SAMPLE_CNT);
 }
+
+uint32_t GetVDAmV(uint32_t Vref_ADC) {
+    return (kAdcVRefIntCalVoltage * GetVRefIntCal()) / Vref_ADC;
+}
+
+uint32_t Adc2mV(uint32_t adc_ch_value, uint32_t Vref_value) {
+    return (((kAdcVRefIntCalVoltage * GetVRefIntCal()) / kAdcMaxValue) * adc_ch_value) / Vref_value;
+}
+uint32_t GetVdda_mv(uint32_t vref_value) {
+    return (kAdcVRefIntCalVoltage * GetVRefIntCal()) / vref_value;
+}
+
+} // namespace
 
 #endif  // ADC_REQUIRED

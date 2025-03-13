@@ -35,6 +35,7 @@ extern Config cfg;
 namespace App {
 
 void SetDevtype(uint32_t type32);
+void TakeBatteryVoltage(uint32_t vbat);
 
 // Evt processing
 void OnBtnEvt(BtnEvtInfo_t btn_info);

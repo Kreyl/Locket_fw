@@ -33,7 +33,7 @@ LINKER_FLAGS = -Xlinker --gc-sections --specs=nano.specs --specs=nosys.specs -no
 ######################### Individual Cfg Settings #########################
 ####### Release Cfg Settings #######
 ifeq "$(GOAL_NAME)" "Release"
-COMMON_FLAGS += -Os -flto
+COMMON_FLAGS += -Os
 LINKER_FLAGS +=
 LD_SCRIPT = STM32L151x8.ld
 # Comment / uncomment the following lines to produce .hex and/or .bin output
@@ -54,7 +54,7 @@ HEX_NAME = $(OUT_DIR)/$(PRJ_NAME).hex
 ####### FromBoot Cfg Settings #######
 # Put to flash starting from 0x800XXXX, to reserve place for bootloader. All other is same as Release.
 else ifeq "$(GOAL_NAME)" "Fromboot"
-COMMON_FLAGS += -Os -flto
+COMMON_FLAGS += -Os
 LINKER_FLAGS +=
 LD_SCRIPT = GD32E103xB_FromBoot.ld
 # Comment / uncomment the following lines to produce .hex and/or .bin output

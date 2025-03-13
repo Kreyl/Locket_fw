@@ -59,17 +59,13 @@ void main(void) {
     Random::SeedWithUniqID();
     led.Init();
     vibro.Init();
+    Adc::Init(); // Battery measurement
     // beeper.Init();
     // PillMgr::Init();
 
     if(Radio::Init().IsOk()) led.StartOrRestart(lsqStart);
     else led.StartOrRestart(lsqFailure);
     chThdSleepMilliseconds(1008);
-
-    // Measure battery
-    Adc.Init();
-    uint32_t adc_v = Adc.GetResultMedian(0);
-    Printf("VDDA = %u mV\r", Adc.GetVdda_mv(adc_v));
 
     // Read dev type and tx pwr from dip, and load state
     ReadModeFromDip();
@@ -92,7 +88,7 @@ void ITask() {
 
             case EvtId::EverySecond:
                 if(ReadModeFromDip() == retv::New) chThdSleepMilliseconds(810);
-                Adc.StartMeasurement();
+                Adc::StartMeasurement();
                 break;
 
             case EvtId::Buttons:
@@ -101,13 +97,18 @@ void ITask() {
                 break;
 
             case EvtId::CheckRxTable:
+                // Printf("RxTable: 0x%X\r", msg.ptr);
                 App::ProcessRxTbl(*static_cast<RxTable*>(msg.ptr));
                 break;
 
 #if ADC_REQUIRED
-            case EvtId::AdcRslt:
-                Printf("Battery: %u mV\r", Adc.GetVDAmV(Adc.GetResultMedian(0)));
-                break;
+            case EvtId::AdcRslt: {
+                uint32_t vd = Adc::GetResultMedian(0);
+                uint32_t vbat = Adc::GetVDAmV(vd);
+                // Printf("Battery: %u mV\r", vbat);
+                App::TakeBatteryVoltage(vbat);
+            }
+            break;
 #endif
 
             default:
@@ -140,10 +141,6 @@ void OnCmd(Shell *pshell) {
     // Handle command
     if(pcmd->NameIs("Ping")) pshell->Ok();
     else if(pcmd->NameIs("Version")) pshell->Print("%S %S\r", APP_NAME, kBuildTime);
-
-    #if ADC_REQUIRED
-    else if(pcmd->NameIs("GetBat")) Adc.StartMeasurement();
-    #endif
 
     else App::OnCmd(pshell);
 }

@@ -4,11 +4,20 @@
 #include "vibro.h"
 #include "ch.h"
 #include "kl_lib.h"
-#include "battery.h"
+#include "battery_consts.h"
 
 extern LedRGBwPower_t<11> led;
 extern Vibro_t<4> vibro;
 Config cfg;
+
+static uint32_t iVbat = 3300UL;
+
+static bool IsBatteryLow() {
+    return iVbat < 3000; // XXX
+
+}
+
+
 
 void Config::PrintTxPwr() {
     Printf("TxPwr: %S\r", CC_PwrToString(tx_power));
@@ -46,6 +55,8 @@ void SetDevtype(uint32_t type32) {
     SetupAndShowBrightness();
 }
 
+void TakeBatteryVoltage(uint32_t vbat) { iVbat = vbat; }
+
 void OnBtnEvt(BtnEvtInfo_t btn_info) {
     switch(btn_info.btn_indx) {
         case 0: // Vibro on/off
@@ -70,17 +81,21 @@ void OnBtnEvt(BtnEvtInfo_t btn_info) {
 }
 
 #pragma region // ==== Radio related ====
-static bool rx_pkt_printing = false;
+static bool rx_pkt_printing = true; // XXX false;
 inline constexpr const uint8_t kImmortal = 18, kPreImmortal = 99;
 static uint32_t immortals_cnt = 0, preimmortals_cnt = 0;
 
 // RX. Called from main thread by evt which is periodically sent by radio
 void ProcessRxTbl(RxTable &tbl) {
+    Printf("ProcessRxTbl: %d\r", tbl.cnt);
+    return;
     // === Analyze table ===
     uint32_t iimmortals_cnt = 0, ipreimmortals_cnt = 0;
     for(uint32_t i=0; i<tbl.cnt; i++) {
-        if(tbl[i].IsImmortal == kImmortal) iimmortals_cnt++;
-        else if(tbl[i].IsImmortal == kPreImmortal) ipreimmortals_cnt++;
+        rPkt &pkt = tbl[i];
+        // if(rx_pkt_printing) pkt.Print();
+        if(pkt.IsImmortal == kImmortal) iimmortals_cnt++;
+        else if(pkt.IsImmortal == kPreImmortal) ipreimmortals_cnt++;
     }
     immortals_cnt = iimmortals_cnt;
     preimmortals_cnt = ipreimmortals_cnt;
@@ -99,7 +114,7 @@ void ProcessRxTbl(RxTable &tbl) {
         if(cfg.VibroEnabled()) vibro.StartOrRestart(vsqBrrBrr);
     }
     // Show discharged
-    if(Battery::IsDischarged()) led.StartOrRestart(lsqDischarged);
+    if(IsBatteryDischarged()) led.StartOrRestart(lsqDischarged);
     // Present self
     ShowSelfTypeWhenIdle();
 }
