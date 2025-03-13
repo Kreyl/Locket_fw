@@ -8,72 +8,62 @@
 #pragma once
 
 #include <cstdint>
-#include <iterator> // For std::size
+//#include <iterator> // For std::size
 
+namespace Battery {
 
 enum class ChargingState {Discharging, Charging, Idle};
-enum class BatteryState {None, Empty, Half, Full};
+enum class ChargeState {Unknown, Empty, Half, Full};
 
 struct mVPercent {
     uint32_t mV;
     uint32_t percent;
 };
 
-
-template <const mVPercent* Table, size_t TableSize>
-class BatteryPercentBase {
-public:
-    uint32_t mV2Percent(uint32_t mV) const {
-        for (size_t i = 0; i < TableSize; ++i) {
-            if (mV >= Table[i].mV) {
-                return Table[i].percent;
-            }
+uint32_t mV2Percent(uint32_t mV, mVPercent *table, uint32_t tbl_sz) {
+    for (size_t i = 0; i < tbl_sz; ++i) {
+        if (mV >= table[i].mV) {
+            return table[i].percent;
         }
-        return 0;
     }
+    return 0;
+}
+
+static inline constexpr mVPercent mVPercentTblAlkaline1v5[] = {
+    {1550, 100},
+    {1500, 90},
+    {1450, 80},
+    {1400, 60},
+    {1350, 40},
+    {1300, 20},
+    {1200, 10},
+    {1100, 5},
 };
 
-class BatteryAlkaline1v5 : public BatteryPercentBase<BatteryAlkaline1v5::mVPercentTbl, std::size(BatteryAlkaline1v5::mVPercentTbl)> {
-private:
-    static inline constexpr mVPercent mVPercentTbl[] = {
-        {1550, 100},
-        {1500, 90},
-        {1450, 80},
-        {1400, 60},
-        {1350, 40},
-        {1300, 20},
-        {1200, 10},
-        {1100, 5},
-    };
+static inline constexpr mVPercent mVPercentTblAlkaline3v0[] = {
+    {1550 * 2, 100},
+    {1500 * 2, 90},
+    {1450 * 2, 80},
+    {1400 * 2, 60},
+    {1350 * 2, 40},
+    {1300 * 2, 20},
+    {1200 * 2, 10},
+    {1100 * 2, 5},
 };
 
-class BatteryAlkaline3v0 : public BatteryPercentBase<BatteryAlkaline3v0::mVPercentTbl, std::size(BatteryAlkaline3v0::mVPercentTbl)> {
-private:
-    static inline constexpr mVPercent mVPercentTbl[] = {
-        {1550 * 2, 100},
-        {1500 * 2, 90},
-        {1450 * 2, 80},
-        {1400 * 2, 60},
-        {1350 * 2, 40},
-        {1300 * 2, 20},
-        {1200 * 2, 10},
-        {1100 * 2, 5},
-    };
-};
+static inline constexpr uint32_t kLowVoltageAlkaline3v0_mV = mVPercentTblAlkaline3v0[6].mV;
 
-class BatteryAlkaline4v5 : public BatteryPercentBase<BatteryAlkaline4v5::mVPercentTbl, std::size(BatteryAlkaline4v5::mVPercentTbl)> {
-private:
-    static inline constexpr mVPercent mVPercentTbl[] = {
-        {1550 * 3, 100},
-        {1500 * 3, 90},
-        {1450 * 3, 80},
-        {1400 * 3, 60},
-        {1350 * 3, 40},
-        {1300 * 3, 20},
-        {1200 * 3, 10},
-        {1100 * 3, 5},
-    };
+static inline constexpr mVPercent mVPercentTblAlkaline4v5[] = {
+    {1550 * 3, 100},
+    {1500 * 3, 90},
+    {1450 * 3, 80},
+    {1400 * 3, 60},
+    {1350 * 3, 40},
+    {1300 * 3, 20},
+    {1200 * 3, 10},
+    {1100 * 3, 5},
 };
+} // namespace
 
 
 #if 0 // ============================ Li-Ion ===================================

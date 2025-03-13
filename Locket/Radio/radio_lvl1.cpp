@@ -33,8 +33,13 @@ static rPkt pkt_rx, pkt_tx;
 static uint32_t supercycle_cnt = 0;
 static RxTable tbl1, tbl2, *curr_tbl = &tbl1;
 static uint8_t tx_power;
+// Adaptive cycle cnt related
+static uint32_t sc_left_before_rare_mode = Radio::kNoReceptionScCnt;
+static uint32_t cycle_cnt = Radio::kCycleCntNominal;
 
-static inline void TryToReceive(uint32_t rx_duration_ms) {
+
+static inline uint32_t TryToReceive(uint32_t rx_duration_ms) {
+    uint32_t rcvd_cnt = 0;
     sysinterval_t total_duration_st = TIME_MS2I(rx_duration_ms);
     sysinterval_t start_time_st = chVTGetSystemTimeX();
     sysinterval_t time_left_st = total_duration_st;
@@ -44,6 +49,7 @@ static inline void TryToReceive(uint32_t rx_duration_ms) {
         retv rx_rslt = CC.Receive_st(time_left_st, reinterpret_cast<uint8_t*>(&pkt_rx), kRPktSz, &pkt_rx.rssi);
         DBG2_CLR();
         if(rx_rslt == retv::Ok) {
+            rcvd_cnt++;
 //            Printf("%u %d; %d\r", pkt_rx.id, pkt_rx.type, pkt_rx.rssi);
             curr_tbl->AddOrReplaceExistingPkt(pkt_rx);
         }
@@ -52,6 +58,7 @@ static inline void TryToReceive(uint32_t rx_duration_ms) {
         if(elapsed_st >= total_duration_st) break;
         else time_left_st = total_duration_st - elapsed_st;
     }
+    return rcvd_cnt;
 }
 
 namespace Radio {
@@ -62,38 +69,41 @@ static void TryToSleep(uint32_t sleep_duration_ms) {
     chThdSleepMilliseconds(sleep_duration_ms);
 }
 
-static void TaskFeelEachOther(bool must_tx, bool must_rx) {
-    if(!must_tx and !must_rx) {
-        CC.EnterPwrDown();
-        chThdSleepMilliseconds(kCycleDuration_ms);
+static uint32_t ProcessCycle(bool must_rx) {
+    uint32_t rcvd_cnt = 0; // Count received packets
+    int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
+    // If TX slot is not zero, receive or sleep
+    if(tx_slot != 0) {
+        uint32_t time_before_tx = tx_slot * kSlotDuration_ms;
+        if(must_rx) rcvd_cnt += TryToReceive(time_before_tx);
+        else TryToSleep(time_before_tx);
     }
-    else if(!must_tx and must_rx) {
-        TryToReceive(kCycleDuration_ms); // Zero cycle: receive
-        CC.EnterPwrDown();               // Other cycles - just sleep
-        chThdSleepMilliseconds(kCycleDuration_ms * (kCycleCnt-1));
+    // ==== TX ====
+    DBG1_SET();
+    CC.Recalibrate();
+    CC.Transmit(reinterpret_cast<uint8_t*>(&pkt_tx), kRPktSz);
+    DBG1_CLR();
+    // If TX slot is not last: receive or sleep
+    if(tx_slot != (kSlotCnt-1)) {
+        uint32_t time_after_tx = ((kSlotCnt-1) - tx_slot) * kSlotDuration_ms;
+        if(must_rx) rcvd_cnt += TryToReceive(time_after_tx);
+        else TryToSleep(time_after_tx);
     }
-    else { // must_tx and maybe must_rx
-        for(uint32_t cycle_n=0; cycle_n < kCycleCnt; cycle_n++) {
-            int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
-            // If TX slot is not zero: receive in zero cycle, sleep in non-zero cycle
-            if(tx_slot != 0) {
-                uint32_t time_before_tx = tx_slot * kSlotDuration_ms;
-                if(must_rx and cycle_n == 0) TryToReceive(time_before_tx);
-                else TryToSleep(time_before_tx);
-            }
-            // ==== TX ====
-            DBG1_SET();
-            CC.Recalibrate();
-            CC.Transmit(reinterpret_cast<uint8_t*>(&pkt_tx), kRPktSz);
-            DBG1_CLR();
-            // If TX slot is not last: receive in zero cycle, sleep in non-zero cycle
-            if(tx_slot != (kSlotCnt-1)) {
-                uint32_t time_after_tx = ((kSlotCnt-1) - tx_slot) * kSlotDuration_ms;
-                if(must_rx and cycle_n == 0) TryToReceive(time_after_tx);
-                else TryToSleep(time_after_tx);
-            }
-        } // for
-    } // else
+    return rcvd_cnt;
+}
+
+static void TaskFeelEachOther() {
+    // Run zero cycle with rx enabled and check if something was received
+    if(ProcessCycle(true) > 0) { // Something rcvd,
+        cycle_cnt = Radio::kCycleCntNominal;  // now receive often
+        sc_left_before_rare_mode = Radio::kNoReceptionScCnt; // and reset counter-to-rare-mode
+    }
+    else { // Silence around
+        if(sc_left_before_rare_mode > 0) sc_left_before_rare_mode--; // Decrement counter-to-rare-mode
+        else cycle_cnt = Radio::kCycleCntRare; // Or receive rarely if zero
+    }
+    // Run remaining transmit-only cycles
+    for(uint32_t cycle_n=1; cycle_n < cycle_cnt; cycle_n++) ProcessCycle(false);
 }
 
 static THD_WORKING_AREA(warLvl1Thread, 256);
@@ -102,7 +112,7 @@ static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
         App::PrepareTxPkt(&pkt_tx);
-        TaskFeelEachOther(true, true);
+        TaskFeelEachOther();
         // Set new tx pwr if changed
         if(tx_power != cfg.tx_power) {
             tx_power = cfg.tx_power;

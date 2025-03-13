@@ -13,11 +13,9 @@ Config cfg;
 static uint32_t iVbat = 3300UL;
 
 static bool IsBatteryLow() {
-    return iVbat < 3000; // XXX
+    return iVbat < Battery::kLowVoltageAlkaline3v0_mV;
 
 }
-
-
 
 void Config::PrintTxPwr() {
     Printf("TxPwr: %S\r", CC_PwrToString(tx_power));
@@ -114,7 +112,7 @@ void ProcessRxTbl(RxTable &tbl) {
         if(cfg.VibroEnabled()) vibro.StartOrRestart(vsqBrrBrr);
     }
     // Show discharged
-    if(IsBatteryDischarged()) led.StartOrRestart(lsqDischarged);
+    if(IsBatteryLow()) led.StartOrRestart(lsqDischarged);
     // Present self
     ShowSelfTypeWhenIdle();
 }
