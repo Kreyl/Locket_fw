@@ -10,7 +10,7 @@ extern LedRGBwPower_t<11> led;
 extern Vibro_t<4> vibro;
 Config cfg;
 
-static uint32_t iVbat = 3300UL;
+static uint32_t iVbat = 0UL;
 
 static bool IsBatteryLow() {
     return iVbat < Battery::kLowVoltageAlkaline3v0_mV;
@@ -25,10 +25,7 @@ static void ShowSelfTypeWhenIdle() {
         if(cfg.VibroEnabled()) led.StartOrAddToQueue(lsqSelfTypeImmortal);
         else led.StartOrAddToQueue(lsqSelfTypeImmortalNoVibro);
     }
-    else {
-        if(cfg.VibroEnabled()) led.StartOrAddToQueue(lsqSelfTypePreimmortal);
-        else led.StartOrAddToQueue(lsqSelfTypePreimmortalNoVibro);
-    }
+    else led.StartOrAddToQueue(lsqSelfTypePreimmortal);
 }
 
 static void SetupAndShowBrightness() {
@@ -52,7 +49,10 @@ void SetDevtype(uint32_t type32) {
     SetupAndShowBrightness();
 }
 
-void TakeBatteryVoltage(uint32_t vbat) { iVbat = vbat; }
+void TakeBatteryVoltage(uint32_t vbat) {
+    if(iVbat == 0UL) Printf("Battery: %d mV\r", vbat);
+    iVbat = vbat;
+}
 
 void OnBtnEvt(BtnEvtInfo_t btn_info) {
     switch(btn_info.btn_indx) {
@@ -84,29 +84,31 @@ static uint32_t immortals_cnt = 0, preimmortals_cnt = 0;
 
 // RX. Called from main thread by evt which is periodically sent by radio
 void ProcessRxTbl(RxTable &tbl) {
-    // === Analyze table ===
-    uint32_t iimmortals_cnt = 0, ipreimmortals_cnt = 0;
-    for(uint32_t i=0; i<tbl.cnt; i++) {
-        rPkt &pkt = tbl[i];
-        if(rx_pkt_printing) pkt.Print();
-        if(pkt.IsImmortal == kImmortal) iimmortals_cnt++;
-        else if(pkt.IsImmortal == kPreImmortal) ipreimmortals_cnt++;
-    }
-    immortals_cnt = iimmortals_cnt;
-    preimmortals_cnt = ipreimmortals_cnt;
-    // ==== Indicate ====
-    // Present immortals
-    switch(iimmortals_cnt) {
-        case 0:  break; // Noone near
-        case 1:  led.StartOrAddToQueue(lsqOneImmortal);   break;
-        case 2:  led.StartOrAddToQueue(lsqTwoImmortals);  break;
-        default: led.StartOrAddToQueue(lsqManyImmortals); break;
-    } // switch
-    if(cfg.VibroEnabled() and iimmortals_cnt > 0) vibro.StartOrAddToQueue(vsqBrr);
-    // Present preimmortals
-    if(ipreimmortals_cnt > 0) {
-        led.StartOrAddToQueue(lsqPreImmortal);
-        if(cfg.VibroEnabled()) vibro.StartOrAddToQueue(vsqBrrBrr);
+    if(cfg.type == DevType::Immortal) { // Only immortals can feel
+        // === Analyze table ===
+        uint32_t iimmortals_cnt = 0, ipreimmortals_cnt = 0;
+        for(uint32_t i=0; i<tbl.cnt; i++) {
+            rPkt &pkt = tbl[i];
+            if(rx_pkt_printing) pkt.Print();
+            if(pkt.IsImmortal == kImmortal) iimmortals_cnt++;
+            else if(pkt.IsImmortal == kPreImmortal) ipreimmortals_cnt++;
+        }
+        immortals_cnt = iimmortals_cnt;
+        preimmortals_cnt = ipreimmortals_cnt;
+        // ==== Indicate ====
+        // Present immortals
+        switch(iimmortals_cnt) {
+            case 0:  break; // Noone near
+            case 1:  led.StartOrAddToQueue(lsqOneImmortal);   break;
+            case 2:  led.StartOrAddToQueue(lsqTwoImmortals);  break;
+            default: led.StartOrAddToQueue(lsqManyImmortals); break;
+        } // switch
+        if(cfg.VibroEnabled() and iimmortals_cnt > 0) vibro.StartOrAddToQueue(vsqBrr);
+        // Present preimmortals
+        if(ipreimmortals_cnt > 0) {
+            led.StartOrAddToQueue(lsqPreImmortal);
+            if(cfg.VibroEnabled()) vibro.StartOrAddToQueue(vsqBrrBrr);
+        }
     }
     // Show discharged
     if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
@@ -126,9 +128,9 @@ void PrepareTxPkt(rPkt *ppkt) {
 void OnCmd(Shell *pshell) {
     Cmd_t *pcmd = &pshell->cmd;
     if(pcmd->NameIs("State")) {
-
         Printf("Immortals: %d\r", immortals_cnt);
         Printf("Preimmortals: %d\r", preimmortals_cnt);
+        Printf("Battery: %d\r", iVbat);
         cfg.PrintTxPwr();
     }
 
