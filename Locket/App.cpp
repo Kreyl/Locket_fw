@@ -99,15 +99,23 @@ void ProcessRxTbl(RxTable &tbl) {
         // Present immortals
         switch(iimmortals_cnt) {
             case 0:  break; // Noone near
-            case 1:  led.StartOrAddToQueue(lsqOneImmortal);   break;
-            case 2:  led.StartOrAddToQueue(lsqTwoImmortals);  break;
-            default: led.StartOrAddToQueue(lsqManyImmortals); break;
+            case 1:
+                led.StartOrAddToQueue(lsqOneImmortal);
+                if(cfg.VibroEnabled()) vibro.StartOrAddToQueue(vsqBrr);
+                break;
+            case 2:
+                led.StartOrAddToQueue(lsqTwoImmortals);
+                if(cfg.VibroEnabled()) vibro.StartOrAddToQueue(vsqBrrBrr);
+                break;
+            default:
+                led.StartOrAddToQueue(lsqManyImmortals);
+                if(cfg.VibroEnabled()) vibro.StartOrAddToQueue(vsqBrrBrrBrr);
+                break;
         } // switch
-        if(cfg.VibroEnabled() and iimmortals_cnt > 0) vibro.StartOrAddToQueue(vsqBrr);
         // Present preimmortals
         if(ipreimmortals_cnt > 0) {
             led.StartOrAddToQueue(lsqPreImmortal);
-            if(cfg.VibroEnabled()) vibro.StartOrAddToQueue(vsqBrrBrr);
+            if(cfg.VibroEnabled()) vibro.StartOrAddToQueue(vsqLongBrr);
         }
     }
     // Show discharged
