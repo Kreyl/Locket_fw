@@ -16,7 +16,7 @@
 #define SNS_POLL_PERIOD_MS      72
 
 // Button handler
-extern void ProcessButtons(PinSnsState_t *PState, uint32_t Len);
+extern void ProcessButtons(PinSnsState *PState, uint32_t Len);
 
 const PinSns_t PinSns[] = {
         // Buttons

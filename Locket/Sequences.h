@@ -193,51 +193,102 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #if 1 // ============================ LED RGB ==================================
 inline constexpr const unsigned long kBlinkDuration = 108, kBlinkDark = 180, kPauseNextLsq = 450;
 
-static LedRGBChunk lsqOneImmortal[] = {
-        {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
-        {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
-        {csEnd},
+// Points around
+static LedRGBChunk lsqActiveOne[] = {
+    {csSetup, 0, clYellow},  {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},   {csWait, kPauseNextLsq},
+    {csEnd},
+};
+static LedRGBChunk lsqActiveTwo[] = {
+    {csSetup, 0, clYellow},  {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},   {csWait, kBlinkDuration},
+    {csRepeat, 1},
+    {csWait, kPauseNextLsq},
+    {csEnd},
+};
+static LedRGBChunk lsqActiveMany[] = {
+    {csSetup, 0, clYellow},  {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},   {csWait, kBlinkDuration},
+    {csRepeat, 2},
+    {csWait, kPauseNextLsq},
+    {csEnd},
 };
 
-static LedRGBChunk lsqTwoImmortals[] = {
-        {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
-        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
-        {csRepeat, 1},
-        {csWait, kPauseNextLsq},
-        {csEnd},
+
+static LedRGBChunk lsqOpenedOne[] = {
+    {csSetup, 0, clGreen},  {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},  {csWait, kPauseNextLsq},
+    {csEnd},
+};
+static LedRGBChunk lsqOpenedTwo[] = {
+    {csSetup, 0, clGreen},  {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},  {csWait, kBlinkDuration},
+    {csRepeat, 1},
+    {csWait, kPauseNextLsq},
+    {csEnd},
+};
+static LedRGBChunk lsqOpenedMany[] = {
+    {csSetup, 0, clGreen},  {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},  {csWait, kBlinkDuration},
+    {csRepeat, 2},
+    {csWait, kPauseNextLsq},
+    {csEnd},
 };
 
-static LedRGBChunk lsqManyImmortals[] = {
-        {csSetup, 0, clBlue},  {csWait, kBlinkDuration},
-        {csSetup, 0, clBlack}, {csWait, kBlinkDuration},
-        {csRepeat, 2},
-        {csWait, kPauseNextLsq},
-        {csEnd},
+
+static LedRGBChunk lsqClosedOne[] = {
+    {csSetup, 0, clRed},    {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},  {csWait, kPauseNextLsq},
+    {csEnd},
+};
+static LedRGBChunk lsqClosedTwo[] = {
+    {csSetup, 0, clRed},    {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},  {csWait, kBlinkDuration},
+    {csRepeat, 1},
+    {csWait, kPauseNextLsq},
+    {csEnd},
+};
+static LedRGBChunk lsqClosedMany[] = {
+    {csSetup, 0, clRed},    {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},  {csWait, kBlinkDuration},
+    {csRepeat, 2},
+    {csWait, kPauseNextLsq},
+    {csEnd},
 };
 
-static LedRGBChunk lsqPreImmortal[] = {
-        {csSetup, 0, clGreen},  {csWait, kBlinkDuration},
-        {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
-        {csEnd},
+
+static LedRGBChunk lsqChangedOne[] = {
+    {csSetup, 0, clBlue},   {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},  {csWait, kPauseNextLsq},
+    {csEnd},
 };
+static LedRGBChunk lsqChangedTwo[] = {
+    {csSetup, 0, clBlue},   {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},  {csWait, kBlinkDuration},
+    {csRepeat, 1},
+    {csWait, kPauseNextLsq},
+    {csEnd},
+};
+static LedRGBChunk lsqChangedMany[] = {
+    {csSetup, 0, clBlue},   {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},  {csWait, kBlinkDuration},
+    {csRepeat, 2},
+    {csWait, kPauseNextLsq},
+    {csEnd},
+};
+
 
 static LedRGBChunk lsqDischarged[] = {
-        {csSetup, 0, clRed},  {csWait, kBlinkDuration},
+        {csSetup, 0, clWhite},  {csWait, kBlinkDuration},
         {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
         {csEnd},
 };
 
 // Self
-const LedRGBChunk lsqSelfTypeImmortal[] = {
+const LedRGBChunk lsqSelfTypePlayer[] = {
         {csSetup, 0, {0, 1, 1} }, {csEnd},
 };
-const LedRGBChunk lsqSelfTypeImmortalNoVibro[] = {
-        {csSetup, 0, {1, 1, 0} }, {csEnd},
-};
-const LedRGBChunk lsqSelfTypePreimmortal[] = {
-        {csSetup, 0, {0, 1, 0} }, {csEnd},
-};
-const LedRGBChunk lsqSelfTypePreimmortalNoVibro[] = {
+const LedRGBChunk lsqSelfTypeMaster[] = {
         {csSetup, 0, {1, 0, 1} }, {csEnd},
 };
 
@@ -246,7 +297,7 @@ const LedRGBChunk lsqStart[] = {
         {csSetup, 0, clRed},   {csWait, 450},
         {csSetup, 0, clGreen}, {csWait, 450},
         {csSetup, 0, clBlue},  {csWait, 450},
-       {csSetup, 0, clBlack},
+        {csSetup, 0, clBlack},
         // {csSetup, 0, {0,1,0}},
         {csEnd},
 };

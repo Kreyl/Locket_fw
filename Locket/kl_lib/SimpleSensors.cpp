@@ -1,7 +1,7 @@
 /*
  * SimpleSensors.cpp
  *
- *  Created on: 17 ÿíâ. 2015 ã.
+ *  Created on: 17 ï¿½ï¿½ï¿½. 2015 ï¿½.
  *      Author: Kreyl
  */
 
@@ -11,7 +11,7 @@
 #if SIMPLESENSORS_ENABLED
 #include "PinSnsSettings.h"
 
-static PinSnsState_t States[PIN_SNS_CNT];
+static PinSnsState States[PIN_SNS_CNT];
 
 static THD_WORKING_AREA(waPinSnsThread, 128);
 __noreturn
@@ -20,7 +20,7 @@ static void SensorsThread(void *arg) {
     while(true) {
         ftVoidPSnsStLen PostProcessor = PinSns[0].Postprocessor;
         uint32_t GroupLen = 0;
-        PinSnsState_t *PStates = &States[0];
+        PinSnsState *PStates = &States[0];
         // ==== Iterate pins ====
         uint32_t i=0;
         while(i < PIN_SNS_CNT) {

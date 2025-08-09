@@ -5,10 +5,12 @@
 #include "ch.h"
 #include "kl_lib.h"
 #include "battery_consts.h"
+#include <vector>
 
 extern LedRGBwPower_t<11> led;
 extern Vibro_t<4> vibro;
 Config cfg;
+static rPkt pkt_tx;
 
 static uint32_t iVbat = 0UL;
 
@@ -16,108 +18,145 @@ static bool IsBatteryLow() {
     return iVbat < Battery::kLowVoltageAlkaline3v0_mV;
 }
 
+void Config::PrintType() {
+    switch(type) {
+        // Locket
+        case DevType::Idle:     Printf("Idle\r"); break;
+        case DevType::Opener:   Printf("Opener\r"); break;
+        case DevType::Restorer: Printf("Restorer\r"); break;
+        case DevType::Closer:   Printf("Closer\r"); break;
+        // Point
+        case DevType::Active:   Printf("Active\r"); break;
+        case DevType::Opened:   Printf("Opened\r"); break;
+        case DevType::Closed:   Printf("Closed\r"); break;
+    }
+    if(is_master) Printf("Master\r");
+}
+
+
 void Config::PrintTxPwr() {
     Printf("TxPwr: %S\r", CC_PwrToString(tx_power));
 }
 
 static void ShowSelfTypeWhenIdle() {
-    if(cfg.type == DevType::Immortal) {
-        if(cfg.VibroEnabled()) led.StartOrAddToQueue(lsqSelfTypeImmortal);
-        else led.StartOrAddToQueue(lsqSelfTypeImmortalNoVibro);
-    }
-    else led.StartOrAddToQueue(lsqSelfTypePreimmortal);
+    if(cfg.is_master) led.StartOrAddToQueue(lsqSelfTypeMaster);
+    else led.StartOrAddToQueue(lsqSelfTypePlayer);
 }
 
-static void SetupAndShowBrightness() {
-    uint8_t v = Config::kBrtTable[cfg.brt_indx];
-    lsqOneImmortal  [0].Color.B = v;
-    lsqTwoImmortals [0].Color.B = v;
-    lsqManyImmortals[0].Color.B = v;
-    lsqPreImmortal  [0].Color.G = v;
-    lsqDischarged   [0].Color.R = v;
-    led.StartOrAddToQueue(lsqOneImmortal);
-    ShowSelfTypeWhenIdle();
-    // Printf("Brt: %d\r", v);
-}
 
 namespace App {
-
-void SetDevtype(uint32_t type32) {
-    if(type32 > 0) cfg.type = DevType::Immortal;
-    else cfg.type = DevType::Preimmortal;
-    cfg.PrintType();
-    SetupAndShowBrightness();
-}
 
 void TakeBatteryVoltage(uint32_t vbat) {
     if(iVbat == 0UL) Printf("Battery: %d mV\r", vbat);
     iVbat = vbat;
 }
 
-void OnBtnEvt(BtnEvtInfo_t btn_info) {
+// Just indicate btnpress
+void OnBtnEvt(BtnEvtInfo btn_info) {
     switch(btn_info.btn_indx) {
-        case 0: // Vibro on/off
-            if(cfg.VibroEnabled()) cfg.DisableVibro();
-            else cfg.EnableVibro();
-            ShowSelfTypeWhenIdle(); // Indicate vibro state
+        case 0: // Open
+            vibro.StartOrAddToQueue(vsqBrrBrr);
             break;
-        case 1: // Increase brt
-            if(cfg.brt_indx < Config::kBrtCnt - 1) cfg.brt_indx++;
-            SetupAndShowBrightness();
+        case 1: // Restore
+            if(cfg.is_master) vibro.StartOrAddToQueue(vsqBrr);
             break;
-        case 2: // Decrease brt
-            if(cfg.brt_indx > 0) cfg.brt_indx--;
-            SetupAndShowBrightness();
+        case 2: // Close
+            vibro.StartOrAddToQueue(vsqBrrBrrBrr);
             break;
         default: break;
     } // switch
 }
 
 void OnSecondEvt() {
-    if(cfg.novibro_time_left_s > 0) cfg.novibro_time_left_s--;
+    // Nothing here
 }
 
 #pragma region // ==== Radio related ====
 static bool rx_pkt_printing = false;
-inline constexpr const uint8_t kImmortal = 18, kPreImmortal = 99;
-static uint32_t immortals_cnt = 0, preimmortals_cnt = 0;
+
+class Point {
+public:
+    uint32_t id = 0;
+    DevType type = DevType::Active;
+    DevType prev_type = DevType::Active;
+    Point(uint32_t id) : id(id) {}
+};
+
+static std::vector<Point> points;
 
 // RX. Called from main thread by evt which is periodically sent by radio
 void ProcessRxTbl(RxTable &tbl) {
-    if(cfg.type == DevType::Immortal) { // Only immortals can feel
-        // === Analyze table ===
-        uint32_t iimmortals_cnt = 0, ipreimmortals_cnt = 0;
-        for(uint32_t i=0; i<tbl.cnt; i++) {
-            rPkt &pkt = tbl[i];
-            if(rx_pkt_printing) pkt.Print();
-            if(pkt.IsImmortal == kImmortal) iimmortals_cnt++;
-            else if(pkt.IsImmortal == kPreImmortal) ipreimmortals_cnt++;
+    // === Analyze table ===
+    uint32_t active_cnt = 0, opened_cnt = 0, closed_cnt = 0, changed_cnt = 0;
+    for(uint32_t i=0; i<tbl.cnt; i++) {
+        rPkt &pkt = tbl[i];
+        if(rx_pkt_printing) pkt.Print();
+        DevType type = static_cast<DevType>(pkt.type);
+        // Process points only
+        if(!(type == DevType::Active or type == DevType::Opened or type == DevType::Closed)) continue;
+        // Find existing or add new point
+        Point *ppoint = nullptr;
+        for(auto &point : points) {
+            if(point.id == pkt.id) {
+                ppoint = &point;
+                break;
+            }
         }
-        immortals_cnt = iimmortals_cnt;
-        preimmortals_cnt = ipreimmortals_cnt;
-        // ==== Indicate ====
-        // Present immortals
-        switch(iimmortals_cnt) {
-            case 0:  break; // Noone near
-            case 1:
-                led.StartOrAddToQueue(lsqOneImmortal);
-                if(cfg.VibroEnabled()) vibro.StartOrAddToQueue(vsqBrr);
-                break;
-            case 2:
-                led.StartOrAddToQueue(lsqTwoImmortals);
-                if(cfg.VibroEnabled()) vibro.StartOrAddToQueue(vsqBrrBrr);
-                break;
-            default:
-                led.StartOrAddToQueue(lsqManyImmortals);
-                if(cfg.VibroEnabled()) vibro.StartOrAddToQueue(vsqBrrBrrBrr);
-                break;
-        } // switch
-        // Present preimmortals
-        if(ipreimmortals_cnt > 0) {
-            led.StartOrAddToQueue(lsqPreImmortal);
-            if(cfg.VibroEnabled()) vibro.StartOrAddToQueue(vsqLongBrr);
+        if(ppoint == nullptr) {
+            points.push_back(Point(pkt.id));
+            ppoint = &points.back();
+        }
+        ppoint->prev_type = ppoint->type;
+        ppoint->type = type;
+        // Count the point
+        if(ppoint->prev_type != ppoint->type) changed_cnt++;
+        switch(type) {
+            case DevType::Active: active_cnt++; break;
+            case DevType::Opened: opened_cnt++; break;
+            case DevType::Closed: closed_cnt++; break;
+            default: break;
         }
     }
+    // ==== Indicate depending on self type ====
+    // Show changed points only when the button is pressed
+    if(cfg.type != DevType::Idle) {
+        switch(changed_cnt) {
+            case 0: break;
+            case 1:  led.StartOrAddToQueue(lsqChangedOne);  break;
+            case 2:  led.StartOrAddToQueue(lsqChangedTwo);  break;
+            default: led.StartOrAddToQueue(lsqChangedMany); break;
+        }
+        vibro.StartOrAddToQueue(vsqLongBrr);
+    }
+
+    // Always show active points
+    switch(active_cnt) {
+        case 0: break;
+        case 1: led.StartOrAddToQueue(lsqActiveOne); break;
+        case 2: led.StartOrAddToQueue(lsqActiveTwo); break;
+        default: led.StartOrAddToQueue(lsqActiveMany); break;
+    }
+    // Vibrate if idle
+    if(active_cnt > 0 and cfg.type == DevType::Idle) vibro.StartOrAddToQueue(vsqBrr);
+
+    // Show opened and closed points to master only
+    if(cfg.is_master) {
+        switch(opened_cnt) {
+            case 0: break;
+            case 1: led.StartOrAddToQueue(lsqOpenedOne); break;
+            case 2: led.StartOrAddToQueue(lsqOpenedTwo); break;
+            default: led.StartOrAddToQueue(lsqOpenedMany); break;
+        } // switch
+        switch(closed_cnt) {
+            case 0: break;
+            case 1: led.StartOrAddToQueue(lsqClosedOne); break;
+            case 2: led.StartOrAddToQueue(lsqClosedTwo); break;
+            default: led.StartOrAddToQueue(lsqClosedMany); break;
+        } // switch
+        // Vibrate if idle
+        if((opened_cnt > 0 or closed_cnt > 0) and cfg.type == DevType::Idle) vibro.StartOrAddToQueue(vsqBrr);
+    }
+
     // Show discharged
     if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
     // Present self
@@ -125,10 +164,21 @@ void ProcessRxTbl(RxTable &tbl) {
 }
 
 // Tx. Called from radio level
-void PrepareTxPkt(rPkt *ppkt) {
-    ppkt->id = cfg.id;
-    ppkt->IsImmortal = cfg.type == DevType::Immortal? kImmortal : kPreImmortal;
-    ppkt->silt = Random::Generate(0, 0xFFFF);
+rPkt* PrepareTxPkt() {
+    // Check which btn is pressed. If no btn is pressed, no need to transmit.
+    if     (GetBtnState(0) == BTN_HOLDDOWN_STATE) cfg.type = DevType::Opener;
+    else if(GetBtnState(1) == BTN_HOLDDOWN_STATE and cfg.is_master) cfg.type = DevType::Restorer;
+    else if(GetBtnState(2) == BTN_HOLDDOWN_STATE) cfg.type = DevType::Closer;
+    else {
+        cfg.type = DevType::Idle;
+        return nullptr;
+    }
+    // Something is pressed
+    pkt_tx.id = cfg.id;
+    pkt_tx.type = static_cast<uint8_t>(cfg.type);
+    pkt_tx.is_master = cfg.is_master? 1 : 0;
+    pkt_tx.silt = Random::Generate(0, 0xFF);
+    return &pkt_tx;
 }
 #pragma endregion
 
@@ -136,8 +186,8 @@ void PrepareTxPkt(rPkt *ppkt) {
 void OnCmd(Shell *pshell) {
     Cmd_t *pcmd = &pshell->cmd;
     if(pcmd->NameIs("State")) {
-        Printf("Immortals: %d\r", immortals_cnt);
-        Printf("Preimmortals: %d\r", preimmortals_cnt);
+        // Printf("Immortals: %d\r", immortals_cnt);
+        // Printf("Preimmortals: %d\r", preimmortals_cnt);
         Printf("Battery: %d\r", iVbat);
         cfg.PrintTxPwr();
     }

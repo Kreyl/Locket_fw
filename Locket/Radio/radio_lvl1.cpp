@@ -28,14 +28,17 @@ cc1101_t CC(CC_Setup0);
 #define DBG1_CLR()
 #endif
 
-static rPkt pkt_rx, pkt_tx;
+static rPkt pkt_rx;
+static rPkt *ppkt_tx = nullptr;
 
 static uint32_t supercycle_cnt = 0;
 static RxTable tbl1, tbl2, *curr_tbl = &tbl1;
 static uint8_t tx_power;
 // Adaptive cycle cnt related
+#if RADAPTIVE_CYCLE_CNT
 static uint32_t sc_left_before_rare_mode = Radio::kNoReceptionScCnt;
 static uint32_t cycle_cnt = Radio::kCycleCntNominal;
+#endif
 
 
 static inline uint32_t TryToReceive(uint32_t rx_duration_ms) {
@@ -69,32 +72,52 @@ static void TryToSleep(uint32_t sleep_duration_ms) {
     chThdSleepMilliseconds(sleep_duration_ms);
 }
 
-static uint32_t ProcessCycle(bool must_rx) {
+static uint32_t DoZeroCycle() {
+    // Rx only if ppkt_tx is nullptr
+    if(ppkt_tx == nullptr) return TryToReceive(kCycleDuration_ms);
+    // Othervise, do rx and tx
     uint32_t rcvd_cnt = 0; // Count received packets
     int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
     // If TX slot is not zero, receive or sleep
     if(tx_slot != 0) {
         uint32_t time_before_tx = tx_slot * kSlotDuration_ms;
-        if(must_rx) rcvd_cnt += TryToReceive(time_before_tx);
-        else TryToSleep(time_before_tx);
+        rcvd_cnt += TryToReceive(time_before_tx);
     }
     // ==== TX ====
     DBG1_SET();
     CC.Recalibrate();
-    CC.Transmit(reinterpret_cast<uint8_t*>(&pkt_tx), kRPktSz);
+    CC.Transmit(reinterpret_cast<uint8_t*>(ppkt_tx), kRPktSz);
     DBG1_CLR();
     // If TX slot is not last: receive or sleep
     if(tx_slot != (kSlotCnt-1)) {
         uint32_t time_after_tx = ((kSlotCnt-1) - tx_slot) * kSlotDuration_ms;
-        if(must_rx) rcvd_cnt += TryToReceive(time_after_tx);
-        else TryToSleep(time_after_tx);
+        rcvd_cnt += TryToReceive(time_after_tx);
     }
     return rcvd_cnt;
 }
 
+
+static void DoTxOnlyCycle() {
+    int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
+    if(tx_slot != 0) {
+        uint32_t time_before_tx = tx_slot * kSlotDuration_ms;
+        TryToSleep(time_before_tx);
+    }
+    DBG1_SET();
+    CC.Recalibrate();
+    CC.Transmit(reinterpret_cast<uint8_t*>(ppkt_tx), kRPktSz);
+    DBG1_CLR();
+    if(tx_slot != (kSlotCnt-1)) {
+        uint32_t time_after_tx = ((kSlotCnt-1) - tx_slot) * kSlotDuration_ms;
+        TryToSleep(time_after_tx);
+    }
+}
+
+
 static void TaskFeelEachOther() {
-    // Run zero cycle with rx enabled and check if something was received
-    if(ProcessCycle(true) > 0) { // Something rcvd,
+#if RADAPTIVE_CYCLE_CNT // Adjust cycle cnt
+    uint32_t rcvd_cnt = DoZeroCycle();
+    if(rcvd_cnt > 0) { // Something rcvd,
         cycle_cnt = Radio::kCycleCntNominal;  // now receive often
         sc_left_before_rare_mode = Radio::kNoReceptionScCnt; // and reset counter-to-rare-mode
     }
@@ -103,8 +126,17 @@ static void TaskFeelEachOther() {
         else cycle_cnt = Radio::kCycleCntRare; // Or receive rarely if zero
     }
     // Printf("cycle_cnt=%u, sc_left_before_rare_mode=%u\r", cycle_cnt, sc_left_before_rare_mode);
+#else
+    DoZeroCycle();
+    uint32_t cycle_cnt = Radio::kCycleCntNominal;
+#endif
     // Run remaining transmit-only cycles
-    for(uint32_t cycle_n=1; cycle_n < cycle_cnt; cycle_n++) ProcessCycle(false);
+    if(ppkt_tx != nullptr) { // Must transmit
+        for(uint32_t cycle_n=1; cycle_n < cycle_cnt; cycle_n++) DoTxOnlyCycle();
+    }
+    else { // No tx, sleep cycle_cnt-1 cycles
+        TryToSleep((cycle_cnt - 1) * kCycleDuration_ms);
+    }
 }
 
 static THD_WORKING_AREA(warLvl1Thread, 256);
@@ -112,7 +144,7 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
-        App::PrepareTxPkt(&pkt_tx);
+        ppkt_tx = App::PrepareTxPkt(); // May return null indicating no tx required
         TaskFeelEachOther();
         // Set new tx pwr if changed
         if(tx_power != cfg.tx_power) {
@@ -144,9 +176,9 @@ retv Init() {
         CC.SetPktSize(kRPktSz);
         CC.SetChannel(0);
         CC.SetTxPower(cfg.tx_power);
-        // CC.SetBitrate(CCBitrate500k);
+        CC.SetBitrate(CCBitrate500k);
         // CC.SetBitrate(CCBitrate250k);
-        CC.SetBitrate(CCBitrate100k);
+        // CC.SetBitrate(CCBitrate100k);
         // CC.SetBitrate(CCBitrate38k4);
         // CC.SetBitrate(CCBitrate10k);
         // CC.SetBitrate(CCBitrate2k4);

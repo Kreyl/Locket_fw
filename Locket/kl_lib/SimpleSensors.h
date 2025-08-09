@@ -1,7 +1,7 @@
 /*
  * SimpleSensors.h
  *
- *  Created on: 17 ÿíâ. 2015 ã.
+ *  Created on: 17 ï¿½ï¿½ï¿½. 2015 ï¿½.
  *      Author: Kreyl
  */
 
@@ -15,8 +15,8 @@
 #include "hal.h"
 #include "kl_lib.h"
 
-enum PinSnsState_t {pssNone, pssLo, pssHi, pssRising, pssFalling};
-typedef void (*ftVoidPSnsStLen)(PinSnsState_t *PState, uint32_t Len);
+enum PinSnsState {pssNone, pssLo, pssHi, pssRising, pssFalling};
+typedef void (*ftVoidPSnsStLen)(PinSnsState *PState, uint32_t Len);
 
 // Single pin setup data
 struct PinSns_t {

@@ -3,7 +3,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "Highlander"
+#define APP_NAME            "WarhammerPoints"
 
 #ifndef TRUE
 #define TRUE    1

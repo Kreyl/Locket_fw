@@ -130,8 +130,9 @@ retv ReadModeFromDip() {
     // Select power
     uint32_t bits = dw32 & 0b1111; // Remove high bits = group 5678
     cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : kPwrTable[bits];
-    // Select dev type: group 5678
-    App::SetDevtype(dw32 & 0x80UL);
+    // Is it master?
+    cfg.is_master = (dw32 & 0x80UL) != 0;
+    cfg.PrintType();
     cfg.PrintTxPwr();
     return retv::New;
 }
