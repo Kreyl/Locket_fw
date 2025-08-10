@@ -88,7 +88,6 @@ void ProcessRxTbl(RxTable &tbl) {
     uint32_t active_cnt = 0, opened_cnt = 0, closed_cnt = 0, changed_cnt = 0;
     for(uint32_t i=0; i<tbl.cnt; i++) {
         rPkt &pkt = tbl[i];
-        // pkt.Print();
         if(rx_pkt_printing) pkt.Print();
         DevType type = static_cast<DevType>(pkt.type);
         // Process points only
@@ -105,7 +104,7 @@ void ProcessRxTbl(RxTable &tbl) {
             default: break;
         }
     }
-    Printf("Active: %d, Opened: %d, Closed: %d, Changed: %u\r", active_cnt, opened_cnt, closed_cnt, changed_cnt);
+    if(rx_pkt_printing) Printf("Active: %d, Opened: %d, Closed: %d, Changed: %u\r", active_cnt, opened_cnt, closed_cnt, changed_cnt);
     // ==== Indicate depending on self type ====
     // Show changed points only when the button is pressed
     if(cfg.type != DevType::Idle) {
