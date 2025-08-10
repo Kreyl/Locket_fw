@@ -20,7 +20,7 @@ public:
     DevType type = DevType::Idle;
     bool is_master = false;
     uint8_t tx_power = 0;
-    uint32_t quorum_sz = 3UL;
+    uint32_t quorum_sz = 10UL;
     void PrintType() const;
     void PrintTxPwr() const;
 };

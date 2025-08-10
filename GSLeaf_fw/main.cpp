@@ -107,9 +107,22 @@ void main(void) {
                 Printf("Volume: %d -> %d\r", tmp, volume);
             }
         }
+        if(ini::ReadInt32("Settings.ini", "Common", "QuorumSize", &tmp) == retvOk) {
+            if(tmp > 0) cfg.quorum_sz = static_cast<uint32_t>(tmp);
+        }
+        if(ini::ReadInt32("Settings.ini", "Common", "TxPower", &tmp) == retvOk) {
+            if(tmp < 0) tmp = 0;
+            if(tmp > 11) tmp = 11;
+            cfg.tx_power = kPwrTable[tmp];
+        }
 #endif
+        // DEBUG
+        // volume = -10;
+        // cfg.quorum_sz = 3;
+        // cfg.tx_power = CC_PwrMinus10dBm;
 
-        volume = -10;
+        Printf("Quorum size: %d\r", cfg.quorum_sz);
+        cfg.PrintTxPwr();
 
         Codec.SetSpeakerVolume(0);
         Codec.SetMasterVolume(volume);
@@ -129,7 +142,6 @@ void main(void) {
 
     // Init App
     cfg.type = DevType::Active;
-    cfg.tx_power = CC_PwrMinus10dBm;
     led.StartOrRestart(lsqActive);
 
     // Main cycle

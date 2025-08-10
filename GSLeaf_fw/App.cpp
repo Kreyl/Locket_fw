@@ -68,7 +68,7 @@ static void SetState(DevType commander_type) {
         switch(new_type) {
             case DevType::Opened:
                 led.StartOrRestart(lsqOpened);
-                AuPlayer.Play("opened.wav", spmSingle);
+                AuPlayer.Play("Opening.wav", spmSingle);
                 break;
             case DevType::Active:
                 led.StartOrRestart(lsqActive);
@@ -76,7 +76,7 @@ static void SetState(DevType commander_type) {
                 break;
             case DevType::Closed:
                 led.StartOrRestart(lsqClosed);
-                AuPlayer.Play("closed.wav", spmSingle);
+                AuPlayer.Play("Closing.wav", spmSingle);
                 break;
             default: break;
         }
@@ -96,13 +96,15 @@ void ProcessRxTbl(RxTable &tbl) {
             SetState(type);
             return;
         }
-        // Proceed when no master nearby
+        // Proceed when no master will is present
         if(type == DevType::Opener) opener_cnt++;
         if(type == DevType::Closer) closer_cnt++;
     }
     // ==== Act ====
-    if(opener_cnt >= cfg.quorum_sz and opener_cnt >= closer_cnt) SetState(DevType::Opener);
-    else if(closer_cnt >= cfg.quorum_sz and closer_cnt > opener_cnt) SetState(DevType::Closer);
+    if(cfg.type == DevType::Active) {
+        if(opener_cnt >= cfg.quorum_sz and opener_cnt >= closer_cnt) SetState(DevType::Opener);
+        else if(closer_cnt >= cfg.quorum_sz and closer_cnt > opener_cnt) SetState(DevType::Closer);
+    }
 
     // Show discharged
     // if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
