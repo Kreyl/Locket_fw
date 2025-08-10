@@ -70,7 +70,7 @@ OBJCPY = arm-none-eabi-objcopy
 SZ = arm-none-eabi-size
 GDB = arm-none-eabi-gdb  # Required for flashing using BMP
 # GDB COM port: required for flashing using BMP
-GDB_COM = \\.\COM5
+GDB_COM = COM5
 
 ######################### Do not touch #########################
 .PHONY: .FORCE print_size clean flash # "virtual" symbols to "rebuild" them always

@@ -28,13 +28,12 @@ extern Config cfg;
 
 namespace App {
 
+extern uint32_t quorum_sz;
+
 void TakeBatteryVoltage(uint32_t vbat);
 
-void ShowSelfType();
-
 // Evt processing
-void OnBtnEvt(BtnEvtInfo btn_info);
-void OnSecondEvt();
+// void OnSecondEvt();
 
 // Radio
 rPkt* PrepareTxPkt(); // Return null if no tx required

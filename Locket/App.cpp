@@ -38,17 +38,17 @@ void Config::PrintTxPwr() {
     Printf("TxPwr: %S\r", CC_PwrToString(tx_power));
 }
 
-static void ShowSelfTypeWhenIdle() {
-    if(cfg.is_master) led.StartOrAddToQueue(lsqSelfTypeMaster);
-    else led.StartOrAddToQueue(lsqSelfTypePlayer);
-}
-
 
 namespace App {
 
 void TakeBatteryVoltage(uint32_t vbat) {
     if(iVbat == 0UL) Printf("Battery: %d mV\r", vbat);
     iVbat = vbat;
+}
+
+void ShowSelfType() {
+    if(cfg.is_master) led.StartOrAddToQueue(lsqSelfTypeMaster);
+    else led.StartOrAddToQueue(lsqSelfTypePlayer);
 }
 
 // Just indicate btnpress
@@ -90,6 +90,7 @@ void ProcessRxTbl(RxTable &tbl) {
     uint32_t active_cnt = 0, opened_cnt = 0, closed_cnt = 0, changed_cnt = 0;
     for(uint32_t i=0; i<tbl.cnt; i++) {
         rPkt &pkt = tbl[i];
+        // pkt.Print();
         if(rx_pkt_printing) pkt.Print();
         DevType type = static_cast<DevType>(pkt.type);
         // Process points only
@@ -103,6 +104,7 @@ void ProcessRxTbl(RxTable &tbl) {
             }
         }
         if(ppoint == nullptr) {
+            Printf("New point: %d\r", pkt.id);
             points.push_back(Point(pkt.id));
             ppoint = &points.back();
         }
@@ -117,16 +119,19 @@ void ProcessRxTbl(RxTable &tbl) {
             default: break;
         }
     }
+    Printf("Active: %d, Opened: %d, Closed: %d, Changed: %u\r", active_cnt, opened_cnt, closed_cnt, changed_cnt);
     // ==== Indicate depending on self type ====
     // Show changed points only when the button is pressed
     if(cfg.type != DevType::Idle) {
-        switch(changed_cnt) {
-            case 0: break;
-            case 1:  led.StartOrAddToQueue(lsqChangedOne);  break;
-            case 2:  led.StartOrAddToQueue(lsqChangedTwo);  break;
-            default: led.StartOrAddToQueue(lsqChangedMany); break;
+        if(!cfg.is_master) {
+            switch(changed_cnt) {
+                case 0: break;
+                case 1:  led.StartOrAddToQueue(lsqChangedOne);  break;
+                case 2:  led.StartOrAddToQueue(lsqChangedTwo);  break;
+                default: led.StartOrAddToQueue(lsqChangedMany); break;
+            }
         }
-        vibro.StartOrAddToQueue(vsqLongBrr);
+        if(changed_cnt != 0) vibro.StartOrAddToQueue(vsqLongBrr);
     }
 
     // Always show active points
@@ -136,31 +141,32 @@ void ProcessRxTbl(RxTable &tbl) {
         case 2: led.StartOrAddToQueue(lsqActiveTwo); break;
         default: led.StartOrAddToQueue(lsqActiveMany); break;
     }
+
     // Vibrate if idle
-    if(active_cnt > 0 and cfg.type == DevType::Idle) vibro.StartOrAddToQueue(vsqBrr);
+    if(active_cnt > 0 and cfg.type == DevType::Idle) vibro.StartOrRestart(vsqBrr);
 
     // Show opened and closed points to master only
     if(cfg.is_master) {
         switch(opened_cnt) {
-            case 0: break;
-            case 1: led.StartOrAddToQueue(lsqOpenedOne); break;
-            case 2: led.StartOrAddToQueue(lsqOpenedTwo); break;
+            case 0:  break;
+            case 1:  led.StartOrAddToQueue(lsqOpenedOne); break;
+            case 2:  led.StartOrAddToQueue(lsqOpenedTwo); break;
             default: led.StartOrAddToQueue(lsqOpenedMany); break;
         } // switch
         switch(closed_cnt) {
             case 0: break;
-            case 1: led.StartOrAddToQueue(lsqClosedOne); break;
-            case 2: led.StartOrAddToQueue(lsqClosedTwo); break;
+            case 1:  led.StartOrAddToQueue(lsqClosedOne); break;
+            case 2:  led.StartOrAddToQueue(lsqClosedTwo); break;
             default: led.StartOrAddToQueue(lsqClosedMany); break;
         } // switch
         // Vibrate if idle
-        if((opened_cnt > 0 or closed_cnt > 0) and cfg.type == DevType::Idle) vibro.StartOrAddToQueue(vsqBrr);
+        if((opened_cnt > 0 or closed_cnt > 0) and cfg.type == DevType::Idle) vibro.StartOrRestart(vsqBrr);
     }
 
     // Show discharged
     if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
     // Present self
-    ShowSelfTypeWhenIdle();
+    ShowSelfType();
 }
 
 // Tx. Called from radio level
