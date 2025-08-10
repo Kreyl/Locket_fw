@@ -5,7 +5,7 @@
 #include "ch.h"
 #include "kl_lib.h"
 #include "battery_consts.h"
-#include <vector>
+#include <unordered_map>
 
 extern LedRGBwPower_t<11> led;
 extern Vibro_t<4> vibro;
@@ -18,7 +18,7 @@ static bool IsBatteryLow() {
     return iVbat < Battery::kLowVoltageAlkaline3v0_mV;
 }
 
-void Config::PrintType() {
+void Config::PrintType() const {
     switch(type) {
         // Locket
         case DevType::Idle:     Printf("Idle\r"); break;
@@ -34,7 +34,7 @@ void Config::PrintType() {
 }
 
 
-void Config::PrintTxPwr() {
+void Config::PrintTxPwr() const {
     Printf("TxPwr: %S\r", CC_PwrToString(tx_power));
 }
 
@@ -76,13 +76,11 @@ static bool rx_pkt_printing = false;
 
 class Point {
 public:
-    uint32_t id = 0;
     DevType type = DevType::Active;
     DevType prev_type = DevType::Active;
-    Point(uint32_t id) : id(id) {}
 };
 
-static std::vector<Point> points;
+static std::unordered_map<uint32_t, Point> points;
 
 // RX. Called from main thread by evt which is periodically sent by radio
 void ProcessRxTbl(RxTable &tbl) {
@@ -95,23 +93,11 @@ void ProcessRxTbl(RxTable &tbl) {
         DevType type = static_cast<DevType>(pkt.type);
         // Process points only
         if(!(type == DevType::Active or type == DevType::Opened or type == DevType::Closed)) continue;
-        // Find existing or add new point
-        Point *ppoint = nullptr;
-        for(auto &point : points) {
-            if(point.id == pkt.id) {
-                ppoint = &point;
-                break;
-            }
-        }
-        if(ppoint == nullptr) {
-            Printf("New point: %d\r", pkt.id);
-            points.push_back(Point(pkt.id));
-            ppoint = &points.back();
-        }
-        ppoint->prev_type = ppoint->type;
-        ppoint->type = type;
+        Point &point = points[pkt.id]; // Get an existing point or add a new one
+        point.prev_type = point.type;
+        point.type = type;
         // Count the point
-        if(ppoint->prev_type != ppoint->type) changed_cnt++;
+        if(point.prev_type != point.type) changed_cnt++;
         switch(type) {
             case DevType::Active: active_cnt++; break;
             case DevType::Opened: opened_cnt++; break;

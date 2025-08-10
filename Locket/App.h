@@ -20,8 +20,8 @@ public:
     DevType type = DevType::Idle;
     bool is_master = false;
     uint8_t tx_power = 0;
-    void PrintType();
-    void PrintTxPwr();
+    void PrintType() const;
+    void PrintTxPwr() const;
 };
 
 extern Config cfg;

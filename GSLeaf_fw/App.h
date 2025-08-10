@@ -20,15 +20,14 @@ public:
     DevType type = DevType::Idle;
     bool is_master = false;
     uint8_t tx_power = 0;
-    void PrintType();
-    void PrintTxPwr();
+    uint32_t quorum_sz = 3UL;
+    void PrintType() const;
+    void PrintTxPwr() const;
 };
 
 extern Config cfg;
 
 namespace App {
-
-extern uint32_t quorum_sz;
 
 void TakeBatteryVoltage(uint32_t vbat);
 

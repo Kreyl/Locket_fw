@@ -4,7 +4,6 @@
 #include "ch.h"
 #include "kl_lib.h"
 #include "battery_consts.h"
-#include <vector>
 #include "AuPlayer.h"
 
 extern LedRGB_t led;
@@ -19,7 +18,7 @@ void Resume();
 //     return iVbat < Battery::kLowVoltageAlkaline3v0_mV;
 // }
 
-void Config::PrintType() {
+void Config::PrintType() const {
     switch(type) {
         // Locket
         case DevType::Idle:     Printf("Idle\r"); break;
@@ -35,14 +34,12 @@ void Config::PrintType() {
 }
 
 
-void Config::PrintTxPwr() {
+void Config::PrintTxPwr() const {
     Printf("TxPwr: %S\r", CC_PwrToString(tx_power));
 }
 
 
 namespace App {
-
-uint32_t quorum_sz = 10UL;
 
 void TakeBatteryVoltage(uint32_t vbat) {
     if(iVbat == 0UL) Printf("Battery: %d mV\r", vbat);
@@ -56,16 +53,6 @@ void OnSecondEvt() {
 
 #pragma region // ==== Radio related ====
 static bool rx_pkt_printing = false;
-
-class Point {
-public:
-    uint32_t id = 0;
-    DevType type = DevType::Active;
-    DevType prev_type = DevType::Active;
-    Point(uint32_t id) : id(id) {}
-};
-
-static std::vector<Point> points;
 
 static void SetState(DevType commander_type) {
     DevType new_type = cfg.type;
@@ -114,8 +101,8 @@ void ProcessRxTbl(RxTable &tbl) {
         if(type == DevType::Closer) closer_cnt++;
     }
     // ==== Act ====
-    if(opener_cnt >= quorum_sz and opener_cnt >= closer_cnt) SetState(DevType::Opener);
-    else if(closer_cnt >= quorum_sz and closer_cnt > opener_cnt) SetState(DevType::Closer);
+    if(opener_cnt >= cfg.quorum_sz and opener_cnt >= closer_cnt) SetState(DevType::Opener);
+    else if(closer_cnt >= cfg.quorum_sz and closer_cnt > opener_cnt) SetState(DevType::Closer);
 
     // Show discharged
     // if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
