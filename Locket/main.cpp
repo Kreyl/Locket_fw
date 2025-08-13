@@ -63,7 +63,10 @@ void main(void) {
     // beeper.Init();
     // PillMgr::Init();
 
-    if(Radio::Init().IsOk()) led.StartOrRestart(lsqStart);
+    if(Radio::Init().IsOk()) {
+        led.StartOrRestart(lsqStart);
+        vibro.StartOrRestart(vsqBrrBrr);
+    }
     else led.StartOrRestart(lsqFailure);
     chThdSleepMilliseconds(1008);
 
