@@ -133,7 +133,10 @@ retv ReadModeFromDip() {
     // uint32_t bits = dw32 & 0b1111; // Remove high bits = group 5678
     // cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : kPwrTable[bits];
     // Is it master?
+    bool old_test_station = be_test_station;
     be_test_station = (dw32 & 0x80UL);
+    if(old_test_station != be_test_station and be_test_station) Printf("Test station\r");
+
     return retv::New;
 }
 
