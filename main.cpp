@@ -1,261 +1,165 @@
 #include "board.h"
 #include "led.h"
 #include "vibro.h"
-#include "beeper.h"
-#include "Sequences.h"
-#include "radio_lvl1.h"
-#include "kl_i2c.h"
 #include "kl_lib.h"
-#include "kl_buf.h"
-//#include "pill.h"
-//#include "pill_mgr.h"
-#include "MsgQ.h"
-#include "SimpleSensors.h"
-#include "buttons.h"
-#include "version.h"
+#include "radio_lvl1.h"
+#include "beeper.h"
+#include "adcL151.h"
 
-#if 1 // ======================== Variables and defines ========================
+#include "Sequences.h"
+
+#pragma region // ======================== Variables and defines ========================
 // Forever
-EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
-static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
-CmdUart_t Uart{&CmdUartParams};
+extern const char *kBuildTime, *kBuildCfgName;
+EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> evt_q_main;
+static const UartParams_t kCmdUartParams(115200, CMD_UART_PARAMS);
+CmdUart uart { &kCmdUartParams };
 static void ITask();
-static void OnCmd(Shell_t *PShell);
+static void OnCmd(Shell *pshell);
 
-static void ReadAndSetupMode();
+static retv ReadModeFromDip();
 
-// EEAddresses
-#define EE_ADDR_DEVICE_ID       0
-
-static const PinInputSetup_t DipSwPin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
+static const PinInputSetup_t dip_sw_pin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
-static uint8_t ISetID(int32_t NewID);
-void ReadIDfromEE();
 
-// ==== Periphery ====
-Vibro_t Vibro {VIBRO_SETUP};
-#if BEEPER_ENABLED
-Beeper_t Beeper {BEEPER_PIN};
-#endif
+ledRGBwPower_t<11> led { led_R_PIN, led_G_PIN, led_B_PIN, led_EN_PIN };
+Vibro_t<4> vibro { VIBRO_SETUP };
+Beeper_t<4> beeper { BEEPER_PIN };
 
-LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
-bool be_test_station;
+static TmrKL_t tmr_every_second {TIME_MS2I(1000), EvtId::EverySecond, tktPeriodic};
+static TmrKL_t tmr_check_uart {TIME_MS2I(UART_RX_POLLING_MS), EvtId::UartCheckTime, tktPeriodic};
 
-// ==== Timers ====
-static TmrKL_t TmrEverySecond {TIME_MS2I(540), evtIdEverySecond, tktPeriodic};
-//static TmrKL_t TmrRxTableCheck {MS2ST(2007), evtIdCheckRxTable, tktPeriodic};
-static uint32_t TimeS;
-#endif
+void SleepNow(uint32_t delay) {
+    chSysLock();
+    Iwdg::InitAndStart(delay);
+    Sleep::EnterStandby();
+    chSysUnlock();
+}
+#pragma endregion
 
 void main(void) {
     // ==== Init Vcore & clock system ====
-    SetupVCore(vcore1V5);
+    SetupVCore(vcore1V2);
     Clk.SetMSI4MHz();
+    Clk.EnableHSI(); // For ADC
     Clk.UpdateFreqValues();
-
     // === Init OS ===
     halInit();
     chSysInit();
-    EvtQMain.Init();
+    evt_q_main.Init();
 
     // ==== Init hardware ====
-    Uart.Init();
-    ReadIDfromEE();
-    Printf("\r%S %S; ID=%u\r", APP_NAME, kBuildTime, Cfg.ID);
-//    Printf("\r%X\t%X\t%X\r", GetUniqID1(), GetUniqID2(), GetUniqID3());
-//    if(Sleep::WasInStandby()) {
-//        Uart.Printf("WasStandby\r");
-//        Sleep::ClearStandbyFlag();
-//    }
+    uart.Init();
+    cfg.id = GetUniqID32();
+    Printf("\r%S %S; ID: 0x%08X\r", APP_NAME, kBuildTime, cfg.id);
     Clk.PrintFreqs();
-    Random::Seed(GetUniqID3());   // Init random algorythm with uniq ID
 
-    Led.Init();
-    Led.StartOrRestart(lsqStart);
+    Random::SeedWithUniqID();
+    led.Init();
+    vibro.Init();
+    Adc::Init(); // Battery measurement
+    beeper.Init();
+    // PillMgr::Init();
 
-    Printf("Vibro\r");
-    Vibro.Init();
-//    Vibro.SetupSeqEndEvt(evtIdVibroSeqDone);
-    Vibro.StartOrRestart(vsqBrrBrr);
-    chThdSleepMilliseconds(270);
+    if(Radio::Init().IsOk()) {
+        led.StartOrRestart(lsqStart);
+        vibro.StartOrRestart(vsqBrrBrr);
+        // beeper.StartOrRestart(bsqBeepBeep);
+    }
+    else led.StartOrRestart(lsqFailure);
+    chThdSleepMilliseconds(1008);
 
-#if BEEPER_ENABLED // === Beeper ===
-    Printf("Beeper\r");
-    Beeper.Init();
-    Beeper.StartOrRestart(bsqBeepPillOk);
-    chThdSleepMilliseconds(999);
-#endif
-#if BUTTONS_ENABLED
+    // Read dev type and tx pwr from dip, and load state
+    ReadModeFromDip();
+    App::ShowSelfType();
+    tmr_every_second.StartOrRestart();
+    tmr_check_uart.StartOrRestart();
     SimpleSensors::Init();
-#endif
-//    Adc.Init();
-
-#if PILL_ENABLED // === Pill ===
-    i2c1.Init();
-    PillMgr.Init();
-#endif
-
-    ReadAndSetupMode();
-
-    // ==== Radio ====
-    if(Radio.Init() != retvOk) Led.StartOrRestart(lsqFailure);
-
-    TmrEverySecond.StartOrRestart();
 
     // Main cycle
     ITask();
 }
 
+uint32_t iVbat = 0UL;
+
 __noreturn
 void ITask() {
     while(true) {
-        EvtMsg_t Msg = EvtQMain.Fetch(TIME_INFINITE);
-        switch(Msg.ID) {
-            case evtIdEverySecond:
-                TimeS++;
-                ReadAndSetupMode();
+        EvtMsg_t msg = evt_q_main.Fetch(TIME_INFINITE);
+        switch(msg.id) {
+            case EvtId::UartCheckTime:
+                while(uart.TryParseRxBuff() == retv::Ok) { OnCmd((Shell*)&uart); }
                 break;
 
-#if BUTTONS_ENABLED
-            case evtIdButtons:
-                Printf("Btn %u %u\r", Msg.BtnEvtInfo.BtnID, Msg.BtnEvtInfo.Type);
-                if(Msg.BtnEvtInfo.BtnID == 0) Led.StartOrRestart(lsqBlinkRed);
-                else if(Msg.BtnEvtInfo.BtnID == 1) Led.StartOrRestart(lsqBlinkGreen);
-                else if(Msg.BtnEvtInfo.BtnID == 2) Led.StartOrRestart(lsqBlinkBlue);
-                break;
-#endif
-
-            case evtIdLedSeqDone:
+            case EvtId::EverySecond:
+                if(ReadModeFromDip() == retv::New) chThdSleepMilliseconds(810);
+                Adc::StartMeasurement();
                 break;
 
-            case evtIdShellCmd:
-                OnCmd((Shell_t*)Msg.Ptr);
-                ((Shell_t*)Msg.Ptr)->SignalCmdProcessed();
+            case EvtId::Buttons:
+                Printf("Btn %u %u\r", msg.btn_info.btn_indx, msg.btn_info.type);
+                if     (msg.btn_info.btn_indx == 0) led.StartOrRestart(lsqBlinkRed);
+                else if(msg.btn_info.btn_indx == 1) led.StartOrRestart(lsqBlinkGreen);
+                else if(msg.btn_info.btn_indx == 2) led.StartOrRestart(lsqBlinkBlue);
                 break;
-            default: Printf("Unhandled Msg %u\r", Msg.ID); break;
+
+            case EvtId::CheckRxTable:
+                // Printf("RxTable: 0x%X\r", msg.ptr);
+                break;
+
+            case EvtId::AdcRslt: {
+                uint32_t vd = Adc::GetResultMedian(0);
+                uint32_t vbat = Adc::GetVDAmV(vd);
+                // Printf("Battery: %u mV\r", vbat);
+                if(iVbat == 0UL) Printf("Battery: %d mV\r", vbat);
+                iVbat = vbat;
+            } break;
+
+            default:
+                Printf("Unhandled msg %u\r", msg.id);
+                break;
         } // Switch
     } // while true
 } // ITask()
 
-__unused
-void ReadAndSetupMode() {
-    static uint32_t OldDipSettings = 0xFFFF;
-    uint8_t b = GetDipSwitch();
-    if(b == OldDipSettings) return;
-    // ==== Something has changed ====
-    Printf("Dip: 0x%02X\r", b);
-    OldDipSettings = b;
-    // Reset everything
-    Vibro.Stop();
-    Led.Stop();
-    // Select self type
-    bool old_test_station = be_test_station;
-    be_test_station = b & 0x80;
-    if(be_test_station and !old_test_station) Printf("Test Station\r");
+
+retv ReadModeFromDip() {
+    static uint32_t old_dip_settings = 0xFFFF;
+    uint32_t dw32 = GetDipSwitch();
+    if(dw32 == old_dip_settings) return retv::NoChanges;
+    // Something has changed
+    Printf("Dip: 0x%02X; ", dw32);
+    old_dip_settings = dw32;
     // Select power
-//    b &= 0b1111; // Remove high bits
-//    Printf("Type: %u; Pwr: %u\r", Type, b);
-//    Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
+    uint32_t bits = dw32 & 0b1111; // Remove high bits = group 5678
+    cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : kPwrTable[bits];
+    // Is it master?
+    cfg.is_master = (dw32 & 0x80UL) != 0;
+    cfg.PrintType();
+    cfg.PrintTxPwr();
+    return retv::New;
 }
 
 #if 1 // ================= Command processing ====================
-void OnCmd(Shell_t *PShell) {
-	Cmd_t *PCmd = &PShell->Cmd;
-    __attribute__((unused)) int32_t dw32 = 0;  // May be unused in some configurations
-//    Uart.Printf("%S\r", PCmd->Name);
+void OnCmd(Shell *pshell) {
+    Cmd_t *pcmd = &pshell->cmd;
     // Handle command
-    if(PCmd->NameIs("Ping")) {
-        PShell->Ack(retvOk);
-    }
-    else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
+    if(pcmd->NameIs("Ping")) pshell->Ok();
+    else if(pcmd->NameIs("Version")) pshell->Print("%S %S\r", APP_NAME, kBuildTime);
 
-    // else if(PCmd->NameIs("GetID")) PShell->Reply("ID", Cfg.ID);
-
-    // else if(PCmd->NameIs("SetID")) {
-    //     int32_t FID = 0;
-    //     if(PCmd->GetNext<int32_t>(&FID) != retvOk) { PShell->Ack(retvCmdError); return; }
-    //     uint8_t r = ISetID(FID);
-//        RMsg_t msg;
-//        msg.Cmd = R_MSG_SET_CHNL;
-//        msg.Value = ID2RCHNL(ID);
-//        Radio.RMsgQ.SendNowOrExit(msg);
-        // PShell->Ack(r);
-    // }
-
-#if PILL_ENABLED // ==== Pills ====
-    else if(PCmd->NameIs("PillRead32")) {
-        int32_t Cnt = 0;
-        if(PCmd->GetNextInt32(&Cnt) != OK) { PShell->Ack(CMD_ERROR); return; }
-        uint8_t MemAddr = 0, b = OK;
-        PShell->Printf("#PillData32 ");
-        for(int32_t i=0; i<Cnt; i++) {
-            b = PillMgr.Read(MemAddr, &dw32, 4);
-            if(b != OK) break;
-            PShell->Printf("%d ", dw32);
-            MemAddr += 4;
-        }
-        Uart.Printf("\r\n");
-        PShell->Ack(b);
-    }
-
-    else if(PCmd->NameIs("PillWrite32")) {
-        uint8_t b = CMD_ERROR;
-        uint8_t MemAddr = 0;
-        // Iterate data
-        while(true) {
-            if(PCmd->GetNextInt32(&dw32) != OK) break;
-//            Uart.Printf("%X ", Data);
-            b = PillMgr.Write(MemAddr, &dw32, 4);
-            if(b != OK) break;
-            MemAddr += 4;
-        } // while
-        Uart.Ack(b);
-    }
-#endif
-
-//    else if(PCmd->NameIs("Pill")) {
-//        if(PCmd->GetNextInt32(&dw32) != OK) { PShell->Ack(CMD_ERROR); return; }
-//        PillType = (PillType_t)dw32;
-//        App.SignalEvt(EVT_PILL_CHECK);
-//    }
-
-    else PShell->Ack(retvCmdUnknown);
+    else App::OnCmd(pshell);
 }
 #endif
 
-#if 0 // =========================== ID management =============================
-void ReadIDfromEE() {
-    Cfg.ID = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
-    if(Cfg.ID < ID_MIN or Cfg.ID > ID_MAX) {
-        Printf("\rUsing default ID\r");
-        Cfg.ID = ID_DEFAULT;
-    }
-    Radio.PktTx.ID = Cfg.ID;
-}
-
-uint8_t ISetID(int32_t NewID) {
-    if(NewID < ID_MIN or NewID > ID_MAX) return retvFail;
-    uint8_t rslt = EE::Write32(EE_ADDR_DEVICE_ID, NewID);
-    if(rslt == retvOk) {
-        Cfg.ID = NewID;
-        Radio.PktTx.ID = Cfg.ID;
-        Printf("New ID: %u\r", Cfg.ID);
-        return retvOk;
-    }
-    else {
-        Printf("EE error: %u\r", rslt);
-        return retvFail;
-    }
-}
-#endif
 
 // ====== DIP switch ======
 uint8_t GetDipSwitch() {
-    uint8_t Rslt = 0;
-    for(int i=0; i<DIP_SW_CNT; i++) PinSetupInput(DipSwPin[i].PGpio, DipSwPin[i].Pin, DipSwPin[i].PullUpDown);
-    for(int i=0; i<DIP_SW_CNT; i++) {
-        if(!PinIsHi(DipSwPin[i].PGpio, DipSwPin[i].Pin)) Rslt |= (1 << i);
-        PinSetupAnalog(DipSwPin[i].PGpio, DipSwPin[i].Pin);
+    uint8_t rslt = 0;
+    for(int i = 0; i < DIP_SW_CNT; i++)
+        PinSetupInput(dip_sw_pin[i].PGpio, dip_sw_pin[i].Pin, dip_sw_pin[i].PullUpDown);
+    for(int i = 0; i < DIP_SW_CNT; i++) {
+        if(!PinIsHi(dip_sw_pin[i].PGpio, dip_sw_pin[i].Pin)) rslt |= (1 << i);
+        PinSetupAnalog(dip_sw_pin[i].PGpio, dip_sw_pin[i].Pin);
     }
-    return Rslt;
+    return rslt;
 }
