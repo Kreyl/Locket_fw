@@ -14,109 +14,75 @@
 #include "kl_buf.h"
 #include "uart.h"
 #include "MsgQ.h"
+#include "types.h"
 
-__unused
-static const uint8_t PwrTable[12] = {
-        CC_PwrMinus30dBm, // 0
-        CC_PwrMinus27dBm, // 1
-        CC_PwrMinus25dBm, // 2
-        CC_PwrMinus20dBm, // 3
-        CC_PwrMinus15dBm, // 4
-        CC_PwrMinus10dBm, // 5
-        CC_PwrMinus6dBm,  // 6
-        CC_Pwr0dBm,       // 7
-        CC_PwrPlus5dBm,   // 8
-        CC_PwrPlus7dBm,   // 9
-        CC_PwrPlus10dBm,  // 10
-        CC_PwrPlus12dBm   // 11
-};
-
-#if 1 // =========================== Pkt_t =====================================
-union rPkt_t {
-    uint32_t dw32[2];
-    struct {
-        uint32_t id;
-        int8_t Rssi; // Will be set after RX. Transmitting is useless, but who cares.
-    } __attribute__((__packed__));
-    rPkt_t& operator = (const rPkt_t &Right) {
-        dw32[0] = Right.dw32[0];
-        dw32[1] = Right.dw32[1];
+#pragma region // =========================== Radio Packet ===============================
+#pragma pack(push, 1)
+struct rPkt {
+    uint32_t id; // Required to distinct packets from same src
+    union {
+        uint32_t dw32;
+        struct {
+            uint8_t type;
+            uint8_t is_master;
+            uint8_t silt;
+            int8_t rssi; // Will be set after RX. Transmitting is useless, but who cares.
+        };
+    };
+    void Reset(uint32_t aid) {
+        id = aid;
+        dw32 = 0;
+    }
+    rPkt& operator = (const rPkt &right) {
+        id = right.id;
+        dw32 = right.dw32;
         return *this;
     }
-} __attribute__ ((__packed__));
-#endif
+    void Print() {
+        Printf("id: %X; type=%d rssi=%d\r", id, type, rssi);
+    }
+};
+#pragma pack(pop)
 
-#define RPKT_LEN    sizeof(rPkt_t)
-
-#if 1 // =================== Channels, cycles, Rssi  ===========================
-#define RCHNL_EACH_OTH  7
-#define RCHNL_FAR       0
-
-#define TX_PWR_FAR      CC_PwrPlus10dBm
-
-// Feel-Each-Other related
-#define RCYCLE_CNT              5
-#define FAR_CYCLE_INDX          (RCYCLE_CNT - 1)
-#define FAR_CYCLE_DURATION_MS   42
-#define RSLOT_CNT               50
-#define RSLOT_DURATION_ST       36
-#define CYCLE_DURATION_ST       (RSLOT_DURATION_ST * RSLOT_CNT)
-//#define MAX_RANDOM_DURATION_MS  18
+inline constexpr const uint8_t kRPktSz = sizeof(rPkt);
+#pragma endregion
 
 
-#define SCYCLES_TO_KEEP_TIMESRC 4   // After that amount of supercycles, TimeSrcID become self ID
-
-#endif
-
-#if 0 // ============================= RX Table ================================
-#define RXTABLE_SZ              50
+#if 1 // ============================= RX Table ================================
 #define RXT_PKT_REQUIRED        TRUE
-class RxTable_t {
-private:
-#if RXT_PKT_REQUIRED
-    rPkt_t IBuf[RXTABLE_SZ];
-#else
-    uint8_t IdBuf[RXTABLE_SZ];
-#endif
+class RxTable {
 public:
-    uint32_t Cnt = 0;
+    static const uint32_t kSize = 54;
+    uint32_t cnt = 0;
 #if RXT_PKT_REQUIRED
-    void AddOrReplaceExistingPkt(rPkt_t &APkt) {
-        chSysLock();
-        for(uint32_t i=0; i<Cnt; i++) {
-            if((IBuf[i].ID == APkt.ID) and (IBuf[i].RCmd == APkt.RCmd)) {
-                if(IBuf[i].Rssi < APkt.Rssi) IBuf[i] = APkt; // Replace with newer pkt if RSSI is stronger
-                chSysUnlock();
+    void AddOrReplaceExistingPkt(rPkt &apkt) {
+        rPkt *ppkt = &ibuf[0], *pend = &ibuf[cnt];
+        while(ppkt < pend) {
+            if(ppkt->id == apkt.id) {
+                *ppkt = apkt; // Replace with newer pkt
                 return;
             }
+            ppkt++;
         }
-        // Same ID not found
-        if(Cnt < RXTABLE_SZ) {
-            IBuf[Cnt] = APkt;
-            Cnt++;
-        }
-        chSysUnlock();
+        // Empty or not found
+        ibuf[cnt] = apkt;
+        if(cnt < (kSize-1)) cnt++;
     }
 
-    uint8_t GetPktByID(uint8_t ID, rPkt_t *ptr) {
-        for(uint32_t i=0; i<Cnt; i++) {
-            if(IBuf[i].ID == ID) {
-                *ptr = IBuf[i];
-                return retvOk;
-            }
-        }
-        return retvFail;
-    }
+    // StatusOr<rPkt> GetPktByID(uint16_t id) {
+    //     for(uint32_t i=0; i<cnt; i++) {
+    //         if(ibuf[i].id == id) {
+    //             return StatusOr<rPkt>(retv::Ok, ibuf[i]);
+    //         }
+    //     }
+    //     return StatusOr<rPkt>(retv::Fail);
+    // }
 
-    bool IDPresents(uint8_t ID) {
-        for(uint32_t i=0; i<Cnt; i++) {
-            if(IBuf[i].ID == ID) return true;
+    bool IDPresents(uint16_t id) {
+        for(uint32_t i=0; i<cnt; i++) {
+            if(ibuf[i].id == id) return true;
         }
         return false;
-    }
-
-    rPkt_t& operator[](const int32_t Indx) {
-        return IBuf[Indx];
     }
 #else
     void AddId(uint8_t ID) {
@@ -129,41 +95,64 @@ public:
     }
 
 #endif
+    void Clear() { cnt = 0; }
+
+#if RXT_PKT_REQUIRED
+    rPkt& operator [](uint32_t indx) { return ibuf[indx]; }
+#endif
 
     void Print() {
-        Printf("RxTable Cnt: %u\r", Cnt);
-        for(uint32_t i=0; i<Cnt; i++) {
+        Printf("RxTable cnt: %u\r", cnt);
+        for(uint32_t i=0; i<cnt; i++) {
 #if RXT_PKT_REQUIRED
-//            Printf("ID: %u; State: %u\r", IBuf[i].ID, IBuf[i].State);
+            // Printf("ID: %u; type: %u\r", ibuf[i].id, ibuf[i].type);
 #else
             Printf("ID: %u\r", IdBuf[i]);
 #endif
         }
     }
+private:
+#if RXT_PKT_REQUIRED
+    rPkt ibuf[kSize];
+#else
+    uint8_t IdBuf[RXTABLE_SZ];
+#endif
 };
 #endif
 
-// Message queue
-#define R_MSGQ_LEN      9
-enum RmsgId_t { rmsgEachOthRx, rmsgEachOthTx, rmsgEachOthSleep, rmsgPktRx, rmsgFar };
-struct RMsg_t {
-    RmsgId_t Cmd;
-    uint8_t Value;
-    RMsg_t() : Cmd(rmsgEachOthSleep), Value(0) {}
-    RMsg_t(RmsgId_t ACmd) : Cmd(ACmd), Value(0) {}
-    RMsg_t(RmsgId_t ACmd, uint8_t AValue) : Cmd(ACmd), Value(AValue) {}
-} __attribute__((packed));
+namespace Radio {
 
-class rLevel1_t {
-private:
-public:
-    rPkt_t PktRx, PktTx;
-    EvtMsgQ_t<RMsg_t, R_MSGQ_LEN> RMsgQ;
-    uint8_t Init();
-    // Inner use
-    void ITask();
-};
+// #define RADAPTIVE_CYCLE_CNT     TRUE
 
-extern rLevel1_t Radio;
+#pragma region // ==== Constants ====
+/* Measured durations for 8 bytes pkt (recalibrate + transmit):
+500k => 1.8mS; 250k => 2.3mS; 100k => 3.8mS; 38k4 => 8mS; 10k => 27mS; 2k4 => 109mS
+=== Adaptive cycle count description ===
+When at least one pkt is rcvd in 0 cycle, use kCycleCntNominal cycles.
+When no pkt is rcvd for kNoReceptionScCnt cycles, use kCycleCntRare cycles.
+*/
+inline constexpr const uint32_t kCycleCntNominal = 5UL, kCycleCntRare = 16UL; // kCycleCntRare for
+inline constexpr const uint32_t kSlotCnt = 99UL;
+// inline constexpr const uint32_t kSlotDuration_ms = 4UL; // for 100kBit/s
+inline constexpr const uint32_t kSlotDuration_ms = 2UL; // for 500kBit/s
+inline constexpr const uint32_t kCycleDuration_ms = kSlotDuration_ms * kSlotCnt;
+// inline constexpr const uint32_t kSuperCycleDuration_ms = kCycleDuration_ms * kCycleCnt;
+inline constexpr const uint32_t kMinSleepDuration_ms = 18UL;
+inline constexpr const uint32_t kCheckRxTablePeriod_sc = 4UL; // Check RxTable every N SuperCycles
+inline constexpr const uint32_t kNoReceptionScCnt = 4UL;
+/* Examples:
+CYCLE_DUR = kSlotDuration_ms(4ms) * kSlotCnt(63) = 252ms
+SUPERCYCLE_DUR = CYCLE_DUR * kCycleCnt(4) = 1008ms
+CHECK_PERIOD = SUPERCYCLE_DUR * kCheckRxTablePeriod_sc(4) = 4032ms
+
+CYCLE_DUR = kSlotDuration_ms(2ms) * kSlotCnt(99) = 198ms
+SUPERCYCLE_DUR = CYCLE_DUR * kCycleCnt(5) = 990ms
+CHECK_PERIOD = SUPERCYCLE_DUR * kCheckRxTablePeriod_sc(4) = 3960ms
+*/
+#pragma endregion
+
+retv Init();
+
+} // namespace Radio
 
 #endif //RADIO_LVL1_H__

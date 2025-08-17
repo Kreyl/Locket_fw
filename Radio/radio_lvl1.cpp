@@ -8,14 +8,11 @@
 #include "radio_lvl1.h"
 #include "cc1101.h"
 #include "uart.h"
-
 #include "led.h"
-#include "Sequences.h"
-
 
 cc1101_t CC(CC_Setup0);
 
-#define DBG_PINS
+// #define DBG_PINS
 
 #ifdef DBG_PINS
 #define DBG_GPIO1   GPIOB
@@ -23,7 +20,7 @@ cc1101_t CC(CC_Setup0);
 #define DBG1_SET()  PinSetHi(DBG_GPIO1, DBG_PIN1)
 #define DBG1_CLR()  PinSetLo(DBG_GPIO1, DBG_PIN1)
 #define DBG_GPIO2   GPIOB
-#define DBG_PIN2    9
+#define DBG_PIN2    11
 #define DBG2_SET()  PinSetHi(DBG_GPIO2, DBG_PIN2)
 #define DBG2_CLR()  PinSetLo(DBG_GPIO2, DBG_PIN2)
 #else
@@ -31,65 +28,155 @@ cc1101_t CC(CC_Setup0);
 #define DBG1_CLR()
 #endif
 
-rLevel1_t Radio;
-int8_t Rssi;
-extern LedRGBwPower_t Led;
-extern bool be_test_station;
+static rPkt pkt_rx, pkt_tx;
 
-#if 1 // ================================ Task =================================
+static inline uint32_t TryToReceive(uint32_t rx_duration_ms) {
+    uint32_t rcvd_cnt = 0;
+    sysinterval_t total_duration_st = TIME_MS2I(rx_duration_ms);
+    sysinterval_t start_time_st = chVTGetSystemTimeX();
+    sysinterval_t time_left_st = total_duration_st;
+    CC.Recalibrate();
+    while(true) {
+        retv rx_rslt = CC.Receive_st(time_left_st, reinterpret_cast<uint8_t*>(&pkt_rx), kRPktSz, &pkt_rx.rssi);
+        if(rx_rslt == retv::Ok) {
+            rcvd_cnt++;
+//            Printf("%u %d; %d\r", pkt_rx.id, pkt_rx.type, pkt_rx.rssi);
+            curr_tbl->AddOrReplaceExistingPkt(pkt_rx);
+        }
+        // Check if rx more or get out
+        systime_t elapsed_st = chVTTimeElapsedSinceX(start_time_st);
+        if(elapsed_st >= total_duration_st) break;
+        else time_left_st = total_duration_st - elapsed_st;
+    }
+    return rcvd_cnt;
+}
+
+namespace Radio {
+
+static void TryToSleep(uint32_t sleep_duration_ms) {
+    if(sleep_duration_ms >= kMinSleepDuration_ms) CC.EnterPwrDown();
+    else CC.EnterIdle();
+    chThdSleepMilliseconds(sleep_duration_ms);
+}
+
+static uint32_t DoZeroCycle() {
+    // Rx only if ppkt_tx is nullptr
+    if(ppkt_tx == nullptr) return TryToReceive(kCycleDuration_ms);
+    // Othervise, do rx and tx
+    uint32_t rcvd_cnt = 0; // Count received packets
+    int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
+    // If TX slot is not zero, receive or sleep
+    if(tx_slot != 0) {
+        uint32_t time_before_tx = tx_slot * kSlotDuration_ms;
+        rcvd_cnt += TryToReceive(time_before_tx);
+    }
+    // ==== TX ====
+    DBG1_SET();
+    CC.Recalibrate();
+    CC.Transmit(reinterpret_cast<uint8_t*>(ppkt_tx), kRPktSz);
+    DBG1_CLR();
+    // If TX slot is not last: receive or sleep
+    if(tx_slot != (kSlotCnt-1)) {
+        uint32_t time_after_tx = ((kSlotCnt-1) - tx_slot) * kSlotDuration_ms;
+        rcvd_cnt += TryToReceive(time_after_tx);
+    }
+    return rcvd_cnt;
+}
+
+
+static void DoTxOnlyCycle() {
+    int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
+    if(tx_slot != 0) {
+        uint32_t time_before_tx = tx_slot * kSlotDuration_ms;
+        TryToSleep(time_before_tx);
+    }
+    DBG1_SET();
+    CC.Recalibrate();
+    CC.Transmit(reinterpret_cast<uint8_t*>(ppkt_tx), kRPktSz);
+    DBG1_CLR();
+    if(tx_slot != (kSlotCnt-1)) {
+        uint32_t time_after_tx = ((kSlotCnt-1) - tx_slot) * kSlotDuration_ms;
+        TryToSleep(time_after_tx);
+    }
+}
+
+
+static void TaskFeelEachOther() {
+#if RADAPTIVE_CYCLE_CNT // Adjust cycle cnt
+    uint32_t rcvd_cnt = DoZeroCycle();
+    if(rcvd_cnt > 0) { // Something rcvd,
+        cycle_cnt = Radio::kCycleCntNominal;  // now receive often
+        sc_left_before_rare_mode = Radio::kNoReceptionScCnt; // and reset counter-to-rare-mode
+    }
+    else { // Silence around
+        if(sc_left_before_rare_mode > 0) sc_left_before_rare_mode--; // Decrement counter-to-rare-mode
+        else cycle_cnt = Radio::kCycleCntRare; // Or receive rarely if zero
+    }
+    // Printf("cycle_cnt=%u, sc_left_before_rare_mode=%u\r", cycle_cnt, sc_left_before_rare_mode);
+#else
+    DoZeroCycle();
+    uint32_t cycle_cnt = Radio::kCycleCntNominal;
+#endif
+    // Run remaining transmit-only cycles
+    if(ppkt_tx != nullptr) { // Must transmit
+        for(uint32_t cycle_n=1; cycle_n < cycle_cnt; cycle_n++) DoTxOnlyCycle();
+    }
+    else { // No tx, sleep cycle_cnt-1 cycles
+        TryToSleep((cycle_cnt - 1) * kCycleDuration_ms);
+    }
+}
+
+extern uint32_t be_test_station;
+extern LedRGBwPower_t<11> led;
+
 static THD_WORKING_AREA(warLvl1Thread, 256);
 __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
-    Radio.ITask();
-}
-
-__noreturn
-void rLevel1_t::ITask() {
     while(true) {
         CC.Recalibrate();
         if(be_test_station) {
-            uint8_t Rslt = CC.Receive(270, &PktRx, RPKT_LEN, &Rssi);
-            if(Rslt == retvOk) {
-                PktTx.Rssi = Rssi;
-                CC.Transmit(&PktTx, RPKT_LEN);
-                Printf("Rssi: our= %d; their=%d\r", Rssi, PktRx.Rssi);
-                Led.StartOrRestart(lsqBlink);
+            retv rslt = CC.Receive(270, (uint8_t*)&pkt_rx, kRPktSz, &pkt_tx.rssi);
+            if(rslt == retv::Ok) {
+                CC.Transmit((uint8_t*)&pkt_tx, kRPktSz);
+                Printf("Rssi: our= %d; their=%d\r", pkt_tx.rssi, pkt_rx.rssi);
+                led.StartOrRestart(lsqBlink);
             }
         }
         else {
             CC.Transmit(&PktTx, RPKT_LEN);
-            uint8_t Rslt = CC.Receive(270, &PktRx, RPKT_LEN, &Rssi);
-            if(Rslt == retvOk) {
-                Printf("Rssi: our= %d; their=%d\r", Rssi, PktRx.Rssi);
+            uint8_t rslt = CC.Receive(270, &pkt_rx, RPKT_LEN, &Rssi);
+            if(rslt == retvOk) {
+                Printf("Rssi: our= %d; their=%d\r", Rssi, pkt_rx.Rssi);
                 Led.StartOrRestart(lsqBlink);
             }
             chThdSleepMilliseconds(630);
         }
     } // while true
 }
-#endif // task
 
-#if 1 // ============================
-uint8_t rLevel1_t::Init() {
+
+retv Init() {
 #ifdef DBG_PINS
     PinSetupOut(DBG_GPIO1, DBG_PIN1, omPushPull);
     PinSetupOut(DBG_GPIO2, DBG_PIN2, omPushPull);
 #endif
 
-    RMsgQ.Init();
-    if(CC.Init() == retvOk) {
-        CC.SetPktSize(RPKT_LEN);
-        CC.DoIdleAfterTx();
+    if(CC.Init() == retv::Ok) {
+        CC.SetPktSize(kRPktSz);
         CC.SetChannel(0);
-        CC.SetTxPower(CC_Pwr0dBm);
-        CC.SetBitrate(CCBitrate100k);
-//        CC.EnterPwrDown();
-
+        CC.SetTxPower(cfg.tx_power);
+        CC.SetBitrate(CCBitrate500k);
+        // CC.SetBitrate(CCBitrate250k);
+        // CC.SetBitrate(CCBitrate100k);
+        // CC.SetBitrate(CCBitrate38k4);
+        // CC.SetBitrate(CCBitrate10k);
+        // CC.SetBitrate(CCBitrate2k4);
         // Thread
         chThdCreateStatic(warLvl1Thread, sizeof(warLvl1Thread), HIGHPRIO, (tfunc_t)rLvl1Thread, NULL);
-        return retvOk;
+        return retv::Ok;
     }
-    else return retvFail;
+    else return retv::Fail;
 }
-#endif
+
+} // namespace Radio

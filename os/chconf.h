@@ -182,7 +182,7 @@
  * @note    The default is @p TRUE.
  */
 #if !defined(CH_CFG_USE_REGISTRY)
-#define CH_CFG_USE_REGISTRY                 TRUE
+#define CH_CFG_USE_REGISTRY                 FALSE
 #endif
 
 /**
@@ -514,7 +514,7 @@
  * @note    The default is @p FALSE.
  */
 #if !defined(CH_DBG_ENABLE_ASSERTS)
-#define CH_DBG_ENABLE_ASSERTS               TRUE
+#define CH_DBG_ENABLE_ASSERTS               FALSE
 #endif
 
 /**
@@ -690,23 +690,8 @@
  * @details This hook is invoked in case to a system halting error before
  *          the system is halted.
  */
-
-// ==== @KL ====
-#if defined _FROM_ASM_
-#define PrintfC(a, b)
-#else
-#ifdef __cplusplus
-extern "C" {
-#endif
-extern void PrintfC(const char *format, ...);
-#ifdef __cplusplus
-}
-#endif
-#endif
-
-
 #define CH_CFG_SYSTEM_HALT_HOOK(reason) {                                   \
-        /*PrintfC("\rHalt: %S: %S", reason, message);*/                         \
+  /* System halt code here.*/                                               \
 }
 
 /**
