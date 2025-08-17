@@ -11,7 +11,6 @@
 
 #include "led.h"
 #include "Sequences.h"
-#include "Config.h"
 
 
 cc1101_t CC(CC_Setup0);
