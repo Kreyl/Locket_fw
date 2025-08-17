@@ -82,7 +82,7 @@ uint8_t rLevel1_t::Init() {
     if(CC.Init() == retvOk) {
         CC.SetPktSize(RPKT_LEN);
         CC.DoIdleAfterTx();
-        CC.SetChannel(RCHNL_EACH_OTH);
+        CC.SetChannel(0);
         CC.SetTxPower(CC_Pwr0dBm);
         CC.SetBitrate(CCBitrate100k);
 //        CC.EnterPwrDown();

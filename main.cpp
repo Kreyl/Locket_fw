@@ -12,10 +12,7 @@
 #include "MsgQ.h"
 #include "SimpleSensors.h"
 #include "buttons.h"
-
-#include "Config.h"
-
-#include <vector>
+#include "version.h"
 
 #if 1 // ======================== Variables and defines ========================
 // Forever
@@ -64,7 +61,7 @@ void main(void) {
     // ==== Init hardware ====
     Uart.Init();
     ReadIDfromEE();
-    Printf("\r%S %S; ID=%u\r", APP_NAME, XSTRINGIFY(BUILD_TIME), Cfg.ID);
+    Printf("\r%S %S; ID=%u\r", APP_NAME, kBuildTime, Cfg.ID);
 //    Printf("\r%X\t%X\t%X\r", GetUniqID1(), GetUniqID2(), GetUniqID3());
 //    if(Sleep::WasInStandby()) {
 //        Uart.Printf("WasStandby\r");
@@ -152,15 +149,12 @@ void ReadAndSetupMode() {
     Vibro.Stop();
     Led.Stop();
     // Select self type
+    bool old_test_station = be_test_station;
     be_test_station = b & 0x80;
-    if(be_test_station) Printf("Test Station\r");
+    if(be_test_station and !old_test_station) Printf("Test Station\r");
     // Select power
 //    b &= 0b1111; // Remove high bits
 //    Printf("Type: %u; Pwr: %u\r", Type, b);
-//    Cfg.SetSelfType(Type);
-//    Radio.PktTx.Type = Cfg.Type;
-//    Radio.PktTxFar.Type = Cfg.Type;
-//    Indi.ShowSelfType();
 //    Cfg.TxPower = (b > 11)? CC_PwrPlus12dBm : PwrTable[b];
 }
 
@@ -175,18 +169,18 @@ void OnCmd(Shell_t *PShell) {
     }
     else if(PCmd->NameIs("Version")) PShell->Print("%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
 
-    else if(PCmd->NameIs("GetID")) PShell->Reply("ID", Cfg.ID);
+    // else if(PCmd->NameIs("GetID")) PShell->Reply("ID", Cfg.ID);
 
-    else if(PCmd->NameIs("SetID")) {
-        int32_t FID = 0;
-        if(PCmd->GetNext<int32_t>(&FID) != retvOk) { PShell->Ack(retvCmdError); return; }
-        uint8_t r = ISetID(FID);
+    // else if(PCmd->NameIs("SetID")) {
+    //     int32_t FID = 0;
+    //     if(PCmd->GetNext<int32_t>(&FID) != retvOk) { PShell->Ack(retvCmdError); return; }
+    //     uint8_t r = ISetID(FID);
 //        RMsg_t msg;
 //        msg.Cmd = R_MSG_SET_CHNL;
 //        msg.Value = ID2RCHNL(ID);
 //        Radio.RMsgQ.SendNowOrExit(msg);
-        PShell->Ack(r);
-    }
+        // PShell->Ack(r);
+    // }
 
 #if PILL_ENABLED // ==== Pills ====
     else if(PCmd->NameIs("PillRead32")) {
@@ -229,7 +223,7 @@ void OnCmd(Shell_t *PShell) {
 }
 #endif
 
-#if 1 // =========================== ID management =============================
+#if 0 // =========================== ID management =============================
 void ReadIDfromEE() {
     Cfg.ID = EE::Read32(EE_ADDR_DEVICE_ID);  // Read device ID
     if(Cfg.ID < ID_MIN or Cfg.ID > ID_MAX) {

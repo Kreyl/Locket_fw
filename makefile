@@ -3,13 +3,13 @@ PRJ_NAME = Locket
 # What to include, in form dir1 dir2 dir3...
 INCLUDE_DIRS = ./ kl_lib os os/hal os/include os/stm32l15x Pill Radio
 # What to define in form MYDEF1 MYDEF2=18 MYDEF3... $(MAKECMDGOALS) is name of requested action
-DEFINS = 
+DEFINS =
 DEFINS += BUILD_CFG_$(GOAL_NAME)=1 # add BUILD_CFG_GOALNAME=1 define, uppercasing GOAL_NAME
 
 
 ######################### Figure out what to do #########################
 # Target must be in the following form: build_Release, clean_Debug, flash_Fromboot
-# The first word is the action (build, clean, flash); 
+# The first word is the action (build, clean, flash);
 # the second is the name of the configuration and the name of the OUT_DIR.
 INPUT_WORDS = $(subst _, ,$(MAKECMDGOALS)) # Replace '_' with ' '
 ACTION = $(word 1,$(INPUT_WORDS))
@@ -34,7 +34,7 @@ LINKER_FLAGS = -Xlinker --gc-sections --specs=nano.specs --specs=nosys.specs -no
 ####### Release Cfg Settings #######
 ifeq "$(GOAL_NAME)" "Release"
 COMMON_FLAGS += -Os -flto
-LINKER_FLAGS += 
+LINKER_FLAGS +=
 LD_SCRIPT = STM32L151x8.ld
 # Comment / uncomment the following lines to produce .hex and/or .bin output
 BUILD_HEX = $(OUT_DIR)/$(PRJ_NAME).hex
@@ -43,31 +43,31 @@ BUILD_HEX = $(OUT_DIR)/$(PRJ_NAME).hex
 ####### Debug Cfg Settings #######
 else ifeq "$(GOAL_NAME)" "Debug"
 COMMON_FLAGS += -O0 -g3
-LINKER_FLAGS += 
+LINKER_FLAGS +=
 LD_SCRIPT = STM32L151x8.ld
 # Comment / uncomment the following lines to produce .hex and/or .bin output
 BUILD_HEX = $(OUT_DIR)/$(PRJ_NAME).hex
 # BUILD_BIN = $(OUT_DIR)/$(PRJ_NAME).bin
 
-####### FromBoot Cfg Settings ####### 
+####### FromBoot Cfg Settings #######
 # Put to flash starting from 0x800XXXX, to reserve place for bootloader. All other is same as Release.
 else ifeq "$(GOAL_NAME)" "Fromboot"
 COMMON_FLAGS += -Os -flto
-LINKER_FLAGS += 
+LINKER_FLAGS +=
 LD_SCRIPT = GD32E103xB_FromBoot.ld
 # Comment / uncomment the following lines to produce .hex and/or .bin output
 BUILD_HEX = $(OUT_DIR)/$(PRJ_NAME).hex
 BUILD_BIN = $(OUT_DIR)/$(PRJ_NAME).bin
 endif
 
-######################### Toolchain ######################### 
+######################### Toolchain #########################
 CPP_CMP = arm-none-eabi-g++
 C_CMP = arm-none-eabi-gcc
 OBJCPY = arm-none-eabi-objcopy
 SZ = arm-none-eabi-size
 GDB = arm-none-eabi-gdb  # Required for flashing using BMP
 # GDB COM port: required for flashing using BMP
-GDB_COM = \\.\COM5
+GDB_COM = COM5
 
 ######################### Do not touch #########################
 .PHONY: .FORCE print_size clean flash # "virtual" symbols to "rebuild" them always
@@ -78,12 +78,12 @@ INCLUDE_STR = $(addprefix -I./,$(INCLUDE_DIRS))
 # Build define flag string out of DEFINS list, surrounding with double quotes
 ToUppercase = $(shell echo $(1) | tr '[:lower:]' '[:upper:]')
 DEFINE_STR = $(patsubst %,-D"%",$(DEFINS))
-COMMON_FLAGS += $(DEFINE_STR) 
+COMMON_FLAGS += $(DEFINE_STR)
 # Recursive wildcard to iterate subdirs of any depth
 rwildcard = $(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
-# Find all .cpp, .c and .S files in all subfolders of ../ 
+# Find all .cpp, .c and .S files in all subfolders of ../
 SRCS = $(call rwildcard,./,*.c) $(call rwildcard,./,*.cpp) $(call rwildcard,./,*.S)
-# Remove leading ./ 
+# Remove leading ./
 SRCS := $(patsubst ./%,%,$(SRCS))
 # Replace .cpp, .c, .S with .o
 OBJS = $(SRCS:.cpp=.o) # Take all srcs replacing .cpp with .o
@@ -98,7 +98,7 @@ VPATH := ../
 # Add OUT_DIR prefix to OBJS
 OBJS := $(addprefix $(OUT_DIR)/, $(OBJS))
 # Include dependents *.d (ignore if not exist) to rebuild what depends on changed .h
--include $(OBJS:.o=.d) 
+-include $(OBJS:.o=.d)
 
 # Build: Require dir tree, .elf file, .hex, .bin, .siz
 build: $(OUT_DIR)/out_subdirs $(OUT_DIR)/$(PRJ_NAME).elf $(BUILD_HEX) $(BUILD_BIN) print_size
@@ -121,7 +121,7 @@ $(OUT_DIR)/version.o: version.cpp .FORCE
 # cpp
 $(OUT_DIR)/%.o: %.cpp
 	@echo 'Building $<'
-	@$(CPP_CMP) $(COMMON_FLAGS) $(INCLUDE_STR) $(CPP_FLAGS) $(OBJ_FLAGS) 
+	@$(CPP_CMP) $(COMMON_FLAGS) $(INCLUDE_STR) $(CPP_FLAGS) $(OBJ_FLAGS)
 # c
 $(OUT_DIR)/%.o: %.c
 	@echo 'Building $<'
@@ -129,7 +129,7 @@ $(OUT_DIR)/%.o: %.c
 # S
 $(OUT_DIR)/%.o: %.S
 	@echo 'Building $<'
-	@$(C_CMP) -x assembler-with-cpp $(COMMON_FLAGS) $(INCLUDE_STR) $(OBJ_FLAGS) 
+	@$(C_CMP) -x assembler-with-cpp $(COMMON_FLAGS) $(INCLUDE_STR) $(OBJ_FLAGS)
 
 # Output .hex
 $(OUT_DIR)/$(PRJ_NAME).hex: $(OUT_DIR)/$(PRJ_NAME).elf
@@ -142,7 +142,7 @@ $(OUT_DIR)/$(PRJ_NAME).bin: $(OUT_DIR)/$(PRJ_NAME).elf
 	@$(OBJCPY) -O binary "$(OUT_DIR)/$(PRJ_NAME).elf" "$(OUT_DIR)/$(PRJ_NAME).bin"
 
 # Print size
-print_size: 
+print_size:
 	@echo 'Size:'
 	@$(SZ) --format=berkeley "$(OUT_DIR)/$(PRJ_NAME).elf"
 
@@ -160,6 +160,6 @@ flash:
 
 ######################### Test for debugging ########################
 .PHONY: test
-test: 
+test:
 	@echo $(ACTION)
 	@echo $(OUT_DIR)
