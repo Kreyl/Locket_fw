@@ -25,7 +25,7 @@
 #define CC_PwrPlus12dBm        0xC0
 
 __unused
-static const uint8_t PwrTable[12] = {
+static const uint8_t kPwrTable[12] = {
         CC_PwrMinus30dBm, // 0
         CC_PwrMinus27dBm, // 1
         CC_PwrMinus25dBm, // 2

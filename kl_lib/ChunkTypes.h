@@ -20,7 +20,7 @@ enum ChunkSort_t {csSetup, csWait, csGoto, csEnd, csRepeat};
     ChunkSort_t ChunkSort;          \
     union {                         \
         uint32_t Value;             \
-        uint32_t Volume;            \
+        uint32_t volume;            \
         uint32_t Time_ms;           \
         uint32_t ChunkToJumpTo;     \
         int32_t RepeatCnt;          \
@@ -32,12 +32,9 @@ struct BaseChunk_t {
 };
 
 // RGB LED chunk
-struct LedRGBChunk_t {
+struct LedRGBChunk {
     BaseChunk_Vars;
     Color_t Color;
-    LedRGBChunk_t(ChunkSort_t ASort, uint32_t AValue, Color_t AColor) : ChunkSort(ASort), Value(AValue), Color(AColor) {}
-    LedRGBChunk_t(ChunkSort_t ASort, uint32_t AValue) : ChunkSort(ASort), Value(AValue), Color(0,0,0) {}
-    LedRGBChunk_t(ChunkSort_t ASort) : ChunkSort(ASort), Value(0), Color(0,0,0) {}
 } __attribute__((packed));
 
 // HSV LED chunk
@@ -55,7 +52,7 @@ struct LedSmoothChunk_t {
 // Beeper
 struct BeepChunk_t {   // Value == Volume
     BaseChunk_Vars;
-    uint16_t Freq_Hz;
+    uint16_t freq_Hz;
 } __attribute__((packed));
 
 
@@ -108,13 +105,13 @@ protected:
 
                 case csGoto:
                     curr_chunk = start_chunk + curr_chunk->ChunkToJumpTo;
-                    if(on_end_evt_msg.id != EvtId::None) EvtQMain.SendNowOrExitI(on_end_evt_msg);
+                    if(on_end_evt_msg.id != EvtId::None) evt_q_main.SendNowOrExitI(on_end_evt_msg);
                     SetupDelay(1);
                     return;
                     break;
 
                 case csEnd:
-                    if(on_end_evt_msg.id != EvtId::None) EvtQMain.SendNowOrExitI(on_end_evt_msg);
+                    if(on_end_evt_msg.id != EvtId::None) evt_q_main.SendNowOrExitI(on_end_evt_msg);
                     if(seq_que.GetI(&start_chunk) == retv::Ok) { // There is something next
                         curr_chunk = start_chunk;
                         repeat_cntr = -1;

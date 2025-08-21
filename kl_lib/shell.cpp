@@ -1,27 +1,25 @@
 /*
  * shell.cpp
  *
- *  Created on: 21 ���. 2017 �.
+ *  Created on: 2017
  *      Author: Kreyl
  */
 
-#include <stdarg.h>
 #include "shell.h"
 #include "uart.h"
 
-
-extern CmdUart_t dbg_uart;
+extern CmdUart uart;
 
 void Printf(const char *format, ...) {
     va_list args;
     va_start(args, format);
     chSysLock();
-    dbg_uart.IVsPrintf(format, args);
+    uart.IVsPrintf(format, args);
     chSysUnlock();
     va_end(args);
 }
 
-void Printf(CmdUart_t &AUart, const char *format, ...) {
+void Printf(CmdUart &AUart, const char *format, ...) {
     va_list args;
     va_start(args, format);
     chSysLock();
@@ -33,25 +31,24 @@ void Printf(CmdUart_t &AUart, const char *format, ...) {
 void PrintfI(const char *format, ...) {
     va_list args;
     va_start(args, format);
-    dbg_uart.IVsPrintf(format, args);
+    uart.IVsPrintf(format, args);
     va_end(args);
 }
 
 void PrintfEOL() {
-    dbg_uart.PrintEOL();
+    uart.PrintEOL();
 }
 
 extern "C" {
 void PrintfC(const char *format, ...) {
     va_list args;
     va_start(args, format);
-    dbg_uart.IVsPrintf(format, args);
+    uart.IVsPrintf(format, args);
     va_end(args);
 }
 } // exern C
 
-
-class PrintToBuf_t : public PrintfHelper_t {
+class PrintToBuf_t : public PrintfHelper {
 public:
     char *S;
     retv IPutChar(char c) {
@@ -72,25 +69,6 @@ char* PrintfToBuf(char* PBuf, const char *format, ...) {
     return PtB.S;
 }
 
-#if 0
-void ByteShell_t::Reply(uint8_t CmdCode, uint32_t Len, uint8_t *PData) {
-//    Printf("BSendCmd %X; %u; %A\r", CmdCode, Len, PData, Len, ' ');
-    // Send StartOfCmd
-    if(IPutChar('#') != retv::Ok) return;
-    // Send command code
-    if(IPutChar(HalfByte2Char(CmdCode >> 4)) != retv::Ok) return;
-    if(IPutChar(HalfByte2Char(CmdCode)) != retv::Ok) return;
-    // Send data
-    for(uint32_t i=0; i<Len; i++) {
-        if(IPutChar(HalfByte2Char((*PData) >> 4)) != retv::Ok) return;
-        if(IPutChar(HalfByte2Char(*PData++)) != retv::Ok) return;
-    }
-    // Send EOL
-    if(IPutChar('\r') != retv::Ok) return;
-    if(IPutChar('\n') != retv::Ok) return;
-    IStartTransmissionIfNotYet();
-}
-#endif
 
 #if PRINTF_FLOAT_EN
 #define FLOAT_PRECISION     9
@@ -99,15 +77,10 @@ static const long power10Table[FLOAT_PRECISION] = {
 };
 #endif
 
-void PrintfHelper_t::PrintEOL() {
-    IPutChar('\r');
-    IPutChar('\n');
-    IStartTransmissionIfNotYet();
-}
 
-void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
+void PrintfHelper::IVsPrintf(const char *format, va_list args) {
     const char *fmt = format;
-    uint32_t width = 0, precision;
+    int width = 0, precision;
     char c, filler;
     while(true) {
         c = *fmt++;
@@ -154,9 +127,9 @@ void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
             case 's':
             case 'S': {
                 char *s = va_arg(args, char*);
-                while(*s != 0) {
-                    if(IPutChar(*s++) != retv::Ok) goto End;
-                }
+                width -= Str::Len(s); // Do padding of string
+                while(s and *s)    { if(IPutChar(*s++)   != retv::Ok) goto End; }
+                while(width-- > 0) { if(IPutChar(filler) != retv::Ok) goto End; } // Do padding of string
             }
             break;
 
@@ -221,7 +194,7 @@ void PrintfHelper_t::IVsPrintf(const char *format, va_list args) {
     IStartTransmissionIfNotYet();
 }
 
-retv PrintfHelper_t::IPutUint(uint32_t n, uint32_t base, uint32_t width, char filler) {
+retv PrintfHelper::IPutUint(uint32_t n, uint32_t base, uint32_t width, char filler) {
     char digits[10];
     uint32_t len = 0;
     // Place digits to buffer

@@ -118,7 +118,7 @@ public:
 
 #if 1 // =========================== LedRGB Parent =============================
 template <uint32_t que_len = 0>
-class LedRGBParent_t : public BaseSequencer_t<LedRGBChunk_t, que_len> {
+class LedRGBParent_t : public BaseSequencer_t<LedRGBChunk, que_len> {
 protected:
     const PinOutputPWM_t  R, G, B;
     const uint32_t PWMFreq;
@@ -156,7 +156,7 @@ public:
             const PwmSetup_t AGreen,
             const PwmSetup_t ABlue,
             const uint32_t APWMFreq) :
-        BaseSequencer_t<LedRGBChunk_t, que_len>(), R(ARed), G(AGreen), B(ABlue), PWMFreq(APWMFreq) {}
+        BaseSequencer_t<LedRGBChunk, que_len>(), R(ARed), G(AGreen), B(ABlue), PWMFreq(APWMFreq) {}
     void Init() {
         R.Init();
         R.SetFrequencyHz(PWMFreq);

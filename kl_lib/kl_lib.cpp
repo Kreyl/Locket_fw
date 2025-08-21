@@ -48,6 +48,97 @@ void PrintThdFreeStack(void *wsp, uint32_t size) {
 
 #endif
 
+uint32_t HashMurmur3_32(const void *key, uint32_t sz, uint32_t seed) {
+    const uint8_t * data = reinterpret_cast<const uint8_t*>(key);
+    const int32_t nblocks = sz / 4;
+    const uint32_t * blocks = reinterpret_cast<const uint32_t*>(data + nblocks*4);
+    uint32_t h = seed;
+    static const uint32_t c1 = 0xcc9e2d51;
+    static const uint32_t c2 = 0x1b873593;
+    auto Rotl32 = [](uint32_t val, uint32_t shift) {
+        return (val << shift) | (val >> (32 - shift));
+    };
+
+    for(int32_t i = -nblocks; i; i++) {
+        uint32_t k1 = blocks[i];
+        k1 *= c1;
+        k1 = Rotl32(k1, 15);
+        k1 *= c2;
+
+        h ^= k1;
+        h = Rotl32(h, 13);
+        h = h * 5 + 0xe6546b64;
+    }
+
+    const uint8_t * tail = static_cast<const uint8_t*>(data + nblocks*4);
+    uint32_t k1 = 0;
+    switch(sz & 3) { // Falling through is intentional
+        case 3: k1 ^= tail[2] << 16;
+        case 2: k1 ^= tail[1] << 8;
+        case 1: k1 ^= tail[0];
+                k1 *= c1;
+                k1 = Rotl32(k1, 15);
+                k1 *= c2;
+                h ^= k1;
+    } // switch
+
+    h ^= sz;
+    h ^= h >> 16;
+    h *= 0x85ebca6b;
+    h ^= h >> 13;
+    h *= 0xc2b2ae35;
+    h ^= h >> 16;
+    return h;
+}
+
+// Using simplified Murmur3 hash function
+uint32_t GetUniqID32() {
+    uint32_t blocks[3] = {GetUniqID1(), GetUniqID2(), GetUniqID3()};
+    uint32_t h = HashMurmur3_32(blocks, sizeof(blocks), 1234);
+    return h;
+}
+
+/*
+    // Magic numbers for 32-bit hashing.  Copied from Murmur3.
+    static const uint32_t c1 = 0xcc9e2d51;
+    static const uint32_t c2 = 0x1b873593;
+    // uint32_t uniq_id[3] = {GetUniqID1(), GetUniqID2(), GetUniqID3()};
+    // char *p = reinterpret_cast<char*>(uniq_id);
+    uint32_t len = 12; // 3 uniq ids 4 bytes each
+    uint32_t a = len, b = a * 5, c = 9, d = b;
+    // a += GetUniqID1();
+    // b += GetUniqID2();
+    // c += GetUniqID3();
+    a += x;
+    b += y;
+    c += z;
+
+    auto Rotate32 = [](uint32_t val, uint32_t shift) {
+        return (shift == 0)? val : (val >> shift) | (val << (32 - shift));
+    };
+
+    auto Mur = [Rotate32](uint32_t a, uint32_t h) {
+        a *= c1;
+        a = Rotate32(a, 17);
+        a *= c2;
+        h ^= a;
+        h = Rotate32(h, 19);
+        return h;
+    };
+
+    auto fmix = [](uint32_t h) {
+        h ^= h >> 16;
+        h *= 0x85ebca6b;
+        h ^= h >> 13;
+        h *= 0xc2b2ae35;
+        h ^= h >> 16;
+        return h;
+    };
+
+    return fmix(Mur(c, Mur(b, Mur(a, d))));
+}
+*/
+
 /********************************************
 arena;     total space allocated from system
 ordblks;   number of non-inuse chunks
@@ -331,7 +422,7 @@ void PinOutputPWM_t::Init() const {
     ITmr->CR1 |= TIM_CR1_ARPE;
     ITmr->ARR = ISetup.TopValue;
     // Setup Output
-    uint16_t tmp = (ISetup.Inverted == invInverted)? 0b111 : 0b110; // PWM mode 1 or 2
+    uint16_t tmp = (ISetup.Inverted == Inv::Inverted)? 0b111 : 0b110; // PWM mode 1 or 2
     switch(ISetup.TimerChnl) {
         case 1:
             ITmr->CCMR1 |= (tmp << 4);
@@ -465,15 +556,24 @@ void TmrKLCallback(virtual_timer_t *vtp, void *p) {
 }
 
 void TmrKL_t::IIrqHandler() {    // Call it inside callback
-    EvtQMain.SendNowOrExitI(EvtMsg_t(evt_id));
+    evt_q_main.SendNowOrExitI(EvtMsg_t(evt_id));
     if(TmrType == tktPeriodic) StartI();
 }
 
 void TmrKL_t::StartI() {
-    if(Period == 0) EvtQMain.SendNowOrExitI(EvtMsg_t(evt_id)); // Do not restart even if periodic: this will not work good anyway
+    if(Period == 0) evt_q_main.SendNowOrExitI(EvtMsg_t(evt_id)); // Do not restart even if periodic: this will not work good anyway
     else chVTSetI(&Tmr, Period, TmrKLCallback, this); // Will be reset before start
 }
 #endif
+
+namespace Random {
+uint32_t next;
+
+void SeedWithUniqID() {
+    next = GetUniqID1() + GetUniqID2() + GetUniqID3();
+}
+
+}
 
 #if 1 // ============================= DEBUG ===================================
 extern "C" {
@@ -969,29 +1069,32 @@ void DisableSleepInReset() {
 #if defined STM32L1XX // =================== Internal EEPROM ===================
 #define EEPROM_BASE_ADDR    ((uint32_t)0x08080000)
 namespace EE {
-uint32_t Read32(uint32_t Addr) {
-    return *((uint32_t*)(Addr + EEPROM_BASE_ADDR));
-}
+uint32_t ReadU32(uint32_t addr) { return *((uint32_t*)(addr + EEPROM_BASE_ADDR)); }
+int32_t ReadI32(uint32_t addr)  { return *((int32_t*)(addr + EEPROM_BASE_ADDR)); }
 
-retv Write32(uint32_t Addr, uint32_t W) {
-    Addr += EEPROM_BASE_ADDR;
+retv WriteU32(uint32_t addr, uint32_t dw32) {
+    addr += EEPROM_BASE_ADDR;
+    if(*reinterpret_cast<uint32_t*>(addr) == dw32) return retv::Ok;
 //    Uart.Printf("EAdr=%u\r", Addr);
     Flash::UnlockEEAndPECR();
     // Wait for last operation to be completed
     retv status = Flash::WaitForLastOperation(FLASH_ProgramTimeout);
     if(status == retv::Ok) {
-        *(volatile uint32_t*)Addr = W;
+        *(volatile uint32_t*)addr = dw32;
         status = Flash::WaitForLastOperation(FLASH_ProgramTimeout);
     }
     Flash::LockEEAndPECR();
     return status;
+}
+retv WriteI32(uint32_t addr, int32_t dw32) {
+    return WriteU32(addr, static_cast<uint32_t>(dw32));
 }
 
 void ReadBuf(void *PDst, uint32_t Sz, uint32_t Addr) {
     uint32_t *p32 = (uint32_t*)PDst;
     Sz = Sz / 4;  // Size in words32
     while(Sz--) {
-        *p32 = Read32(Addr);
+        *p32 = ReadU32(Addr);
         p32++;
         Addr += 4;
     }

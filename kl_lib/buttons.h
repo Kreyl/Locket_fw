@@ -23,8 +23,8 @@
 /*
  * Example:
             case evtIdButtons:
-                Printf("Btn %u\r", Msg.BtnEvtInfo.BtnID);
-                if(Msg.BtnEvtInfo.BtnID == 1) {
+                Printf("Btn %u\r", Msg.BtnEvtInfo.btn_indx);
+                if(Msg.BtnEvtInfo.btn_indx == 1) {
  */
 
 // ================================= Settings ==================================
@@ -37,7 +37,7 @@
 #define BTN_COMBO                   FALSE    // Allow combo
 #define BTN_LONG_COMBO              FALSE    // Allow longpress combo
 #define BTN_DOUBLE_CLICK            FALSE
-#define BTN_GETSTATE_REQUIRED       FALSE
+#define BTN_GETSTATE_REQUIRED       TRUE
 
 #define BTN_REPEAT_PERIOD_MS        180
 #define BTN_LONGPRESS_DELAY_MS      1710
@@ -64,9 +64,9 @@
 
 // ==== Types ==== Do not touch
 // BtnEvent: contains info about event type, count of participating btns and array with btn IDs
-enum BtnEvt_t {beShortPress, beLongPress, beRelease, beRepeat, beCombo, beLongCombo, beDoubleClick};
-struct BtnEvtInfo_t {
-    BtnEvt_t type;
+enum BtnEvt {beShortPress, beLongPress, beRelease, beRepeat, beCombo, beLongCombo, beDoubleClick};
+struct BtnEvtInfo {
+    BtnEvt type;
 #if BTN_COMBO || BTN_LONG_COMBO
     uint8_t BtnCnt;
     uint8_t btn_indx[BUTTONS_CNT];
@@ -75,7 +75,7 @@ struct BtnEvtInfo_t {
 #endif
 } __packed;
 
-PinSnsState_t GetBtnState(uint8_t BtnID);
+PinSnsState GetBtnState(uint8_t btn_indx);
 #endif
 
 #endif //BUTTONS_H__

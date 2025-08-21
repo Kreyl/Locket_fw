@@ -5,40 +5,69 @@
 #include "kl_lib.h"
 #include "cc1101.h"
 
-#if 1 // ======================== Variables and defines ========================
+#pragma region // ======================== Variables and defines ========================
 // Forever
-EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
-static const UartParams_t CmdUartParams(115200, CMD_UART_PARAMS);
-CmdUart_t dbg_uart{&CmdUartParams};
+extern const char *kBuildTime, *kBuildCfgName;
+EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> evt_q_main;
+static const UartParams_t kCmdUartParams(115200, CMD_UART_PARAMS);
+CmdUart uart { &kCmdUartParams };
 
-LedRGBwPower_t Led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
-Vibro_t Vibro {VIBRO_SETUP};
-#endif
+LedRGBwPower_t led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
+Vibro_t vibro { VIBRO_SETUP };
+#pragma endregion
 
+#pragma region // =========================== Radio Packet ===============================
+#pragma pack(push, 1)
 struct rPkt {
-    uint32_t indx = 0; // 0 is all off, [1; 7] are colors
-    uint32_t salt = 0;
-} __attribute__ ((__packed__));
+    int32_t value;
+    union {
+        uint32_t dw32;
+        struct {
+            uint8_t from;
+            uint8_t to;
+            uint8_t cmd;
+            int8_t rssi;
+        };
+    };
+    rPkt& operator = (const rPkt &right) {
+        value = right.value;
+        dw32 = right.dw32;
+        return *this;
+    }
+    void Print() {
+        Printf("from %u; to %u; cmd %u; value=%d; rssi=%d\r", from, to, cmd, value, rssi);
+    }
+};
+#pragma pack(pop)
+
+inline constexpr const uint8_t kRecipientBroadcast = 0xFF;
+inline constexpr const uint8_t kRPktSz = sizeof(rPkt);
+
+inline constexpr const uint8_t kCmdSetVolume = 0x51;
+inline constexpr const uint8_t kCmdRestart = 0x57;
+
 
 rPkt pkt_tx;
-inline const uint8_t krPktSz = sizeof(rPkt);
+#pragma endregion
 
 inline const uint32_t kSleepDuration = 450UL;
 
-const Color_t colors[8] = { {0,0,0},
-        {4,0,0}, {3,3,0}, {0,4,0}, {0,3,3}, {0,0,4}, {3,0,3}, {3,3,3}
-};
+const int32_t kHVolumeMax = 0;   // Red
+const int32_t kHVolumeMin = 240; // Blue
+const int32_t kVolumeMax = 100;
+const int32_t kVolumeStep = 10;
+
 
 cc1101_t CC(CC_Setup0);
 
-void SleepNow(uint32_t Delay) {
+void SleepNow(uint32_t delay) {
     chSysLock();
-    Iwdg::InitAndStart(Delay);
+    Iwdg::InitAndStart(delay);
     Sleep::EnterStandby();
     chSysUnlock();
 }
 
-int main(void) {
+void main(void) {
     // Check if no btn pressed
     PinSetupInput(BTN1_PIN, pudPullDown);
     PinSetupInput(BTN2_PIN, pudPullDown);
@@ -54,62 +83,78 @@ int main(void) {
     // === Init OS ===
     halInit();
     chSysInit();
-    EvtQMain.Init();
+    evt_q_main.Init();
 
     // ==== Init hardware ====
-    dbg_uart.Init();
-    Vibro.Init();
-    Led.Init();
+    uart.Init();
+    vibro.Init();
+    led.Init();
+
+    // Get saved volume
     BackupSpc::EnableAccess();
-    Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
+    pkt_tx.value = BackupSpc::ReadRegister(0);
+    if(pkt_tx.value > kVolumeMax) pkt_tx.value = kVolumeMax;
+    pkt_tx.from = 0;
+    pkt_tx.to = kRecipientBroadcast;
+
+    Printf("\r%S %S; volume=%d\r", APP_NAME, kBuildTime, pkt_tx.value);
+    Printf("pkt sz %u\r", kRPktSz);
     Clk.PrintFreqs();
 
-    pkt_tx.indx = BackupSpc::ReadRegister(0);
-    if(pkt_tx.indx > 7) pkt_tx.indx = 0;
-
     if(CC.Init() == retv::Ok) {
-        pkt_tx.salt = 0xCa110fEa;
         if(Sleep::WasInStandby()) {
             // Vibrate accordingly
-            if(PinIsHi(BTN1_PIN)) {
-                Vibro.StartOrRestart(vsqBrr);
-                if(pkt_tx.indx < 7) pkt_tx.indx++;
+            if(PinIsHi(BTN1_PIN)) { // Volume up
+                vibro.StartOrRestart(vsqBrr);
+                pkt_tx.value += kVolumeStep;
+                if(pkt_tx.value > kVolumeMax) pkt_tx.value = kVolumeMax;
+                pkt_tx.cmd = kCmdSetVolume;
             }
-            else if(PinIsHi(BTN2_PIN)) {
-                Vibro.StartOrRestart(vsqBrrBrr);
-                if(pkt_tx.indx > 0) pkt_tx.indx--;
+            else if(PinIsHi(BTN2_PIN)) { // Restart
+                vibro.StartOrRestart(vsqBrrBrr);
+                pkt_tx.cmd = kCmdRestart;
             }
-            else if(PinIsHi(BTN3_PIN)) {
-                Vibro.StartOrRestart(vsqBrrBrrBrr);
-                pkt_tx.indx = 0;
+            else if(PinIsHi(BTN3_PIN)) { // Volume down
+                vibro.StartOrRestart(vsqBrrBrrBrr);
+                pkt_tx.value -= kVolumeStep;
+                if(pkt_tx.value < 0) pkt_tx.value = 0;
+                pkt_tx.cmd = kCmdSetVolume;
             }
-            BackupSpc::WriteRegister(0, pkt_tx.indx);
-            Printf("indx=%u\r", pkt_tx.indx);
-            Led.SetColor(colors[pkt_tx.indx]);
+            BackupSpc::WriteRegister(0, pkt_tx.value);
+            Printf("Volume=%d\r", pkt_tx.value);
+            pkt_tx.Print();
+
+            // Set color
+            ColorHSV_t hsv { 0, 100, 100 };
+            hsv.H = Proportion<int32_t>(0, kVolumeMax, kHVolumeMin, kHVolumeMax, pkt_tx.value);
+            if(hsv.H > 360) hsv.H = 360;
+            led.SetColor(hsv.ToRGB());
+
             // CC set params
-            CC.SetPktSize(krPktSz);
-            CC.SetChannel(4); // Same as RX
+            CC.SetPktSize(kRPktSz);
+            CC.SetChannel(0); // Same as RX
             CC.SetTxPower(CC_PwrPlus5dBm);
             CC.SetBitrate(CCBitrate100k);
+
             // Transmit what needed
             while(PinIsHi(BTN1_PIN) or PinIsHi(BTN2_PIN) or PinIsHi(BTN3_PIN)) {
                 CC.Recalibrate();
-                CC.Transmit(reinterpret_cast<uint8_t*>(&pkt_tx), krPktSz);
+                CC.Transmit(reinterpret_cast<uint8_t*>(&pkt_tx), kRPktSz);
                 chThdSleepMilliseconds(7);
             }
             CC.EnterPwrDown();
             SleepNow(kSleepDuration); // To repeat transmission soon
         }
         else { // indicate powering on
-            Led.StartOrRestart(lsqStart);
-            Vibro.StartOrRestart(vsqBrrBrr);
+            led.StartOrRestart(lsqStart);
+            vibro.StartOrRestart(vsqBrrBrr);
             chThdSleepMilliseconds(999);
             CC.EnterPwrDown();
             SleepNow(kSleepDuration);
         }
     }
     else { // CC failure
-        Led.StartOrRestart(lsqFailure);
+        led.StartOrRestart(lsqFailure);
         chThdSleepMilliseconds(207);
         SleepNow(2700);
     }

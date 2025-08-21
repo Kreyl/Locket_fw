@@ -3,12 +3,19 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "7Mengirs"
+#define APP_NAME            "GatchinaTX"
+
+#ifndef TRUE
+#define TRUE    1
+#endif
+#ifndef FALSE
+#define FALSE   0
+#endif
 
 // ==== High-level peripery control ====
 #define PILL_ENABLED        FALSE
 #define BEEPER_ENABLED      FALSE
-#define BUTTONS_ENABLED     FALSE
+#define BUTTONS_ENABLED     TRUE
 
 #define SIMPLESENSORS_ENABLED   BUTTONS_ENABLED
 
@@ -23,9 +30,10 @@
 #define STM32_ST_USE_TIMER      2
 #define STM32_TIMCLK1           (Clk.APB1FreqHz)
 
+#define SYS_TIM_CLK         (Clk.APB1FreqHz)
 #define I2C1_ENABLED        PILL_ENABLED
 #define I2C_USE_SEMAPHORE   FALSE
-#define ADC_REQUIRED        FALSE
+#define ADC_REQUIRED        TRUE
 
 #if 1 // ========================== GPIO =======================================
 // PortMinTim_t: GPIO, Pin, Tim, TimChnl, invInverted, omPushPull, TopValue
@@ -36,9 +44,9 @@
 
 // LED
 #define LED_EN_PIN      { GPIOB, 2, omPushPull }
-#define LED_G_PIN       { GPIOB, 1, TIM3, 4, invInverted, omOpenDrain, 255 }
-#define LED_B_PIN       { GPIOB, 0, TIM3, 3, invInverted, omOpenDrain, 255 }
-#define LED_R_PIN       { GPIOB, 5, TIM3, 2, invInverted, omOpenDrain, 255 }
+#define LED_G_PIN       { GPIOB, 1, TIM3, 4, Inv::Inverted, omOpenDrain, 255 }
+#define LED_B_PIN       { GPIOB, 0, TIM3, 3, Inv::Inverted, omOpenDrain, 255 }
+#define LED_R_PIN       { GPIOB, 5, TIM3, 2, Inv::Inverted, omOpenDrain, 255 }
 
 // Buttons
 #define BTN1_PIN        GPIOA, 0
@@ -46,11 +54,11 @@
 #define BTN3_PIN        GPIOB, 8
 
 // Vibro
-#define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, invNotInverted, omPushPull, 99 }
+#define VIBRO_SETUP     { GPIOB, 12, TIM10, 1, Inv::NotInverted, omPushPull, 99 }
 
 // Beeper
 #define BEEPER_TOP      22
-#define BEEPER_PIN      { GPIOB, 15, TIM11, 1, invNotInverted, omPushPull, BEEPER_TOP }
+#define BEEPER_PIN      { GPIOB, 15, TIM11, 1, Inv::NotInverted, omPushPull, BEEPER_TOP }
 
 // DIP switch
 #define DIP_SW_CNT      8
@@ -71,15 +79,12 @@
 #endif
 
 // Pill power
-#define PILL_PWR_PIN    { GPIOB, 3, omPushPull }
+#define PILL_PWR_PIN    GPIOB, 3, omPushPull
 
 // Radio: SPI, PGpio, Sck, Miso, Mosi, Cs, Gdo0
 #define CC_Setup0       SPI1, GPIOA, 5,6,7, GPIOA,4, GPIOA,3
 
 #endif // GPIO
-
-#if 1 // ========================= Timer =======================================
-#endif // Timer
 
 #if I2C1_ENABLED // ====================== I2C ================================
 #define I2C1_BAUDRATE   400000
@@ -113,13 +118,13 @@
 #define UART_DMA_CHNL   0   // Dummy
 
 #if I2C1_ENABLED // ==== I2C ====
-#define I2C1_DMA_TX     STM32_DMA1_STREAM6
-#define I2C1_DMA_RX     STM32_DMA1_STREAM7
+#define I2C1_DMA_TX     STM32_DMA_STREAM_ID(1, 6)
+#define I2C1_DMA_RX     STM32_DMA_STREAM_ID(1, 7)
 #define I2C1_DMA_CHNL   0   // Dummy
 #endif
 
 #if ADC_REQUIRED
-#define ADC_DMA         STM32_DMA1_STREAM1
+#define ADC_DMA         STM32_DMA_STREAM_ID(1, 1)
 #define ADC_DMA_MODE    STM32_DMA_CR_CHSEL(0) |   /* dummy */ \
                         DMA_PRIORITY_LOW | \
                         STM32_DMA_CR_MSIZE_HWORD | \
@@ -133,9 +138,10 @@
 
 #if 1 // ========================== USART ======================================
 #define PRINTF_FLOAT_EN FALSE
-#define UART_TXBUF_SZ   256
-#define UART_RXBUF_SZ   128
-#define CMD_BUF_SZ      128
+#define UART_RX_POLLING_MS  99
+#define UART_TXBUF_SZ       256
+#define UART_RXBUF_SZ       64
+#define CMD_BUF_SZ          64
 
 #define CMD_UART        USART1
 

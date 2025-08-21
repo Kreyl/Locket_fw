@@ -17,7 +17,6 @@
 #include "types.h"
 
 // ==== Build time ====
-// Define symbol BUILD_TIME in main.cpp options with value ${current_date}.
 // Printf("\r%S %S\r", APP_NAME, XSTRINGIFY(BUILD_TIME));
 #define STRINGIFY(x)    # x
 #define XSTRINGIFY(x)   STRINGIFY(x)
@@ -126,11 +125,6 @@ static T Average(T *p, uint32_t Len) {
 }
 
 template <typename T>
-static inline T Proportion(T MinX, T MaxX, T MinY, T MaxY, T x) {
-    return (((x - MaxX) * (MaxY - MinY)) / (MaxX - MinX)) + MaxY;
-}
-
-template <typename T>
 static T FindMediana(T *Arr, int32_t N) {
     int32_t L = 1, r = N, i, j, k = N / 2;
     T x;
@@ -158,6 +152,9 @@ static T FindMediana(T *Arr, int32_t N) {
 // Amount of memory occupied by thread
 uint32_t GetThdFreeStack(void *wsp, uint32_t size);
 void PrintThdFreeStack(void *wsp, uint32_t size);
+
+// Murmur3 hash
+uint32_t HashMurmur3_32(const void *key, uint32_t len, uint32_t seed);
 
 /*
  * Early initialization code.
@@ -221,15 +218,12 @@ void MemCpy(void *Dst, void *Src, uint32_t Sz);
 #else
 #define UNIQ_ID_BASE    0x1FF800D0
 #endif
-static inline uint32_t GetUniqID1() {
-    return *((uint32_t*)(UNIQ_ID_BASE + 0x00));
-}
-static inline uint32_t GetUniqID2() {
-    return *((uint32_t*)(UNIQ_ID_BASE + 0x04));
-}
-static inline uint32_t GetUniqID3() {
-    return *((uint32_t*)(UNIQ_ID_BASE + 0x14));
-}
+static inline uint32_t GetUniqID1() { return *((uint32_t*)(UNIQ_ID_BASE + 0x00)); }
+static inline uint32_t GetUniqID2() { return *((uint32_t*)(UNIQ_ID_BASE + 0x04)); }
+static inline uint32_t GetUniqID3() { return *((uint32_t*)(UNIQ_ID_BASE + 0x14)); }
+
+uint32_t GetUniqID32(); // Construct uniq id by hashing hw uniq id
+
 #elif defined STM32L4XX
 #define UNIQ_ID_BASE    0x1FFF7590
 static inline uint32_t GetUniqID1() {
@@ -301,7 +295,7 @@ public:
 
 #if 1 // ========================== Random =====================================
 namespace Random {
-static uint32_t next = 1;
+extern uint32_t next;
 
 static int32_t do_rand(uint32_t *ctx) {
 #if 0
@@ -319,12 +313,14 @@ static int32_t do_rand(uint32_t *ctx) {
 static int32_t rand() { return do_rand(&next); }
 
 // Generate pseudo-random value
-static inline long int Generate(long int LowInclusive, long int HighInclusive) {
-    uint32_t last = rand();
-    return (last % (HighInclusive + 1 - LowInclusive)) + LowInclusive;
+static inline int32_t Generate(int32_t low_inclusive, int32_t high_inclusive) {
+    int32_t last = rand();
+    return (last % (high_inclusive + 1 - low_inclusive)) + low_inclusive;
 }
 // Seed pseudo-random generator with new seed
-static inline void Seed(unsigned int Seed) { next = Seed; }
+static inline void Seed(uint32_t seed) { next = seed; }
+
+void SeedWithUniqID();
 
 // True random
 #if defined STM32L4XX
@@ -332,7 +328,7 @@ void TrueInit();
 void TrueDeinit();
 
 // Generate truly random value
-uint32_t TrueGenerate(uint32_t LowInclusive, uint32_t HighInclusive);
+uint32_t TrueGenerate(uint32_t low_inclusive, uint32_t high_inclusive);
 // Seed pseudo random with true random
 void SeedWithTrue();
 #endif
@@ -355,8 +351,6 @@ namespace BackupSpc {
         PWR->CR |= PWR_CR_DBP;
 #elif defined STM32L4XX || defined STM32F7XX
         PWR->CR1 |= PWR_CR1_DBP;
-#elif defined STM32L1XX
-        PWR->CR = PWR->CR | PWR_CR_DBP;
 #endif
     }
 
@@ -365,8 +359,6 @@ namespace BackupSpc {
         PWR->CR &= ~PWR_CR_DBP;
 #elif defined STM32L4XX || defined STM32F7XX
         PWR->CR1 &= ~PWR_CR1_DBP;
-#elif defined STM32L1XX
-        PWR->CR = PWR->CR & ~PWR_CR_DBP;
 #endif
     }
 
@@ -379,12 +371,12 @@ namespace BackupSpc {
 
     // RegN = 0...19
     static inline uint32_t ReadRegister(uint32_t RegN) {
-        volatile uint32_t tmp = RTC_BASE + 0x50UL + (RegN * 4);
+        volatile uint32_t tmp = RTC_BASE + 0x50 + (RegN * 4);
         return (*(volatile uint32_t *)tmp);
     }
 
     static inline void WriteRegister(uint32_t RegN, uint32_t Data) {
-        volatile uint32_t tmp = RTC_BASE + 0x50UL + (RegN * 4);
+        volatile uint32_t tmp = RTC_BASE + 0x50 + (RegN * 4);
         *(volatile uint32_t *)tmp = Data;
     }
 } // namespace
@@ -530,8 +522,8 @@ public:
         tmp |= (uint16_t)TrgInput;
         ITmr->SMCR = tmp;
     }
-    void SetEtrPolarity(Inverted_t AInverted) {
-        if(AInverted == invInverted) ITmr->SMCR |= TIM_SMCR_ETP;
+    void SetEtrPolarity(Inv AInverted) {
+        if(AInverted == Inv::Inverted) ITmr->SMCR |= TIM_SMCR_ETP;
         else ITmr->SMCR &= ~TIM_SMCR_ETP;
     }
     void SelectMasterMode(TmrMasterMode_t MasterMode) const {
@@ -637,12 +629,12 @@ struct PwmSetup_t {
     uint16_t Pin;
     TIM_TypeDef *PTimer;
     uint32_t TimerChnl;
-    Inverted_t Inverted;
+    Inv Inverted;
     PinOutMode_t OutputType;
     uint32_t TopValue;
     PwmSetup_t(GPIO_TypeDef *APGpio, uint16_t APin,
             TIM_TypeDef *APTimer, uint32_t ATimerChnl,
-            Inverted_t AInverted, PinOutMode_t AOutputType,
+            Inv AInverted, PinOutMode_t AOutputType,
             uint32_t ATopValue) : PGpio(APGpio), Pin(APin), PTimer(APTimer),
                     TimerChnl(ATimerChnl), Inverted(AInverted), OutputType(AOutputType),
                     TopValue(ATopValue) {}
@@ -691,7 +683,7 @@ struct LPTimPwmSetup_t {
     GPIO_TypeDef *PGpio;
     uint16_t Pin;
     LPTIM_TypeDef *PTimer;
-    Inverted_t Inverted;
+    Inv Inverted;
     PinOutMode_t OutputType;
     uint32_t TopValue;
 };
@@ -1098,7 +1090,7 @@ public:
     PinOutputPWM_t(const PwmSetup_t &ASetup) : Timer_t(ASetup.PTimer), ISetup(ASetup) {}
     PinOutputPWM_t(GPIO_TypeDef *PGpio, uint16_t Pin,
             TIM_TypeDef *PTimer, uint32_t TimerChnl,
-            Inverted_t Inverted, PinOutMode_t OutputType,
+            Inv Inverted, PinOutMode_t OutputType,
             uint32_t TopValue) : Timer_t(PTimer),
                     ISetup(PGpio, Pin, PTimer, TimerChnl, Inverted, OutputType, TopValue) {}
 };
@@ -1565,10 +1557,12 @@ void DisableSleepInReset();
 
 #if defined STM32L1XX // =================== Internal EEPROM ===================
 namespace EE {
-    uint32_t Read32(uint32_t Addr);
-    retv Write32(uint32_t Addr, uint32_t W);
-    void ReadBuf(void *PDst, uint32_t Sz, uint32_t Addr);
-    retv WriteBuf(void *PSrc, uint32_t Sz, uint32_t Addr);
+    uint32_t ReadU32(uint32_t addr);
+    retv WriteU32(uint32_t addr, uint32_t dw32);
+    int32_t ReadI32(uint32_t addr);
+    retv WriteI32(uint32_t addr, int32_t dw32);
+    void ReadBuf(void *p, uint32_t sz, uint32_t addr);
+    retv WriteBuf(void *p, uint32_t sz, uint32_t addr);
 };
 #endif
 

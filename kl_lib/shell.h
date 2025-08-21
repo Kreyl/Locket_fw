@@ -1,7 +1,7 @@
 /*
  * shell.h
  *
- *  Created on: 25 ���. 2015 �.
+ *  Created on: 2015
  *      Author: Kreyl
  */
 
@@ -15,26 +15,26 @@
 #include "kl_string.h"
 #include "board.h"
 
-#define DELIMITERS      " ,"
 #define PREV_CHAR_TIMEOUT_ms    99UL
 
 enum ProcessDataResult_t {pdrProceed, pdrNewCmd};
 
 class Cmd_t {
 private:
-    char IString[CMD_BUF_SZ];
-    char* Remainer = nullptr;
+    char istring[CMD_BUF_SZ];
+    char* remainer = nullptr;
     uint32_t Cnt;
-    bool Completed;
+    bool completed;
     systime_t LastCharTimestamp = 0;
     bool IsSpace(char c) { return (c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r' || c == ' '); }
     bool IsDigit(char c) { return c >= '0' and c <= '9'; }
 public:
-    char *Name;
+    const char *kDelimiters = " ,";
+    char *name;
     ProcessDataResult_t PutChar(char c) {
         // Reset cmd: (1) if it was completed and after that new char arrived (2) if new char has come after long pause
-        if(Completed or chVTTimeElapsedSinceX(LastCharTimestamp) > TIME_MS2I(PREV_CHAR_TIMEOUT_ms)) {
-            Completed = false;
+        if(completed or chVTTimeElapsedSinceX(LastCharTimestamp) > TIME_MS2I(PREV_CHAR_TIMEOUT_ms)) {
+            completed = false;
             Cnt = 0;
         }
         LastCharTimestamp = chVTGetSystemTimeX();
@@ -42,28 +42,28 @@ public:
         if(c == '\b') { if(Cnt > 0) Cnt--; }    // do backspace
         else if((c == '\r') or (c == '\n')) {   // end of line, check if cmd completed
             if(Cnt != 0) {  // if cmd is not empty
-                IString[Cnt] = 0; // End of string
-                Name = kl_strtok(IString, DELIMITERS, &Remainer);
-                Completed = true;
+                istring[Cnt] = 0; // End of string
+                name = Str::Tokens(istring, kDelimiters, &remainer);
+                completed = true;
                 return pdrNewCmd;
             }
         }
-        else if(Cnt < (CMD_BUF_SZ-1)) IString[Cnt++] = c;  // Add char if buffer not full
+        else if(Cnt < (CMD_BUF_SZ-1)) istring[Cnt++] = c;  // Add char if buffer not full
         return pdrProceed;
     }
 
-    char* GetNextString() { return kl_strtok(nullptr, DELIMITERS, &Remainer); }
+    char* GetNextString() { return Str::Tokens(nullptr, kDelimiters, &remainer); }
 
-    char* GetRemainder() { return Remainer; }
+    char* GetRemainder() { return remainer; }
 
     template <typename T>
-    retv GetNext(T *POutput) {
+    retv GetNext(T *poutput) {
         char* S = GetNextString();
         if(S) {
             char *p;
             int32_t dw32 = strtol(S, &p, 0);
             if(*p == '\0') {
-                *POutput = (T)dw32;
+                *poutput = (T)dw32;
                 return retv::Ok;
             }
             else return retv::NotANumber;
@@ -96,7 +96,7 @@ public:
             }
 
             // Get next token
-            char *tok = kl_strtok(nullptr, DELIMITERS, &Remainer);
+            char *tok = Str::Tokens(nullptr, kDelimiters, &remainer);
             if(tok == nullptr) goto End;
 
             // Command decoding
@@ -182,25 +182,25 @@ public:
     }
 
 #if PRINTF_FLOAT_EN
-    uint8_t GetNextFloat(float *POutput) {
+    uint8_t GetNextFloat(float *poutput) {
         char* S = GetNextString();
         if(!S) return retv::Fail;
         char *p;
         float f = strtof(S, &p);
         if(*p == '\0') {
-            *POutput = f;
+            *poutput = f;
             return retv::Ok;
         }
         else return retv::NotANumber;
     }
 
-    uint8_t GetNextDouble(double *POutput) {
+    uint8_t GetNextDouble(double *poutput) {
         char* S = GetNextString();
         if(!S) return retv::Fail;
         char *p;
         double f = strtod(S, &p);
         if(*p == '\0') {
-            *POutput = f;
+            *poutput = f;
             return retv::Ok;
         }
         else return retv::NotANumber;
@@ -249,32 +249,16 @@ public:
         return Rslt;
     }
 
-    bool NameIs(const char *SCmd) { return (kl_strcasecmp(Name, SCmd) == 0); }
+    bool NameIs(const char *SCmd) { return (Str::CmpCase(name, SCmd) == 0); }
     Cmd_t() {
         Cnt = 0;
-        Completed = false;
-        Name = nullptr;
+        completed = false;
+        name = nullptr;
     }
 };
-class Shell_t {
-public:
-	Cmd_t Cmd;
-	virtual void SignalCmdProcessed() = 0;
-	virtual void Print(const char *format, ...) = 0;
-    void Ok()  { Print("Ok\r\n"); }
-    void BadParam() { Print("BadParam\r\n"); }
-    void CRCError() { Print("CRCError\r\n"); }
-    void CmdError() { Print("CmdError\r\n"); }
-    void CmdUnknown() { Print("CmdUnknown\r\n"); }
-    void Failure() { Print("Failure\r\n"); }
-    void Timeout() { Print("Timeout\r\n"); }
-    void NoAnswer() { Print("NoAnswer\r\n"); }
-    void EOL() { Print("\r\n"); }
-};
-
 
 // Parent class for everything that prints
-class PrintfHelper_t {
+class PrintfHelper {
 private:
     retv IPutUint(uint32_t n, uint32_t base, uint32_t width, char filler);
 protected:
@@ -282,15 +266,43 @@ protected:
     virtual void IStartTransmissionIfNotYet() = 0;
 public:
     void IVsPrintf(const char *format, va_list args);
-    void PrintEOL();
+    void Print(const char *format, ...) {
+        va_list args;
+        va_start(args, format);
+        IVsPrintf(format, args);
+        va_end(args);
+    }
+    void PrintEOL() {
+        IPutChar('\r');
+        IPutChar('\n');
+        IStartTransmissionIfNotYet();
+    }
+};
+
+
+class Shell : public PrintfHelper {
+public:
+	Cmd_t cmd;
+    void Ok()         { Print("Ok\r\n"); }
+    void BadParam(const char* S = nullptr) {
+        if(S and *S) Print("BadParam %S\r\n", S);
+        else Print("BadParam\r\n");
+    }
+    void CRCError()   { Print("CRCError\r\n"); }
+    void CmdError()   { Print("CmdError\r\n"); }
+    void CmdUnknown() { Print("CmdUnknown: %S\r\n", cmd.name); }
+    void Failure()    { Print("Failure\r\n");  }
+    void Timeout()    { Print("Timeout\r\n");  }
+    void NoAnswer()   { Print("NoAnswer\r\n"); }
+    void Overflow()   { Print("Overflow\r\n"); }
 };
 
 #if 0 // ========================= Byte protocol ===============================
 #define BYTECMD_DATA_SZ     99
 class ByteCmd_t {
 private:
-//    char IString[CMD_BUF_SZ];
-    bool Completed;
+//    char istring[CMD_BUF_SZ];
+    bool completed;
     uint8_t IBuf[BYTECMD_DATA_SZ];
     bool FirstHalfOfByte = true, WasStarted = false;
     void AddHalfOfByte(uint8_t Half) {
@@ -308,8 +320,8 @@ public:
     uint32_t Cnt;
     ProcessDataResult_t PutChar(char c) {
         // Reset cmd if it was completed, and after that new char arrived
-        if(Completed) {
-            Completed = false;
+        if(completed) {
+            completed = false;
             Cnt = 0;
             FirstHalfOfByte = true;
             WasStarted = false;
@@ -327,7 +339,7 @@ public:
                 if(Cnt != 0) {  // if not empty
                     CmdCode = IBuf[0];
                     Cnt--;  // Remove CmdCode out of cnt
-                    Completed = true;
+                    completed = true;
                     return pdrNewCmd;
                 }
             }
@@ -365,10 +377,10 @@ public:
 #endif
 
 // Functions
-class CmdUart_t;
+class CmdUart;
 
 void Printf(const char *format, ...);
-void Printf(CmdUart_t &AUart, const char *format, ...);
+void Printf(CmdUart &AUart, const char *format, ...);
 void PrintfI(const char *format, ...);
 void PrintfEOL();
 //void PrintfNow(const char *format, ...);

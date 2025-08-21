@@ -61,7 +61,7 @@ union EvtMsg_t {
 //            uint8_t b[EMSG_DATA8_CNT];
 //            uint16_t w16[EMSG_DATA16_CNT];
 #if BUTTONS_ENABLED
-            BtnEvtInfo_t btn_info;
+            BtnEvtInfo btn_info;
 #endif
         } __attribute__((__packed__));
         EvtId id;
@@ -175,6 +175,6 @@ public:
         default: Printf("Unhandled Msg %u\r", Msg.ID); break;
     } // Switch
  */
-extern EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> EvtQMain;
+extern EvtMsgQ_t<EvtMsg_t, MAIN_EVT_Q_LEN> evt_q_main;
 
 #endif //MSGQ_H__
