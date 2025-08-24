@@ -55,6 +55,7 @@ inline const uint32_t kSleepDuration = 450UL;
 const int32_t kHVolumeMax = 0;   // Red
 const int32_t kHVolumeMin = 240; // Blue
 const int32_t kVolumeMax = 100;
+const int32_t kVolumeMin = 10;
 const int32_t kVolumeStep = 10;
 
 
@@ -65,6 +66,13 @@ void SleepNow(uint32_t delay) {
     Iwdg::InitAndStart(delay);
     Sleep::EnterStandby();
     chSysUnlock();
+}
+
+void SetLedVolume() {
+    ColorHSV_t hsv { 0, 100, 100 };
+    hsv.H = Proportion<int32_t>(kVolumeMin, kVolumeMax, kHVolumeMin, kHVolumeMax, pkt_tx.value);
+    if(hsv.H > 360) hsv.H = 360;
+    led.SetColor(hsv.ToRGB());
 }
 
 void main(void) {
@@ -94,6 +102,7 @@ void main(void) {
     BackupSpc::EnableAccess();
     pkt_tx.value = BackupSpc::ReadRegister(0);
     if(pkt_tx.value > kVolumeMax) pkt_tx.value = kVolumeMax;
+    if(pkt_tx.value < kVolumeMin) pkt_tx.value = kVolumeMin;
     pkt_tx.from = 0;
     pkt_tx.to = kRecipientBroadcast;
 
@@ -109,26 +118,23 @@ void main(void) {
                 pkt_tx.value += kVolumeStep;
                 if(pkt_tx.value > kVolumeMax) pkt_tx.value = kVolumeMax;
                 pkt_tx.cmd = kCmdSetVolume;
+                SetLedVolume();
             }
             else if(PinIsHi(BTN2_PIN)) { // Restart
-                vibro.StartOrRestart(vsqBrrBrr);
+                vibro.StartOrRestart(vsqBrrBrrBrr);
                 pkt_tx.cmd = kCmdRestart;
+                led.SetColor(clMagenta);
             }
             else if(PinIsHi(BTN3_PIN)) { // Volume down
-                vibro.StartOrRestart(vsqBrrBrrBrr);
+                vibro.StartOrRestart(vsqBrrBrr);
                 pkt_tx.value -= kVolumeStep;
-                if(pkt_tx.value < 0) pkt_tx.value = 0;
+                if(pkt_tx.value < kVolumeMin) pkt_tx.value = kVolumeMin;
                 pkt_tx.cmd = kCmdSetVolume;
+                SetLedVolume();
             }
             BackupSpc::WriteRegister(0, pkt_tx.value);
             Printf("Volume=%d\r", pkt_tx.value);
             pkt_tx.Print();
-
-            // Set color
-            ColorHSV_t hsv { 0, 100, 100 };
-            hsv.H = Proportion<int32_t>(0, kVolumeMax, kHVolumeMin, kHVolumeMax, pkt_tx.value);
-            if(hsv.H > 360) hsv.H = 360;
-            led.SetColor(hsv.ToRGB());
 
             // CC set params
             CC.SetPktSize(kRPktSz);

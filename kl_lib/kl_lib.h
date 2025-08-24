@@ -351,6 +351,8 @@ namespace BackupSpc {
         PWR->CR |= PWR_CR_DBP;
 #elif defined STM32L4XX || defined STM32F7XX
         PWR->CR1 |= PWR_CR1_DBP;
+#elif defined STM32L1XX
+        PWR->CR = PWR->CR | PWR_CR_DBP;
 #endif
     }
 
