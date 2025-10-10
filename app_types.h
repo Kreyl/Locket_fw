@@ -23,16 +23,17 @@ enum class DevType { None, Host, Wormhole, Mengir, Locket };
 
 
 struct Locket {
-    uint32_t id = 0, level = 1;
-    bool is_alive = true;
+    enum Sta {Dead = 0, Level1 = 1, Level2 = 2};
+    uint32_t id = 0;
+    Sta state = Level1;
     bool btnA_pressed = false, btn_middle_pressed = false, btnB_pressed = false;
     bool vote_accepted = false;
     Locket() {}
-    Locket(uint32_t aid, uint32_t alvl, bool alive, bool btnA, bool btnMid, bool btnB) :
-        id(aid), level(alvl), is_alive(alive), btnA_pressed(btnA),
+    Locket(uint32_t aid, uint8_t astate, bool btnA, bool btnMid, bool btnB) :
+        id(aid), state((Sta)astate), btnA_pressed(btnA),
         btn_middle_pressed(btnMid), btnB_pressed(btnB), vote_accepted(false) {}
     bool operator<(const Locket& other) const { return id < other.id; }
-    void Print() const { Printf("id=%u lvl=%u a=%u bA=%u bM=%u bB=%u\n", id, level, is_alive, btnA_pressed, btn_middle_pressed, btnB_pressed); }
+    void Print() const { Printf("id=%u sta=%u bA=%u bM=%u bB=%u\n", id, state, btnA_pressed, btn_middle_pressed, btnB_pressed); }
 };
 using Lockets = std::set<Locket>;
 

@@ -1,16 +1,10 @@
 #pragma once
 
 #include "radio_lvl1.h"
+#include "app_types.h"
 
-class Config {
-public:
-    uint32_t id = 0;
-    uint32_t level = 1;
-    bool is_alive = true;
-    uint8_t tx_power = 0;
-    void PrintTxPwr() const;
-};
-extern Config cfg;
+extern Locket lkt;
+extern uint8_t tx_power;
 
 namespace App {
 

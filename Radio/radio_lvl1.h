@@ -26,9 +26,8 @@ union rPkt {
     struct {
         uint8_t id;  // 1 byte
         union {
-            struct { // 5 bytes
-                uint8_t level;
-                uint8_t is_alive;
+            struct { // 4 bytes
+                uint8_t state;
                 uint8_t btnA_pressed, btn_middle_pressed, btnB_pressed;
             } locket;
             struct { // 11 bytes
@@ -47,7 +46,7 @@ union rPkt {
         return *this;
     }
     void PrintLocket(const char* S) {
-        Printf("%Sid=%u L%u A%u B %u %u %u\r", S, id, locket.level, locket.is_alive, locket.btnA_pressed, locket.btn_middle_pressed, locket.btnB_pressed);
+        Printf("%Sid=%u sta=%u; %u %u %u\r", S, id, locket.state, locket.btnA_pressed, locket.btn_middle_pressed, locket.btnB_pressed);
     }
     void PrintWormhole(const char* S) {
         Printf("%Sid=%u cmd=%u L:", S, id, wormhole.cmd);

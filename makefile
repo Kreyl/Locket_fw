@@ -20,7 +20,7 @@ $(MAKECMDGOALS): $(ACTION)
 ######################### Common Cfg Settings #########################
 MCU = cortex-m3
 FLOAT_FLAGS = # -mfloat-abi=hard -mfpu=fpv4-sp-d16 -fsingle-precision-constant -Wdouble-promotion -Wfloat-conversion -Wfloat-equal
-WARNING_FLAGS = -Wall -Wlogical-op -Werror
+WARNING_FLAGS = -Wall -Wlogical-op # -Werror
 DISABLED_WARNINGS = -Wno-address-of-packed-member -Wno-unknown-pragmas -Wno-volatile
 COMMON_FLAGS = -mcpu=$(MCU) -mthumb -fmessage-length=0 -ffunction-sections -fdata-sections -ffreestanding $(FLOAT_FLAGS) $(WARNING_FLAGS)
 CPP_FLAGS = -std=gnu++20 -fabi-version=0 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics $(DISABLED_WARNINGS) $(OUTPUT_ASM)

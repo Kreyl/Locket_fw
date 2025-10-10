@@ -7,7 +7,7 @@
 #include "beeper.h"
 #include "pill_mgr.h"
 #include "adcL151.h"
-
+#include "app_types.h"
 #include "Sequences.h"
 
 #pragma region // ======================== Variables and defines ========================
@@ -19,10 +19,15 @@ CmdUart uart { &kCmdUartParams };
 static void ITask();
 static void OnCmd(Shell *pshell);
 
-static retv ReadModeFromDip();
-
+// DIP switch
 static const PinInputSetup_t dip_sw_pin[DIP_SW_CNT] = { DIP_SW8, DIP_SW7, DIP_SW6, DIP_SW5, DIP_SW4, DIP_SW3, DIP_SW2, DIP_SW1 };
 static uint8_t GetDipSwitch();
+static retv ReadModeFromDip();
+
+// EE
+#define EE_ADDR_DEVICE_ID       0
+static retv ISetID(uint32_t new_id);
+static void ReadIDfromEE();
 
 LedRGBwPower_t<11> led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t<4> vibro { VIBRO_SETUP };
@@ -52,8 +57,8 @@ void main(void) {
 
     // ==== Init hardware ====
     uart.Init();
-    cfg.id = GetUniqID32();
-    Printf("\r%S %S; ID: 0x%08X\r", APP_NAME, kBuildTime, cfg.id);
+    ReadIDfromEE();
+    Printf("\r%S %S; ID: %u\r", APP_NAME, kBuildTime, lkt.id);
     Clk.PrintFreqs();
 
     Random::SeedWithUniqID();
@@ -133,8 +138,8 @@ retv ReadModeFromDip() {
     old_dip_settings = dw32;
     // Select power
     uint32_t bits = dw32 & 0b1111; // Remove high bits = group 5678
-    cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : kPwrTable[bits];
-    cfg.PrintTxPwr();
+    tx_power = (bits > 11) ? CC_PwrPlus12dBm : kPwrTable[bits];
+    Printf("TxPwr: %S\r", CC_PwrToString(tx_power));
     return retv::New;
 }
 
@@ -144,11 +149,43 @@ void OnCmd(Shell *pshell) {
     // Handle command
     if(pcmd->NameIs("Ping")) pshell->Ok();
     else if(pcmd->NameIs("Version")) pshell->Print("%S %S\r", APP_NAME, kBuildTime);
+    else if(pcmd->NameIs("SetID")) {
+        uint32_t new_id = 0;
+        if(pcmd->GetNext<uint32_t>(&new_id) != retv::Ok) {
+            pshell->CmdError();
+            return;
+        }
+        if(ISetID(new_id) == retv::Ok) pshell->Ok();
+        else pshell->Failure();
+    }
 
     else App::OnCmd(pshell);
 }
 #endif
 
+#if 1 // =========================== ID management =============================
+void ReadIDfromEE() {
+    lkt.id = EE::ReadU32(EE_ADDR_DEVICE_ID);  // Read device ID
+    if(lkt.id < IDs::LocketMin or lkt.id > IDs::LocketMax) {
+        Printf("\rUsing default ID\r");
+        lkt.id = IDs::LocketMin;
+    }
+}
+
+retv ISetID(uint32_t new_id) {
+    if(new_id < IDs::LocketMin or new_id > IDs::LocketMax) return retv::BadValue;
+    retv rslt = EE::WriteU32(EE_ADDR_DEVICE_ID, new_id);
+    if(rslt == retv::Ok) {
+        lkt.id = new_id;
+        Printf("New ID: %u\r", new_id);
+        return retv::Ok;
+    }
+    else {
+        Printf("EE error: %u\r", rslt);
+        return retv::Fail;
+    }
+}
+#endif
 
 // ====== DIP switch ======
 uint8_t GetDipSwitch() {

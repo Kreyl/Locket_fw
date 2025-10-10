@@ -33,7 +33,7 @@ static rPkt *ppkt_tx = nullptr;
 
 static uint32_t supercycle_cnt = 0;
 static RxTable tbl1, tbl2, *curr_tbl = &tbl1;
-static uint8_t tx_power;
+static uint8_t itx_power;
 
 
 static inline uint32_t TryToReceive(uint32_t rx_duration_ms) {
@@ -49,7 +49,7 @@ static inline uint32_t TryToReceive(uint32_t rx_duration_ms) {
         DBG2_CLR();
         if(rx_rslt == retv::Ok) {
             rcvd_cnt++;
-//            Printf("%u %d; %d\r", pkt_rx.id, pkt_rx.type, pkt_rx.rssi);
+            Printf("%u %d\r", pkt_rx.id, rssi);
             curr_tbl->AddOrReplaceExistingPkt(pkt_rx);
         }
         // Check if rx more or get out
@@ -123,8 +123,8 @@ static void rLvl1Thread(void *arg) {
         ppkt_tx = App::PrepareTxPkt();
         TaskFeelEachOther();
         // Set new tx pwr if changed
-        if(tx_power != cfg.tx_power) {
-            tx_power = cfg.tx_power;
+        if(tx_power != itx_power) {
+            itx_power = tx_power;
             CC.SetTxPower(tx_power);
         }
         supercycle_cnt++;
@@ -147,11 +147,11 @@ retv Init() {
     PinSetupOut(DBG_GPIO1, DBG_PIN1, omPushPull);
     PinSetupOut(DBG_GPIO2, DBG_PIN2, omPushPull);
 #endif
-
+    itx_power = tx_power;
     if(CC.Init() == retv::Ok) {
         CC.SetPktSize(kRPktSz);
         CC.SetChannel(0);
-        CC.SetTxPower(cfg.tx_power);
+        CC.SetTxPower(tx_power);
         CC.SetBitrate(CCBitrate500k);
         // CC.SetBitrate(CCBitrate250k);
         // CC.SetBitrate(CCBitrate100k);
