@@ -103,7 +103,6 @@ void ITask() {
                 if(ReadModeFromDip() == retv::New) chThdSleepMilliseconds(810);
                 Adc::StartMeasurement();
                 App::OnSecondEvt();
-                PillMgr::Check();
                 break;
 
             case EvtId::Buttons:
@@ -116,9 +115,10 @@ void ITask() {
                 App::ProcessRxTbl(*static_cast<RxTable*>(msg.ptr));
                 break;
 
-            case EvtId::PillConnected:
-                App::OnPillConnected();
-                break;
+            // ==== Pill ====
+            case EvtId::CheckPill: PillMgr::Check(); break;
+            case EvtId::PillConnected: App::ApplyPill(PillMgr::pill_data.type); break;
+            case EvtId::PillDisconnected: Printf("Pill disconnected\r"); break;
 
 #if ADC_REQUIRED
             case EvtId::AdcRslt: {

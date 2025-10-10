@@ -5,8 +5,7 @@
  *      Author: Kreyl
  */
 
-#ifndef EVTMSGIDS_H__
-#define EVTMSGIDS_H__
+#pragma once
 
 enum class EvtId : uint8_t {
     None = 0, // Always
@@ -29,5 +28,3 @@ enum class EvtId : uint8_t {
     RadioCmd,
     CheckRxTable,
 };
-
-#endif //EVTMSGIDS_H__

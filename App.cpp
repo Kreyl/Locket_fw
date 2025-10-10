@@ -71,17 +71,28 @@ void OnSecondEvt() {
     // Nothing here
 }
 
-static void SignalPillIsNotApplicable() {
-    Printf("Not applicable\r");
-    led.StartOrAddToQueue(lsqPillBad);
-}
-
 void ApplyPill(int32_t pill_id) {
-    Printf("Pill");
+    Printf("Pill %u\n", pill_id);
     switch(pill_id) {
-
-void OnPillConnected() {
-    Printf("Pill: %u\n", PillMgr::pill_data.type);
+        case 0:
+            led.StartOrRestart(lsqDieNow);
+            lkt.state = Locket::Sta::Dead;
+            WriteStateToEE();
+            break;
+        case 1:
+            led.StartOrRestart(lsqPillLvl1);
+            lkt.state = Locket::Sta::Level1;
+            WriteStateToEE();
+            break;
+        case 2:
+            led.StartOrRestart(lsqPillLvl2);
+            lkt.state = Locket::Sta::Level2;
+            WriteStateToEE();
+            break;
+        default:
+            led.StartOrRestart(lsqPillBad);
+            break;
+    } // switch
 }
 
 

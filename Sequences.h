@@ -262,6 +262,32 @@ const LedRGBChunk lsqBlink[] = {
         {csEnd},
 };
 
+#pragma region // ==== Pill indication ====
+inline constexpr const unsigned long kPillBlinkDur = 630, kAfterPillDelay = 2007;
+const LedRGBChunk lsqPillBad[] = {
+        {csSetup, 0, clRed},   {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDark},
+        {csRepeat, 2},
+        {csWait, kAfterPillDelay},
+        {csEnd}
+};
+
+const LedRGBChunk lsqPillLvl1[] = {
+        {csSetup, 0, clYellow}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDark},
+        {csRepeat, 2},
+        {csWait, kAfterPillDelay},
+        {csEnd}
+};
+const LedRGBChunk lsqPillLvl2[] = {
+        {csSetup, 0, clMagenta}, {csWait, kBlinkDuration},
+        {csSetup, 0, clBlack}, {csWait, kBlinkDark},
+        {csRepeat, 2},
+        {csWait, kAfterPillDelay},
+        {csEnd}
+};
+#pragma endregion
+
 #endif
 
 #if 0 // =========================== LED Smooth ================================
