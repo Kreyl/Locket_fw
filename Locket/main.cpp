@@ -72,7 +72,7 @@ void main(void) {
 
     // Read dev type and tx pwr from dip, and load state
     ReadModeFromDip();
-    App::ShowSelfType();
+    App::ShowSelfState();
     tmr_every_second.StartOrRestart();
     tmr_check_uart.StartOrRestart();
     SimpleSensors::Init();
@@ -134,9 +134,6 @@ retv ReadModeFromDip() {
     // Select power
     uint32_t bits = dw32 & 0b1111; // Remove high bits = group 5678
     cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : kPwrTable[bits];
-    // Is it master?
-    cfg.is_master = (dw32 & 0x80UL) != 0;
-    cfg.PrintType();
     cfg.PrintTxPwr();
     return retv::New;
 }

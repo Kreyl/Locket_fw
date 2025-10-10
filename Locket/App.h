@@ -2,35 +2,21 @@
 
 #include "radio_lvl1.h"
 
-enum class DevType {
-    // Locket
-    Idle = 0,
-    Opener = 1,
-    Restorer = 2,
-    Closer = 3,
-    // Point
-    Active = 10,
-    Opened = 11,
-    Closed = 12,
-};
-
 class Config {
 public:
     uint32_t id = 0;
-    DevType type = DevType::Idle;
-    bool is_master = false;
+    uint32_t level = 1;
+    bool is_alive = true;
     uint8_t tx_power = 0;
-    void PrintType() const;
     void PrintTxPwr() const;
 };
-
 extern Config cfg;
 
 namespace App {
 
 void TakeBatteryVoltage(uint32_t vbat);
 
-void ShowSelfType();
+void ShowSelfState();
 
 // Evt processing
 void OnBtnEvt(BtnEvtInfo btn_info);

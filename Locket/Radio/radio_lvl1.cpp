@@ -34,11 +34,6 @@ static rPkt *ppkt_tx = nullptr;
 static uint32_t supercycle_cnt = 0;
 static RxTable tbl1, tbl2, *curr_tbl = &tbl1;
 static uint8_t tx_power;
-// Adaptive cycle cnt related
-#if RADAPTIVE_CYCLE_CNT
-static uint32_t sc_left_before_rare_mode = Radio::kNoReceptionScCnt;
-static uint32_t cycle_cnt = Radio::kCycleCntNominal;
-#endif
 
 
 static inline uint32_t TryToReceive(uint32_t rx_duration_ms) {
@@ -46,10 +41,11 @@ static inline uint32_t TryToReceive(uint32_t rx_duration_ms) {
     sysinterval_t total_duration_st = TIME_MS2I(rx_duration_ms);
     sysinterval_t start_time_st = chVTGetSystemTimeX();
     sysinterval_t time_left_st = total_duration_st;
+    int8_t rssi;
     CC.Recalibrate();
     while(true) {
         DBG2_SET();
-        retv rx_rslt = CC.Receive_st(time_left_st, reinterpret_cast<uint8_t*>(&pkt_rx), kRPktSz, &pkt_rx.rssi);
+        retv rx_rslt = CC.Receive_st(time_left_st, reinterpret_cast<uint8_t*>(&pkt_rx), kRPktSz, &rssi);
         DBG2_CLR();
         if(rx_rslt == retv::Ok) {
             rcvd_cnt++;
@@ -115,28 +111,8 @@ static void DoTxOnlyCycle() {
 
 
 static void TaskFeelEachOther() {
-#if RADAPTIVE_CYCLE_CNT // Adjust cycle cnt
-    uint32_t rcvd_cnt = DoZeroCycle();
-    if(rcvd_cnt > 0) { // Something rcvd,
-        cycle_cnt = Radio::kCycleCntNominal;  // now receive often
-        sc_left_before_rare_mode = Radio::kNoReceptionScCnt; // and reset counter-to-rare-mode
-    }
-    else { // Silence around
-        if(sc_left_before_rare_mode > 0) sc_left_before_rare_mode--; // Decrement counter-to-rare-mode
-        else cycle_cnt = Radio::kCycleCntRare; // Or receive rarely if zero
-    }
-    // Printf("cycle_cnt=%u, sc_left_before_rare_mode=%u\r", cycle_cnt, sc_left_before_rare_mode);
-#else
     DoZeroCycle();
-    uint32_t cycle_cnt = Radio::kCycleCntNominal;
-#endif
-    // Run remaining transmit-only cycles
-    if(ppkt_tx != nullptr) { // Must transmit
-        for(uint32_t cycle_n=1; cycle_n < cycle_cnt; cycle_n++) DoTxOnlyCycle();
-    }
-    else { // No tx, sleep cycle_cnt-1 cycles
-        TryToSleep((cycle_cnt - 1) * kCycleDuration_ms);
-    }
+    for(uint32_t cycle_n=1; cycle_n < Radio::kCycleCnt; cycle_n++) DoTxOnlyCycle();
 }
 
 static THD_WORKING_AREA(warLvl1Thread, 256);
@@ -144,7 +120,7 @@ __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
-        ppkt_tx = App::PrepareTxPkt(); // May return null indicating no tx required
+        ppkt_tx = App::PrepareTxPkt();
         TaskFeelEachOther();
         // Set new tx pwr if changed
         if(tx_power != cfg.tx_power) {
