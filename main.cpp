@@ -77,7 +77,7 @@ void main(void) {
 
     // Read dev type and tx pwr from dip, and load state
     ReadModeFromDip();
-    App::ShowSelfState();
+    App::PresentSelf();
     tmr_every_second.StartOrRestart();
     tmr_check_uart.StartOrRestart();
     SimpleSensors::Init();

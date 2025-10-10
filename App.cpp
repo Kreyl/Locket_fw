@@ -15,9 +15,30 @@ uint8_t tx_power;
 
 static uint32_t iVbat = 0UL;
 
-// static bool IsBatteryLow() {
-//     return iVbat < Battery::kLowVoltageAlkaline3v0_mV;
-// }
+namespace Near {
+    bool locket = false;
+    uint32_t mengirs = 0, wormholes = 0;
+    bool vote_accepted = false, time_to_die = false;
+
+    void Reset() {
+        locket = false;
+        mengirs = 0;
+        wormholes = 0;
+        vote_accepted = false;
+        time_to_die = false;
+    }
+
+    void Print() {
+        Printf("Near: locket=%d mengirs=%d wormholes=%d vote_accepted=%d time_to_die=%d\r",
+            locket, mengirs, wormholes, vote_accepted, time_to_die);
+    }
+} // namespace Near
+
+enum Btn { A=0, Mid=1, B=2 };
+
+static bool IsBatteryLow() {
+    return iVbat < Battery::kLowVoltageAlkaline3v0_mV;
+}
 
 namespace App {
 
@@ -26,25 +47,19 @@ void TakeBatteryVoltage(uint32_t vbat) {
     iVbat = vbat;
 }
 
-void ShowSelfState() {
-    // if(cfg.is_master) led.StartOrAddToQueue(lsqSelfTypeMaster);
-    // else led.StartOrAddToQueue(lsqSelfTypePlayer);
+void PresentSelf() {
+    if(lkt.state == Locket::Sta::Level1) led.StartOrRestart(lsqLvl1);
+    else if(lkt.state == Locket::Sta::Level2) led.StartOrRestart(lsqLvl2);
 }
+
 
 // Just indicate btnpress
 void OnBtnEvt(BtnEvtInfo btn_info) {
-    // switch(btn_info.btn_indx) {
-    //     case 0: // Open
-    //         vibro.StartOrAddToQueue(vsqBrrBrr);
-    //         break;
-    //     case 1: // Restore
-    //         if(cfg.is_master) vibro.StartOrAddToQueue(vsqBrr);
-    //         break;
-    //     case 2: // Close
-    //         vibro.StartOrAddToQueue(vsqBrrBrrBrr);
-    //         break;
-    //     default: break;
-    // } // switch
+    if(lkt.state == Locket::Sta::Dead) return;
+    if(btn_info.btn_indx == Btn::Mid) {
+        if(Near::locket) led.StartOrAddToQueue(lsqLocketIsNear);
+    }
+    PresentSelf();
 }
 
 void OnSecondEvt() {
@@ -56,59 +71,49 @@ static bool rx_pkt_printing = false;
 
 // RX. Called from main thread by evt which is periodically sent by radio
 void ProcessRxTbl(RxTable &tbl) {
+    Near::Reset();
+    if(lkt.state == Locket::Sta::Dead) {
+        led.StartOrRestart(lsqDead);
+        return;
+    }
     // === Analyze table ===
-    // for(uint32_t i=0; i<tbl.cnt; i++) {
-    //     rPkt &pkt = tbl[i];
-    //     // if(rx_pkt_printing) pkt.Print();
-    //     DevType type = pkt.GetType();
-    // }
-    // ==== Indicate depending on self type ====
-    // Show changed points only when the button is pressed
-    // if(cfg.type != DevType::Idle) {
-    //     if(!cfg.is_master) {
-    //         switch(changed_cnt) {
-    //             case 0: break;
-    //             case 1:  led.StartOrAddToQueue(lsqChangedOne);  break;
-    //             case 2:  led.StartOrAddToQueue(lsqChangedTwo);  break;
-    //             default: led.StartOrAddToQueue(lsqChangedMany); break;
-    //         }
-    //     }
-    //     if(changed_cnt != 0) vibro.StartOrAddToQueue(vsqLongBrr);
-    // }
-
-    // Always show active points
-    // switch(active_cnt) {
-    //     case 0: break;
-    //     case 1: led.StartOrAddToQueue(lsqActiveOne); break;
-    //     case 2: led.StartOrAddToQueue(lsqActiveTwo); break;
-    //     default: led.StartOrAddToQueue(lsqActiveMany); break;
-    // }
-
-    // Vibrate if idle
-    // if(active_cnt > 0 and cfg.type == DevType::Idle) vibro.StartOrRestart(vsqBrr);
-
-
+    for(uint32_t i=0; i<tbl.cnt; i++) {
+        rPkt &pkt = tbl[i];
+        // if(rx_pkt_printing) pkt.Print();
+        DevType type = pkt.GetType();
+        if(type == DevType::Locket and pkt.locket.state != Locket::Sta::Dead) Near::locket = true;
+        else if(type == DevType::Mengir) Near::mengirs++;
+        else if(type == DevType::Wormhole) {
+            Near::wormholes++;
+            // Process wormhole cmd
+            Near::vote_accepted = (pkt.wormhole.cmd == WormholeCmd::VoteAccepted) and (pkt.wormhole.IdIsInList(lkt.id));
+            Near::time_to_die =   (pkt.wormhole.cmd == WormholeCmd::KillThemAll)  and (pkt.wormhole.IdIsInList(lkt.id));
+        }
+    }
+    // ==== Indicate ====
+    if(Near::time_to_die) {
+        lkt.state = Locket::Sta::Dead;
+        led.StartOrRestart(lsqDieNow);
+        vibro.StartOrRestart(vsqDieNow);
+        return;
+    }
+    // It's good to be alive
+    for(uint32_t i=0; i<Near::mengirs; i++) vibro.StartOrAddToQueue(vsqBrr);
+    for(uint32_t i=0; i<Near::wormholes; i++) vibro.StartOrAddToQueue(vsqBrrBrr);
+    if(Near::vote_accepted) led.StartOrAddToQueue(lsqVoteAccepted);
     // Show discharged
-    // if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
-    // Present self
-    // ShowSelfType();
+    if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
+    PresentSelf();
 }
 
 // Tx. Called from radio level
 rPkt* PrepareTxPkt() {
-    // Check which btn is pressed. If no btn is pressed, no need to transmit.
-    // if     (GetBtnState(0) == BTN_HOLDDOWN_STATE) cfg.type = DevType::Opener;
-    // else if(GetBtnState(1) == BTN_HOLDDOWN_STATE and cfg.is_master) cfg.type = DevType::Restorer;
-    // else if(GetBtnState(2) == BTN_HOLDDOWN_STATE) cfg.type = DevType::Closer;
-    // else {
-    //     cfg.type = DevType::Idle;
-    //     return nullptr;
-    // }
-    // Something is pressed
     pkt_tx.id = lkt.id;
-    // pkt_tx.type = static_cast<uint8_t>(cfg.type);
-    // pkt_tx.is_master = cfg.is_master? 1 : 0;
-    // pkt_tx.silt = Random::Generate(0, 0xFF);
+    pkt_tx.locket.state = lkt.state;
+    // Check which btn is pressed
+    pkt_tx.locket.btnA_pressed = GetBtnState(Btn::A) == BTN_HOLDDOWN_STATE;
+    pkt_tx.locket.btnB_pressed = GetBtnState(Btn::B) == BTN_HOLDDOWN_STATE;
+    pkt_tx.locket.btn_middle_pressed = GetBtnState(Btn::Mid) == BTN_HOLDDOWN_STATE;
     return &pkt_tx;
 }
 #pragma endregion
@@ -116,9 +121,9 @@ rPkt* PrepareTxPkt() {
 
 void OnCmd(Shell *pshell) {
     Cmd_t *pcmd = &pshell->cmd;
-    if(pcmd->NameIs("State")) {
-        // Printf("Immortals: %d\r", immortals_cnt);
-        // Printf("Preimmortals: %d\r", preimmortals_cnt);
+    if(pcmd->NameIs("Sta")) {
+        lkt.Print();
+        Near::Print();
         Printf("Battery: %d\r", iVbat);
     }
 

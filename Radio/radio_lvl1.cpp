@@ -49,7 +49,7 @@ static inline uint32_t TryToReceive(uint32_t rx_duration_ms) {
         DBG2_CLR();
         if(rx_rslt == retv::Ok) {
             rcvd_cnt++;
-            Printf("%u %d\r", pkt_rx.id, rssi);
+            // Printf("%u %d\r", pkt_rx.id, rssi);
             curr_tbl->AddOrReplaceExistingPkt(pkt_rx);
         }
         // Check if rx more or get out

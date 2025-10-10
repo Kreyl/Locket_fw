@@ -33,6 +33,10 @@ union rPkt {
             struct { // 11 bytes
                 WormholeCmd cmd;
                 uint8_t ids[kRpktLktsCnt];
+                bool IdIsInList(uint8_t id) {
+                    for(uint32_t i=0; i<kRpktLktsCnt; i++) if(ids[i] == id) return true;
+                    return false;
+                }
             } wormhole;
             struct { // 1 byte
                 uint8_t value;

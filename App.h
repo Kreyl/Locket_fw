@@ -10,7 +10,7 @@ namespace App {
 
 void TakeBatteryVoltage(uint32_t vbat);
 
-void ShowSelfState();
+void PresentSelf();
 
 // Evt processing
 void OnBtnEvt(BtnEvtInfo btn_info);
