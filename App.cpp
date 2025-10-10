@@ -71,6 +71,15 @@ void OnSecondEvt() {
     // Nothing here
 }
 
+static void SignalPillIsNotApplicable() {
+    Printf("Not applicable\r");
+    led.StartOrAddToQueue(lsqPillBad);
+}
+
+void ApplyPill(int32_t pill_id) {
+    Printf("Pill");
+    switch(pill_id) {
+
 void OnPillConnected() {
     Printf("Pill: %u\n", PillMgr::pill_data.type);
 }
@@ -151,6 +160,40 @@ void OnCmd(Shell *pshell) {
         rx_pkt_printing = pcmd->GetNext(&v).IsOk() and v != 0;
         Printf("RxPktPrinting: %s\r", rx_pkt_printing ? "Enabled" : "Disabled");
         pshell->Ok();
+    }
+
+    else if(pcmd->NameIs("PillRead32")) {
+        uint32_t cnt = 0, dw32 = 0;
+        if(pcmd->GetNext(&cnt).NotOk()) { pshell->BadParam(); return; }
+        uint8_t mem_addr = 0;
+        pshell->Print("#PillData32 ");
+        for(uint32_t i=0; i<cnt; i++) {
+            if(PillMgr::Read32(mem_addr, &dw32, 1).NotOk()) break;
+            pshell->Print("%u ", dw32);
+            mem_addr += 4;
+        }
+        pshell->PrintEOL();
+        pshell->Ok();
+    }
+
+    else if(pcmd->NameIs("PillWrite32")) {
+        uint32_t dw32, mem_addr = 0;
+        while(true) {
+            if(pcmd->GetNext(&dw32).NotOk()) break;
+            Printf("%u ", dw32);
+            if(PillMgr::Write32(mem_addr, &dw32, 1).NotOk()) break;
+            mem_addr += 4;
+        } // while
+        pshell->Ok();
+    }
+
+    else if(pcmd->NameIs("ApplyPill")) {
+        int32_t dw32;
+        if(pcmd->GetNext(&dw32).IsOk()) {
+            pshell->Ok();
+            ApplyPill(dw32);
+        }
+        else pshell->BadParam();
     }
 
     else pshell->CmdUnknown();
