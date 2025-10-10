@@ -1,2 +1,3 @@
-﻿GSLeaf_fw/Release
-Release
+/Release/
+.settings/language.settings.xml
+Debug/
