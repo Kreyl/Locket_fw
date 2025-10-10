@@ -6,14 +6,19 @@
 #include "kl_lib.h"
 #include "battery_consts.h"
 #include <unordered_map>
+#include "pill_mgr.h"
+
 
 extern LedRGBwPower_t<11> led;
 extern Vibro_t<4> vibro;
 Locket lkt;
 static rPkt pkt_tx;
 uint8_t tx_power;
-
 static uint32_t iVbat = 0UL;
+
+// Implemented in main.cpp
+void WriteStateToEE();
+void ReadStateFromEE();
 
 namespace Near {
     bool locket = false;
@@ -65,6 +70,11 @@ void OnBtnEvt(BtnEvtInfo btn_info) {
 void OnSecondEvt() {
     // Nothing here
 }
+
+void OnPillConnected() {
+    Printf("Pill: %u\n", PillMgr::pill_data.type);
+}
+
 
 #pragma region // ==== Radio related ====
 static bool rx_pkt_printing = false;

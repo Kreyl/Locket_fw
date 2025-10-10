@@ -13,7 +13,7 @@
 #endif
 
 // ==== High-level peripery control ====
-#define PILL_ENABLED        FALSE
+#define PILL_ENABLED        TRUE
 #define BEEPER_ENABLED      FALSE
 #define BUTTONS_ENABLED     TRUE
 

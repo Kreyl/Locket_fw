@@ -15,6 +15,7 @@ void PresentSelf();
 // Evt processing
 void OnBtnEvt(BtnEvtInfo btn_info);
 void OnSecondEvt();
+void OnPillConnected();
 
 // Radio
 rPkt* PrepareTxPkt(); // Return null if no tx required

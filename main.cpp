@@ -26,8 +26,11 @@ static retv ReadModeFromDip();
 
 // EE
 #define EE_ADDR_DEVICE_ID       0
+#define EE_ADDR_STATE           4
 static retv ISetID(uint32_t new_id);
 static void ReadIDfromEE();
+void WriteStateToEE();
+void ReadStateFromEE();
 
 LedRGBwPower_t<11> led { LED_R_PIN, LED_G_PIN, LED_B_PIN, LED_EN_PIN };
 Vibro_t<4> vibro { VIBRO_SETUP };
@@ -58,7 +61,8 @@ void main(void) {
     // ==== Init hardware ====
     uart.Init();
     ReadIDfromEE();
-    Printf("\r%S %S; ID: %u\r", APP_NAME, kBuildTime, lkt.id);
+    ReadStateFromEE();
+    Printf("\r%S %S; State=%u; ID: %u\r", APP_NAME, kBuildTime, lkt.state, lkt.id);
     Clk.PrintFreqs();
 
     Random::SeedWithUniqID();
@@ -66,7 +70,7 @@ void main(void) {
     vibro.Init();
     Adc::Init(); // Battery measurement
     // beeper.Init();
-    // PillMgr::Init();
+    PillMgr::Init();
 
     if(Radio::Init().IsOk()) {
         led.StartOrRestart(lsqStart);
@@ -99,6 +103,7 @@ void ITask() {
                 if(ReadModeFromDip() == retv::New) chThdSleepMilliseconds(810);
                 Adc::StartMeasurement();
                 App::OnSecondEvt();
+                PillMgr::Check();
                 break;
 
             case EvtId::Buttons:
@@ -109,6 +114,10 @@ void ITask() {
             case EvtId::CheckRxTable:
                 // Printf("RxTable: 0x%X\r", msg.ptr);
                 App::ProcessRxTbl(*static_cast<RxTable*>(msg.ptr));
+                break;
+
+            case EvtId::PillConnected:
+                App::OnPillConnected();
                 break;
 
 #if ADC_REQUIRED
@@ -163,7 +172,7 @@ void OnCmd(Shell *pshell) {
 }
 #endif
 
-#if 1 // =========================== ID management =============================
+#if 1 // =========================== EE management =============================
 void ReadIDfromEE() {
     lkt.id = EE::ReadU32(EE_ADDR_DEVICE_ID);  // Read device ID
     if(lkt.id < IDs::LocketMin or lkt.id > IDs::LocketMax) {
@@ -184,6 +193,16 @@ retv ISetID(uint32_t new_id) {
         Printf("EE error: %u\r", rslt);
         return retv::Fail;
     }
+}
+
+void ReadStateFromEE() {
+    uint32_t state = EE::ReadU32(EE_ADDR_STATE);
+    if(state > Locket::Sta::Level2) state = Locket::Sta::Dead;
+    else lkt.state = (Locket::Sta)state;
+}
+
+void WriteStateToEE() {
+    EE::WriteU32(EE_ADDR_STATE, lkt.state);
 }
 #endif
 
