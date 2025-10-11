@@ -1,25 +1,24 @@
 #pragma once
 
-#include"types.h"
-#include <set>
-#include <unordered_map>
+#include "types.h"
 #include <unordered_set>
-#include <algorithm>
+#include <unordered_map>
 #include <vector>
 #include <array>
+#include "shell.h"
 
+enum class DevType { None, Host, Wormhole, Mengir, Locket };
 enum WHType { NonLethal=0, LethalWeak=1, LethalStrong=2 };
-inline constexpr const int32_t kChoiceA = 1, kChoiceB = 2;
+enum class Vote : int32_t { None = 0, A = 1, B = 2};
+inline constexpr const int32_t kRpktLktsCnt = 10;
 
 namespace IDs { // ============= IDs =============
     inline constexpr const uint32_t None = 0;
     inline constexpr const uint32_t HostMin=1, HostMax=9;
-    inline constexpr const uint32_t WormholeMin=10, WormholeMax=29;
-    inline constexpr const uint32_t MengirMin=30, MengirMax=49;
-    inline constexpr const uint32_t LocketMin=50, LocketMax=249;
+    inline constexpr const uint32_t LocketMin=10, LocketMax=127; // MSB shows vote accepted or not in the wormhole pkt
+    inline constexpr const uint32_t WormholeMin=200, WormholeMax=219;
+    inline constexpr const uint32_t MengirMin=220, MengirMax=249;
 } // namespace
-
-enum class DevType { None, Host, Wormhole, Mengir, Locket };
 
 
 struct Locket {
@@ -27,15 +26,18 @@ struct Locket {
     uint32_t id = 0;
     Sta state = Level1;
     bool btnA_pressed = false, btn_middle_pressed = false, btnB_pressed = false;
-    bool vote_accepted = false;
+    Vote vote = Vote::None;
     Locket() {}
-    Locket(uint32_t aid, uint8_t astate, bool btnA, bool btnMid, bool btnB) :
-        id(aid), state((Sta)astate), btnA_pressed(btnA),
-        btn_middle_pressed(btnMid), btnB_pressed(btnB), vote_accepted(false) {}
-    bool operator<(const Locket& other) const { return id < other.id; }
+    Locket(uint32_t aid, uint8_t astate, uint8_t btnA, uint8_t btnMid, uint8_t btnB) :
+        id(aid), state(static_cast<Sta>(astate)),
+        btnA_pressed(btnA != 0),
+        btn_middle_pressed(btnMid != 0),
+        btnB_pressed(btnB != 0),
+        vote(Vote::None) {}
     void Print() const { Printf("id=%u sta=%u bA=%u bM=%u bB=%u\n", id, state, btnA_pressed, btn_middle_pressed, btnB_pressed); }
 };
-using Lockets = std::set<Locket>;
+
+using Lockets = std::unordered_map<uint32_t, Locket>;
 
 
 class FailedGroup {
@@ -44,16 +46,12 @@ public:
     int32_t time_left_s = 0;
     FailedGroup(const Lockets &lkts, int32_t blocking_time_m) {
         ids.reserve(lkts.size());
-        std::transform(lkts.begin(), lkts.end(),
-                   std::inserter(ids, ids.end()),
-                   [](const Locket& l) { return l.id; });
+        for(const auto& [id, lkt] : lkts) ids.insert(id);
         time_left_s = blocking_time_m * 60L;
     }
     bool Contains(const Locket &lkt) const { return ids.contains(lkt.id); }
 };
 using FailedGroups = std::vector<FailedGroup>;
-
-using Votes = std::unordered_map<uint32_t, uint32_t>;
 
 class Mengir {
 public:
@@ -98,3 +96,71 @@ public:
         return count;
     }
 };
+
+#pragma region // =========================== Radio Packet ===============================
+enum class WormholeCmd : uint8_t { None=0, KillThemAll=4 };
+
+struct InListVoted { bool is_in_list=false, is_voted=false; };
+
+#pragma pack(push, 1)
+union rPkt {
+    uint32_t dw32[3];
+    struct {
+        uint8_t id;  // 1 byte
+        union {
+            struct { // 5 bytes
+                uint8_t state;
+                uint8_t btnA_pressed, btn_middle_pressed, btnB_pressed;
+                uint8_t speaks_with_wormhole;
+            } locket;
+            struct { // 11 bytes
+                WormholeCmd cmd;
+                uint8_t ids[kRpktLktsCnt];
+                InListVoted CheckID(uint8_t id) {
+                    InListVoted r;
+                    for(uint32_t i=0; i<kRpktLktsCnt; i++) {
+                        uint8_t lid = ids[i];
+                        if((lid & 0x7F) == id) {
+                            r.is_in_list = true;
+                            r.is_voted = (lid & 0x80) != 0;
+                            break;
+                        }
+                    }
+                    return r;
+                }
+            } wormhole;
+            struct { // 1 byte
+                uint8_t value;
+            } mengir;
+        };
+    };
+    rPkt& operator = (const rPkt &right) {
+        dw32[0] = right.dw32[0];
+        dw32[1] = right.dw32[1];
+        dw32[2] = right.dw32[2];
+        return *this;
+    }
+    void PrintLocket(const char* S) {
+        Printf("%Sid=%u sta=%u; %u %u %u\r", S, id, locket.state, locket.btnA_pressed, locket.btn_middle_pressed, locket.btnB_pressed);
+    }
+    void PrintWormhole(const char* S) {
+        Printf("%Sid=%u cmd=%u L:", S, id, wormhole.cmd);
+        for(uint32_t i=0; i<kRpktLktsCnt; i++) Printf(" %u", wormhole.ids[i]);
+        PrintfEOL();
+    }
+    void PrintMengir(const char* S) {
+        Printf("%Sid=%u value=%u\r", S, id, mengir.value);
+    }
+
+    DevType GetType() {
+        if     (id >= IDs::HostMin and id <=IDs::HostMax) return DevType::Host;
+        else if(id >= IDs::WormholeMin and id <= IDs::WormholeMax) return DevType::Wormhole;
+        else if(id >= IDs::MengirMin and id <= IDs::MengirMax) return DevType::Mengir;
+        else if(id >= IDs::LocketMin and id <= IDs::LocketMax) return DevType::Locket;
+        else return DevType::None;
+    }
+
+};
+#pragma pack(pop)
+inline constexpr const uint8_t kRPktSz = sizeof(rPkt);
+#pragma endregion

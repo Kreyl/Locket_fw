@@ -23,19 +23,20 @@ void ReadStateFromEE();
 namespace Near {
     bool locket = false;
     uint32_t mengirs = 0, wormholes = 0;
-    bool vote_accepted = false, time_to_die = false;
+    bool speaks_with_wormhole = false, vote_accepted = false, time_to_die = false;
 
     void Reset() {
         locket = false;
         mengirs = 0;
         wormholes = 0;
+        speaks_with_wormhole = false;
         vote_accepted = false;
         time_to_die = false;
     }
 
     void Print() {
-        Printf("Near: locket=%d mengirs=%d wormholes=%d vote_accepted=%d time_to_die=%d\r",
-            locket, mengirs, wormholes, vote_accepted, time_to_die);
+        Printf("Near: locket=%d mengirs=%d wormholes=%d speaksww=%u vote_accepted=%d time_to_die=%d\r",
+            locket, mengirs, wormholes, speaks_with_wormhole, vote_accepted, time_to_die);
     }
 } // namespace Near
 
@@ -53,8 +54,8 @@ void TakeBatteryVoltage(uint32_t vbat) {
 }
 
 void PresentSelf() {
-    if(lkt.state == Locket::Sta::Level1) led.StartOrRestart(lsqLvl1);
-    else if(lkt.state == Locket::Sta::Level2) led.StartOrRestart(lsqLvl2);
+    if(lkt.state == Locket::Sta::Level1) led.StartOrAddToQueue(lsqLvl1);
+    else if(lkt.state == Locket::Sta::Level2) led.StartOrAddToQueue(lsqLvl2);
 }
 
 
@@ -110,14 +111,20 @@ void ProcessRxTbl(RxTable &tbl) {
     for(uint32_t i=0; i<tbl.cnt; i++) {
         rPkt &pkt = tbl[i];
         // if(rx_pkt_printing) pkt.Print();
+        Printf("id=%u\n", pkt.id);
+
         DevType type = pkt.GetType();
         if(type == DevType::Locket and pkt.locket.state != Locket::Sta::Dead) Near::locket = true;
         else if(type == DevType::Mengir) Near::mengirs++;
         else if(type == DevType::Wormhole) {
             Near::wormholes++;
-            // Process wormhole cmd
-            Near::vote_accepted = (pkt.wormhole.cmd == WormholeCmd::VoteAccepted) and (pkt.wormhole.IdIsInList(lkt.id));
-            Near::time_to_die =   (pkt.wormhole.cmd == WormholeCmd::KillThemAll)  and (pkt.wormhole.IdIsInList(lkt.id));
+            pkt.PrintWormhole("WH ");
+            InListVoted r = pkt.wormhole.CheckID(lkt.id);
+            if(r.is_in_list) {
+                Near::speaks_with_wormhole = true; // Registered or voting or dying
+                Near::vote_accepted = r.is_voted;
+                Near::time_to_die = pkt.wormhole.cmd == WormholeCmd::KillThemAll;
+            };
         }
     }
     // ==== Indicate ====
@@ -125,15 +132,18 @@ void ProcessRxTbl(RxTable &tbl) {
         lkt.state = Locket::Sta::Dead;
         led.StartOrRestart(lsqDieNow);
         vibro.StartOrRestart(vsqDieNow);
-        return;
     }
-    // It's good to be alive
-    for(uint32_t i=0; i<Near::mengirs; i++) vibro.StartOrAddToQueue(vsqBrr);
-    for(uint32_t i=0; i<Near::wormholes; i++) vibro.StartOrAddToQueue(vsqBrrBrr);
-    if(Near::vote_accepted) led.StartOrAddToQueue(lsqVoteAccepted);
-    // Show discharged
-    if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
-    PresentSelf();
+    else { // It's good to be alive
+        // Ignore wormholes and mengirs if speaking with a wormhole
+        if(!Near::speaks_with_wormhole) {
+            for(uint32_t i=0; i<Near::mengirs;   i++) vibro.StartOrAddToQueue(vsqBrr);
+            for(uint32_t i=0; i<Near::wormholes; i++) vibro.StartOrAddToQueue(vsqBrrBrr);
+        }
+        if(Near::vote_accepted) led.StartOrAddToQueue(lsqVoteAccepted);
+        // Show discharged
+        if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
+        PresentSelf();
+    }
 }
 
 // Tx. Called from radio level
@@ -144,6 +154,8 @@ rPkt* PrepareTxPkt() {
     pkt_tx.locket.btnA_pressed = GetBtnState(Btn::A) == BTN_HOLDDOWN_STATE;
     pkt_tx.locket.btnB_pressed = GetBtnState(Btn::B) == BTN_HOLDDOWN_STATE;
     pkt_tx.locket.btn_middle_pressed = GetBtnState(Btn::Mid) == BTN_HOLDDOWN_STATE;
+    // Say we are busy speaking with wormhole to allow mengir to ignore us
+    pkt_tx.locket.speaks_with_wormhole = Near::speaks_with_wormhole? 1 : 0;
     return &pkt_tx;
 }
 #pragma endregion

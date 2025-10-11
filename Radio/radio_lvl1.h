@@ -16,64 +16,6 @@
 #include "types.h"
 #include "app_types.h"
 
-enum class WormholeCmd : uint8_t { None=0, KillThemAll=4, VoteAccepted=18 };
-
-#pragma region // =========================== Radio Packet ===============================
-#pragma pack(push, 1)
-inline constexpr const int32_t kRpktLktsCnt = 10;
-union rPkt {
-    uint32_t dw32[3];
-    struct {
-        uint8_t id;  // 1 byte
-        union {
-            struct { // 4 bytes
-                uint8_t state;
-                uint8_t btnA_pressed, btn_middle_pressed, btnB_pressed;
-            } locket;
-            struct { // 11 bytes
-                WormholeCmd cmd;
-                uint8_t ids[kRpktLktsCnt];
-                bool IdIsInList(uint8_t id) {
-                    for(uint32_t i=0; i<kRpktLktsCnt; i++) if(ids[i] == id) return true;
-                    return false;
-                }
-            } wormhole;
-            struct { // 1 byte
-                uint8_t value;
-            } mengir;
-        };
-    };
-    rPkt& operator = (const rPkt &right) {
-        dw32[0] = right.dw32[0];
-        dw32[1] = right.dw32[1];
-        dw32[2] = right.dw32[2];
-        return *this;
-    }
-    void PrintLocket(const char* S) {
-        Printf("%Sid=%u sta=%u; %u %u %u\r", S, id, locket.state, locket.btnA_pressed, locket.btn_middle_pressed, locket.btnB_pressed);
-    }
-    void PrintWormhole(const char* S) {
-        Printf("%Sid=%u cmd=%u L:", S, id, wormhole.cmd);
-        for(uint32_t i=0; i<kRpktLktsCnt; i++) Printf(" %u", wormhole.ids[i]);
-        PrintfEOL();
-    }
-    void PrintMengir(const char* S) {
-        Printf("%Sid=%u value=%u\r", S, id, mengir.value);
-    }
-
-    DevType GetType() {
-        if     (id >= IDs::HostMin and id <=IDs::HostMax) return DevType::Host;
-        else if(id >= IDs::WormholeMin and id <= IDs::WormholeMax) return DevType::Wormhole;
-        else if(id >= IDs::MengirMin and id <= IDs::MengirMax) return DevType::Mengir;
-        else if(id >= IDs::LocketMin and id <= IDs::LocketMax) return DevType::Locket;
-        else return DevType::None;
-    }
-
-};
-#pragma pack(pop)
-inline constexpr const uint8_t kRPktSz = sizeof(rPkt);
-#pragma endregion
-
 
 #if 1 // ============================= RX Table ================================
 #define RXT_PKT_REQUIRED        TRUE

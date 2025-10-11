@@ -112,7 +112,10 @@ static void DoTxOnlyCycle() {
 
 static void TaskFeelEachOther() {
     DoZeroCycle();
-    for(uint32_t cycle_n=1; cycle_n < Radio::kCycleCnt; cycle_n++) DoTxOnlyCycle();
+    if(ppkt_tx) {
+        for(uint32_t cycle_n=1; cycle_n < Radio::kCycleCnt; cycle_n++)
+            DoTxOnlyCycle();
+    }
 }
 
 static THD_WORKING_AREA(warLvl1Thread, 256);
