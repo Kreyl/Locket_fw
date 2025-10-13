@@ -111,7 +111,7 @@ void ProcessRxTbl(RxTable &tbl) {
     for(uint32_t i=0; i<tbl.cnt; i++) {
         rPkt &pkt = tbl[i];
         // if(rx_pkt_printing) pkt.Print();
-        Printf("id=%u\n", pkt.id);
+        // Printf("id=%u\n", pkt.id);
 
         DevType type = pkt.GetType();
         if(type == DevType::Locket and pkt.locket.state != Locket::Sta::Dead) Near::locket = true;
