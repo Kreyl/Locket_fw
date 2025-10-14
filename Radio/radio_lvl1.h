@@ -104,7 +104,7 @@ inline constexpr const uint32_t kSlotDuration_ms = 2UL; // for 12 bytes @ 500kBi
 inline constexpr const uint32_t kCycleDuration_ms = kSlotDuration_ms * kSlotCnt;
 // inline constexpr const uint32_t kSuperCycleDuration_ms = kCycleDuration_ms * kCycleCnt;
 inline constexpr const uint32_t kMinSleepDuration_ms = 18UL;
-inline constexpr const uint32_t kCheckRxTablePeriod_sc = 4UL; // Check RxTable every N SuperCycles
+// inline constexpr const uint32_t kCheckRxTablePeriod_sc = 4UL; // Check RxTable every N SuperCycles
 /* Examples:
 CYCLE_DUR = kSlotDuration_ms(4ms) * kSlotCnt(63) = 252ms
 SUPERCYCLE_DUR = CYCLE_DUR * kCycleCnt(4) = 1008ms

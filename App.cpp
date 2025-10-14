@@ -6,6 +6,7 @@
 #include "kl_lib.h"
 #include "battery_consts.h"
 #include <unordered_map>
+#include <array>
 #include "pill_mgr.h"
 
 
@@ -21,22 +22,68 @@ void WriteStateToEE();
 void ReadStateFromEE();
 
 namespace Near {
-    bool locket = false;
-    uint32_t mengirs = 0, wormholes = 0;
-    bool speaks_with_wormhole = false, vote_accepted = false, time_to_die = false;
+    class AlienExists {
+        private:
+            int32_t counter_ = 0;
+        public:
+            static const int32_t kCntToReset = 5L;
+            bool Exists() { return counter_ > 0; }
+            void Reset() { counter_ = 0; }
+            void MarkAsExisting() { counter_ = kCntToReset; }
+            void Tick() { if(counter_ > 0) --counter_; }
+    };
 
-    void Reset() {
-        locket = false;
-        mengirs = 0;
-        wormholes = 0;
-        speaks_with_wormhole = false;
-        vote_accepted = false;
-        time_to_die = false;
+    template<int32_t kCnt>
+    class AlienCnt {
+        private:
+            std::array<AlienExists, kCnt> aliens_;
+        public:
+            uint32_t GetCnt() {
+                uint32_t cnt = 0;
+                for(auto& alien : aliens_) {
+                    if(alien.Exists()) ++cnt;
+                }
+                return cnt;
+            }
+            void MarkAsExisting(uint32_t indx) {
+                if(indx < 0 or indx >= kCnt) return;
+                aliens_[indx].MarkAsExisting();
+            }
+            void Tick() {
+                for(auto& alien : aliens_) alien.Tick();
+            }
+            void Reset() {
+                for(auto& alien : aliens_) alien.Reset();
+            }
+    };
+
+
+    AlienExists locket;
+    AlienCnt<IDs::WormholeCnt> wormholes;
+    AlienCnt<IDs::MengirCnt> mengirs;
+    AlienExists vote_accepted;
+
+    bool speaks_with_wormhole = false, time_to_die = false;
+
+    // void Reset() {
+    //     locket.Reset();
+    //     mengirs.Reset();
+    //     wormholes = 0;
+    //     speaks_with_wormhole = false;
+    //     vote_accepted = false;
+    //     time_to_die = false;
+    // }
+
+    void Tick() {
+        locket.Tick();
+        mengirs.Tick();
+        wormholes.Tick();
+        vote_accepted.Tick();
     }
 
     void Print() {
         Printf("Near: locket=%d mengirs=%d wormholes=%d speaksww=%u vote_accepted=%d time_to_die=%d\r",
-            locket, mengirs, wormholes, speaks_with_wormhole, vote_accepted, time_to_die);
+            locket.Exists(), mengirs.GetCnt(), wormholes.GetCnt(), speaks_with_wormhole, vote_accepted, time_to_die);
     }
 } // namespace Near
 
@@ -65,6 +112,46 @@ void PresentSelf() {
     }
 }
 
+static void DieNow() {
+    prev_state = lkt.state;
+    lkt.state = Locket::Sta::Dead;
+    WriteStateToEE();
+    led.StartOrRestart(lsqDieNow);
+    vibro.StartOrRestart(vsqDieNow);
+    PresentSelf();
+}
+
+void Indicate() {
+    static int32_t vote_indi_cnt = 0, whm_indi_cnt = 0;
+    if(Near::time_to_die) DieNow();
+    else { // It's good to be alive
+        // Indicate vote acceptance every 4 seconds
+        if(Near::vote_accepted.Exists()) {
+            if(vote_indi_cnt <= 0) {
+                led.StartOrAddToQueue(lsqVoteAccepted);
+                vote_indi_cnt = 3;
+            }
+            else --vote_indi_cnt;
+        }
+        // Ignore wormholes and mengirs if speaking with a wormhole
+        if(!Near::speaks_with_wormhole) {
+            if(whm_indi_cnt <= 0) { // indicate once a 4 ticks
+                whm_indi_cnt = 3;
+                int32_t wh_cnt = Near::wormholes.GetCnt();
+                int32_t mengir_cnt = Near::mengirs.GetCnt();
+                if(wh_cnt > 0) vibro.StartOrAddToQueue(vsqBrrBrr); // }
+                if(wh_cnt > 1) vibro.StartOrAddToQueue(vsqBrrBrr); // } 1 brbr for 1 wh, 2 brbr for 2 or more whs
+                if(mengir_cnt > 1) vibro.StartOrAddToQueue(vsqBrr);
+                if(mengir_cnt > 2) vibro.StartOrAddToQueue(vsqBrr);
+            }
+            else --whm_indi_cnt;
+        }
+        // Show discharged
+        if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
+        PresentSelf();
+    }
+}
+
 
 void OnBtnEvt(BtnEvtInfo btn_info) {
     btn_info.Print();
@@ -74,7 +161,7 @@ void OnBtnEvt(BtnEvtInfo btn_info) {
     else { // indx == 1 => btn mid
         if(btn_info.type == beShortPress) {
             lkt.btn_middle_pressed = false;
-            if(Near::locket) {
+            if(Near::locket.Exists()) {
                 led.StartOrAddToQueue(lsqLocketIsNear);
                 PresentSelf();
             }
@@ -85,15 +172,6 @@ void OnBtnEvt(BtnEvtInfo btn_info) {
 
 void OnSecondEvt() {
     // Nothing here
-}
-
-static void DieNow() {
-    prev_state = lkt.state;
-    lkt.state = Locket::Sta::Dead;
-    WriteStateToEE();
-    led.StartOrRestart(lsqDieNow);
-    vibro.StartOrRestart(vsqDieNow);
-    PresentSelf();
 }
 
 
@@ -125,7 +203,7 @@ static bool rx_pkt_printing = false;
 
 // RX. Called from main thread by evt which is periodically sent by radio
 void ProcessRxTbl(RxTable &tbl) {
-    Near::Reset();
+    Near::Tick();
     if(lkt.state == Locket::Sta::Dead) return;
     // === Analyze table ===
     for(uint32_t i=0; i<tbl.cnt; i++) {
@@ -134,37 +212,25 @@ void ProcessRxTbl(RxTable &tbl) {
         DevType type = pkt.GetType();
         switch(type) {
             case DevType::Locket:
-                if(pkt.locket.state == Locket::Sta::Level1 or pkt.locket.state == Locket::Sta::Level2) Near::locket = true;
+                if(pkt.locket.state != Locket::Sta::Dead) Near::locket.MarkAsExisting();
                 break;
             case DevType::Mengir:
-                Near::mengirs++;
+                Near::mengirs.MarkAsExisting(IDs::Mengir2indx(pkt.id));
                 break;
             case DevType::Wormhole: {
-                Near::wormholes++;
+                Near::wormholes.MarkAsExisting(IDs::Wormhole2indx(pkt.id));
                 pkt.PrintWormhole("WH ");
                 InListVoted r = pkt.wormhole.CheckID(lkt.id);
                 if(r.is_in_list) {
                     Near::speaks_with_wormhole = true; // Registered or voting or dying
-                    Near::vote_accepted = r.is_voted;
+                    if(r.is_voted) Near::vote_accepted.MarkAsExisting();
                     Near::time_to_die = pkt.wormhole.cmd == WormholeCmd::KillThemAll;
                 };
             } break;
             default: break;
-        }
-    }
-    // ==== Indicate ====
-    if(Near::time_to_die) DieNow();
-    else { // It's good to be alive
-        // Ignore wormholes and mengirs if speaking with a wormhole
-        if(!Near::speaks_with_wormhole) {
-            for(uint32_t i=0; i<Near::mengirs;   i++) vibro.StartOrAddToQueue(vsqBrr);
-            for(uint32_t i=0; i<Near::wormholes; i++) vibro.StartOrAddToQueue(vsqBrrBrr);
-        }
-        if(Near::vote_accepted) led.StartOrAddToQueue(lsqVoteAccepted);
-        // Show discharged
-        if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
-        PresentSelf();
-    }
+        } // switch
+    } // for
+    Indicate();
 }
 
 // Tx. Called from radio level

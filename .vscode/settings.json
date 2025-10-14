@@ -19,7 +19,8 @@
         "initializer_list": "cpp",
         "cmath": "cpp",
         "memory_resource": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "array": "cpp"
     },
     // TODO Highlight
     "todohighlight.isEnable": true,

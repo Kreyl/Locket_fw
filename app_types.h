@@ -13,11 +13,13 @@ enum class Vote : int32_t { None = 0, A = 1, B = 2};
 inline constexpr const int32_t kRpktLktsCnt = 10;
 
 namespace IDs { // ============= IDs =============
-    inline constexpr const uint32_t None = 0;
-    inline constexpr const uint32_t HostMin=1, HostMax=9;
-    inline constexpr const uint32_t LocketMin=10, LocketMax=127; // MSB shows vote accepted or not in the wormhole pkt
-    inline constexpr const uint32_t WormholeMin=200, WormholeMax=219;
-    inline constexpr const uint32_t MengirMin=220, MengirMax=249;
+    inline constexpr const int32_t None = 0;
+    inline constexpr const int32_t HostMin=1, HostMax=9;
+    inline constexpr const int32_t LocketMin=10, LocketMax=127; // MSB shows vote accepted or not in the wormhole pkt
+    inline constexpr const int32_t WormholeMin=200, WormholeMax=219, WormholeCnt = WormholeMax - WormholeMin + 1;
+    inline constexpr const int32_t MengirMin=220, MengirMax=249, MengirCnt = MengirMax - MengirMin + 1;
+    __attribute__((unused)) static inline int32_t Wormhole2indx(int32_t id) { return id - WormholeMin; }
+    __attribute__((unused)) static inline int32_t Mengir2indx(int32_t id) { return id - MengirMin; }
 } // namespace
 
 

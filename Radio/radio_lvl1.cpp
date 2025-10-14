@@ -31,7 +31,6 @@ cc1101_t CC(CC_Setup0);
 static rPkt pkt_rx;
 static rPkt *ppkt_tx = nullptr;
 
-static uint32_t supercycle_cnt = 0;
 static RxTable tbl1, tbl2, *curr_tbl = &tbl1;
 static uint8_t itx_power;
 
@@ -130,17 +129,13 @@ static void rLvl1Thread(void *arg) {
             itx_power = tx_power;
             CC.SetTxPower(tx_power);
         }
-        supercycle_cnt++;
-        if(supercycle_cnt >= kCheckRxTablePeriod_sc) {
-            supercycle_cnt = 0;
-            // Report and switch table even if empty
-            chSysLock();
-            EvtMsg_t msg{EvtMsg_t(EvtId::CheckRxTable, static_cast<void*>(curr_tbl))};
-            curr_tbl = (curr_tbl == &tbl1)? &tbl2 : &tbl1;
-            curr_tbl->Clear();
-            evt_q_main.SendNowOrExitI(msg);
-            chSysUnlock();
-        }
+        // Report and switch table even if empty
+        chSysLock();
+        EvtMsg_t msg{EvtMsg_t(EvtId::CheckRxTable, static_cast<void*>(curr_tbl))};
+        curr_tbl = (curr_tbl == &tbl1)? &tbl2 : &tbl1;
+        curr_tbl->Clear();
+        evt_q_main.SendNowOrExitI(msg);
+        chSysUnlock();
     } // while true
 }
 
