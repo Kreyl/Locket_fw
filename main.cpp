@@ -25,8 +25,7 @@ static uint8_t GetDipSwitch();
 static retv ReadModeFromDip();
 
 // EE
-#define EE_ADDR_DEVICE_ID       0
-#define EE_ADDR_STATE           4
+inline constexpr const uint32_t kEeAddrDevId = 0, kEeAddrState = 4, kEeAddrPrevState = 8;
 static retv ISetID(uint32_t new_id);
 static void ReadIDfromEE();
 void WriteStateToEE();
@@ -173,7 +172,7 @@ void OnCmd(Shell *pshell) {
 
 #if 1 // =========================== EE management =============================
 void ReadIDfromEE() {
-    lkt.id = EE::ReadU32(EE_ADDR_DEVICE_ID);  // Read device ID
+    lkt.id = EE::ReadU32(kEeAddrDevId);  // Read device ID
     if(lkt.id < IDs::LocketMin or lkt.id > IDs::LocketMax) {
         Printf("\rUsing default ID\r");
         lkt.id = IDs::LocketMin;
@@ -182,7 +181,7 @@ void ReadIDfromEE() {
 
 retv ISetID(uint32_t new_id) {
     if(new_id < IDs::LocketMin or new_id > IDs::LocketMax) return retv::BadValue;
-    retv rslt = EE::WriteU32(EE_ADDR_DEVICE_ID, new_id);
+    retv rslt = EE::WriteU32(kEeAddrDevId, new_id);
     if(rslt == retv::Ok) {
         lkt.id = new_id;
         Printf("New ID: %u\r", new_id);
@@ -195,13 +194,17 @@ retv ISetID(uint32_t new_id) {
 }
 
 void ReadStateFromEE() {
-    uint32_t state = EE::ReadU32(EE_ADDR_STATE);
+    uint32_t state = EE::ReadU32(kEeAddrState);
     if(state > Locket::Sta::Level2) state = Locket::Sta::Dead;
     else lkt.state = (Locket::Sta)state;
+    uint32_t prev_state = EE::ReadU32(kEeAddrPrevState);
+    if(prev_state > Locket::Sta::Level2) prev_state = Locket::Sta::Level1;
+    else App::prev_state = static_cast<Locket::Sta>(prev_state);
 }
 
 void WriteStateToEE() {
-    EE::WriteU32(EE_ADDR_STATE, lkt.state);
+    EE::WriteU32(kEeAddrState, lkt.state);
+    EE::WriteU32(kEeAddrPrevState, App::prev_state);
 }
 #endif
 

@@ -132,11 +132,8 @@ void ProcessButtons(PinSnsState *btn_state, uint32_t len) {
             } // if combo
 #endif // BTN_COMBO || BTN_LONG_COMBO
 
-#if BTN_RELEASE // Send evt if not combo and not longpress
-#if BTN_LONGPRESS
-            if(!is_long_press[i])
-#endif
-                AddEvtToQueue(beRelease, i);
+#if BTN_RELEASE // Send evt if not combo
+            AddEvtToQueue(beRelease, i);
 #endif // BTN_RELEASE
 
 #if BTN_SHORTPRESS && BTN_LONGPRESS

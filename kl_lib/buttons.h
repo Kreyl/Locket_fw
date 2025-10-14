@@ -5,12 +5,12 @@
  *      Author: kreyl
  */
 
-#ifndef BUTTONS_H__
-#define BUTTONS_H__
+#pragma once
 
 #include "hal.h"
 #include "kl_lib.h"
 #include "kl_buf.h"
+#include "shell.h"
 
 #include "SimpleSensors.h"
 
@@ -73,9 +73,27 @@ struct BtnEvtInfo {
 #elif BUTTONS_CNT != 1
     uint8_t btn_indx;
 #endif
+    void PrintType() {
+        switch(type) {
+            case beShortPress: Printf("ShortPress"); break;
+            case beLongPress: Printf("LongPress"); break;
+            case beRelease: Printf("Release"); break;
+            case beRepeat: Printf("Repeat"); break;
+            case beCombo: Printf("Combo"); break;
+            case beLongCombo: Printf("LongCombo"); break;
+            case beDoubleClick: Printf("DoubleClick"); break;
+        }
+    }
+    void Print() {
+        PrintType();
+#if BTN_COMBO || BTN_LONG_COMBO
+        for(uint8_t i=0; i<BtnCnt; i++) Printf(" %u", btn_indx[i]);
+#elif BUTTONS_CNT != 1
+        Printf(" %u", btn_indx);
+#endif
+        PrintfEOL();
+    }
 } __packed;
 
 PinSnsState GetBtnState(uint8_t btn_indx);
 #endif
-
-#endif //BUTTONS_H__

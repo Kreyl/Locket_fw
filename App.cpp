@@ -47,6 +47,9 @@ static bool IsBatteryLow() {
 }
 
 namespace App {
+Locket::Sta prev_state;
+// static bool btnA_pressed = false, btn_mid_pressed = false, btnB_pressed = false;
+
 
 void TakeBatteryVoltage(uint32_t vbat) {
     if(iVbat == 0UL) Printf("Battery: %d mV\r", vbat);
@@ -56,16 +59,28 @@ void TakeBatteryVoltage(uint32_t vbat) {
 void PresentSelf() {
     if(lkt.state == Locket::Sta::Level1) led.StartOrAddToQueue(lsqLvl1);
     else if(lkt.state == Locket::Sta::Level2) led.StartOrAddToQueue(lsqLvl2);
+    else { // Dead
+        if(prev_state == Locket::Sta::Level2) led.StartOrAddToQueue(lsqDeadLvl2);
+        else led.StartOrAddToQueue(lsqDeadLvl1);
+    }
 }
 
 
 void OnBtnEvt(BtnEvtInfo btn_info) {
-    Printf("Btn %u %u\r", btn_info.btn_indx, btn_info.type);
-    // if(lkt.IsDead()) return;
-    // if(btn_info.btn_indx == Btn::Mid) {
-    //     if(Near::locket) led.StartOrAddToQueue(lsqLocketIsNear);
-    // }
-    // PresentSelf();
+    btn_info.Print();
+    if(lkt.state == Locket::Sta::Dead) return;
+    if     (btn_info.btn_indx == 0) lkt.btnA_pressed = (btn_info.type == beLongPress); // else release or shortpress
+    else if(btn_info.btn_indx == 2) lkt.btnB_pressed = (btn_info.type == beLongPress); // else release or shortpress
+    else { // indx == 1 => btn mid
+        if(btn_info.type == beShortPress) {
+            lkt.btn_middle_pressed = false;
+            if(Near::locket) {
+                led.StartOrAddToQueue(lsqLocketIsNear);
+                PresentSelf();
+            }
+        }
+        else lkt.btn_middle_pressed = (btn_info.type == beLongPress);
+    }
 }
 
 void OnSecondEvt() {
@@ -73,17 +88,12 @@ void OnSecondEvt() {
 }
 
 static void DieNow() {
+    prev_state = lkt.state;
+    lkt.state = Locket::Sta::Dead;
+    WriteStateToEE();
     led.StartOrRestart(lsqDieNow);
     vibro.StartOrRestart(vsqDieNow);
-    if(lkt.state == Locket::Sta::Level1) {
-        lkt.state = Locket::Sta::DeadLvl1;
-        led.StartOrAddToQueue(lsqDeadLvl1);
-    }
-    else if(lkt.state == Locket::Sta::Level2) {
-        lkt.state = Locket::Sta::DeadLvl2;
-        led.StartOrAddToQueue(lsqDeadLvl2);
-    }
-    WriteStateToEE();
+    PresentSelf();
 }
 
 
@@ -116,10 +126,7 @@ static bool rx_pkt_printing = false;
 // RX. Called from main thread by evt which is periodically sent by radio
 void ProcessRxTbl(RxTable &tbl) {
     Near::Reset();
-    if(lkt.state == Locket::Sta::Dead) {
-        led.StartOrRestart(lsqDead);
-        return;
-    }
+    if(lkt.state == Locket::Sta::Dead) return;
     // === Analyze table ===
     for(uint32_t i=0; i<tbl.cnt; i++) {
         rPkt &pkt = tbl[i];
@@ -162,12 +169,14 @@ void ProcessRxTbl(RxTable &tbl) {
 
 // Tx. Called from radio level
 rPkt* PrepareTxPkt() {
+    if(lkt.state == Locket::Sta::Dead) return nullptr; // Do not make noise
     pkt_tx.id = lkt.id;
     pkt_tx.locket.state = lkt.state;
     // Check which btn is pressed
-    // pkt_tx.locket.btnA_pressed = GetBtnState(Btn::A) == BTN_HOLDDOWN_STATE;
-    // pkt_tx.locket.btnB_pressed = GetBtnState(Btn::B) == BTN_HOLDDOWN_STATE;
-    // pkt_tx.locket.btn_middle_pressed = GetBtnState(Btn::Mid) == BTN_HOLDDOWN_STATE;
+    pkt_tx.locket.btnA_pressed = lkt.btnA_pressed;
+    pkt_tx.locket.btnB_pressed = lkt.btnB_pressed;
+    pkt_tx.locket.btn_middle_pressed = lkt.btn_middle_pressed;
+    // Printf("btns: %u %u %u\n", pkt_tx.locket.btnA_pressed, pkt_tx.locket.btnB_pressed, pkt_tx.locket.btn_middle_pressed);
     // Say we are busy speaking with wormhole to allow mengir to ignore us
     pkt_tx.locket.speaks_with_wormhole = Near::speaks_with_wormhole? 1 : 0;
     return &pkt_tx;

@@ -7,6 +7,7 @@ extern Locket lkt;
 extern uint8_t tx_power;
 
 namespace App {
+extern Locket::Sta prev_state;
 
 void TakeBatteryVoltage(uint32_t vbat);
 
