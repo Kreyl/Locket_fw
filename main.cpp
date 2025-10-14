@@ -106,7 +106,6 @@ void ITask() {
                 break;
 
             case EvtId::Buttons:
-                // Printf("Btn %u %u\r", msg.btn_info.btn_indx, msg.btn_info.type);
                 App::OnBtnEvt(msg.btn_info);
                 break;
 

@@ -59,26 +59,39 @@ void PresentSelf() {
 }
 
 
-// Just indicate btnpress
 void OnBtnEvt(BtnEvtInfo btn_info) {
-    if(lkt.state == Locket::Sta::Dead) return;
-    if(btn_info.btn_indx == Btn::Mid) {
-        if(Near::locket) led.StartOrAddToQueue(lsqLocketIsNear);
-    }
-    PresentSelf();
+    Printf("Btn %u %u\r", btn_info.btn_indx, btn_info.type);
+    // if(lkt.IsDead()) return;
+    // if(btn_info.btn_indx == Btn::Mid) {
+    //     if(Near::locket) led.StartOrAddToQueue(lsqLocketIsNear);
+    // }
+    // PresentSelf();
 }
 
 void OnSecondEvt() {
     // Nothing here
 }
 
+static void DieNow() {
+    led.StartOrRestart(lsqDieNow);
+    vibro.StartOrRestart(vsqDieNow);
+    if(lkt.state == Locket::Sta::Level1) {
+        lkt.state = Locket::Sta::DeadLvl1;
+        led.StartOrAddToQueue(lsqDeadLvl1);
+    }
+    else if(lkt.state == Locket::Sta::Level2) {
+        lkt.state = Locket::Sta::DeadLvl2;
+        led.StartOrAddToQueue(lsqDeadLvl2);
+    }
+    WriteStateToEE();
+}
+
+
 void ApplyPill(int32_t pill_id) {
     Printf("Pill %u\n", pill_id);
     switch(pill_id) {
         case 0:
-            led.StartOrRestart(lsqDieNow);
-            lkt.state = Locket::Sta::Dead;
-            WriteStateToEE();
+            DieNow();
             break;
         case 1:
             led.StartOrRestart(lsqPillLvl1);
@@ -110,29 +123,30 @@ void ProcessRxTbl(RxTable &tbl) {
     // === Analyze table ===
     for(uint32_t i=0; i<tbl.cnt; i++) {
         rPkt &pkt = tbl[i];
-        // if(rx_pkt_printing) pkt.Print();
         // Printf("id=%u\n", pkt.id);
-
         DevType type = pkt.GetType();
-        if(type == DevType::Locket and pkt.locket.state != Locket::Sta::Dead) Near::locket = true;
-        else if(type == DevType::Mengir) Near::mengirs++;
-        else if(type == DevType::Wormhole) {
-            Near::wormholes++;
-            pkt.PrintWormhole("WH ");
-            InListVoted r = pkt.wormhole.CheckID(lkt.id);
-            if(r.is_in_list) {
-                Near::speaks_with_wormhole = true; // Registered or voting or dying
-                Near::vote_accepted = r.is_voted;
-                Near::time_to_die = pkt.wormhole.cmd == WormholeCmd::KillThemAll;
-            };
+        switch(type) {
+            case DevType::Locket:
+                if(pkt.locket.state == Locket::Sta::Level1 or pkt.locket.state == Locket::Sta::Level2) Near::locket = true;
+                break;
+            case DevType::Mengir:
+                Near::mengirs++;
+                break;
+            case DevType::Wormhole: {
+                Near::wormholes++;
+                pkt.PrintWormhole("WH ");
+                InListVoted r = pkt.wormhole.CheckID(lkt.id);
+                if(r.is_in_list) {
+                    Near::speaks_with_wormhole = true; // Registered or voting or dying
+                    Near::vote_accepted = r.is_voted;
+                    Near::time_to_die = pkt.wormhole.cmd == WormholeCmd::KillThemAll;
+                };
+            } break;
+            default: break;
         }
     }
     // ==== Indicate ====
-    if(Near::time_to_die) {
-        lkt.state = Locket::Sta::Dead;
-        led.StartOrRestart(lsqDieNow);
-        vibro.StartOrRestart(vsqDieNow);
-    }
+    if(Near::time_to_die) DieNow();
     else { // It's good to be alive
         // Ignore wormholes and mengirs if speaking with a wormhole
         if(!Near::speaks_with_wormhole) {
@@ -151,9 +165,9 @@ rPkt* PrepareTxPkt() {
     pkt_tx.id = lkt.id;
     pkt_tx.locket.state = lkt.state;
     // Check which btn is pressed
-    pkt_tx.locket.btnA_pressed = GetBtnState(Btn::A) == BTN_HOLDDOWN_STATE;
-    pkt_tx.locket.btnB_pressed = GetBtnState(Btn::B) == BTN_HOLDDOWN_STATE;
-    pkt_tx.locket.btn_middle_pressed = GetBtnState(Btn::Mid) == BTN_HOLDDOWN_STATE;
+    // pkt_tx.locket.btnA_pressed = GetBtnState(Btn::A) == BTN_HOLDDOWN_STATE;
+    // pkt_tx.locket.btnB_pressed = GetBtnState(Btn::B) == BTN_HOLDDOWN_STATE;
+    // pkt_tx.locket.btn_middle_pressed = GetBtnState(Btn::Mid) == BTN_HOLDDOWN_STATE;
     // Say we are busy speaking with wormhole to allow mengir to ignore us
     pkt_tx.locket.speaks_with_wormhole = Near::speaks_with_wormhole? 1 : 0;
     return &pkt_tx;

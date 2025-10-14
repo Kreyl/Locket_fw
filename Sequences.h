@@ -201,11 +201,20 @@ const LedRGBChunk lsqLvl2[] = {
     {csSetup, 0, {2, 0, 2} }, {csEnd},
 };
 
-static LedRGBChunk lsqDead[] = {
-    {csSetup, 0, clRed},
-    {csWait, kBlinkDuration},
-    {csSetup, 0, clBlack},
-    {csEnd},
+static LedRGBChunk lsqDeadLvl1[] = {
+    {csSetup, 0, clRed},    {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},  {csWait, kBlinkDark},
+    {csSetup, 0, clYellow}, {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},  {csWait, 3600U},
+    {csGoto, 0}
+};
+
+static LedRGBChunk lsqDeadLvl2[] = {
+    {csSetup, 0, clRed},     {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},   {csWait, kBlinkDark},
+    {csSetup, 0, clMagenta}, {csWait, kBlinkDuration},
+    {csSetup, 0, clBlack},   {csWait, 3600U},
+    {csGoto, 0}
 };
 
 // Near
