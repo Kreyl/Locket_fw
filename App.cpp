@@ -70,6 +70,8 @@ namespace Near {
         mengirs.Tick();
         wormholes.Tick();
         vote_accepted.Tick();
+        speaks_with_wormhole = false;
+        time_to_die = false;
     }
 
     void Print() {
@@ -148,7 +150,8 @@ void Indicate() {
         }
         // Show discharged
         if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
-        PresentSelf();
+        if(Near::speaks_with_wormhole) led.StartOrAddToQueue(lsqSpeaksWthWH);
+        else PresentSelf();
     }
 }
 
@@ -201,7 +204,6 @@ void ApplyPill(int32_t pill_id) {
 #pragma region // ==== Radio related ====
 static bool rx_pkt_printing = false;
 
-
 void AnalyzeRxTable() {
     for(const rPkt& pkt : Radio::rx_table) {
         // Printf("id=%u\n", pkt.id);
@@ -227,7 +229,6 @@ void AnalyzeRxTable() {
         } // switch
     } // for
 }
-
 
 // RX. Called from main thread by evt which is periodically sent by radio
 void ProcessRxTbl() {

@@ -194,14 +194,14 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 inline constexpr const unsigned long kBlinkDuration = 108, kBlinkDark = 180, kPauseNextLsq = 450;
 
 // Self
-const LedRGBChunk lsqLvl1[] = {
+static const LedRGBChunk lsqLvl1[] = {
     {csSetup, 0, {2, 2, 0} }, {csEnd},
 };
-const LedRGBChunk lsqLvl2[] = {
+static const LedRGBChunk lsqLvl2[] = {
     {csSetup, 0, {2, 0, 2} }, {csEnd},
 };
 
-static LedRGBChunk lsqDeadLvl1[] = {
+static const LedRGBChunk lsqDeadLvl1[] = {
     {csSetup, 0, clRed},    {csWait, kBlinkDuration},
     {csSetup, 0, clBlack},  {csWait, kBlinkDark},
     {csSetup, 0, clYellow}, {csWait, kBlinkDuration},
@@ -209,7 +209,7 @@ static LedRGBChunk lsqDeadLvl1[] = {
     {csGoto, 0}
 };
 
-static LedRGBChunk lsqDeadLvl2[] = {
+static const LedRGBChunk lsqDeadLvl2[] = {
     {csSetup, 0, clRed},     {csWait, kBlinkDuration},
     {csSetup, 0, clBlack},   {csWait, kBlinkDark},
     {csSetup, 0, clMagenta}, {csWait, kBlinkDuration},
@@ -218,18 +218,23 @@ static LedRGBChunk lsqDeadLvl2[] = {
 };
 
 // Near
-static LedRGBChunk lsqLocketIsNear[] = {
+static const LedRGBChunk lsqLocketIsNear[] = {
     {csSetup, 0, clBlue},   {csWait, kBlinkDuration},
     {csSetup, 0, clBlack},
     {csWait, kPauseNextLsq},
     {csEnd},
 };
-static LedRGBChunk lsqVoteAccepted[] = {
+static const LedRGBChunk lsqVoteAccepted[] = {
     {csSetup, 0, clGreen},   {csWait, kBlinkDuration},
     {csSetup, 0, clBlack},
     {csWait, kPauseNextLsq},
     {csEnd},
 };
+
+static const LedRGBChunk lsqSpeaksWthWH[] = {
+    {csSetup, 0, {0, 36, 36} }, {csEnd},
+};
+
 static LedRGBChunk lsqDieNow[] = {
     {csSetup, 0, clRed},
     {csWait,  3006},

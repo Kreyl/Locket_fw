@@ -79,6 +79,7 @@ public:
     uint32_t timestamp = 0;
     void Increment() { if(value < kTop) value++; }
     void Decrement() { if(value > kBottom) value--; }
+    void Print() const { Printf("  id=%u val=%u t_passed_s=%u\n", id, value, TIME_I2S(chVTTimeElapsedSinceX(timestamp))); }
 };
 
 class MengirContainer {
@@ -105,6 +106,9 @@ public:
         return arr[kMaxCnt-1]; // Must not happen
     }
 
+    Mengir* begin() { return arr.data(); }
+    Mengir* end() { return arr.data() + arr.size(); }
+
     uint32_t size() const {
         uint32_t count = 0;
         for(const auto& mengir : arr) {
@@ -112,6 +116,17 @@ public:
             else count++;
         }
         return count;
+    }
+
+    void Print() {
+        if(size() == 0) Printf("No mengirs\n");
+        else {
+            Printf("Mengirs:\n");
+            for(auto& mengir : arr) {
+                if(mengir.id == 0) break;
+                else mengir.Print();
+            }
+        }
     }
 };
 
