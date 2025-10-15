@@ -110,7 +110,7 @@ void ITask() {
 
             case EvtId::CheckRxTable:
                 // Printf("RxTable: 0x%X\r", msg.ptr);
-                App::ProcessRxTbl(*static_cast<RxTable*>(msg.ptr));
+                App::ProcessRxTbl();
                 break;
 
             // ==== Pill ====

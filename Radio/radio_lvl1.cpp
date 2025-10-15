@@ -30,10 +30,12 @@ cc1101_t CC(CC_Setup0);
 
 static rPkt pkt_rx;
 static rPkt *ppkt_tx = nullptr;
-
-static RxTable tbl1, tbl2, *curr_tbl = &tbl1;
 static uint8_t itx_power;
 
+
+namespace Radio {
+
+RxTable rx_table;
 
 static inline uint32_t TryToReceive(uint32_t rx_duration_ms) {
     uint32_t rcvd_cnt = 0;
@@ -49,7 +51,7 @@ static inline uint32_t TryToReceive(uint32_t rx_duration_ms) {
         if(rx_rslt == retv::Ok) {
             rcvd_cnt++;
             // Printf("%u %d\r", pkt_rx.id, rssi);
-            curr_tbl->AddOrReplaceExistingPkt(pkt_rx);
+            rx_table.AddPkt(pkt_rx);
         }
         // Check if rx more or get out
         systime_t elapsed_st = chVTTimeElapsedSinceX(start_time_st);
@@ -58,8 +60,6 @@ static inline uint32_t TryToReceive(uint32_t rx_duration_ms) {
     }
     return rcvd_cnt;
 }
-
-namespace Radio {
 
 static void TryToSleep(uint32_t sleep_duration_ms) {
     if(sleep_duration_ms >= kMinSleepDuration_ms) CC.EnterPwrDown();
@@ -91,7 +91,6 @@ static uint32_t DoZeroCycle() {
     return rcvd_cnt;
 }
 
-
 static void DoTxOnlyCycle() {
     int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
     if(tx_slot != 0) {
@@ -109,33 +108,24 @@ static void DoTxOnlyCycle() {
 }
 
 
-static void TaskFeelEachOther() {
-    DoZeroCycle();
-    if(ppkt_tx) {
-        for(uint32_t cycle_n=1; cycle_n < Radio::kCycleCnt; cycle_n++)
-            DoTxOnlyCycle();
-    }
-}
-
 static THD_WORKING_AREA(warLvl1Thread, 256);
 __noreturn
 static void rLvl1Thread(void *arg) {
     chRegSetThreadName("rLvl1");
     while(true) {
         ppkt_tx = App::PrepareTxPkt();
-        TaskFeelEachOther();
+        // Task FeelEachOther
+        DoZeroCycle();
+        evt_q_main.SendNowOrExit(EvtMsg_t(EvtId::CheckRxTable)); // Report Rx table even if empty. Don't forget to tick it when processed.
+        if(ppkt_tx) {
+            for(uint32_t cycle_n=1; cycle_n < Radio::kCycleCnt; cycle_n++)
+                DoTxOnlyCycle();
+        }
         // Set new tx pwr if changed
         if(tx_power != itx_power) {
             itx_power = tx_power;
             CC.SetTxPower(tx_power);
         }
-        // Report and switch table even if empty
-        chSysLock();
-        EvtMsg_t msg{EvtMsg_t(EvtId::CheckRxTable, static_cast<void*>(curr_tbl))};
-        curr_tbl = (curr_tbl == &tbl1)? &tbl2 : &tbl1;
-        curr_tbl->Clear();
-        evt_q_main.SendNowOrExitI(msg);
-        chSysUnlock();
     } // while true
 }
 

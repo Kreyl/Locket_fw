@@ -20,7 +20,7 @@ void ApplyPill(int32_t pill_id);
 
 // Radio
 rPkt* PrepareTxPkt(); // Return null if no tx required
-void ProcessRxTbl(RxTable &tbl);
+void ProcessRxTbl();
 
 // App-specific commands parsing
 void OnCmd(Shell *pshell);

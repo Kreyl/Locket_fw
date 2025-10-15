@@ -5,12 +5,15 @@
 #include <unordered_map>
 #include <vector>
 #include <array>
+#include <type_traits>
 #include "shell.h"
 
 enum class DevType { None, Host, Wormhole, Mengir, Locket };
 enum WHType { NonLethal=0, LethalWeak=1, LethalStrong=2 };
 enum class Vote : int32_t { None = 0, A = 1, B = 2};
 inline constexpr const int32_t kRpktLktsCnt = 10;
+
+struct InListVoted { bool is_in_list=false, is_voted=false; };
 
 namespace IDs { // ============= IDs =============
     inline constexpr const int32_t None = 0;
@@ -20,6 +23,19 @@ namespace IDs { // ============= IDs =============
     inline constexpr const int32_t MengirMin=220, MengirMax=249, MengirCnt = MengirMax - MengirMin + 1;
     __attribute__((unused)) static inline int32_t Wormhole2indx(int32_t id) { return id - WormholeMin; }
     __attribute__((unused)) static inline int32_t Mengir2indx(int32_t id) { return id - MengirMin; }
+
+     __attribute__((unused)) static InListVoted CheckID(uint8_t id, const uint8_t *ids) {
+        InListVoted r;
+        for(uint32_t i=0; i<kRpktLktsCnt; i++) {
+            uint8_t lid = ids[i];
+            if((lid & 0x7F) == id) {
+                r.is_in_list = true;
+                r.is_voted = (lid & 0x80) != 0;
+                break;
+            }
+        }
+        return r;
+    }
 } // namespace
 
 
@@ -102,67 +118,49 @@ public:
 #pragma region // =========================== Radio Packet ===============================
 enum class WormholeCmd : uint8_t { None=0, KillThemAll=4 };
 
-struct InListVoted { bool is_in_list=false, is_voted=false; };
-
 #pragma pack(push, 1)
-union rPkt {
-    uint32_t dw32[3];
-    struct {
-        uint8_t id;  // 1 byte
-        union {
-            struct { // 5 bytes
-                uint8_t state;
-                uint8_t btnA_pressed, btn_middle_pressed, btnB_pressed;
-                uint8_t speaks_with_wormhole;
-            } locket;
-            struct { // 11 bytes
-                WormholeCmd cmd;
-                uint8_t ids[kRpktLktsCnt];
-                InListVoted CheckID(uint8_t id) {
-                    InListVoted r;
-                    for(uint32_t i=0; i<kRpktLktsCnt; i++) {
-                        uint8_t lid = ids[i];
-                        if((lid & 0x7F) == id) {
-                            r.is_in_list = true;
-                            r.is_voted = (lid & 0x80) != 0;
-                            break;
-                        }
-                    }
-                    return r;
-                }
-            } wormhole;
-            struct { // 1 byte
-                uint8_t value;
-            } mengir;
-        };
+struct rPkt {
+    uint8_t id;  // 1 byte
+    union {      // 11 bytes
+        struct { // 5 bytes
+            uint8_t state;
+            uint8_t btnA_pressed, btn_middle_pressed, btnB_pressed;
+            uint8_t speaks_with_wormhole;
+        } locket;
+        struct { // 11 bytes
+            WormholeCmd cmd;
+            uint8_t ids[kRpktLktsCnt];
+
+        } wormhole;
+        struct { // 1 byte
+            uint8_t value;
+        } mengir;
     };
-    rPkt& operator = (const rPkt &right) {
-        dw32[0] = right.dw32[0];
-        dw32[1] = right.dw32[1];
-        dw32[2] = right.dw32[2];
-        return *this;
-    }
-    void PrintLocket(const char* S) {
+    void PrintLocket(const char* S) const {
         Printf("%Sid=%u sta=%u; %u %u %u\r", S, id, locket.state, locket.btnA_pressed, locket.btn_middle_pressed, locket.btnB_pressed);
     }
-    void PrintWormhole(const char* S) {
+    void PrintWormhole(const char* S) const {
         Printf("%Sid=%u cmd=%u L:", S, id, wormhole.cmd);
         for(uint32_t i=0; i<kRpktLktsCnt; i++) Printf(" %u", wormhole.ids[i]);
         PrintfEOL();
     }
-    void PrintMengir(const char* S) {
-        Printf("%Sid=%u value=%u\r", S, id, mengir.value);
-    }
+    void PrintMengir(const char* S) const { Printf("%Sid=%u value=%u\r", S, id, mengir.value); }
 
-    DevType GetType() {
+    DevType GetType() const {
         if     (id >= IDs::HostMin and id <=IDs::HostMax) return DevType::Host;
         else if(id >= IDs::WormholeMin and id <= IDs::WormholeMax) return DevType::Wormhole;
         else if(id >= IDs::MengirMin and id <= IDs::MengirMax) return DevType::Mengir;
         else if(id >= IDs::LocketMin and id <= IDs::LocketMax) return DevType::Locket;
         else return DevType::None;
     }
-
 };
 #pragma pack(pop)
 inline constexpr const uint8_t kRPktSz = sizeof(rPkt);
+
+// Various checks of the rPkt
+static_assert(kRpktLktsCnt <= 11, "wormhole.ids too large for rPkt");
+static_assert(sizeof(rPkt) == 12, "rPkt size mismatch");
+static_assert(std::is_trivially_copyable_v<rPkt>, "rPkt must be trivially copyable");
+static_assert(std::is_standard_layout_v<rPkt>, "rPkt must be standard layout");
+static_assert(std::is_trivial_v<rPkt>, "rPkt must be trivial");
 #pragma endregion

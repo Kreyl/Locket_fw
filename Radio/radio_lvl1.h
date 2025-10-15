@@ -15,79 +15,66 @@
 #include "MsgQ.h"
 #include "types.h"
 #include "app_types.h"
+#include <array>
 
 
 #if 1 // ============================= RX Table ================================
-#define RXT_PKT_REQUIRED        TRUE
 class RxTable {
-public:
-    static const uint32_t kSize = 54;
-    uint32_t cnt = 0;
-#if RXT_PKT_REQUIRED
-    void AddOrReplaceExistingPkt(rPkt &apkt) {
-        rPkt *ppkt = &ibuf[0], *pend = &ibuf[cnt];
-        while(ppkt < pend) {
-            if(ppkt->id == apkt.id) {
-                *ppkt = apkt; // Replace with newer pkt
-                return;
-            }
-            ppkt++;
-        }
-        // Empty or not found
-        ibuf[cnt] = apkt;
-        if(cnt < (kSize-1)) cnt++;
-    }
-
-    // StatusOr<rPkt> GetPktByID(uint16_t id) {
-    //     for(uint32_t i=0; i<cnt; i++) {
-    //         if(ibuf[i].id == id) {
-    //             return StatusOr<rPkt>(retv::Ok, ibuf[i]);
-    //         }
-    //     }
-    //     return StatusOr<rPkt>(retv::Fail);
-    // }
-
-    bool IDPresents(uint16_t id) {
-        for(uint32_t i=0; i<cnt; i++) {
-            if(ibuf[i].id == id) return true;
-        }
-        return false;
-    }
-#else
-    void AddId(uint8_t ID) {
-        if(Cnt >= RXTABLE_SZ) return;   // Buffer is full, nothing to do here
-        for(uint32_t i=0; i<Cnt; i++) {
-            if(IdBuf[i] == ID) return;
-        }
-        IdBuf[Cnt] = ID;
-        Cnt++;
-    }
-
-#endif
-    void Clear() { cnt = 0; }
-
-#if RXT_PKT_REQUIRED
-    rPkt& operator [](uint32_t indx) { return ibuf[indx]; }
-#endif
-
-    void Print() {
-        Printf("RxTable cnt: %u\r", cnt);
-        for(uint32_t i=0; i<cnt; i++) {
-#if RXT_PKT_REQUIRED
-            // Printf("ID: %u; type: %u\r", ibuf[i].id, ibuf[i].type);
-#else
-            Printf("ID: %u\r", IdBuf[i]);
-#endif
-        }
-    }
 private:
-#if RXT_PKT_REQUIRED
-    rPkt ibuf[kSize];
-#else
-    uint8_t IdBuf[RXTABLE_SZ];
-#endif
+    struct Item {
+        rPkt pkt;
+        int32_t counter = 0;
+    };
+    static constexpr const uint32_t kSize = 256; // To index with 8-bit ids
+    std::array<Item, kSize> iarr;
+    // Iterator implementation
+    class iterator {
+        const RxTable* table;
+        size_t indx;
+        void AdvanceToNextValid() {
+            while(indx < RxTable::kSize and table->iarr[indx].counter <= 0) ++indx;
+        }
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = rPkt;
+        using difference_type = std::ptrdiff_t;
+        using pointer = const rPkt*;
+        using reference = const rPkt&;
+        iterator(const RxTable* t, size_t i) : table(t), indx(i) { AdvanceToNextValid(); }
+        reference operator*() { return table->iarr[indx].pkt; }
+        pointer operator->()  { return &table->iarr[indx].pkt; }
+        iterator& operator++() {
+            ++indx;
+            AdvanceToNextValid();
+            return *this;
+        }
+        bool operator==(const iterator& other) const { return indx == other.indx; }
+        bool operator!=(const iterator& other) const { return !(*this == other);  }
+    };
+public:
+    static constexpr const int32_t kTimeout_tics = 4L;
+    void AddPkt(rPkt &apkt) {
+        iarr[apkt.id].pkt = apkt;
+        iarr[apkt.id].counter = kTimeout_tics;
+    }
+    void Tick() {
+        for(auto &itm : iarr) { if(itm.counter > 0) itm.counter--; }
+    }
+
+    rPkt& operator [](uint32_t indx) { return iarr[indx].pkt; }
+    // Range-based for support
+    iterator begin() const { return iterator(this, 0); }
+    iterator end()   const { return iterator(this, kSize); }
 };
 #endif
+
+    // void Print() {
+    //     Printf("RxTable cnt: %u\r", cnt);
+    //     for(uint32_t i=0; i<cnt; i++) {
+    //         // Printf("ID: %u; type: %u\r", ibuf[i].id, ibuf[i].type);
+    //         // Printf("ID: %u\r", IdBuf[i]);
+    //     }
+    // }
 
 namespace Radio {
 
@@ -117,5 +104,6 @@ CHECK_PERIOD = SUPERCYCLE_DUR * kCheckRxTablePeriod_sc(4) = 3960ms
 #pragma endregion
 
 retv Init();
+extern RxTable rx_table;
 
 } // namespace Radio

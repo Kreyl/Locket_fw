@@ -25,6 +25,5 @@ enum class EvtId : uint8_t {
 
     // Not eternal
     Buttons,
-    RadioCmd,
     CheckRxTable,
 };

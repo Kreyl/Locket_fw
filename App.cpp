@@ -126,13 +126,13 @@ void Indicate() {
     if(Near::time_to_die) DieNow();
     else { // It's good to be alive
         // Indicate vote acceptance every 4 seconds
-        if(Near::vote_accepted.Exists()) {
-            if(vote_indi_cnt <= 0) {
+        if(vote_indi_cnt <= 0) {
+            if(Near::vote_accepted.Exists()) {
                 led.StartOrAddToQueue(lsqVoteAccepted);
                 vote_indi_cnt = 3;
             }
-            else --vote_indi_cnt;
         }
+        else --vote_indi_cnt;
         // Ignore wormholes and mengirs if speaking with a wormhole
         if(!Near::speaks_with_wormhole) {
             if(whm_indi_cnt <= 0) { // indicate once a 4 ticks
@@ -141,8 +141,8 @@ void Indicate() {
                 int32_t mengir_cnt = Near::mengirs.GetCnt();
                 if(wh_cnt > 0) vibro.StartOrAddToQueue(vsqBrrBrr); // }
                 if(wh_cnt > 1) vibro.StartOrAddToQueue(vsqBrrBrr); // } 1 brbr for 1 wh, 2 brbr for 2 or more whs
-                if(mengir_cnt > 1) vibro.StartOrAddToQueue(vsqBrr);
-                if(mengir_cnt > 2) vibro.StartOrAddToQueue(vsqBrr);
+                if(mengir_cnt > 1) vibro.StartOrAddToQueue(vsqBrr); // }
+                if(mengir_cnt > 2) vibro.StartOrAddToQueue(vsqBrr); // } 1 brr for 1 mengir, 2 brr for 2 or more mengirs
             }
             else --whm_indi_cnt;
         }
@@ -154,7 +154,7 @@ void Indicate() {
 
 
 void OnBtnEvt(BtnEvtInfo btn_info) {
-    btn_info.Print();
+    // btn_info.Print();
     if(lkt.state == Locket::Sta::Dead) return;
     if     (btn_info.btn_indx == 0) lkt.btnA_pressed = (btn_info.type == beLongPress); // else release or shortpress
     else if(btn_info.btn_indx == 2) lkt.btnB_pressed = (btn_info.type == beLongPress); // else release or shortpress
@@ -201,13 +201,9 @@ void ApplyPill(int32_t pill_id) {
 #pragma region // ==== Radio related ====
 static bool rx_pkt_printing = false;
 
-// RX. Called from main thread by evt which is periodically sent by radio
-void ProcessRxTbl(RxTable &tbl) {
-    Near::Tick();
-    if(lkt.state == Locket::Sta::Dead) return;
-    // === Analyze table ===
-    for(uint32_t i=0; i<tbl.cnt; i++) {
-        rPkt &pkt = tbl[i];
+
+void AnalyzeRxTable() {
+    for(const rPkt& pkt : Radio::rx_table) {
         // Printf("id=%u\n", pkt.id);
         DevType type = pkt.GetType();
         switch(type) {
@@ -220,7 +216,7 @@ void ProcessRxTbl(RxTable &tbl) {
             case DevType::Wormhole: {
                 Near::wormholes.MarkAsExisting(IDs::Wormhole2indx(pkt.id));
                 pkt.PrintWormhole("WH ");
-                InListVoted r = pkt.wormhole.CheckID(lkt.id);
+                InListVoted r = IDs::CheckID(lkt.id, pkt.wormhole.ids);
                 if(r.is_in_list) {
                     Near::speaks_with_wormhole = true; // Registered or voting or dying
                     if(r.is_voted) Near::vote_accepted.MarkAsExisting();
@@ -230,7 +226,17 @@ void ProcessRxTbl(RxTable &tbl) {
             default: break;
         } // switch
     } // for
-    Indicate();
+}
+
+
+// RX. Called from main thread by evt which is periodically sent by radio
+void ProcessRxTbl() {
+    Near::Tick();
+    if(lkt.state != Locket::Sta::Dead) {
+        AnalyzeRxTable();
+        Indicate();
+    }
+    Radio::rx_table.Tick();
 }
 
 // Tx. Called from radio level
