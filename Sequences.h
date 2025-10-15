@@ -470,7 +470,15 @@ const BaseChunk_t vsqBrrForever[] = {
 
 const BaseChunk_t vsqDieNow[] = {
     {csSetup, VIBRO_VOLUME},
-    {csWait, 3006},
+    {csWait, 2007},
+    {csSetup, 0},
+    {csWait, VIBRO_REPEAT_PERIOD},
+    {csEnd}
+};
+
+const BaseChunk_t vsqRegistered[] = {
+    {csSetup, VIBRO_VOLUME},
+    {csWait, 900},
     {csSetup, 0},
     {csWait, VIBRO_REPEAT_PERIOD},
     {csEnd}

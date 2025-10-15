@@ -26,7 +26,7 @@ namespace Near {
         private:
             int32_t counter_ = 0;
         public:
-            static const int32_t kCntToReset = 5L;
+            static const int32_t kCntToReset = 4L;
             bool Exists() { return counter_ > 0; }
             void Reset() { counter_ = 0; }
             void MarkAsExisting() { counter_ = kCntToReset; }
@@ -64,15 +64,6 @@ namespace Near {
     AlienExists vote_accepted;
 
     bool speaks_with_wormhole = false, time_to_die = false;
-
-    // void Reset() {
-    //     locket.Reset();
-    //     mengirs.Reset();
-    //     wormholes = 0;
-    //     speaks_with_wormhole = false;
-    //     vote_accepted = false;
-    //     time_to_die = false;
-    // }
 
     void Tick() {
         locket.Tick();
@@ -123,6 +114,7 @@ static void DieNow() {
 
 void Indicate() {
     static int32_t vote_indi_cnt = 0, whm_indi_cnt = 0;
+    static bool was_speaking_with_wormhole = false;
     if(Near::time_to_die) DieNow();
     else { // It's good to be alive
         // Indicate vote acceptance every 4 seconds
@@ -133,8 +125,16 @@ void Indicate() {
             }
         }
         else --vote_indi_cnt;
+
+        // Indicate registration
+        if(Near::speaks_with_wormhole and !was_speaking_with_wormhole) {
+            vibro.StartOrRestart(vsqRegistered);
+            was_speaking_with_wormhole = true;
+        }
+
         // Ignore wormholes and mengirs if speaking with a wormhole
         if(!Near::speaks_with_wormhole) {
+            was_speaking_with_wormhole = false;
             if(whm_indi_cnt <= 0) { // indicate once a 4 ticks
                 whm_indi_cnt = 3;
                 int32_t wh_cnt = Near::wormholes.GetCnt();

@@ -68,13 +68,6 @@ public:
 };
 #endif
 
-    // void Print() {
-    //     Printf("RxTable cnt: %u\r", cnt);
-    //     for(uint32_t i=0; i<cnt; i++) {
-    //         // Printf("ID: %u; type: %u\r", ibuf[i].id, ibuf[i].type);
-    //         // Printf("ID: %u\r", IdBuf[i]);
-    //     }
-    // }
 
 namespace Radio {
 
