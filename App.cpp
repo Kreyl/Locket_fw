@@ -15,7 +15,7 @@ extern Vibro_t<4> vibro;
 Locket lkt;
 static rPkt pkt_tx;
 uint8_t tx_power;
-static uint32_t iVbat = 0UL;
+static uint32_t iVbat = 0xFFFFFFFFUL;
 
 // Implemented in main.cpp
 void WriteStateToEE();
@@ -62,21 +62,22 @@ namespace Near {
     AlienCnt<IDs::WormholeCnt> wormholes;
     AlienCnt<IDs::MengirCnt> mengirs;
     AlienExists vote_accepted;
+    AlienExists registered;
 
-    bool speaks_with_wormhole = false, time_to_die = false;
+    bool time_to_die = false;
 
     void Tick() {
         locket.Tick();
         mengirs.Tick();
         wormholes.Tick();
         vote_accepted.Tick();
-        speaks_with_wormhole = false;
+        registered.Tick();
         time_to_die = false;
     }
 
     void Print() {
         Printf("Near: locket=%d mengirs=%d wormholes=%d speaksww=%u vote_accepted=%d time_to_die=%d\r",
-            locket.Exists(), mengirs.GetCnt(), wormholes.GetCnt(), speaks_with_wormhole, vote_accepted, time_to_die);
+            locket.Exists(), mengirs.GetCnt(), wormholes.GetCnt(), registered.Exists(), vote_accepted, time_to_die);
     }
 } // namespace Near
 
@@ -92,7 +93,7 @@ Locket::Sta prev_state;
 
 
 void TakeBatteryVoltage(uint32_t vbat) {
-    if(iVbat == 0UL) Printf("Battery: %d mV\r", vbat);
+    if(iVbat == 0xFFFFFFFFUL) Printf("Battery: %d mV\r", vbat);
     iVbat = vbat;
 }
 
@@ -116,7 +117,7 @@ static void DieNow() {
 
 void Indicate() {
     static int32_t vote_indi_cnt = 0, whm_indi_cnt = 0;
-    static bool was_speaking_with_wormhole = false;
+    static bool was_registered = false;
     if(Near::time_to_die) DieNow();
     else { // It's good to be alive
         // Indicate vote acceptance every 4 seconds
@@ -129,35 +130,36 @@ void Indicate() {
         else --vote_indi_cnt;
 
         // Indicate registration
-        if(Near::speaks_with_wormhole and !was_speaking_with_wormhole) {
-            vibro.StartOrRestart(vsqRegistered);
-            was_speaking_with_wormhole = true;
+        if(Near::registered.Exists()) {
+            led.StartOrAddToQueue(lsqSpeaksWthWH);
+            if(!was_registered) {
+                vibro.StartOrRestart(vsqRegistered);
+                was_registered = true;
+            }
         }
-
-        // Ignore wormholes and mengirs if speaking with a wormhole
-        if(!Near::speaks_with_wormhole) {
-            was_speaking_with_wormhole = false;
+        else { // Ignore wormholes and mengirs if speaking with a wormhole
+            PresentSelf();
+            was_registered = false;
             if(whm_indi_cnt <= 0) { // indicate once a 4 ticks
                 whm_indi_cnt = 3;
                 int32_t wh_cnt = Near::wormholes.GetCnt();
                 int32_t mengir_cnt = Near::mengirs.GetCnt();
+                // Printf("wh_cnt=%d mengir_cnt=%d\r", wh_cnt, mengir_cnt);
                 if(wh_cnt > 0) vibro.StartOrAddToQueue(vsqBrrBrr); // }
                 if(wh_cnt > 1) vibro.StartOrAddToQueue(vsqBrrBrr); // } 1 brbr for 1 wh, 2 brbr for 2 or more whs
-                if(mengir_cnt > 1) vibro.StartOrAddToQueue(vsqBrr); // }
-                if(mengir_cnt > 2) vibro.StartOrAddToQueue(vsqBrr); // } 1 brr for 1 mengir, 2 brr for 2 or more mengirs
+                if(mengir_cnt > 0) vibro.StartOrAddToQueue(vsqBrr); // }
+                if(mengir_cnt > 1) vibro.StartOrAddToQueue(vsqBrr); // } 1 brr for 1 mengir, 2 brr for 2 or more mengirs
             }
             else --whm_indi_cnt;
         }
         // Show discharged
         if(IsBatteryLow()) led.StartOrAddToQueue(lsqDischarged);
-        if(Near::speaks_with_wormhole) led.StartOrAddToQueue(lsqSpeaksWthWH);
-        else PresentSelf();
     }
 }
 
 
 void OnBtnEvt(BtnEvtInfo btn_info) {
-    // btn_info.Print();
+    btn_info.Print();
     if(lkt.state == Locket::Sta::Dead) return;
     if     (btn_info.btn_indx == 0) lkt.btnA_pressed = (btn_info.type == beLongPress); // else release or shortpress
     else if(btn_info.btn_indx == 2) lkt.btnB_pressed = (btn_info.type == beLongPress); // else release or shortpress
@@ -171,6 +173,7 @@ void OnBtnEvt(BtnEvtInfo btn_info) {
         }
         else lkt.btn_middle_pressed = (btn_info.type == beLongPress);
     }
+    // if(btn_info.type == beShortPress or btn_info.type == beLongPress) vibro.StartOrAddToQueue(vsqBtn);
 }
 
 void OnSecondEvt() {
@@ -214,13 +217,14 @@ void AnalyzeRxTable() {
                 break;
             case DevType::Mengir:
                 Near::mengirs.MarkAsExisting(IDs::Mengir2indx(pkt.id));
+                // pkt.PrintMengir("MG ");
                 break;
             case DevType::Wormhole: {
                 Near::wormholes.MarkAsExisting(IDs::Wormhole2indx(pkt.id));
-                pkt.PrintWormhole("WH ");
+                // pkt.PrintWormhole("WH ");
                 InListVoted r = IDs::CheckID(lkt.id, pkt.wormhole.ids);
-                if(r.is_in_list) {
-                    Near::speaks_with_wormhole = true; // Registered or voting or dying
+                if(r.is_in_list) { // Registered or voting or dying
+                    Near::registered.MarkAsExisting();
                     if(r.is_voted) Near::vote_accepted.MarkAsExisting();
                     Near::time_to_die = pkt.wormhole.cmd == WormholeCmd::KillThemAll;
                 };
@@ -251,7 +255,7 @@ rPkt* PrepareTxPkt() {
     pkt_tx.locket.btn_middle_pressed = lkt.btn_middle_pressed;
     // Printf("btns: %u %u %u\n", pkt_tx.locket.btnA_pressed, pkt_tx.locket.btnB_pressed, pkt_tx.locket.btn_middle_pressed);
     // Say we are busy speaking with wormhole to allow mengir to ignore us
-    pkt_tx.locket.speaks_with_wormhole = Near::speaks_with_wormhole? 1 : 0;
+    pkt_tx.locket.speaks_with_wormhole = Near::registered.Exists();
     return &pkt_tx;
 }
 #pragma endregion
