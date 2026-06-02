@@ -29,7 +29,8 @@ cc1101_t CC(CC_Setup0);
 #define DBG1_CLR()
 #endif
 
-
+extern uint8_t tx_pwr;
+uint8_t old_pwr = 0x00;
 extern uint32_t be_test_station;
 extern LedRGBwPower_t<11> led;
 
@@ -59,6 +60,11 @@ static void rLvl1Thread(void *arg) {
                 led.StartOrRestart(lsqBlink);
             }
             chThdSleepMilliseconds(630);
+        }
+        if(old_pwr != tx_pwr) {
+            old_pwr = tx_pwr;
+            CC.SetTxPower(tx_pwr);
+            Printf("TxPwr: 0x%02X\n", tx_pwr);
         }
     } // while true
 }

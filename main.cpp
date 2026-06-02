@@ -121,6 +121,7 @@ void ITask() {
 } // ITask()
 
 uint32_t be_test_station = 0;
+uint8_t tx_pwr = CC_Pwr0dBm;
 
 retv ReadModeFromDip() {
     static uint32_t old_dip_settings = 0xFFFF;
@@ -130,8 +131,8 @@ retv ReadModeFromDip() {
     Printf("Dip: 0x%02X; ", dw32);
     old_dip_settings = dw32;
     // Select power
-    // uint32_t bits = dw32 & 0b1111; // Remove high bits = group 5678
-    // cfg.tx_power = (bits > 11) ? CC_PwrPlus12dBm : kPwrTable[bits];
+    uint32_t bits = dw32 & 0b1111; // Remove high bits = group 5678
+    tx_pwr = (bits > 11) ? CC_PwrPlus12dBm : kPwrTable[bits];
     // Is it master?
     bool old_test_station = be_test_station;
     be_test_station = (dw32 & 0x80UL);
