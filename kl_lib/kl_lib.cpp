@@ -236,35 +236,6 @@ void MemCpy(void *Dst, void *Src, uint32_t Sz) {
 } // namespace
 #endif
 
-#if defined STM32L4XX
-namespace Random {
-void TrueInit() {
-    rccEnableAHB2(RCC_AHB2ENR_RNGEN, FALSE);
-    RNG->CR = RNG_CR_RNGEN; // Enable random generator
-    while((RNG->SR & RNG_SR_DRDY) == 0);    // Wait for new random value
-}
-
-void TrueDeinit() {
-    RNG->CR = 0;
-    rccDisableAHB2(RCC_AHB2ENR_RNGEN);
-}
-
-uint32_t TrueGenerate(uint32_t LowInclusive, uint32_t HighInclusive) {
-    while((RNG->SR & RNG_SR_DRDY) == 0);    // Wait for new random value
-    uint32_t dw = RNG->DR;
-    uint32_t rslt = (dw % (HighInclusive + 1 - LowInclusive)) + LowInclusive;
-//    PrintfI("%u; l %u; h %u; r %u\r", dw, LowInclusive, HighInclusive, rslt);
-    return rslt;
-}
-
-void SeedWithTrue() {
-    while((RNG->SR & RNG_SR_DRDY) == 0);    // Wait for new random value
-    uint32_t dw = RNG->DR;
-    Seed(dw);
-}
-
-} // namespace
-#endif
 
 #if 1 // ============================= Timer ===================================
 void Timer_t::Init() const {
@@ -573,7 +544,28 @@ void SeedWithUniqID() {
     next = GetUniqID1() + GetUniqID2() + GetUniqID3();
 }
 
+static int32_t do_rand(uint32_t *ctx) {
+#if 0
+    if(*ctx == 0) *ctx = 123459876;
+    int32_t hi = *ctx / 127773;
+    int32_t lo = *ctx % 127773;
+    int32_t x = 16807 * lo - 2836 * hi;
+    if(x < 0) x += 0x7FFFFFFF;
+    return ((*ctx = x) % ((uint32_t)0x7fffffff + 1));
+#else
+    return ((*ctx = *ctx * 1103515245 + 12345) % ((uint32_t)0x7fffffff + 1));
+#endif
 }
+
+static int32_t krand() { return do_rand(&next); }
+
+
+int32_t Generate(int32_t low_inclusive, int32_t high_inclusive) {
+    int32_t last = krand();
+    return (last % (high_inclusive + 1 - low_inclusive)) + low_inclusive;
+}
+
+} // namespace Random
 
 #if 1 // ============================= DEBUG ===================================
 extern "C" {

@@ -5,8 +5,7 @@
  * Created on 3 Март 2010 г., 11:08
  */
 
-#ifndef CC1101DEFINS_H__
-#define CC1101DEFINS_H__
+#pragma once
 
 #include <inttypes.h>
 
@@ -24,7 +23,7 @@
 #define CC_PwrPlus10dBm        0xC5
 #define CC_PwrPlus12dBm        0xC0
 
-__unused
+[[maybe_unused]]
 static const uint8_t kPwrTable[12] = {
         CC_PwrMinus30dBm, // 0
         CC_PwrMinus27dBm, // 1
@@ -40,7 +39,7 @@ static const uint8_t kPwrTable[12] = {
         CC_PwrPlus12dBm   // 11
 };
 
-__attribute__((unused))
+[[maybe_unused]]
 static const char* CC_PwrToString(uint8_t APwr) {
     if     (APwr == CC_PwrMinus30dBm) return "-30dBm";
     else if(APwr == CC_PwrMinus27dBm) return "-27dBm";
@@ -181,6 +180,3 @@ static const char* CC_PwrToString(uint8_t APwr) {
 
 // FIFO
 #define CC_FIFO     0x3F
-
-
-#endif //CC1101DEFINS_H__

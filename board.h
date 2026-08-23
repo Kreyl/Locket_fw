@@ -3,7 +3,7 @@
 
 // ==== General ====
 #define BOARD_NAME          "Locket5"
-#define APP_NAME            "RootDay"
+#define APP_NAME            "HS_Chronicles"
 
 #ifndef TRUE
 #define TRUE    1
@@ -140,8 +140,8 @@
 #define PRINTF_FLOAT_EN FALSE
 #define UART_RX_POLLING_MS  99
 #define UART_TXBUF_SZ       256
-#define UART_RXBUF_SZ       64
-#define CMD_BUF_SZ          64
+#define UART_RXBUF_SZ       256
+#define CMD_BUF_SZ          256
 
 #define CMD_UART        USART1
 

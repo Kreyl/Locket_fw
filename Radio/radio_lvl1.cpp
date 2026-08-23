@@ -7,124 +7,130 @@
 
 #include "radio_lvl1.h"
 #include "cc1101.h"
-#include "uart.h"
-#include "App.h"
+#include "shell.h"
+// #include "Settings.h"
+#include "MsgQ.h"
+#include "app_types.h"
 
 cc1101_t CC(CC_Setup0);
 
-#define DBG_PINS
+// #define DBG_PINS
 
 #ifdef DBG_PINS
 #define DBG_GPIO1   GPIOB
-#define DBG_PIN1    10
+#define DBG_PIN1    6
 #define DBG1_SET()  PinSetHi(DBG_GPIO1, DBG_PIN1)
 #define DBG1_CLR()  PinSetLo(DBG_GPIO1, DBG_PIN1)
 #define DBG_GPIO2   GPIOB
-#define DBG_PIN2    11
+#define DBG_PIN2    7
 #define DBG2_SET()  PinSetHi(DBG_GPIO2, DBG_PIN2)
 #define DBG2_CLR()  PinSetLo(DBG_GPIO2, DBG_PIN2)
 #else
 #define DBG1_SET()
 #define DBG1_CLR()
+#define DBG2_SET()
+#define DBG2_CLR()
 #endif
 
-static rPkt pkt_rx;
-static rPkt *ppkt_tx = nullptr;
+static rPkt pkt_rx, pkt_tx;
 static uint8_t itx_power;
+static int32_t tx_slot = 0;
+static bool must_transmit;
 
 
 namespace Radio {
 
-RxTable rx_table;
-
-static inline uint32_t TryToReceive(uint32_t rx_duration_ms) {
-    uint32_t rcvd_cnt = 0;
+static inline void TryToReceive(uint32_t rx_duration_ms) {
     sysinterval_t total_duration_st = TIME_MS2I(rx_duration_ms);
-    sysinterval_t start_time_st = chVTGetSystemTimeX();
+    systime_t start_time_st = chVTGetSystemTimeX();
     sysinterval_t time_left_st = total_duration_st;
     int8_t rssi;
-    CC.Recalibrate();
     while(true) {
         DBG2_SET();
         retv rx_rslt = CC.Receive_st(time_left_st, reinterpret_cast<uint8_t*>(&pkt_rx), kRPktSz, &rssi);
         DBG2_CLR();
         if(rx_rslt == retv::Ok) {
-            rcvd_cnt++;
-            // Printf("%u %d\r", pkt_rx.id, rssi);
-            rx_table.AddPkt(pkt_rx);
+            // Printf("%u %d\n", pkt_rx.to, rssi);
+            rx_table.AddPkt(pkt_rx, rssi);
         }
         // Check if rx more or get out
-        systime_t elapsed_st = chVTTimeElapsedSinceX(start_time_st);
+        sysinterval_t elapsed_st = chVTTimeElapsedSinceX(start_time_st);
         if(elapsed_st >= total_duration_st) break;
         else time_left_st = total_duration_st - elapsed_st;
     }
-    return rcvd_cnt;
 }
 
 static void TryToSleep(uint32_t sleep_duration_ms) {
-    if(sleep_duration_ms >= kMinSleepDuration_ms) CC.EnterPwrDown();
-    else CC.EnterIdle();
-    chThdSleepMilliseconds(sleep_duration_ms);
-}
-
-static uint32_t DoZeroCycle() {
-    // Rx only if ppkt_tx is nullptr
-    if(ppkt_tx == nullptr) return TryToReceive(kCycleDuration_ms);
-    // Othervise, do rx and tx
-    uint32_t rcvd_cnt = 0; // Count received packets
-    int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
-    // If TX slot is not zero, receive or sleep
-    if(tx_slot != 0) {
-        uint32_t time_before_tx = tx_slot * kSlotDuration_ms;
-        rcvd_cnt += TryToReceive(time_before_tx);
+    if(sleep_duration_ms >= kMinSleepDuration_ms) {
+        CC.EnterPwrDown();
+        chThdSleepMilliseconds(sleep_duration_ms);
+        CC.Recalibrate(); // Recalibrate after power down
     }
-    // ==== TX ====
-    DBG1_SET();
-    CC.Recalibrate();
-    CC.Transmit(reinterpret_cast<uint8_t*>(ppkt_tx), kRPktSz);
-    DBG1_CLR();
-    // If TX slot is not last: receive or sleep
-    if(tx_slot != (kSlotCnt-1)) {
-        uint32_t time_after_tx = ((kSlotCnt-1) - tx_slot) * kSlotDuration_ms;
-        rcvd_cnt += TryToReceive(time_after_tx);
-    }
-    return rcvd_cnt;
-}
-
-static void DoTxOnlyCycle() {
-    int32_t tx_slot = Random::Generate(0, (kSlotCnt-1)); // Decide when to transmit
-    if(tx_slot != 0) {
-        uint32_t time_before_tx = tx_slot * kSlotDuration_ms;
-        TryToSleep(time_before_tx);
-    }
-    DBG1_SET();
-    CC.Recalibrate();
-    CC.Transmit(reinterpret_cast<uint8_t*>(ppkt_tx), kRPktSz);
-    DBG1_CLR();
-    if(tx_slot != (kSlotCnt-1)) {
-        uint32_t time_after_tx = ((kSlotCnt-1) - tx_slot) * kSlotDuration_ms;
-        TryToSleep(time_after_tx);
+    else { // No need to recalibrate
+        CC.EnterIdle();
+        chThdSleepMilliseconds(sleep_duration_ms);
     }
 }
 
+static void DoRxOnlyCycle() {
+    TryToReceive(kCycleDuration_ms);
+}
 
-static THD_WORKING_AREA(warLvl1Thread, 256);
-__noreturn
-static void rLvl1Thread(void *arg) {
-    chRegSetThreadName("rLvl1");
-    while(true) {
-        ppkt_tx = App::PrepareTxPkt();
-        // Task FeelEachOther
-        DoZeroCycle();
-        evt_q_main.SendNowOrExit(EvtMsg_t(EvtId::CheckRxTable)); // Report Rx table even if empty. Don't forget to tick it when processed.
-        if(ppkt_tx) {
-            for(uint32_t cycle_n=1; cycle_n < Radio::kCycleCnt; cycle_n++)
-                DoTxOnlyCycle();
+static void DoTxRxSleepCycle(ftVoidU32 WhenNoTx) {
+    // tx_slot is known already
+    int32_t curr_slot = 0, slots_to_wait;
+    while(curr_slot < kSlotCnt) {
+        // Wait before tx
+        slots_to_wait = tx_slot - curr_slot;
+        if(slots_to_wait != 0) {
+            WhenNoTx(slots_to_wait * kSlotDuration_ms);
+            curr_slot += slots_to_wait;
         }
-        // Set new tx pwr if changed
-        if(tx_power != itx_power) {
-            itx_power = tx_power;
-            CC.SetTxPower(tx_power);
+        // Transmit
+        DBG1_SET();
+        CC.Transmit(reinterpret_cast<uint8_t*>(&pkt_tx), kRPktSz);
+        DBG1_CLR();
+        curr_slot++;
+        // Calc the next tx slot
+        int32_t next_slot = tx_slot + Random::Generate(kSlotDiffMin, kSlotCnt - 1U);
+        if(next_slot >= kSlotCnt) { // No more tx in this cycle
+            tx_slot = next_slot - kSlotCnt;
+            slots_to_wait = kSlotCnt - curr_slot; // wait end of the cycle
+            if(slots_to_wait != 0) {
+                WhenNoTx(slots_to_wait * kSlotDuration_ms);
+                return;
+            }
+        }
+        else tx_slot = next_slot;
+    }
+}
+
+// ==== Radio thread ====
+static THD_WORKING_AREA(warLvl1Thread, 384);
+static void rLvl1Thread(void *arg) {
+    while(true) {
+        // Get tx pkt if needed
+        must_transmit = GetPktToTx(pkt_tx);
+
+        // ==== FeelEachOther Supercycle ====
+        CC.Recalibrate(); // At the beginning of the supercycle
+        // Zero Cycle
+        if(must_transmit) DoTxRxSleepCycle(TryToReceive);
+        else              DoRxOnlyCycle();
+        // Report Rx table even if empty. Don't forget to tick it when processed.
+        evt_q_main.SendNowOrExit(EvtMsg_t(EvtId::CheckRxTable));
+        // Other cycles
+        if(must_transmit) {
+            for(uint32_t cycle_n=1; cycle_n < kCycleCnt; cycle_n++) {
+                DoTxRxSleepCycle(TryToSleep);
+            }
+        }
+        else TryToSleep((kCycleCnt-1) * kCycleDuration_ms);
+
+        // ==== Set new tx pwr if changed ====
+        if(itx_power != tx_pwr) {
+            itx_power = tx_pwr;
+            CC.SetTxPower(itx_power);
         }
     } // while true
 }
@@ -135,14 +141,16 @@ retv Init() {
     PinSetupOut(DBG_GPIO1, DBG_PIN1, omPushPull);
     PinSetupOut(DBG_GPIO2, DBG_PIN2, omPushPull);
 #endif
-    itx_power = tx_power;
+    tx_slot = Random::Generate(0, kSlotCnt-1);
+    itx_power = tx_pwr;
     if(CC.Init() == retv::Ok) {
         CC.SetPktSize(kRPktSz);
         CC.SetChannel(0);
-        CC.SetTxPower(tx_power);
-        CC.SetBitrate(CCBitrate500k);
+        Printf("CC pwr: %S\r", CC_PwrToString(itx_power));
+        CC.SetTxPower(itx_power);
+        // CC.SetBitrate(CCBitrate500k);
         // CC.SetBitrate(CCBitrate250k);
-        // CC.SetBitrate(CCBitrate100k);
+        CC.SetBitrate(CCBitrate100k);
         // CC.SetBitrate(CCBitrate38k4);
         // CC.SetBitrate(CCBitrate10k);
         // CC.SetBitrate(CCBitrate2k4);

@@ -173,9 +173,9 @@ public:
 
 #if 1 // ============================== LedRGB =================================
 template <uint32_t que_len = 0>
-class LedRGB_t : public LedRGBParent_t<que_len> {
+class LedRGB : public LedRGBParent_t<que_len> {
 public:
-    LedRGB_t(
+    LedRGB(
             const PwmSetup_t ARed,
             const PwmSetup_t AGreen,
             const PwmSetup_t ABlue,

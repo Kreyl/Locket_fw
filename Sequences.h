@@ -193,62 +193,12 @@ const LedChunk_t lsqBlinkGreenX2[] = {
 #if 1 // ============================ LED RGB ==================================
 inline constexpr const unsigned long kBlinkDuration = 108, kBlinkDark = 180, kPauseNextLsq = 450;
 
-// Self
-static const LedRGBChunk lsqLvl1[] = {
-    {csSetup, 0, {2, 2, 0} }, {csEnd},
-};
-static const LedRGBChunk lsqLvl2[] = {
-    {csSetup, 0, {2, 0, 2} }, {csEnd},
-};
 
-static const LedRGBChunk lsqDeadLvl1[] = {
-    {csSetup, 0, clRed},    {csWait, kBlinkDuration},
-    {csSetup, 0, clBlack},  {csWait, kBlinkDark},
-    {csSetup, 0, clYellow}, {csWait, kBlinkDuration},
-    {csSetup, 0, clBlack},  {csWait, 3600U},
-    {csGoto, 0}
-};
-
-static const LedRGBChunk lsqDeadLvl2[] = {
-    {csSetup, 0, clRed},     {csWait, kBlinkDuration},
-    {csSetup, 0, clBlack},   {csWait, kBlinkDark},
-    {csSetup, 0, clMagenta}, {csWait, kBlinkDuration},
-    {csSetup, 0, clBlack},   {csWait, 3600U},
-    {csGoto, 0}
-};
-
-// Near
-static const LedRGBChunk lsqLocketIsNear[] = {
-    {csSetup, 0, clBlue},   {csWait, kBlinkDuration},
-    {csSetup, 0, clBlack},
-    {csWait, kPauseNextLsq},
-    {csEnd},
-};
-static const LedRGBChunk lsqVoteAccepted[] = {
-    {csSetup, 0, clGreen},   {csWait, kBlinkDuration},
-    {csSetup, 0, clBlack},
-    {csWait, kPauseNextLsq},
-    {csEnd},
-};
-
-static const LedRGBChunk lsqSpeaksWthWH[] = {
-    {csSetup, 0, {0, 36, 36} }, {csEnd},
-};
-
-static LedRGBChunk lsqDieNow[] = {
-    {csSetup, 0, clRed},
-    {csWait,  3006},
-    {csSetup, 0, clBlack},
-    {csWait, kPauseNextLsq},
-    {csEnd},
-};
-
-
-static LedRGBChunk lsqDischarged[] = {
-        {csSetup, 0, clWhite},  {csWait, kBlinkDuration},
-        {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
-        {csEnd},
-};
+// static LedRGBChunk lsqDischarged[] = {
+//         {csSetup, 0, clWhite},  {csWait, kBlinkDuration},
+//         {csSetup, 0, clBlack}, {csWait, kPauseNextLsq},
+//         {csEnd},
+// };
 
 
 const LedRGBChunk lsqStart[] = {
@@ -276,32 +226,16 @@ const LedRGBChunk lsqBlink[] = {
         {csEnd},
 };
 
-#pragma region // ==== Pill indication ====
-inline constexpr const unsigned long kPillBlinkDur = 630, kAfterPillDelay = 2007;
-const LedRGBChunk lsqPillBad[] = {
-        {csSetup, 0, clRed},   {csWait, kBlinkDuration},
-        {csSetup, 0, clBlack}, {csWait, kBlinkDark},
-        {csRepeat, 2},
-        {csWait, kAfterPillDelay},
-        {csEnd}
-};
+#define LSQ_COLOR(name, clr) const LedRGBChunk name[] = { \
+        {csSetup, 180,     clr}, {csWait, 45},  \
+        {csSetup, 180, clBlack}, \
+        {csEnd} \
+}
 
-const LedRGBChunk lsqPillLvl1[] = {
-        {csSetup, 0, clYellow}, {csWait, kBlinkDuration},
-        {csSetup, 0, clBlack}, {csWait, kBlinkDark},
-        {csRepeat, 2},
-        {csWait, kAfterPillDelay},
-        {csEnd}
-};
-const LedRGBChunk lsqPillLvl2[] = {
-        {csSetup, 0, clMagenta}, {csWait, kBlinkDuration},
-        {csSetup, 0, clBlack}, {csWait, kBlinkDark},
-        {csRepeat, 2},
-        {csWait, kAfterPillDelay},
-        {csEnd}
-};
-#pragma endregion
-
+LSQ_COLOR(lsqGreen,  clGreen);
+LSQ_COLOR(lsqBlue,   clBlue);
+LSQ_COLOR(lsqRed,    clRed);
+LSQ_COLOR(lsqYellow, clYellow);
 #endif
 
 #if 0 // =========================== LED Smooth ================================

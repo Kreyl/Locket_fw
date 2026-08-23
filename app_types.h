@@ -1,181 +1,132 @@
 #pragma once
-
-#include "types.h"
-#include <unordered_set>
-#include <unordered_map>
-#include <vector>
 #include <array>
-#include <type_traits>
-#include "shell.h"
-
-enum class DevType { None, Host, Wormhole, Mengir, Locket };
-enum WHType { NonLethal=0, LethalWeak=1, LethalStrong=2 };
-enum class Vote : int32_t { None = 0, A = 1, B = 2};
-inline constexpr const int32_t kRpktLktsCnt = 10;
-
-struct InListVoted { bool is_in_list=false, is_voted=false; };
-
-namespace IDs { // ============= IDs =============
-    inline constexpr const int32_t None = 0;
-    inline constexpr const int32_t HostMin=1, HostMax=9;
-    inline constexpr const int32_t LocketMin=10, LocketMax=127; // MSB shows vote accepted or not in the wormhole pkt
-    inline constexpr const int32_t WormholeMin=200, WormholeMax=219, WormholeCnt = WormholeMax - WormholeMin + 1;
-    inline constexpr const int32_t MengirMin=220, MengirMax=249, MengirCnt = MengirMax - MengirMin + 1;
-    __attribute__((unused)) static inline int32_t Wormhole2indx(int32_t id) { return id - WormholeMin; }
-    __attribute__((unused)) static inline int32_t Mengir2indx(int32_t id) { return id - MengirMin; }
-
-     __attribute__((unused)) static InListVoted CheckID(uint8_t id, const uint8_t *ids) {
-        InListVoted r;
-        for(uint32_t i=0; i<kRpktLktsCnt; i++) {
-            uint8_t lid = ids[i];
-            if((lid & 0x7F) == id) {
-                r.is_in_list = true;
-                r.is_voted = (lid & 0x80) != 0;
-                break;
-            }
-        }
-        return r;
-    }
-} // namespace
+#include "types.h"
 
 
-struct Locket {
-    enum Sta {Dead = 0, Level1 = 1, Level2 = 2};
-    uint32_t id = 0;
-    Sta state = Level1;
-    bool btnA_pressed = false, btn_middle_pressed = false, btnB_pressed = false;
-    Vote vote = Vote::None;
-    Locket() {}
-    Locket(uint32_t aid, uint8_t astate, uint8_t btnA, uint8_t btnMid, uint8_t btnB) :
-        id(aid), state(static_cast<Sta>(astate)),
-        btnA_pressed(btnA != 0),
-        btn_middle_pressed(btnMid != 0),
-        btnB_pressed(btnB != 0),
-        vote(Vote::None) {}
-    void Print() const { Printf("id=%u sta=%u bA=%u bM=%u bB=%u\n", id, state, btnA_pressed, btn_middle_pressed, btnB_pressed); }
-};
-
-using Lockets = std::unordered_map<uint32_t, Locket>;
+enum class DevType : uint32_t { Player = 0, Place = 1 };
+extern DevType self_type;
+extern uint32_t self_id;
+extern uint8_t tx_pwr;
 
 
-class FailedGroup {
-public:
-    std::unordered_set<uint32_t> ids;
-    int32_t time_left_s = 0;
-    FailedGroup(const Lockets &lkts, int32_t blocking_time_m) {
-        ids.reserve(lkts.size());
-        for(const auto& [id, lkt] : lkts) ids.insert(id);
-        time_left_s = blocking_time_m * 60L;
-    }
-    bool Contains(const Locket &lkt) const { return ids.contains(lkt.id); }
-};
-using FailedGroups = std::vector<FailedGroup>;
+inline constexpr uint32_t kDevCnt = 16U; // Total amount of devices in system
 
-class Mengir {
-public:
-    static const uint32_t kBottom = 0, kTop = 7;
-    uint32_t id = 0;
-    uint32_t value = 0;
-    uint32_t timestamp = 0;
-    void Increment() { if(value < kTop) value++; }
-    void Decrement() { if(value > kBottom) value--; }
-    void Print() const { Printf("  id=%u val=%u t_passed_s=%u\n", id, value, TIME_I2S(chVTTimeElapsedSinceX(timestamp))); }
-};
-
-class MengirContainer {
-public:
-    static const uint32_t kMaxCnt = 11;
-private:
-    std::array<Mengir, kMaxCnt> arr;
-public:
-    MengirContainer() { for(auto& mengir : arr) mengir.id = 0; }
-    Mengir& operator[](uint32_t id) {
-        // Try to find existing Mengir with this ID
-        for(auto& mengir : arr) {
-            if (mengir.id == id) return mengir;
-        }
-        // If not found, find an empty slot (ID=0) and assign the new ID
-        for(auto& mengir : arr) {
-            if(mengir.id == 0) {
-                mengir.id = id;
-                mengir.value = 0;
-                mengir.timestamp = 0;
-                return mengir;
-            }
-        }
-        return arr[kMaxCnt-1]; // Must not happen
-    }
-
-    Mengir* begin() { return arr.data(); }
-    Mengir* end() { return arr.data() + arr.size(); }
-
-    uint32_t size() const {
-        uint32_t count = 0;
-        for(const auto& mengir : arr) {
-            if (mengir.id == 0) break;
-            else count++;
-        }
-        return count;
-    }
-
-    void Print() {
-        if(size() == 0) Printf("No mengirs\n");
-        else {
-            Printf("Mengirs:\n");
-            for(auto& mengir : arr) {
-                if(mengir.id == 0) break;
-                else mengir.Print();
-            }
-        }
-    }
-};
-
-#pragma region // =========================== Radio Packet ===============================
-enum class WormholeCmd : uint8_t { None=0, KillThemAll=4 };
-
+#pragma region // =============== Radio pkt ==============
 #pragma pack(push, 1)
 struct rPkt {
-    uint8_t id;  // 1 byte
-    union {      // 11 bytes
-        struct { // 5 bytes
-            uint8_t state;
-            uint8_t btnA_pressed, btn_middle_pressed, btnB_pressed;
-            uint8_t speaks_with_wormhole;
-        } locket;
-        struct { // 11 bytes
-            WormholeCmd cmd;
-            uint8_t ids[kRpktLktsCnt];
-
-        } wormhole;
-        struct { // 1 byte
-            uint8_t value;
-        } mengir;
-    };
-    void PrintLocket(const char* S) const {
-        Printf("%Sid=%u sta=%u; %u %u %u\r", S, id, locket.state, locket.btnA_pressed, locket.btn_middle_pressed, locket.btnB_pressed);
-    }
-    void PrintWormhole(const char* S) const {
-        Printf("%Sid=%u cmd=%u L:", S, id, wormhole.cmd);
-        for(uint32_t i=0; i<kRpktLktsCnt; i++) Printf(" %u", wormhole.ids[i]);
-        PrintfEOL();
-    }
-    void PrintMengir(const char* S) const { Printf("%Sid=%u value=%u\r", S, id, mengir.value); }
-
-    DevType GetType() const {
-        if     (id >= IDs::HostMin and id <=IDs::HostMax) return DevType::Host;
-        else if(id >= IDs::WormholeMin and id <= IDs::WormholeMax) return DevType::Wormhole;
-        else if(id >= IDs::MengirMin and id <= IDs::MengirMax) return DevType::Mengir;
-        else if(id >= IDs::LocketMin and id <= IDs::LocketMax) return DevType::Locket;
-        else return DevType::None;
-    }
+    uint32_t sender_id;
+    DevType sender_type;
 };
 #pragma pack(pop)
-inline constexpr const uint8_t kRPktSz = sizeof(rPkt);
+inline constexpr uint8_t kRPktSz = sizeof(rPkt);
+static_assert(kRPktSz == 8, "rPkt size mismatch");
+static_assert(std::is_trivially_copyable<rPkt>::value, "rPkt is not trivially copyable");
+#pragma endregion
 
-// Various checks of the rPkt
-static_assert(kRpktLktsCnt <= 11, "wormhole.ids too large for rPkt");
-static_assert(sizeof(rPkt) == 12, "rPkt size mismatch");
-static_assert(std::is_trivially_copyable_v<rPkt>, "rPkt must be trivially copyable");
-static_assert(std::is_standard_layout_v<rPkt>, "rPkt must be standard layout");
-static_assert(std::is_trivial_v<rPkt>, "rPkt must be trivial");
+bool GetPktToTx(rPkt &apkt); // implement in app
+
+#pragma region // =============== Rx Table ==============
+class RxTable {
+public:
+    // An item returned by iteration: the received packet plus its RSSI.
+    struct RxItem {
+        rPkt pkt{};
+        int8_t rssi = 0;
+    };
+private:
+    struct Item {
+        RxItem rx{};
+        int32_t counter = 0;  // <= 0 means empty/dead
+    };
+    static constexpr const uint32_t kCapacity = kDevCnt;
+    std::array<Item, kCapacity> iarr;
+
+    // Iterator implementation
+    class iterator {
+        const RxTable* table;
+        uint32_t indx;
+        void AdvanceToNextValid() {
+            while(indx < RxTable::kCapacity and table->iarr[indx].counter <= 0) ++indx;
+        }
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = RxItem;
+        using difference_type = std::ptrdiff_t;
+        using pointer = const RxItem*;
+        using reference = const RxItem&;
+        iterator(const RxTable* t, uint32_t i) : table(t), indx(i) { AdvanceToNextValid(); }
+        reference operator*() const { return table->iarr[indx].rx; }
+        pointer operator->()  const { return &table->iarr[indx].rx; }
+        iterator& operator++() {
+            ++indx;
+            AdvanceToNextValid();
+            return *this;
+        }
+        bool operator==(const iterator& other) const { return indx == other.indx; }
+        bool operator!=(const iterator& other) const { return !(*this == other);  }
+    };
+public:
+    // How many radio ticks an RxTable entry survives after its last refresh.
+    static constexpr const int32_t kTimeout_tics = 4L;
+    void AddPkt(const rPkt &apkt, int8_t rssi) {
+        // Linear scan: update existing entry or insert into first empty slot.
+        // Dedup key is the sender id: each device occupies one slot
+        const int32_t timeout_tics = kTimeout_tics;
+        uint32_t empty_slot = kCapacity;
+        for(uint32_t i = 0; i < kCapacity; ++i) {
+            Item &itm = iarr[i];
+            if(itm.counter > 0) {
+                if(itm.rx.pkt.sender_id == apkt.sender_id) { // existing sender -> update
+                    itm.rx.pkt = apkt;
+                    itm.rx.rssi = rssi;
+                    itm.counter = timeout_tics;
+                    return;
+                }
+            }
+            else if(empty_slot == kCapacity) {
+                empty_slot = i; // remember first empty slot
+            }
+        }
+        if(empty_slot < kCapacity) { // insert new entry
+            Item &itm = iarr[empty_slot];
+            itm.rx.pkt = apkt;
+            itm.rx.rssi = rssi;
+            itm.counter = timeout_tics;
+        }
+    }
+    void Tick() {
+        for(auto &itm : iarr) { if(itm.counter > 0) itm.counter--; }
+    }
+    // Zero all counters so every slot is treated as empty/dead immediately.
+    void Clear() { for(auto &itm : iarr) itm.counter = 0; }
+
+    // Lookup by sender id. Returns nullptr if not present (or expired).
+    const RxItem* Find(uint32_t from) const {
+        for(uint32_t i = 0; i < kCapacity; ++i) {
+            const Item &itm = iarr[i];
+            if(itm.counter > 0 and itm.rx.pkt.sender_id == from) return &itm.rx; // found
+        }
+        return nullptr;
+    }
+    // Remove the entry pointed to by the given RxItem pointer. Returns true if
+    // an entry was found and removed (its counter is zeroed, so it is treated
+    // as empty/dead immediately). Safe to call during iteration: the iterator
+    // only advances its index and skips dead slots in AdvanceToNextValid().
+    bool Erase(const RxItem* it) {
+        if(it == nullptr) return false;
+        for(uint32_t i = 0; i < kCapacity; ++i) {
+            if(&iarr[i].rx == it) {
+                iarr[i].counter = 0;
+                return true;
+            }
+        }
+        return false;
+    }
+    // Range-based for support
+    iterator begin() const { return iterator(this, 0); }
+    iterator end()   const { return iterator(this, kCapacity); }
+};
+
+extern RxTable rx_table;
+void ProcessRxTable();
 #pragma endregion

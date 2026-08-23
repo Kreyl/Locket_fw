@@ -3,7 +3,7 @@ PRJ_NAME = Prj
 # What to include, in form dir1 dir2 dir3...
 INCLUDE_DIRS = ./ kl_lib os os/hal os/include os/stm32l15x Radio
 # What to define in form MYDEF1 MYDEF2=18 MYDEF3... $(MAKECMDGOALS) is name of requested action
-DEFINS =
+DEFINS = __ARM_ACLE
 
 ######################### Figure out what to do #########################
 # Target must be in the following form: build_Release, clean_Debug, flash_Fromboot
@@ -24,7 +24,7 @@ WARNING_FLAGS = -Wall -Wlogical-op # -Werror
 DISABLED_WARNINGS = -Wno-address-of-packed-member -Wno-unknown-pragmas -Wno-volatile
 COMMON_FLAGS = -mcpu=$(MCU) -mthumb -fmessage-length=0 -ffunction-sections -fdata-sections -ffreestanding $(FLOAT_FLAGS) $(WARNING_FLAGS)
 CPP_FLAGS = -std=gnu++20 -fabi-version=0 -fno-exceptions -fno-rtti -fno-use-cxa-atexit -fno-threadsafe-statics $(DISABLED_WARNINGS) $(OUTPUT_ASM)
-C_FLAGS = -std=gnu17 $(OUTPUT_ASM)
+C_FLAGS = -std=gnu17 -Wno-unknown-pragmas $(OUTPUT_ASM)
 # Add this to build commands. Nothing to change here.
 OBJ_FLAGS = -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" -c -o "$@" "$<"
 ELF_NAME = $(OUT_DIR)/$(PRJ_NAME).elf
@@ -67,6 +67,7 @@ endif
 CPP_CMP = arm-none-eabi-g++
 C_CMP = arm-none-eabi-gcc
 OBJCPY = arm-none-eabi-objcopy
+OBJDUMP = arm-none-eabi-objdump
 SZ = arm-none-eabi-size
 GDB = arm-none-eabi-gdb  # Required for flashing using BMP
 # GDB COM port: required for flashing using BMP
@@ -124,15 +125,15 @@ $(OUT_DIR)/version.o: version.cpp .FORCE
 	@echo 'Building $<'
 	@$(CPP_CMP) $(COMMON_FLAGS) $(VERSION_DEFINS) $(INCLUDE_STR) $(CPP_FLAGS) $(OBJ_FLAGS)
 # cpp
-$(OUT_DIR)/%.o: %.cpp
+$(OUT_DIR)/%.o: %.cpp | $(OUT_DIR)/out_subdirs
 	@echo 'Building $<'
 	@$(CPP_CMP) $(COMMON_FLAGS) $(INCLUDE_STR) $(CPP_FLAGS) $(OBJ_FLAGS)
 # c
-$(OUT_DIR)/%.o: %.c
+$(OUT_DIR)/%.o: %.c | $(OUT_DIR)/out_subdirs
 	@echo 'Building $<'
 	@$(C_CMP) $(COMMON_FLAGS) $(INCLUDE_STR) $(C_FLAGS) $(OBJ_FLAGS)
 # S
-$(OUT_DIR)/%.o: %.S
+$(OUT_DIR)/%.o: %.S | $(OUT_DIR)/out_subdirs
 	@echo 'Building $<'
 	@$(C_CMP) -x assembler-with-cpp $(COMMON_FLAGS) $(INCLUDE_STR) $(OBJ_FLAGS)
 
@@ -152,7 +153,7 @@ $(BIN_NAME): $(ELF_NAME)
 # 	@$(OBJDUMP) -d
 
 # Print size
-print_size:
+print_size: $(ELF_NAME)
 	@echo 'Size:'
 	@$(SZ) --format=berkeley "$(ELF_NAME)"
 

@@ -1,0 +1,367 @@
+{
+  "version": 1,
+  "settings": {
+    "port_params": {
+      "path": "COM96",
+      "baudrate": 115200,
+      "data_bits": 8,
+      "parity": "none",
+      "stop_bits": 1,
+      "handshake": "none"
+    },
+    "behavior": {
+      "send_sxx_as_hex": true,
+      "append_timestamp": false,
+      "add_timestamp_to_log": false,
+      "add_arrows_to_log": false,
+      "autosave_mbtns": true,
+      "ansi27_processing": 1,
+      "max_console_length": 1000000
+    },
+    "color_themes": [
+      {
+        "name": "Default Light",
+        "editable": true,
+        "id": "7cd91ce2-8d9a-4236-a249-f5100db01bfb",
+        "colors": [
+          "#FFFFFF",
+          "#f3f3f3",
+          "#000000",
+          "#555555",
+          "#aaaaaa",
+          "#a5f5a5",
+          "#a0a0ff",
+          "#000000",
+          "#0000FF",
+          "#e0e0ff",
+          "#ffffcc",
+          "#E3E3E3",
+          "#D3D3D3",
+          "#C3C3C3",
+          "#f3f3f3",
+          "#000000",
+          "#999999",
+          "#e0e0e0",
+          "#c0c0c0",
+          "#0000FF"
+        ]
+      },
+      {
+        "name": "Default Dark",
+        "editable": true,
+        "id": "21fe1c58-a568-4379-9e4f-659db4997e23",
+        "colors": [
+          "#202020",
+          "#2B2B2B",
+          "#FFFFFF",
+          "#B0B0B0",
+          "#515151",
+          "#2C5C2C",
+          "#3D3D99",
+          "#ebebeb",
+          "#8888FF",
+          "#2D2D4F",
+          "#4C4C2C",
+          "#3F3F3F",
+          "#4F4F4F",
+          "#5F5F5F",
+          "#2B2B2B",
+          "#FFFFFF",
+          "#666666",
+          "#333333",
+          "#666666",
+          "#8888FF"
+        ]
+      },
+      {
+        "name": "Magenta",
+        "editable": true,
+        "id": "ed56f24a-bdf3-425b-8ce2-a00d10444b66",
+        "colors": [
+          "#FFFFFF",
+          "#f3f3f3",
+          "#000000",
+          "#555555",
+          "#aaaaaa",
+          "#f5a3e3",
+          "#a0a0ff",
+          "#000000",
+          "#0000FF",
+          "#e0e0ff",
+          "#ffffcc",
+          "#E3E3E3",
+          "#D3D3D3",
+          "#C3C3C3",
+          "#f3f3f3",
+          "#000000",
+          "#999999",
+          "#e0e0e0",
+          "#c0c0c0",
+          "#0000FF"
+        ]
+      }
+    ],
+    "curr_theme": {
+      "name": "Default Dark",
+      "editable": true,
+      "id": "21fe1c58-a568-4379-9e4f-659db4997e23",
+      "colors": [
+        "#202020",
+        "#2B2B2B",
+        "#FFFFFF",
+        "#B0B0B0",
+        "#515151",
+        "#2C5C2C",
+        "#3D3D99",
+        "#ebebeb",
+        "#8888FF",
+        "#2D2D4F",
+        "#4C4C2C",
+        "#3F3F3F",
+        "#4F4F4F",
+        "#5F5F5F",
+        "#2B2B2B",
+        "#FFFFFF",
+        "#666666",
+        "#333333",
+        "#666666",
+        "#8888FF"
+      ]
+    },
+    "encoding": "UTF-8",
+    "font": "\"Courier New\", monospace"
+  },
+  "variables": [
+    {
+      "uuid": "fa878c4f-d470-4136-b158-3d79bc7a7f91",
+      "name": "id",
+      "value": "4",
+      "col_indx": 0,
+      "row_indx": 0,
+      "orig_value": "4"
+    }
+  ],
+  "view_state": {
+    "win_sz": {
+      "main": {
+        "sz": [
+          782,
+          919
+        ],
+        "is_max": false
+      },
+      "select_port": {
+        "sz": [
+          632,
+          360
+        ],
+        "is_max": false
+      },
+      "ascii": {
+        "sz": [
+          1034,
+          738
+        ],
+        "is_max": false
+      },
+      "vari": {
+        "sz": [
+          509,
+          403
+        ],
+        "is_max": false
+      },
+      "vari_help": {
+        "sz": [
+          811,
+          632
+        ],
+        "is_max": false
+      },
+      "port_opts": {
+        "sz": [
+          360,
+          320
+        ],
+        "is_max": false
+      },
+      "behavior": {
+        "sz": [
+          424,
+          360
+        ],
+        "is_max": false
+      },
+      "colors": {
+        "sz": [
+          813,
+          632
+        ],
+        "is_max": false
+      },
+      "fonts": {
+        "sz": [
+          520,
+          260
+        ],
+        "is_max": false
+      },
+      "esc_help": {
+        "sz": [
+          811,
+          632
+        ],
+        "is_max": false
+      },
+      "about": {
+        "sz": [
+          501,
+          400
+        ],
+        "is_max": false
+      },
+      "charts": {
+        "sz": [
+          900,
+          600
+        ],
+        "is_max": false
+      },
+      "charts_help": {
+        "sz": [
+          640,
+          560
+        ],
+        "is_max": false
+      }
+    },
+    "always_on_top": false,
+    "show_logging": false,
+    "show_macro_btns": true,
+    "show_tx_input": true,
+    "hex_mode": false,
+    "show_spec_chars": false,
+    "autoscroll": true,
+    "log_filepath": "",
+    "transparent_mode": false,
+    "append_cr": true,
+    "append_lf": true,
+    "put_to_console": true,
+    "tx_rows": [
+      {
+        "type": "tx-row",
+        "input": "lping 251",
+        "period": "999"
+      },
+      {
+        "type": "tx-row",
+        "input": "set id ${id++}",
+        "period": "900"
+      },
+      {
+        "type": "tx-row",
+        "input": "Set ID ${id++} Side 0 MClr 0 MOwner 0 PhyClr 0 PhyOwner 0 LockDur 0",
+        "period": "900"
+      }
+    ]
+  },
+  "macro_btns": [
+    [
+      {
+        "type": "button",
+        "uuid": "9afc8850-b5fa-40ad-a4b4-68d3cb44abee",
+        "name": "Ping",
+        "rows": [
+          {
+            "type": "Send",
+            "str": "Ping",
+            "delay_ms": 0
+          }
+        ],
+        "append_cr": true,
+        "append_lf": true,
+        "color": "",
+        "custom_icon": "",
+        "hotkey": "Alt+E"
+      },
+      {
+        "type": "button",
+        "uuid": "1e321d04-fb32-45c2-ad00-c9ab666ebf12",
+        "name": "Help",
+        "rows": [
+          {
+            "type": "Send",
+            "str": "Help",
+            "delay_ms": 0
+          }
+        ],
+        "append_cr": true,
+        "append_lf": true,
+        "color": "",
+        "custom_icon": "",
+        "hotkey": ""
+      },
+      {
+        "type": "separator",
+        "uuid": "782db9cd-3679-4361-82cb-cf72f5c1ad8b"
+      },
+      {
+        "type": "button",
+        "uuid": "b26c679a-0e59-4a09-ab39-0113c2255718",
+        "name": "GetState",
+        "rows": [
+          {
+            "type": "Send",
+            "str": "GetState",
+            "delay_ms": 0
+          }
+        ],
+        "append_cr": true,
+        "append_lf": true,
+        "color": "",
+        "custom_icon": "",
+        "hotkey": ""
+      }
+    ],
+    [
+      {
+        "type": "button",
+        "uuid": "5209afe9-943d-4bf1-94e5-5513b5999271",
+        "name": "Version",
+        "rows": [
+          {
+            "type": "Send",
+            "str": "Version",
+            "delay_ms": 0
+          }
+        ],
+        "append_cr": true,
+        "append_lf": true,
+        "color": "",
+        "custom_icon": "",
+        "hotkey": ""
+      },
+      {
+        "type": "button",
+        "uuid": "304ac2ac-8ecc-4e73-8a2b-f9e2d0692731",
+        "name": "Reboot",
+        "rows": [
+          {
+            "type": "Send",
+            "str": "Reboot",
+            "delay_ms": 0
+          }
+        ],
+        "append_cr": true,
+        "append_lf": true,
+        "color": "",
+        "custom_icon": "",
+        "hotkey": ""
+      },
+      {
+        "type": "separator",
+        "uuid": "80e03db2-e0d0-4027-9664-3ae6dfa41777"
+      }
+    ]
+  ]
+}

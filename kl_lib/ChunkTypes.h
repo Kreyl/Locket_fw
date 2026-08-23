@@ -35,25 +35,25 @@ struct BaseChunk_t {
 struct LedRGBChunk {
     BaseChunk_Vars;
     Color_t Color;
-} __attribute__((packed));
+};
 
 // HSV LED chunk
 struct LedHSVChunk_t {
     BaseChunk_Vars;
     ColorHSV_t Color;
-} __attribute__((packed));
+};
 
 // LED Smooth
 struct LedSmoothChunk_t {
     BaseChunk_Vars;
     uint8_t Brightness;
-} __attribute__((packed));
+};
 
 // Beeper
 struct BeepChunk_t {   // Value == Volume
     BaseChunk_Vars;
     uint16_t freq_Hz;
-} __attribute__((packed));
+};
 
 
 #if 1 // ====================== Base sequencer class ===========================

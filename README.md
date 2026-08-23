@@ -1,19 +1,8 @@
-# Locket_fw
-Firmware for the Locket Project ([Russian description](https://ostranna.ru/gamedesign/locket), [English description](https://ostranna.ru/?lang=en))
+This is application for HS: Chronicles.
+There are two types of devices: Player and Place.
+Device type is setup using DIP switch, 8th position: 1 - Player, 0 - Place.
 
-Locket is the device for LARPs. It has stm32 microcontroller, 868 MHz radio, buttons, vibro, RGB led, beeper and accelerometer. It is placed in nice 3d-printed case. Locket may be used for rather complex gamedesign. It is powered by two AAA batteries. 
+Players can feel places. When Player feels the place, it flares red and vibrates.
+Places can feel players. When Place feels the player, it flares red.
 
-Locket has several hardware (and firmware) versions (we call them new lockets, old lockets and ancient lockets). Master branch is for old lockets, for new lockets use master v.5
-Some branches are for [Atollic TrueStudio](https://atollic.com/truestudio/), others for Eclipse. See .project folder for this information.
-Archived branches https://github.com/Kreyl/Locket_fw/tags
-
-Most popular branch: 
-* FeelEachOther - all lockets vibrate when feel other lockets near them;
-* 7colors — activates magic path (special leds with radio, corresponding branch [here](https://github.com/Kreyl/chibi-armlet/tree/7Colors);
-
-Corresponding hardware project is here https://github.com/Kreyl/Locket_hw/.
-
-Related documents (in russian):
-* [Intro](https://docs.google.com/document/d/1VGHBuTp0xBRUtcHy9ScYkq9dG9T-dtdOIOypzqds3ys/)
-* [Locket overview](https://docs.google.com/document/d/1vjQiIySmDtnYaPiQdY_UE_RC2neNxGzWfggWsQX2K9c/)
-
+Radio TX power is setup using DIP switch.
