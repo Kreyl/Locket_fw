@@ -20,7 +20,7 @@ static void OnCmd(Shell *pshell);
 
 uint32_t self_id;
 DevType self_type;
-uint8_t tx_pwr;
+uint8_t tx_pwr = CC_PwrMinus15dBm;
 RxTable rx_table;
 rPkt pkt_tx_;
 
@@ -187,6 +187,8 @@ retv ReadModeFromDip() {
     old_dip = new_dip;
     // Select device type
     self_type = (new_dip & 0x80)? DevType::Player : DevType::Place;
+    if(self_type == DevType::Player) led.StartOrRestart(lsqBlue);
+    else led.StartOrRestart(lsqGreen);
     // Select power
     uint32_t bits = new_dip & 0b1111; // Remove high bits = group 5678
     tx_pwr = (bits > 11) ? CC_PwrPlus12dBm : kPwrTable[bits];
